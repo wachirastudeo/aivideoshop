@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TikTok Video Creator Settings</title>
+    <link rel="stylesheet" href="../sidepanel.css">
+    <style>
+      body { max-width: 760px; margin: 0 auto; }
+      .app-shell { min-height: auto; }
+      .settings-page { padding: 18px; }
+    </style>
+  </head>
+  <body>
+    <main class="app-shell settings-page">
+      <header class="app-header">
+        <img class="app-header__logo" src="../assets/icon.svg" alt="">
+        <div>
+          <h1>Settings</h1>
+          <p>ตั้งค่า TikTok, AI และค่าเริ่มต้นของวิดีโอ</p>
+        </div>
+        <span></span>
+      </header>
+
+      <section id="status" class="status" role="status" hidden></section>
+
+      <section class="section">
+        <div class="section__header"><h2>TikTok Account</h2></div>
+        <div class="section__body stack">
+          <div style="padding: 12px; background: #f3f4f6; border-radius: 8px; font-size: 14px; color: #374151;">
+            <p style="margin: 0;">✅ <strong>ระบบเชื่อมต่ออัตโนมัติเปิดใช้งานแล้ว</strong></p>
+            <p style="margin: 6px 0 0 0;">Extension จะใช้ Session ของเบราว์เซอร์จากหน้า <a href="https://www.tiktok.com/tiktokstudio" target="_blank" style="color: #2563eb; text-decoration: none;">TikTok Studio</a> โดยอัตโนมัติ (ไม่ต้องกรอก Token หรือ Client ID อีกต่อไป)</p>
+          </div>
+          <div class="inline-actions" style="margin-top: 12px;">
+            <button id="test-products" class="button" type="button">Test Product Fetch</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section__header"><h2>AI Settings</h2></div>
+        <div class="section__body stack">
+          <label class="field">
+            <span class="field__label">Gemini API Key</span>
+            <input id="gemini-api-key" class="input" type="password" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field__label">Gemini Model</span>
+            <input id="gemini-model" class="input" type="text" value="gemini-2.0-flash">
+          </label>
+          <button id="test-gemini" class="button" type="button">Test Gemini API</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section__header"><h2>Video Defaults</h2></div>
+        <div class="section__body stack">
+          <label class="field">
+            <span class="field__label">Default video style</span>
+            <select id="default-video-style" class="select"></select>
+          </label>
+          <div class="field">
+            <span class="field__label">Default video length</span>
+            <label class="checkbox-row"><input type="radio" name="video-length" value="8" checked> 8 วินาที</label>
+          </div>
+          <label class="field">
+            <span class="field__label">Default language</span>
+            <select id="default-language" class="select">
+              <option>ไทย</option>
+              <option>English</option>
+              <option>ทั้งคู่</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section__header"><h2>TikTok Post Defaults</h2></div>
+        <div class="section__body stack">
+          <label class="field">
+            <span class="field__label">Caption template</span>
+            <textarea id="caption-template" class="textarea">{product_name} {price} {cta}</textarea>
+          </label>
+          <label class="field">
+            <span class="field__label">Default hashtags</span>
+            <input id="default-hashtags" class="input" type="text" value="#TikTokShop, #ของดีบอกต่อ">
+          </label>
+          <label class="checkbox-row"><input id="auto-add-product-link" type="checkbox" checked> Auto-add product link</label>
+          <button id="save-settings" class="button button--primary" type="button">Save Settings</button>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

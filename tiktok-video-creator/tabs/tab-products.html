@@ -1,0 +1,29 @@
+<section class="section">
+  <div class="section__header">
+    <h2>สินค้า TikTok Showcase</h2>
+    <button id="connect-tiktok" class="button button--ghost" type="button">เชื่อมต่อ</button>
+  </div>
+  <div class="section__body">
+    <div class="product-toolbar" style="margin-bottom: 8px;">
+      <input id="product-search" class="input" type="search" placeholder="ค้นหาสินค้า">
+      <select id="product-sort" class="select" aria-label="เรียงสินค้า">
+        <option value="newest" selected>ล่าสุด (ค่าเริ่มต้น)</option>
+        <option value="name">ชื่อ</option>
+        <option value="commission">ค่าคอมฯ</option>
+        <option value="price">ราคา</option>
+        <option value="stock">สต็อก</option>
+      </select>
+      <button id="refresh-products" class="icon-button" type="button" title="Refresh" aria-label="Refresh">↻</button>
+    </div>
+
+    <div class="batch-actions" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #1a1a24; border: 1px solid #2a2a36; border-radius: 8px; margin-bottom: 12px;">
+      <label class="checkbox-row" style="margin: 0; min-height: auto; font-size: 13px; font-weight: 500; cursor: pointer; color: #f7f7fb;">
+        <input id="select-all-products" type="checkbox" style="width: 16px; height: 16px; accent-color: #fe2c55; cursor: pointer;"> เลือกทั้งหมด
+      </label>
+      <button id="create-batch-videos" class="button button--primary" type="button" style="min-height: 30px; padding: 4px 12px; font-size: 13px;" disabled>สร้างวิดีโอ (0)</button>
+    </div>
+    <div id="product-list" class="product-list"></div>
+    <div id="pagination-controls" class="pagination" style="display: flex; justify-content: center; gap: 4px; margin: 16px 0; flex-wrap: wrap;"></div>
+    <button id="load-more-products" class="button button--ghost button--full" type="button" hidden>โหลดข้อมูลจาก TikTok เพิ่ม (ชุดถัดไป)</button>
+  </div>
+</section>

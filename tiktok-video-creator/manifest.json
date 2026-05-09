@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "TikTok Video Creator",
+  "description": "สร้าง prompt วิดีโอสินค้า TikTok, เปิด Google Flow, และจัดการผลลัพธ์จาก side panel",
+  "version": "0.1.0",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "activeTab",
+    "scripting",
+    "downloads",
+    "identity",
+    "tabs",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://*.tiktok.com/*",
+    "https://shop.tiktok.com/*",
+    "https://open.tiktokapis.com/*",
+    "https://labs.google/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "TikTok Video Creator",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://shop.tiktok.com https://open.tiktokapis.com https://generativelanguage.googleapis.com;"
+  }
+}
