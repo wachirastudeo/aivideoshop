@@ -4,7 +4,7 @@ export const VIDEO_STYLES = [
     emoji: "🎯",
     name: "Review สินค้า",
     description: "โชว์สินค้าชัดทุกมุม ครบ feature",
-    shotPattern: "[สินค้า 360°] → [ซูมจุดเด่นหลัก] → [ราคา+ปุ่มสั่งซื้อ]",
+    shotPattern: "[สินค้า 360°] → [ซูมจุดเด่นหลัก] → [ปุ่มสั่งซื้อ]",
     fragment: "clean product showcase, multiple angles, feature callout text overlays, white or neutral background, professional lighting, no distractions"
   },
   {
@@ -19,9 +19,9 @@ export const VIDEO_STYLES = [
     id: "flash-sale",
     emoji: "🔥",
     name: "Flash Sale / Urgency",
-    description: "กระตุ้นซื้อ ราคาเด่น เวลาจำกัด",
-    shotPattern: "[สินค้า] → [ราคาเดิมขีดฆ่า/โชว์ราคาใหม่] → [นับถอยหลัง/ปุ่มสั่งซื้อ]",
-    fragment: "high energy flash sale ad, bold price comparison text, red and white color scheme, fast cuts every 1-2 seconds, urgency visual elements, countdown timer graphic"
+    description: "กระตุ้นซื้อ โปรเด่น เวลาจำกัด",
+    shotPattern: "[สินค้า] → [โชว์โปรโมชั่น] → [นับถอยหลัง/ปุ่มสั่งซื้อ]",
+    fragment: "high energy flash sale ad, bold promotion text, red and white color scheme, fast cuts every 1-2 seconds, urgency visual elements, countdown timer graphic"
   },
   {
     id: "unboxing",
@@ -65,18 +65,26 @@ export const VIDEO_STYLES = [
   }
 ];
 
-const HOOKS = {
-  question: "Open with a curiosity question that makes viewers stop scrolling",
-  shock: "Start with a full-frame product reveal and a surprising visual moment",
-  number: "Lead with a strong numeric offer or benefit in the first second",
-  problem: "Show the everyday problem first, then introduce the product as the fix",
-  result: "Show the desired result immediately before revealing how the product helps"
-};
-
 const PACING = {
   1: "slow cinematic pacing, smooth cuts every 4 seconds",
   2: "balanced TikTok pacing, clean cuts every 2-3 seconds",
   3: "rapid viral pacing, energetic cuts every 1-2 seconds"
+};
+
+const PRESENTERS = {
+  none: "No humans, focus entirely on the product visual",
+  woman: "A trendy young woman reviewer interacting with the product",
+  man: "A stylish young man reviewer presenting the product",
+  cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
+  living_product: "The product itself becomes a living character with cute 3D eyes and personality"
+};
+
+const VOICE_TONES = {
+  kind: "Kind, friendly, and gentle tone",
+  fun: "Fun, high-energy, and playful tone",
+  complain: "Funny complaining and slightly annoyed but hilarious tone",
+  professional: "Professional, authoritative, and expert tone",
+  hype: "Super excited, fast-talking, and high-hype tone"
 };
 
 /**
@@ -86,16 +94,14 @@ const PACING = {
 export function getDefaultSettings() {
   return {
     videoStyle: "review",
-    hook: "question",
+    presenter: "none",
+    voiceTone: "kind",
     mood: "Professional",
-    colorPalette: "Auto",
-    brandColor: "",
-    lightingStyle: "Studio Clean",
+    location: "Studio Minimal",
     language: "ไทย",
-    showName: true,
-    showPrice: true,
+    showName: false,
     promotionText: "",
-    cta: "กดซื้อได้เลย",
+    cta: "🛒 กดสั่งซื้อที่ตะกร้าด้านล่าง",
     customCta: "",
     textPosition: "Bottom safe area",
     cameraMovement: "Auto",
@@ -124,25 +130,23 @@ export function getDefaultProductInfo() {
 }
 
 /**
+ * @description จัดรูปแบบราคาให้สวยงาม (เช่น ฿1,200)
+ * @param {object} product - product info
+ * @returns {string} formatted price
+ */
+export function formatPrice(product) {
+  if (!product.price) return "";
+  const symbol = product.currency === "THB" ? "฿" : product.currency;
+  return `${symbol}${Number(product.price).toLocaleString()}`;
+}
+
+/**
  * @description ทำความสะอาดข้อความเพื่อใช้ใน prompt
  * @param {unknown} value - ค่าที่รับจาก user หรือ API
  * @returns {string} ข้อความที่ปลอดภัยขึ้น
  */
 export function sanitizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 1200);
-}
-
-/**
- * @description จัด format ราคาให้เหมาะกับ currency
- * @param {object} productInfo - ข้อมูลสินค้า
- * @returns {string} ราคาแบบพร้อมแสดง
- */
-export function formatPrice(productInfo) {
-  const rawPrice = sanitizeText(productInfo.price);
-  if (!rawPrice) return "";
-  if (productInfo.currency === "THB") return rawPrice.startsWith("฿") ? rawPrice : `฿${rawPrice}`;
-  if (productInfo.currency === "USD") return rawPrice.startsWith("$") ? rawPrice : `$${rawPrice}`;
-  return `${rawPrice} ${sanitizeText(productInfo.currency)}`;
 }
 
 /**
@@ -154,13 +158,10 @@ export function formatPrice(productInfo) {
 export function buildImagePrompt(productInfo, settings) {
   const style = VIDEO_STYLES.find((item) => item.id === settings.videoStyle) || VIDEO_STYLES[0];
   const target = productInfo.targetGroup === "กรอกเอง" ? productInfo.customTargetGroup : productInfo.targetGroup;
-  const palette = settings.colorPalette === "Brand Color" && settings.brandColor
-    ? `brand color ${settings.brandColor}`
-    : settings.colorPalette;
 
   return [
     `High quality product photography of ${sanitizeText(productInfo.name) || "the product"}.`,
-    `${sanitizeText(settings.lightingStyle)} lighting with ${sanitizeText(palette)} color direction.`,
+    `Location: ${sanitizeText(settings.location)}.`,
     `Mood: ${sanitizeText(settings.mood)}. Product centered, sharp focus, clear shape and texture, no distractions.`,
     `Style reference: ${style.fragment}.`,
     `Suitable for ${sanitizeText(target) || "general TikTok shoppers"} audience.`,
@@ -177,23 +178,21 @@ export function buildImagePrompt(productInfo, settings) {
  */
 export function buildVideoPrompt(productInfo, settings) {
   const style = VIDEO_STYLES.find((item) => item.id === settings.videoStyle) || VIDEO_STYLES[0];
-  const price = formatPrice(productInfo);
   const ctaText = settings.cta === "กรอกเอง" ? settings.customCta : settings.cta;
   const textItems = [
     settings.showName ? sanitizeText(productInfo.name) : "",
-    settings.showPrice ? price : "",
     sanitizeText(settings.promotionText),
     sanitizeText(ctaText || productInfo.cta)
   ].filter(Boolean);
-  const palette = settings.colorPalette === "Brand Color" && settings.brandColor
-    ? `Brand Color ${settings.brandColor}`
-    : settings.colorPalette;
 
   return [
-    `Create an 8-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}${price ? ` priced at ${price}` : ""}.`,
+    `Create an 8-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
     "Use the provided product image as the main visual reference and keep product appearance accurate.",
+    "Do NOT include any pricing or cost information in the video.",
     "",
-    `Scene 1 (0-4s): ${HOOKS[settings.hook] || HOOKS.question}. Product center frame, ${sanitizeText(settings.cameraMovement)} camera movement, ${sanitizeText(settings.lightingStyle)} lighting, ${sanitizeText(palette)} palette.`,
+    `Presenter: ${PRESENTERS[settings.presenter] || PRESENTERS.none}.`,
+    `Voice Tone: ${VOICE_TONES[settings.voiceTone] || VOICE_TONES.kind}.`,
+    `Scene 1 (0-4s): Product center frame, ${sanitizeText(settings.cameraMovement)} camera movement, Location: ${sanitizeText(settings.location)}.`,
     `Scene 2 (4-8s): Bold CTA moment with product full frame, ${sanitizeText(settings.mood)} energy, ${sanitizeText(settings.transition)} transition.`,
     "",
     `Video style: ${style.name}. ${style.fragment}.`,
@@ -210,11 +209,10 @@ export function buildVideoPrompt(productInfo, settings) {
  * @returns {string} caption
  */
 export function buildCaption(productInfo, defaults = {}) {
-  const template = defaults.captionTemplate || "{product_name} {price} {cta}";
+  const template = defaults.captionTemplate || "{product_name} {cta}";
   const hashtags = Array.isArray(defaults.hashtags) ? defaults.hashtags : ["#TikTokShop", "#ของดีบอกต่อ"];
   return template
     .replaceAll("{product_name}", sanitizeText(productInfo.name))
-    .replaceAll("{price}", formatPrice(productInfo))
     .replaceAll("{cta}", sanitizeText(productInfo.cta || "สั่งได้เลย"))
     .concat(" ", hashtags.join(" "))
     .trim();

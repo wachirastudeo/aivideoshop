@@ -109,16 +109,16 @@ tiktok-video-creator/
 ทำแล้ว:
 
 - UI list สินค้าแบบเหมาะกับ side panel แคบ
+- ระบบ Batch Selection: เลือกสินค้าหลายรายการพร้อมกันผ่าน Checkbox
+- ระบบ Pagination: แสดงผลหน้าละ 10 รายการ (โหลดล่วงหน้า 100 รายการ)
 - search bar
-- sort by ชื่อ / ราคา / สต็อก
+- sort by ชื่อ / ราคา / สต็อก / ค่าคอมมิชชัน (คำนวณจากจำนวนเงินจริง)
 - refresh button
 - load more button รองรับ page token
-- product card แสดง thumbnail, ชื่อสินค้า, ราคา, stock
-- ปุ่มสร้างวิดีโอในแต่ละสินค้า
-- เมื่อกดสร้างวิดีโอ:
-  - เก็บข้อมูลสินค้าใน `chrome.storage.local.selectedProduct`
-  - switch ไปแท็บสร้างวิดีโอ
-  - auto-fill form และรูปสินค้า
+- product card แสดง thumbnail, ชื่อสินค้า (แสดงชื่อเต็มไม่ตัดคำ), ราคา, stock, ค่าคอมมิชชัน
+- ปุ่มสร้างวิดีโอ (Batch Create) เมื่อเลือกหลายรายการ:
+  - เก็บข้อมูลสินค้าเข้า `productQueue` ใน `chrome.storage.local`
+  - switch ไปแท็บสร้างวิดีโอเพื่อทำรายการแบบสายพาน
 - การดึงสินค้า route ผ่าน background message `FETCH_PRODUCTS`
 - มี TikTok OAuth starter ผ่าน `chrome.identity.launchWebAuthFlow`
 - รองรับการใส่ access token เองใน Options
@@ -141,56 +141,27 @@ tiktok-video-creator/
 
 ทำแล้ว:
 
-- progress indicator 4 step:
-  - ตั้งค่า
-  - สร้างภาพ
-  - สร้างวิดีโอ
-  - เสร็จ
-- section ภาพสินค้า:
-  - upload หลายภาพ
-  - preview thumbnails
-  - โหลดรูปจากสินค้าที่เลือกใน Tab 2
-  - ปุ่มวิเคราะห์ภาพ
-  - textarea สำหรับผลวิเคราะห์/คำแนะนำ prompt
-- section ข้อมูลสินค้า:
-  - ชื่อสินค้า
-  - ราคา
-  - currency THB/USD
-  - จุดขาย/ไฮไลต์
-  - กลุ่มเป้าหมาย
-  - custom target group
-  - CTA
-- section เลือกสไตล์วิดีโอ:
-  - 8 styles ตาม master prompt
-  - card grid 2 คอลัมน์
-  - highlight card ที่เลือก
-- section ตั้งค่าวิดีโอ:
-  - hook แรก
-  - mood pills
-  - color palette
-  - brand color
-  - lighting style
-  - language pills
-  - text overlay toggles
-  - promotion text
-  - CTA dropdown/custom
-  - text position
-  - camera movement
-  - pacing slider
-  - transition style
-- prompt preview:
-  - build real-time จาก `buildVideoPrompt`
-  - copy prompt
-  - เปิด Google Flow Phase 1
-  - เปิด Google Flow Phase 2
-- approve ภาพ Phase 1:
-  - upload ภาพที่ได้จาก Google Flow
-  - before/after preview
-  - ปุ่มใช้ภาพนี้ไปสร้างวิดีโอ
-- ผลลัพธ์วิดีโอ:
-  - ใส่ video URL
-  - download video
-  - post TikTok placeholder
+- ระบบ Batch Processing Dashboard (แบบรายการ):
+  - ส่วนตั้งค่าภาพรวม (Global Settings) ไว้ด้านล่าง (Style Dropdown, Hook, Mood, Location)
+  - ส่วนคิวสินค้า (Product Queue) ไว้ด้านบนสุด แสดงสินค้าทั้งหมดที่เลือกมา
+  - แต่ละสินค้าอยู่ในรูปแบบ Accordion พร้อมปุ่มลบ (❌) ที่หัวข้อเพื่อความรวดเร็ว
+  - สถานะสินค้าชัดเจน: รอดำเนินการ, วิเคราะห์แล้ว, Phase 1, Phase 2, พร้อมโพสต์
+- ส่วนจัดการรายสินค้า (ใน Accordion):
+  - โชว์รูปจิ๋วข้างชื่อสินค้าเพื่อประหยัดพื้นที่
+  - แก้ไขชื่อสินค้ารายชิ้นได้ (ไม่รวมราคา เพื่อความคลีนในวิดีโอ)
+  - ปุ่มวิเคราะห์ AI รายชิ้น (หาจุดขาย)
+  - Prompt Preview รายชิ้น ( build ตาม global settings + ข้อมูลสินค้า)
+  - ปุ่มเปิด Google Flow Phase 1 / Phase 2 รายชิ้น
+  - อัพโหลด Approved Image และใส่ Video URL รายชิ้น
+- การตั้งค่าภาพรวม (แปลไทย 100%):
+  - สไตล์วิดีโอ (Dropdown 8 styles พร้อมคำอธิบาย)
+  - การเปิดคลิป (Hook)
+  - อารมณ์ (Mood) และ ฉากสถานที่ (Location)
+  - มุมกล้องและการตัดต่อ (Camera Movement, Pacing, Transition)
+- ผลลัพธ์และการโพสต์:
+  - วิดีโอจะถูกสร้างโดยไม่มีการใส่ราคา (เน้นความสวยงามและปักตะกร้าแทน)
+  - ดาวน์โหลดวิดีโอรายชิ้น
+  - โพสต์ลง TikTok + ปักตะกร้า รายชิ้น
 
 ### 5. Prompt Builder
 
@@ -198,16 +169,15 @@ tiktok-video-creator/
 
 ทำแล้ว:
 
-- เก็บ `VIDEO_STYLES` ครบ 8 style
-- `getDefaultSettings`
+- เก็บ `VIDEO_STYLES` ครบ 8 style พร้อมคำอธิบาย `shotPattern` ภาษาไทย
+- `getDefaultSettings` (ลบ Color Palette และ Lighting Style ออก เพื่อความมินิมัล)
 - `getDefaultProductInfo`
 - `sanitizeText`
-- `formatPrice`
-- `buildImagePrompt(productInfo, settings)`
-- `buildVideoPrompt(productInfo, settings)`
+- `buildImagePrompt(productInfo, settings)` (ใช้ Location แทน Lighting)
+- `buildVideoPrompt(productInfo, settings)` (ไม่ใส่ราคาลงใน Video Prompt)
 - `buildCaption(productInfo, defaults)`
 
-Prompt ออกแบบเป็นภาษาอังกฤษตาม Google Flow และล็อควิดีโอเป็น 8 วินาที 9:16
+Prompt ออกแบบเป็นภาษาอังกฤษตาม Google Flow แต่ UI นำเสนอเป็นภาษาไทย 100% และล็อควิดีโอเป็น 8 วินาที 9:16
 
 ### 6. Image Analyzer
 
@@ -338,27 +308,28 @@ POST_TO_TIKTOK
 ```js
 {
   activeTab: "video" | "products",
-  selectedProduct: {
-    productId,
-    name,
-    price,
-    currency,
-    highlights,
-    targetGroup,
-    cta,
-    imageUrls,
-    productUrl
-  },
+```js
+{
+  activeTab: "video" | "products",
+  productQueue: [
+    {
+      productId,
+      name,
+      price,
+      imageUrls,
+      approvedImage,
+      videoUrl,
+      highlights,
+      status, // idle, analyzed, flow1, flow2, done
+    }
+  ],
+  selectedProduct: {}, // legacy single item fallback
   creatorState: {
-    phase,
-    originalImage,
-    approvedImage,
-    productInfo,
-    settings,
-    imagePrompt,
-    videoPrompt
+    settings, // Global Video Settings
   },
   lastTikTokPostPayload: {}
+}
+```
 }
 ```
 

@@ -22,23 +22,26 @@ export async function initProductsTab(injectedHelpers) {
  * @description ผูก event ของ toolbar และปุ่ม auth
  */
 function bindProductEvents() {
-  document.querySelector("#connect-tiktok").addEventListener("click", async () => {
-    try {
-      helpers.showStatus("กำลังดึงสินค้าจาก TikTok Studio...", "success");
-      await loadProducts({ reset: true });
-    } catch (error) {
-      helpers.showStatus(error.message, "error");
-    }
-  });
+  const connectBtn = document.querySelector("#connect-tiktok");
+  if (connectBtn) {
+    connectBtn.addEventListener("click", async () => {
+      try {
+        helpers.showStatus("กำลังดึงสินค้าจาก TikTok Studio...", "success");
+        await loadProducts({ reset: true });
+      } catch (error) {
+        helpers.showStatus(error.message, "error");
+      }
+    });
+  }
 
-  document.querySelector("#refresh-products").addEventListener("click", () => loadProducts({ reset: true }));
-  document.querySelector("#load-more-products").addEventListener("click", () => loadProducts({ reset: false }));
-  document.querySelector("#product-search").addEventListener("input", () => { currentPage = 1; renderProducts(); });
-  document.querySelector("#product-sort").addEventListener("change", () => { currentPage = 1; renderProducts(); });
+  document.querySelector("#refresh-products")?.addEventListener("click", () => loadProducts({ reset: true }));
+  document.querySelector("#load-more-products")?.addEventListener("click", () => loadProducts({ reset: false }));
+  document.querySelector("#product-search")?.addEventListener("input", () => { currentPage = 1; renderProducts(); });
+  document.querySelector("#product-sort")?.addEventListener("change", () => { currentPage = 1; renderProducts(); });
 
   document.querySelector("#select-all-products")?.addEventListener("change", (e) => {
     const isChecked = e.target.checked;
-    const query = document.querySelector("#product-search").value.trim().toLowerCase();
+    const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
     const visibleProducts = products.filter((p) => p.name.toLowerCase().includes(query));
     
     if (isChecked) {
@@ -71,8 +74,8 @@ async function loadProducts({ reset = false, silent = false } = {}) {
     currentPage = 1;
   }
 
-  list.innerHTML = skeletonMarkup();
-  loadMore.hidden = true;
+  if (list) list.innerHTML = skeletonMarkup();
+  if (loadMore) loadMore.hidden = true;
   if (!silent) {
     helpers.logActivity?.(reset ? "เริ่มดึงสินค้า TikTok ใหม่" : "กำลังโหลดสินค้าเพิ่ม");
   }
@@ -87,11 +90,11 @@ async function loadProducts({ reset = false, silent = false } = {}) {
     products = reset ? result.products : [...products, ...result.products];
     nextPageToken = result.nextPageToken;
     renderProducts();
-    loadMore.hidden = !nextPageToken;
+    if (loadMore) loadMore.hidden = !nextPageToken;
 
     if (result.products.length === 0) {
       const rawStr = JSON.stringify(result.rawData || {}).substring(0, 150);
-      helpers.showStatus("ได้ 0 รายการ, ข้อมูลดิบที่ได้: " + rawStr, "error");
+      helpers.showStatus("ได้ 0 รายการ", "error");
       helpers.logActivity?.("Raw Data: " + rawStr, "error");
     } else {
       helpers.logActivity?.(`ดึงสินค้าได้ ${result.products.length} รายการ รวมทั้งหมด ${products.length} รายการ`, "success");
@@ -99,7 +102,7 @@ async function loadProducts({ reset = false, silent = false } = {}) {
   } catch (error) {
     if (!silent) helpers.showStatus(error.message, "error");
     helpers.logActivity?.(`ดึงสินค้าไม่สำเร็จ: ${error.message}`, "error");
-    list.innerHTML = `<div class="empty-state">ยังไม่มีสินค้าให้แสดง<br>เชื่อมต่อ TikTok หรือเพิ่ม Access Token ใน Options</div>`;
+    if (list) list.innerHTML = `<div class="empty-state">ยังไม่มีสินค้าให้แสดง<br>เชื่อมต่อ TikTok หรือเพิ่ม Access Token ใน Options</div>`;
   }
 }
 
@@ -108,8 +111,10 @@ async function loadProducts({ reset = false, silent = false } = {}) {
  */
 function renderProducts() {
   const list = document.querySelector("#product-list");
-  const query = document.querySelector("#product-search").value.trim().toLowerCase();
-  const sortBy = document.querySelector("#product-sort").value;
+  if (!list) return;
+  
+  const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
+  const sortBy = document.querySelector("#product-sort")?.value || "newest";
 
   const filtered = products
     .filter((product) => product.name.toLowerCase().includes(query))
@@ -136,11 +141,11 @@ function renderProducts() {
       
       const card = e.target.closest('.product-card');
       if (e.target.checked) {
-        card.style.background = '#fff1f2';
-        card.style.borderColor = '#fda4af';
+        card.style.background = 'var(--accent-soft)';
+        card.style.borderColor = 'var(--accent)';
       } else {
-        card.style.background = '#ffffff';
-        card.style.borderColor = '#e5e7eb';
+        card.style.background = 'var(--panel)';
+        card.style.borderColor = 'var(--line)';
       }
       updateBatchUI();
     });
@@ -149,7 +154,7 @@ function renderProducts() {
   list.querySelectorAll("[data-create-video]").forEach((button) => {
     button.addEventListener("click", async () => {
       const product = products.find((item) => item.productId === button.dataset.createVideo);
-      await chrome.storage.local.set({ productQueue: [product] }); // Queue only 1 if clicked directly
+      await chrome.storage.local.set({ productQueue: [product] });
       await selectProduct(product);
     });
   });
@@ -168,8 +173,6 @@ function renderPagination(totalPages) {
   }
   
   let html = `<button class="pagination-button" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>◀</button>`;
-  
-  // Show up to 5 pages around current page
   const startPage = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
   const endPage = Math.min(totalPages, startPage + 4);
 
@@ -197,14 +200,14 @@ function renderPagination(totalPages) {
       if (page >= 1 && page <= totalPages && page !== currentPage) {
         currentPage = page;
         renderProducts();
-        document.querySelector("#tab-root").scrollTo({ top: 0, behavior: 'smooth' });
+        document.querySelector("#tab-root").scrollTo({ top: 0 });
       }
     });
   });
 }
 
 function updateBatchUI() {
-  const query = document.querySelector("#product-search").value.trim().toLowerCase();
+  const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
   const visibleProducts = products.filter((p) => p.name.toLowerCase().includes(query));
   const selectAll = document.querySelector("#select-all-products");
   const batchBtn = document.querySelector("#create-batch-videos");
@@ -218,13 +221,6 @@ function updateBatchUI() {
   }
 }
 
-/**
- * @description sort product ตาม option
- * @param {object} a - product a
- * @param {object} b - product b
- * @param {string} sortBy - field
- * @returns {number} ผล sort
- */
 function sortProducts(a, b, sortBy) {
   if (sortBy === "newest") return 0;
   if (sortBy === "commission") {
@@ -237,10 +233,6 @@ function sortProducts(a, b, sortBy) {
   return a.name.localeCompare(b.name, "th");
 }
 
-/**
- * @description เลือกสินค้าเพื่อสร้างวิดีโอและสลับไป Tab 1
- * @param {object} product - product ที่เลือก
- */
 async function selectProduct(product) {
   if (!product) return;
   const selectedProduct = {
@@ -261,68 +253,51 @@ async function selectProduct(product) {
   await helpers.switchTab("video");
 }
 
-/**
- * @description สร้าง HTML product card
- * @param {object} product - product
- * @returns {string} HTML
- */
 function productMarkup(product) {
   const imageUrl = product.imageUrls?.[0] || "assets/icon.svg";
   
-  // Format commission display (e.g., "฿15.50 (10%)")
   let commissionBadge = '';
   if (Number(product.commissionRate) > 0 || product.commission) {
     const commText = [product.commission, `(${product.commissionRate}%)`].filter(Boolean).join(" ");
-    commissionBadge = `<span style="background: #ffedd5; color: #ea580c; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px;">🔥 ได้ ${commText}</span>`;
+    commissionBadge = `<span style="background: rgba(234, 88, 12, 0.2); color: #ea580c; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px;">🔥 ได้ ${commText}</span>`;
   }
 
-  // Stock logic: only show when out of stock
   const stockCount = Number(product.stockCount || 0);
   const stockBadge = stockCount <= 0 
-    ? `<span style="background: #fee2e2; color: #ef4444; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px;">❌ หมดสต๊อก</span>`
+    ? `<span style="background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px;">❌ หมดสต๊อก</span>`
     : '';
 
   const isSelected = selectedIds.has(product.productId);
 
   return `
-    <article class="product-card" style="display: flex; align-items: center; padding: 12px; gap: 10px; background: ${isSelected ? '#fff1f2' : '#ffffff'}; border: 1px solid ${isSelected ? '#fda4af' : '#e5e7eb'}; border-radius: 12px; margin-bottom: 8px; transition: all 0.2s;">
-      <input type="checkbox" class="product-checkbox" data-id="${escapeHtml(product.productId)}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #fe2c55; cursor: pointer; flex-shrink: 0; margin: 0;">
+    <article class="product-card" style="display: flex; align-items: center; padding: 12px; gap: 10px; background: ${isSelected ? 'var(--accent-soft)' : 'var(--panel)'}; border: 1px solid ${isSelected ? 'var(--accent)' : 'var(--line)'}; border-radius: 12px; margin-bottom: 8px; transition: all 0.2s;">
+      <input type="checkbox" class="product-checkbox" data-id="${escapeHtml(product.productId)}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; margin: 0;">
       <img class="product-card__image" src="${imageUrl}" alt="" style="width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex-shrink: 0;">
       <div style="flex-grow: 1; min-width: 0;">
-        <h3 class="product-card__name" title="${escapeHtml(product.name)}" style="font-size: 13px; font-weight: 500; color: #111827; margin: 0 0 4px 0; line-height: 1.4; white-space: normal;">${escapeHtml(product.name)}</h3>
-        <p class="product-card__meta" style="font-size: 12px; color: #6b7280; margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
-          <strong style="color: #059669; font-weight: 600; margin-right: 2px;">${escapeHtml(formatPrice(product))}</strong> 
+        <h3 class="product-card__name" title="${escapeHtml(product.name)}" style="font-size: 13px; font-weight: 500; color: var(--text); margin: 0 0 4px 0; line-height: 1.4; white-space: normal;">${escapeHtml(product.name)}</h3>
+        <p class="product-card__meta" style="font-size: 12px; color: var(--muted); margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+          <strong style="color: var(--success); font-weight: 600; margin-right: 2px;">${escapeHtml(formatPrice(product))}</strong> 
           ${commissionBadge}
           ${stockBadge}
         </p>
       </div>
-      <button class="icon-button" type="button" data-create-video="${escapeHtml(product.productId)}" title="สร้างวิดีโอ" aria-label="สร้างวิดีโอ" style="flex-shrink: 0; background: #f3f4f6; color: #374151; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1px solid #e5e7eb;">🎥</button>
+      <button class="icon-button" type="button" data-create-video="${escapeHtml(product.productId)}" title="สร้างวิดีโอ" aria-label="สร้างวิดีโอ" style="flex-shrink: 0; background: var(--panel-2); color: var(--text); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1px solid var(--line);">🎥</button>
     </article>
   `;
 }
 
-/**
- * @description skeleton loading
- * @returns {string} HTML
- */
 function skeletonMarkup() {
   return Array.from({ length: 4 }, (_, index) => `
-    <article class="product-card" aria-hidden="true">
-      <div class="product-card__image"></div>
-      <div>
-        <h3 class="product-card__name">กำลังโหลดสินค้า ${index + 1}</h3>
-        <p class="product-card__meta">...</p>
+    <article class="product-card" aria-hidden="true" style="opacity: 0.3;">
+      <div class="product-card__image" style="background: var(--line); width: 56px; height: 56px;"></div>
+      <div style="flex: 1;">
+        <div style="background: var(--line); height: 12px; width: 80%; margin-bottom: 6px;"></div>
+        <div style="background: var(--line); height: 10px; width: 40%;"></div>
       </div>
-      <span></span>
     </article>
   `).join("");
 }
 
-/**
- * @description escape HTML สำหรับข้อมูลจาก API
- * @param {string} value - raw value
- * @returns {string} escaped value
- */
 function escapeHtml(value) {
   return String(value || "")
     .replaceAll("&", "&amp;")

@@ -12,142 +12,142 @@
   </div>
 </section>
 
-<section class="section" style="margin-top: 24px;">
+<section class="section">
   <div class="section__header">
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 20px;">⚙️</span>
-      <h2>การตั้งค่าภาพรวม (ทุกวิดีโอจะใช้ค่านี้)</h2>
+      <h2>การตั้งค่าภาพรวมวิดีโอ</h2>
     </div>
   </div>
-  <div class="section__body">
+  <div class="section__body card stack" style="gap: 16px; padding: 16px;">
+    <!-- สไตล์วิดีโอ -->
+    <label class="field">
+      <span class="field__label">สไตล์วิดีโอหลัก</span>
+      <select id="video-style" class="select" style="font-weight: 600; border-color: var(--accent); background: var(--accent-soft); color: var(--accent);">
+        <!-- จะถูกเติมข้อมูลจาก VIDEO_STYLES ใน tab-video.js -->
+      </select>
+    </label>
+
+    <!-- อารมณ์ -->
     <div class="field">
-      <span class="field__label">1. เลือกสไตล์วิดีโอ</span>
-      <div id="style-grid" class="style-grid" style="margin-bottom: 16px;"></div>
+      <span class="field__label">อารมณ์ของวิดีโอ (Mood)</span>
+      <div id="mood-pills" class="pill-group"></div>
     </div>
-    
-    <div class="stack" style="gap: 12px;">
-      <details class="settings-row" open style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;">
-        <summary style="padding: 12px; font-weight: 600; cursor: pointer; background: #f9fafb; display: flex; align-items: center; gap: 8px;">
-          <span>🎬</span> โครงสร้าง และ 🎨 บรรยากาศของวิดีโอ
-        </summary>
-        <div style="padding: 16px;" class="stack">
-          <label class="field">
-            <span class="field__label">การเปิดคลิป (Hook)</span>
-            <select id="hook" class="select">
-              <option value="question">❓ ตั้งคำถามให้คนสงสัย</option>
-              <option value="shock">😱 เปิดด้วยภาพที่น่าตื่นเต้น</option>
-              <option value="number">🔢 เปิดด้วยตัวเลข/โปรโมชั่น</option>
-              <option value="problem">🎭 จี้จุดปัญหาที่คนเจอ</option>
-              <option value="result">✨ โชว์ผลลัพธ์ที่ได้ทันที</option>
-            </select>
-          </label>
 
-          <div class="field">
-            <span class="field__label">อารมณ์ของวิดีโอ (Mood)</span>
-            <div id="mood-pills" class="pill-group"></div>
-          </div>
+    <!-- ผู้ดำเนินรายการ -->
+    <label class="field">
+      <span class="field__label">ตัวละคร/คนรีวิว (Presenter)</span>
+      <select id="presenter" class="select">
+        <option value="none">🚫 ไม่มีคน (เน้นเฉพาะสินค้า)</option>
+        <option value="woman">👩 ผู้หญิง (วัยรุ่น/สดใส)</option>
+        <option value="man">👨 ผู้ชาย (เท่/น่าเชื่อถือ)</option>
+        <option value="cartoon3d">🧸 ตัวการ์ตูน 3D (สไตล์ Pixar/Cute)</option>
+        <option value="living_product">🍎 สินค้ามีชีวิต (Product as Character)</option>
+      </select>
+    </label>
 
-          <div class="input-row">
-            <label class="field">
-              <span class="field__label">โทนสีหลัก</span>
-              <select id="color-palette" class="select">
-                <option value="Auto">✨ อัตโนมัติ</option>
-                <option value="White & Clean">⚪ ขาวสะอาด (Clean)</option>
-                <option value="Warm Tones">🟠 โทนอุ่น (Warm)</option>
-                <option value="Bold & Vibrant">🔴 สีสดใส (Vibrant)</option>
-                <option value="Dark & Luxurious">⚫ หรูหรา (Dark)</option>
-                <option value="Pastel Soft">🌸 พาสเทล (Pastel)</option>
-                <option value="Brand Color">🎨 สีตามแบรนด์</option>
-              </select>
-            </label>
-            <input id="brand-color" class="input" type="text" placeholder="#FE2C55" hidden style="margin-top: 24px;">
-          </div>
+    <!-- โทนเสียง -->
+    <label class="field">
+      <span class="field__label">โทนเสียงพากย์ (Voice Tone)</span>
+      <select id="voice-tone" class="select">
+        <option value="kind">😊 ใจดี / เป็นกันเอง (Kind & Friendly)</option>
+        <option value="fun">🎉 สนุกสนาน / พลังล้น (Fun & Energetic)</option>
+        <option value="complain">😤 ขี้บ่น/จิกกัดตลกๆ (Funny Complain)</option>
+        <option value="professional">🧐 มืออาชีพ / ให้ความรู้ (Expert/Pro)</option>
+        <option value="hype">🤩 ตื่นเต้นสุดขีด (Super Excited/Hype)</option>
+      </select>
+    </label>
 
-          <label class="field">
-            <span class="field__label">สไตล์แสงในวิดีโอ</span>
-            <select id="lighting-style" class="select">
-              <option value="Studio Clean">🔦 สตูดิโอ (สว่างชัด)</option>
-              <option value="Natural Daylight">☀️ แสงธรรมชาติ</option>
-              <option value="Warm Indoor">🏠 ในบ้าน (อบอุ่น)</option>
-              <option value="Dark Dramatic">🎬 ดรามาติก (เท่ๆ)</option>
-              <option value="Neon/Colorful">🌈 นีออน (สีสัน)</option>
-            </select>
-          </label>
-        </div>
-      </details>
+    <!-- สถานที่ -->
+    <label class="field">
+      <span class="field__label">ฉากสถานที่ในวิดีโอ (Location)</span>
+      <select id="location" class="select">
+        <option value="Studio Minimal">🏠 สตูดิโอมินิมอล (ขาว/สะอาด)</option>
+        <option value="Modern Living Room">🛋️ ห้องนั่งเล่นทันสมัย</option>
+        <option value="Warehouse / Stockroom">📦 โกดังสินค้า / สต็อกของ</option>
+        <option value="Urban Street">🏙️ ย่านธุรกิจ / ริมถนนในเมือง</option>
+        <option value="Nature / Outdoor">🌳 ธรรมชาติ / สวนสาธารณะ</option>
+        <option value="Luxury Showroom">✨ โชว์รูมหรูหรา</option>
+        <option value="Cafe / Coffee Shop">☕ คาเฟ่เก๋ๆ</option>
+        <option value="Office / Workspace">💻 ห้องทำงาน / ออฟฟิศ</option>
+      </select>
+    </label>
 
-      <details class="settings-row" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;">
-        <summary style="padding: 12px; font-weight: 600; cursor: pointer; background: #f9fafb; display: flex; align-items: center; gap: 8px;">
-          <span>📝</span> ข้อความ และ 🎥 มุมกล้อง
-        </summary>
-        <div style="padding: 16px;" class="stack">
-          <div class="field">
-            <span class="field__label">ภาษาที่ใช้ในวิดีโอ</span>
-            <div id="language-pills" class="pill-group"></div>
-          </div>
+    <div style="height: 1px; background: var(--line); margin: 4px 0;"></div>
 
-          <div style="display: flex; gap: 20px; margin-bottom: 8px;">
-            <label class="checkbox-row"><input id="show-name" type="checkbox" checked> โชว์ชื่อสินค้า</label>
-            <label class="checkbox-row"><input id="show-price" type="checkbox" checked> โชว์ราคา</label>
-          </div>
-
-          <label class="field">
-            <span class="field__label">ข้อความโปรโมชั่น (มุมจอ)</span>
-            <input id="promotion-text" class="input" type="text" placeholder="เช่น ลด 50% / ส่งฟรี / มีเก็บเงินปลายทาง">
-          </label>
-
-          <label class="field">
-            <span class="field__label">ปุ่มสั่งซื้อ (Call to Action)</span>
-            <select id="settings-cta" class="select">
-              <option>🛒 กดสั่งซื้อที่ตะกร้าด้านล่าง</option>
-              <option>🔗 ดูรายละเอียดที่ลิงก์ในโปรไฟล์</option>
-              <option>💬 พิมพ์ 'สนใจ' ในคอมเมนต์</option>
-              <option>🎁 กดสั่งในไลฟ์ตอนนี้เลย</option>
-              <option value="กรอกเอง">✍️ พิมพ์ข้อความเอง...</option>
-            </select>
-          </label>
-          <input id="custom-cta" class="input" type="text" placeholder="พิมพ์ CTA ที่ต้องการ..." hidden>
-
-          <label class="field">
-            <span class="field__label">ตำแหน่งของข้อความ</span>
-            <select id="text-position" class="select">
-              <option value="Bottom safe area">📍 ด้านล่าง (พื้นที่ปลอดภัย)</option>
-              <option value="Center overlay">📍 ตรงกลางภาพ</option>
-              <option value="Top third">📍 ด้านบน</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span class="field__label">การเคลื่อนไหวของมุมกล้อง</span>
-            <select id="camera-movement" class="select">
-              <option value="Auto">✨ อัตโนมัติ (AI เลือกให้)</option>
-              <option value="Slow Zoom In">🔍 ซูมเข้าช้าๆ (เน้นสินค้า)</option>
-              <option value="Orbit / 360°">🔄 หมุนรอบสินค้า 360°</option>
-              <option value="Pan Left to Right">↔️ แพนกล้อง ซ้าย-ขวา</option>
-              <option value="Static/Still">📍 กล้องนิ่ง (ตั้งใจโชว์)</option>
-              <option value="Handheld Shake">🤳 ถือถ่าย (สไตล์รีวิวบ้านๆ)</option>
-              <option value="Push In Fast">⚡ พุ่งเข้าหาอย่างไว (ตื่นเต้น)</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span class="field__label">ความเร็วในการตัดต่อ (ช้า → เร็ว)</span>
-            <input id="pacing" type="range" min="1" max="3" value="2" style="width: 100%;">
-          </label>
-
-          <label class="field">
-            <span class="field__label">รูปแบบการเปลี่ยนฉาก</span>
-            <select id="transition" class="select">
-              <option value="Auto">✨ อัตโนมัติ</option>
-              <option value="Cut">🎬 ตัดฉากตรงๆ (เรียบง่าย)</option>
-              <option value="Zoom Transition">🔍 ซูมเข้าหากัน</option>
-              <option value="Swipe">↔️ เลื่อนสไลด์</option>
-              <option value="Fade">🌑 ค่อยๆ จางลง</option>
-              <option value="Whip Pan">💫 แพนกล้องไวๆ</option>
-            </select>
-          </label>
-        </div>
-      </details>
+    <!-- ภาษา -->
+    <div class="field">
+      <span class="field__label">ภาษาที่ใช้ในวิดีโอ</span>
+      <div id="language-pills" class="pill-group"></div>
     </div>
+
+    <!-- ตัวเลือกเปิดปิด -->
+    <div style="display: flex; gap: 20px;">
+      <label class="checkbox-row"><input id="show-name" type="checkbox"> โชว์ชื่อสินค้า</label>
+    </div>
+
+    <!-- ข้อความโปรโมชั่น -->
+    <label class="field">
+      <span class="field__label">ข้อความโปรโมชั่น (มุมจอ)</span>
+      <input id="promotion-text" class="input" type="text" placeholder="เช่น ลด 50% / ส่งฟรี / มีเก็บเงินปลายทาง">
+    </label>
+
+    <!-- CTA -->
+    <label class="field">
+      <span class="field__label">ปุ่มสั่งซื้อ (Call to Action)</span>
+      <select id="settings-cta" class="select">
+        <option>🛒 กดสั่งซื้อที่ตะกร้าด้านล่าง</option>
+        <option>🔗 ดูรายละเอียดที่ลิงก์ในโปรไฟล์</option>
+        <option>💬 พิมพ์ 'สนใจ' ในคอมเมนต์</option>
+        <option>🎁 กดสั่งในไลฟ์ตอนนี้เลย</option>
+        <option value="กรอกเอง">✍️ พิมพ์ข้อความเอง...</option>
+      </select>
+    </label>
+    <input id="custom-cta" class="input" type="text" placeholder="พิมพ์ CTA ที่ต้องการ..." hidden>
+
+    <!-- ตำแหน่งข้อความ -->
+    <label class="field">
+      <span class="field__label">ตำแหน่งของข้อความ</span>
+      <select id="text-position" class="select">
+        <option value="Bottom safe area">📍 ด้านล่าง (พื้นที่ปลอดภัย)</option>
+        <option value="Center overlay">📍 ตรงกลางภาพ</option>
+        <option value="Top third">📍 ด้านบน</option>
+      </select>
+    </label>
+
+    <div style="height: 1px; background: var(--line); margin: 4px 0;"></div>
+
+    <!-- มุมกล้อง -->
+    <label class="field">
+      <span class="field__label">การเคลื่อนไหวของมุมกล้อง</span>
+      <select id="camera-movement" class="select">
+        <option value="Auto">✨ อัตโนมัติ (AI เลือกให้)</option>
+        <option value="Slow Zoom In">🔍 ซูมเข้าช้าๆ (เน้นสินค้า)</option>
+        <option value="Orbit / 360°">🔄 หมุนรอบสินค้า 360°</option>
+        <option value="Pan Left to Right">↔️ แพนกล้อง ซ้าย-ขวา</option>
+        <option value="Static/Still">📍 กล้องนิ่ง (ตั้งใจโชว์)</option>
+        <option value="Handheld Shake">🤳 ถือถ่าย (สไตล์รีวิวบ้านๆ)</option>
+        <option value="Push In Fast">⚡ พุ่งเข้าหาอย่างไว (ตื่นเต้น)</option>
+      </select>
+    </label>
+
+    <!-- Pacing -->
+    <label class="field">
+      <span class="field__label">ความเร็วในการตัดต่อ (ช้า → เร็ว)</span>
+      <input id="pacing" type="range" min="1" max="3" value="2" style="width: 100%;">
+    </label>
+
+    <!-- Transition -->
+    <label class="field">
+      <span class="field__label">รูปแบบการเปลี่ยนฉาก</span>
+      <select id="transition" class="select">
+        <option value="Auto">✨ อัตโนมัติ</option>
+        <option value="Cut">🎬 ตัดฉากตรงๆ (เรียบง่าย)</option>
+        <option value="Zoom Transition">🔍 ซูมเข้าหากัน</option>
+        <option value="Swipe">↔️ เลื่อนสไลด์</option>
+        <option value="Fade">🌑 ค่อยๆ จางลง</option>
+        <option value="Whip Pan">💫 แพนกล้องไวๆ</option>
+      </select>
+    </label>
   </div>
 </section>
