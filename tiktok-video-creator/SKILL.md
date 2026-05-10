@@ -125,6 +125,7 @@ When editing TikTok API behavior:
 
 ## Response Style
 
-- Answer the user in Thai when they speak Thai.
-- Keep replies short and actionable.
-- Mention changed files and verification only.
+- **CRITICAL**: Keep replies ULTRA-CONCISE to save tokens.
+- Do not explain your code or changes unless explicitly asked.
+- Answer in Thai (e.g., "เรียบร้อยครับ", "แก้ไขไฟล์แล้ว").
+- No long summaries. Mention changed files and stop.

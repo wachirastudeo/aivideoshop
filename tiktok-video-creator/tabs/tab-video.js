@@ -163,20 +163,26 @@ function renderQueue() {
         <summary class="product-batch-summary">
           <img class="product-batch-image" src="${imageUrl}" alt="">
           <div class="product-card__content">
-            <h3 class="product-batch-title">${escapeHtml(p.name)}</h3>
-            <div class="product-batch-status">สถานะ: <span class="badge">${statusText}</span></div>
+            <h3 class="product-batch-title" style="margin:0; font-size: 13px; font-weight: 650; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(p.name)}</h3>
+            <div class="product-batch-status" style="margin-top:4px;"><span class="badge ${p.status === 'done' ? 'badge--success' : ''}">${statusText}</span></div>
           </div>
-          <button class="icon-button batch-remove" type="button" title="ลบออกจากคิว">×</button>
+          <div class="summary-actions">
+            <button class="icon-button batch-remove" type="button" title="ลบออกจากคิว">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+            </button>
+            <span class="chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></span>
+          </div>
         </summary>
-        <div class="stack product-batch-body">
+        <div class="stack product-batch-body" style="padding: 0 12px 12px;">
+          <div class="divider" style="margin: 0 0 12px 0;"></div>
           <label class="field">
             <span class="field__label">ชื่อสินค้า (ใช้ในวิดีโอ)</span>
             <input class="input batch-name" value="${escapeHtml(p.name)}">
           </label>
           
           <div class="inline-actions">
-             <button class="button batch-analyze" type="button">วิเคราะห์หาจุดขาย</button>
-             <button class="button batch-copy" type="button">คัดลอก Prompt</button>
+             <button class="button batch-analyze" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> วิเคราะห์หาจุดขาย</button>
+             <button class="button batch-copy" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg> คัดลอก Prompt</button>
           </div>
           
           <label class="field">
@@ -186,36 +192,36 @@ function renderQueue() {
 
           <label class="field">
             <span class="field__label">Prompt Preview</span>
-            <textarea class="textarea batch-prompt prompt-textarea" rows="3" readonly>${escapeHtml(promptPreview)}</textarea>
+            <textarea class="textarea batch-prompt prompt-textarea" rows="3" readonly style="font-family: monospace; font-size: 11px; color: var(--muted); background: var(--bg);">${escapeHtml(promptPreview)}</textarea>
           </label>
-
-          <div class="inline-actions">
-            <button class="button button--primary batch-flow-img" type="button">Phase1 ภาพ</button>
-            <button class="button button--primary batch-flow-vid" type="button">Phase2 วิดีโอ</button>
-            <button class="button button--danger batch-stop" type="button" style="display:${p.status === 'flow1' || p.status === 'flow2' ? 'inline-block' : 'none'}">หยุดทำงาน</button>
-          </div>
           
-          <div class="card drop-card">
-            <div class="approved-row">
-              <img class="batch-approved-preview approved-preview" src="${p.approvedImage || 'assets/icon.svg'}" alt="">
-              <label class="button button--full">
+          <div class="divider" style="margin: 8px 0;"></div>
+          
+          <div class="card drop-card" style="background: var(--bg); border: 1px dashed var(--line); box-shadow: none;">
+            <div class="approved-row" style="display: flex; gap: 12px; align-items: center;">
+              <img class="batch-approved-preview approved-preview" src="${p.approvedImage || 'assets/icon.svg'}" alt="" style="width: 48px; height: 48px; border-radius: var(--radius); object-fit: cover; border: 1px solid var(--line); flex-shrink: 0;">
+              <label class="button button--full button--ghost" style="flex: 1;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                 อัพโหลดภาพ Phase 1
                 <input type="file" class="batch-upload-approved" accept="image/png,image/jpeg,image/webp" hidden>
               </label>
             </div>
-            <label class="field">
+            <label class="field" style="margin-top: 12px;">
               <span class="field__label">URL วิดีโอจาก Google Flow</span>
               <input class="input batch-video-url" type="url" placeholder="วาง URL ที่นี่" value="${escapeHtml(p.videoUrl || '')}">
             </label>
-            <div class="inline-actions">
-              <button class="button batch-download" type="button">Download</button>
-              <button class="button button--primary batch-post" type="button">โพสต์ลง TikTok</button>
+            <div class="inline-actions" style="margin-top: 12px;">
+              <button class="button batch-download button--full" type="button" style="flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download</button>
+              <button class="button button--primary batch-post button--full" type="button" style="flex:1;">โพสต์ลง TikTok</button>
             </div>
-            <div class="inline-actions" style="margin-top:8px">
-              <button class="button button--primary batch-flow-img" type="button">Phase1 ภาพ</button>
-              <button class="button button--primary batch-flow-vid" type="button">Phase2 วิดีโอ</button>
-              <button class="button button--danger batch-stop" type="button" style="display:${p.status === 'flow1' || p.status === 'flow2' ? 'inline-block' : 'none'}">หยุดทำงาน</button>
-            </div>
+          </div>
+          
+          <div class="divider" style="margin: 8px 0;"></div>
+
+          <div class="inline-actions">
+            <button class="button button--ghost batch-flow-img button--full" type="button" style="flex:1; border-color: var(--accent); color: var(--accent);">✨ Phase1 ภาพ</button>
+            <button class="button button--ghost batch-flow-vid button--full" type="button" style="flex:1; border-color: var(--accent); color: var(--accent);">🎬 Phase2 วิดีโอ</button>
+            <button class="button button--danger batch-stop" type="button" style="display:${p.status === 'flow1' || p.status === 'flow2' ? 'inline-block' : 'none'}">หยุดทำงาน</button>
           </div>
         </div>
       </details>

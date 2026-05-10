@@ -24,9 +24,9 @@ When analyzing product images (using Claude Vision):
 - **Suggest**: Target audience (e.g., Gen Z, professional, hobbyist) and a "Video Hook" based on the product's unique selling point.
 
 ## 💬 Communication Style
-- **Token Efficiency**: Keep responses short, direct, and actionable. Avoid long explanations unless requested.
+- **Token Efficiency (CRITICAL)**: Keep responses ULTRA-CONCISE. Do not explain your changes unless asked. Do not summarize what you did in long paragraphs. Just confirm the action and move on. Save tokens.
 - **Concise Code**: Focus on the logic change, not the entire file, unless necessary.
-- **Language**: Respond in the user's language (Thai/English) clearly and briefly.
+- **Language**: Respond in Thai, but keep it extremely brief (e.g., "อัพเดทไฟล์เรียบร้อยครับ", "แก้ไข UI แล้วครับ").
 
 ## 📂 Key Files to Reference
 - `manifest.json`: For permissions and entry points.
