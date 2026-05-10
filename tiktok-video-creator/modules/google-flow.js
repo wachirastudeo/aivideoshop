@@ -3,7 +3,7 @@
  * @param {"image"|"video"} phase - phase ที่ต้องการเปิด
  * @param {string} prompt - prompt ที่จะวางใน Google Flow
  * @param {string} imageDataUrl - reference image แบบ data URL
- * @returns {Promise<object>} ผลลัพธ์จาก background
+ * @returns {Promise<string>} resultUrl ที่ได้กลับมาจาก automation
  */
 export async function openGoogleFlow(phase, prompt, imageDataUrl = "") {
   const response = await chrome.runtime.sendMessage({
@@ -15,5 +15,5 @@ export async function openGoogleFlow(phase, prompt, imageDataUrl = "") {
     throw new Error(response?.error || "เปิด Google Flow ไม่สำเร็จ");
   }
 
-  return response;
+  return response.resultUrl || "";
 }

@@ -164,7 +164,7 @@ function renderQueue() {
           <img class="product-batch-image" src="${imageUrl}" alt="">
           <div class="product-card__content">
             <h3 class="product-batch-title" style="margin:0; font-size: 13px; font-weight: 650; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(p.name)}</h3>
-            <div class="product-batch-status" style="margin-top:4px;"><span class="badge ${p.status === 'done' ? 'badge--success' : ''}">${statusText}</span></div>
+            <div class="product-batch-status" style="margin-top:4px; display: ${p.status === 'idle' ? 'none' : 'block'};"><span class="badge ${p.status === 'done' ? 'badge--success' : ''}">${statusText}</span></div>
           </div>
           <div class="summary-actions">
             <button class="icon-button batch-remove" type="button" title="ลบออกจากคิว">
@@ -338,7 +338,7 @@ async function processQueue() {
   document.querySelector("#btn-batch-create").style.display = "none";
   document.querySelector("#btn-batch-stop").style.display = "inline-block";
   
-  helpers.showStatus("เริ่มสร้างวิดีโอทั้งหมด (ภาพ→วิดีโอ)...", "info");
+  helpers.showStatus("เริ่มสร้างวิดีโอแบบ Auto-Flow...", "info");
   
   for (let i = 0; i < productQueue.length; i++) {
     if (stopRequested) break;
@@ -347,34 +347,32 @@ async function processQueue() {
     const item = document.querySelector(`.product-batch-item[data-index="${i}"]`);
     
     try {
-      // Phase 1: สร้างภาพ
-      helpers.showStatus(`สินค้า ${i+1}/${productQueue.length}: กำลังสร้างภาพ...`, "info");
+      // Phase 1: สร้างรูปภาพ
+      helpers.showStatus(`สินค้า ${i+1}/${productQueue.length}: (1/2) กำลังสร้างภาพใหม่... รอสักครู่`, "info");
       p.status = "flow1";
       if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
       
       const imgPrompt = buildImagePrompt(p, settings);
-      await openGoogleFlow("image", imgPrompt, p.imageUrls?.[0]);
-      
-      // Phase 2: สร้างวิดีโอ
-      helpers.showStatus(`สินค้า ${i+1}/${productQueue.length}: กำลังสร้างวิดีโอ...`, "info");
+      const generatedImgUrl = await openGoogleFlow("image", imgPrompt, p.imageUrls?.[0]);
+      p.approvedImage = generatedImgUrl || p.approvedImage || p.imageUrls?.[0];
+      if (item && p.approvedImage) item.querySelector(".batch-approved-preview").src = p.approvedImage;
+
+      // Phase 2: สร้างวิดีโอต่อทันที
+      helpers.showStatus(`สินค้า ${i+1}/${productQueue.length}: (2/2) กำลังสร้างวิดีโอ... รอสักครู่`, "info");
       p.status = "flow2";
       if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
       
       const vidPrompt = buildVideoPrompt(p, settings);
-      const refImage = p.approvedImage || p.imageUrls?.[0];
-      await openGoogleFlow("video", vidPrompt, refImage);
+      const generatedVidUrl = await openGoogleFlow("video", vidPrompt, p.approvedImage);
+      p.videoUrl = generatedVidUrl || p.videoUrl;
+      if (item && p.videoUrl) item.querySelector(".batch-video-url").value = p.videoUrl;
       
       p.status = "done";
-      if (item) {
-        item.querySelector("summary .badge").textContent = getStatusText(p.status);
-        if (refImage) item.querySelector(".batch-approved-preview").src = refImage;
-      }
+      if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
       
       persistState();
     } catch (err) {
-      helpers.showStatus(`สินค้า ${i+1}: ${err.message}`, "error");
-      p.status = "analyzed";
-      if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
+      helpers.showStatus(`สินค้า ${i+1} Error: ${err.message}`, "error");
     }
   }
   
@@ -382,7 +380,7 @@ async function processQueue() {
   stopRequested = false;
   document.querySelector("#btn-batch-create").style.display = "inline-block";
   document.querySelector("#btn-batch-stop").style.display = "none";
-  helpers.showStatus(stopRequested ? "หยุดทำงานแล้ว" : "สร้างวิดีโอเสร็จสิ้น", "success");
+  helpers.showStatus(stopRequested ? "หยุดทำงานแล้ว" : "สร้างเสร็จสมบูรณ์ทุกรายการ!", "success");
 }
 
 async function handleStop(p, itemEl) {

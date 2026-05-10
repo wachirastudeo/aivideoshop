@@ -66,62 +66,211 @@ async function openCreatorTab() {
  * @returns {Promise<object>} tab id
  */
 async function openGoogleFlow(payload) {
-  const tab = await chrome.tabs.create({ url: "https://labs.google/fx/tools/flow", active: true });
-  await waitForTabComplete(tab.id);
+  let tab;
+  const existingTabs = await chrome.tabs.query({ url: "*://labs.google/fx/tools/flow*" });
+  
+  if (existingTabs.length > 0) {
+    tab = existingTabs[0];
+    await chrome.tabs.update(tab.id, { active: true });
+    // ถ้าหน้ายังโหลดไม่เสร็จ ให้รอ
+    if (tab.status !== "complete") {
+      await waitForTabComplete(tab.id);
+    }
+  } else {
+    tab = await chrome.tabs.create({ url: "https://labs.google/fx/tools/flow", active: true });
+    await waitForTabComplete(tab.id);
+  }
 
   const [{ result } = {}] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    args: [payload.prompt, payload.phase],
+    args: [payload.prompt, payload.phase, payload.imageDataUrl],
     func: injectPromptIntoFlow
   });
 
   if (!result?.ok) {
-    await notify("TikTok Video Creator", "เปิด Google Flow แล้ว แต่ยังหา prompt field ไม่เจอ ให้ paste prompt เองจาก side panel");
+    await notify("TikTok Video Creator", result?.error || "ไม่สามารถ Automation ได้ทั้งหมด กรุณาตรวจสอบแท็บ");
   } else {
-    await notify("TikTok Video Creator", payload.phase === "image" ? "Phase 1 พร้อมแล้ว ตรวจ prompt แล้วกด Generate" : "Phase 2 พร้อมแล้ว ตรวจ prompt แล้วกด Generate");
+    await notify("TikTok Video Creator", "สร้างผลลัพธ์สำเร็จ (Auto-Flow)");
   }
 
-  return { tabId: tab.id, injected: Boolean(result?.ok) };
+  return { tabId: tab.id, ok: result?.ok, error: result?.error, resultUrl: result?.resultUrl };
 }
 
 /**
- * @description ฟังก์ชันนี้รันในหน้า Google Flow เพื่อใส่ prompt ลง field ที่พบ
- * @param {string} prompt - prompt
- * @param {string} phase - phase
- * @returns {object} result
+ * @description ฟังก์ชันแบบ Playwright-style ทำงานฝั่ง Client เพื่ออัพรูป, กดปุ่ม, และรอผลลัพธ์
  */
-function injectPromptIntoFlow(prompt, phase) {
-  const candidates = [
-    ...document.querySelectorAll("textarea"),
-    ...document.querySelectorAll("[contenteditable='true']"),
-    ...document.querySelectorAll("input[type='text']")
-  ];
-  const field = candidates.find((node) => {
-    const rect = node.getBoundingClientRect();
-    return rect.width > 120 && rect.height > 24;
+function injectPromptIntoFlow(prompt, phase, imageDataUrl) {
+  return new Promise(async (resolve) => {
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    
+    // Playwright-like: waitForElement
+    const waitForNewMedia = (type, timeout = 120000) => {
+      const existingCount = document.querySelectorAll(type).length;
+      return new Promise((res, rej) => {
+        const observer = new MutationObserver(() => {
+          const items = document.querySelectorAll(type);
+          if (items.length > existingCount) {
+            observer.disconnect();
+            const latest = items[items.length - 1];
+            res(latest.src || latest.querySelector("source")?.src);
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+        setTimeout(() => { observer.disconnect(); rej(new Error("Timeout รอโหลด Media")); }, timeout);
+      });
+    };
+
+    try {
+      const helper = document.createElement("div");
+      helper.style.cssText = "position:fixed;z-index:99999;left:16px;bottom:16px;padding:12px;border-radius:8px;background:#111;color:#0f0;border:1px solid #0f0;font:14px system-ui";
+      helper.textContent = "🤖 Auto Flow Running... Waiting for page";
+      document.body.append(helper);
+
+      // รอเว็บโหลด UI เสร็จก่อน (เพราะเว็บ React มักจะโหลดช้า)
+      const waitForUI = () => new Promise(res => {
+        const start = Date.now();
+        const timer = setInterval(() => {
+          const btn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").toLowerCase().includes("new project"));
+          const fld = document.querySelector("textarea, [contenteditable='true']");
+          if (btn || fld || Date.now() - start > 15000) {
+            clearInterval(timer);
+            res();
+          }
+        }, 500);
+      });
+      await waitForUI();
+
+      // 0. ตรวจสอบว่าอยู่หน้า Dashboard หรือไม่
+      const newProjectBtn = Array.from(document.querySelectorAll("button, [role='button']")).find(b => 
+        (b.textContent || "").toLowerCase().includes("new project")
+      );
+      if (newProjectBtn) {
+        helper.textContent = "⏳ Clicking 'New project'...";
+        newProjectBtn.click();
+        
+        // รอให้ Textarea โหลดขึ้นมา
+        const start = Date.now();
+        while (Date.now() - start < 10000) {
+          const found = [...document.querySelectorAll("textarea"), ...document.querySelectorAll("[contenteditable='true']")].find(n => n.getBoundingClientRect().width > 50);
+          if (found) break;
+          await sleep(500);
+        }
+        await sleep(1000); // เผื่อ animation
+      }
+
+      // 0.5 ตั้งค่า Mode (Image/Video) และสัดส่วน 9:16
+      const settingsBtn = Array.from(document.querySelectorAll("button[aria-haspopup='menu']")).find(b => 
+        b.textContent.includes("Image") || 
+        b.textContent.includes("Video") || 
+        b.textContent.includes("crop_") || 
+        b.textContent.includes("1x") ||
+        b.querySelector("i")
+      );
+      if (settingsBtn) {
+        helper.textContent = "⏳ Setting up mode and 9:16 ratio...";
+        settingsBtn.click();
+        await sleep(500); // รอเมนูเปิด
+        
+        const tabs = Array.from(document.querySelectorAll("[role='tab']"));
+        
+        // เลือกโหมดตาม phase
+        const modeText = phase === "image" ? "Image" : "Video";
+        const modeTab = tabs.find(t => t.textContent.trim() === modeText);
+        if (modeTab && modeTab.getAttribute("aria-selected") !== "true") {
+          modeTab.click();
+          await sleep(300);
+        }
+        
+        // เลือก 9:16
+        const ratioTab = tabs.find(t => t.textContent.includes("9:16"));
+        if (ratioTab && ratioTab.getAttribute("aria-selected") !== "true") {
+          ratioTab.click();
+          await sleep(300);
+        }
+        
+        // ปิดเมนู
+        if (settingsBtn.getAttribute("aria-expanded") === "true") {
+          settingsBtn.click();
+          await sleep(500);
+        }
+      }
+
+      // 1. Upload File ก่อน
+      if (imageDataUrl) {
+        const fileInput = document.querySelector("input[type='file']");
+        if (fileInput) {
+          const [header, base64] = imageDataUrl.split(',');
+          const mime = header.match(/:(.*?);/)[1] || "image/png";
+          const bstr = atob(base64);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) u8arr[n] = bstr.charCodeAt(n);
+          const file = new File([new Blob([u8arr], { type: mime })], "ref.png", { type: mime });
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          fileInput.files = dt.files;
+          fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+
+      await sleep(1000); // รอภาพโหลด
+
+      // 2. Fill Text
+      const candidates = [...document.querySelectorAll("textarea"), ...document.querySelectorAll("[contenteditable='true']"), ...document.querySelectorAll("input[type='text']")];
+      const field = candidates.find(n => n.getBoundingClientRect().width > 50);
+      if (field) {
+        field.focus();
+        if ("value" in field) {
+          field.value = prompt;
+          field.dispatchEvent(new Event("change", { bubbles: true }));
+          field.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
+        } else {
+          field.textContent = prompt;
+          field.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
+        }
+      }
+
+      await sleep(1500);
+
+      // 3. Click Generate (หรือกด Enter)
+      const buttons = Array.from(document.querySelectorAll("button, [role='button']"));
+      let generateBtn = buttons.find(b => {
+        const text = (b.textContent || "").toLowerCase();
+        const hasArrow = b.querySelector("i") && b.querySelector("i").textContent === "arrow_forward";
+        // ต้องไม่ถูก disable และ (มีคำที่เกี่ยวข้องซ่อนอยู่ หรือมีไอคอน arrow_forward)
+        return !b.disabled && (text.includes("generate") || text.includes("create") || text.includes("run") || text.includes("submit") || hasArrow);
+      });
+
+      // ถ้าไม่เจอคำชัดเจน ลองหาปุ่มที่มี svg หรือ arrow_forward
+      if (!generateBtn) {
+        generateBtn = buttons.find(b => !b.disabled && (b.querySelector("svg") || (b.querySelector("i") && b.querySelector("i").textContent.includes("arrow"))) && b.getBoundingClientRect().width > 20);
+      }
+
+      if (generateBtn) {
+        helper.textContent = "⏳ Generating... (Waiting up to 2 mins)";
+        generateBtn.click();
+      } else if (field) {
+        // Fallback
+        helper.textContent = "⏳ Pressing Enter... (Waiting up to 2 mins)";
+        field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+        field.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+        field.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+      } else {
+        throw new Error("หาปุ่ม Generate ไม่พบ");
+      }
+
+      // 4. Wait for output
+      const resultUrl = await waitForNewMedia(phase === "image" ? "img" : "video", 120000);
+      
+      helper.textContent = "✅ Success!";
+      await sleep(1000);
+      helper.remove();
+      
+      resolve({ ok: true, resultUrl });
+    } catch (err) {
+      resolve({ ok: false, error: err.message });
+    }
   });
-
-  if (!field) return { ok: false };
-
-  field.focus();
-  if ("value" in field) {
-    field.value = prompt;
-    field.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
-    field.dispatchEvent(new Event("change", { bubbles: true }));
-  } else {
-    field.textContent = prompt;
-    field.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
-  }
-
-  const helper = document.createElement("div");
-  helper.textContent = phase === "image"
-    ? "TikTok Video Creator: Phase 1 image prompt inserted. Upload reference image manually if Google Flow asks for it."
-    : "TikTok Video Creator: Phase 2 video prompt inserted. Upload approved reference image manually if Google Flow asks for it.";
-  helper.style.cssText = "position:fixed;z-index:2147483647;left:16px;bottom:16px;max-width:360px;padding:12px 14px;border-radius:8px;background:#111;color:#fff;border:1px solid #FE2C55;font:14px system-ui";
-  document.body.append(helper);
-  setTimeout(() => helper.remove(), 10000);
-
-  return { ok: true };
 }
 
 /**
