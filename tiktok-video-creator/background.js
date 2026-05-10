@@ -71,89 +71,110 @@ function injectPromptIntoFlow(prompt, phase, imageUrl) {
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const helper = document.createElement("div");
     helper.style.cssText = "position:fixed;z-index:99999;left:16px;bottom:16px;padding:12px 16px;border-radius:8px;background:#111;color:#fff;border:1px solid #0f0;font:13px system-ui;max-width:320px;";
-    helper.textContent = "🤖 Auto Flow — โหมดขั้นสูง (Drag & Drop)...";
+    helper.textContent = "🤖 Auto Flow กำลังทำงาน...";
     document.body.append(helper);
     const log = (msg) => { helper.textContent = "🤖 " + msg; console.log("[AutoFlow]", msg); };
 
     try {
       await sleep(2000);
 
-      // --- 1. NEW PROJECT ---
-      log("เปิดโปรเจกต์ใหม่...");
-      const addBtn = Array.from(document.querySelectorAll("i")).find(i => i.textContent === "add_2")?.closest("button");
-      if (addBtn) { addBtn.click(); await sleep(2000); }
+      // --- 1. NEW PROJECT CHECK ---
+      if (!window.location.pathname.includes('/project/')) {
+          log("หน้า Dashboard: คลิกเปิดโปรเจกต์ใหม่...");
+          const addBtn = Array.from(document.querySelectorAll("i")).find(i => i.textContent === "add_2")?.closest("button");
+          if (addBtn) { addBtn.click(); await sleep(3000); }
+      } else {
+          log("อยู่ในหน้า Project แล้ว...");
+      }
 
-      // --- 2. ADVANCED UPLOAD (DRAG & DROP SIMULATION) ---
+      // --- 2. DIRECT IMAGE UPLOAD ---
       if (imageUrl) {
-        log("กำลังดึงภาพเพื่อจำลองการ Drag & Drop...");
+        log("กำลังดึงภาพ...");
         try {
-            const res = await fetch(imageUrl);
-            const blob = await res.blob();
-            const file = new File([blob], "image.png", { type: blob.type });
-
-            const dt = new DataTransfer();
-            dt.items.add(file);
-
-            // จำลองการลากไฟล์ไปวางกลางจอ
-            const target = document.querySelector('[data-slate-editor="true"]') || document.body;
+            const fileInputs = document.querySelectorAll('input[type="file"]');
+            let fileInput = null;
+            for (const input of fileInputs) {
+              const accept = input.getAttribute("accept") || "";
+              if (accept.includes("image") || accept === "" || accept.includes("*")) {
+                fileInput = input;
+                break;
+              }
+            }
             
-            ['dragenter', 'dragover', 'drop'].forEach(eventName => {
-                const event = new DragEvent(eventName, {
-                    bubbles: true,
-                    cancelable: true,
-                    dataTransfer: dt
-                });
-                target.dispatchEvent(event);
-            });
-            log("จำลองการวางภาพ (Drop) สำเร็จ!");
-            await sleep(2500); // รอให้ระบบของ Google อัปโหลดรูปขึ้น Server
+            if (fileInput) {
+                const res = await fetch(imageUrl);
+                const blob = await res.blob();
+                const file = new File([blob], "image.png", { type: blob.type });
+
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+                
+                // Trigger events to notify React
+                fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                fileInput.dispatchEvent(new Event('input', { bubbles: true }));
+                log("ยัดไฟล์ลง input สำเร็จ!");
+                await sleep(2500); // Wait for upload
+            } else {
+                throw new Error("หา input[type='file'] ไม่เจอใน DOM");
+            }
         } catch (err) {
-            log("❌ อัปโหลดแบบ Drop ไม่สำเร็จ: " + err.message);
+            log("❌ อัปโหลดภาพไม่สำเร็จ: " + err.message);
         }
       }
 
-      // --- 3. ADVANCED PROMPT (PASTE SIMULATION) ---
-      log("กำลังจำลองการ Paste Prompt...");
-      const editor = document.querySelector('[data-slate-editor="true"]');
-      if (editor) {
-        editor.focus();
-        // ลบของเก่าถ้ามี
-        document.execCommand("selectAll", false, null);
-        document.execCommand("delete", false, null);
-        
-        // ใช้วิธี ClipboardEvent (Paste) ซึ่งจะทะลุ React/Slate ได้ดีที่สุด
-        const dt = new DataTransfer();
-        dt.setData('text/plain', prompt);
-        const pasteEvent = new ClipboardEvent('paste', {
-            clipboardData: dt,
-            bubbles: true,
-            cancelable: true
-        });
-        editor.dispatchEvent(pasteEvent);
-        
-        // สำรองด้วย execCommand
-        document.execCommand("insertText", false, prompt);
-        await sleep(1500);
-      } else {
-        throw new Error("หาช่องพิมพ์ (Slate Editor) ไม่เจอ");
+      // --- 3. INJECT PROMPT ---
+      log("กำลังพิมพ์ Prompt...");
+      
+      // Method 1: Use Google Flow's specific textarea ID
+      let editor = document.querySelector('#PINHOLE_TEXT_AREA_ELEMENT_ID');
+      
+      // Method 2: Fallback to any visible textarea
+      if (!editor) {
+          editor = document.querySelector('textarea:not([disabled])');
       }
 
-      // --- 4. GENERATE ---
+      if (editor) {
+        editor.focus();
+        await sleep(100);
+        
+        // Native setter method for React textareas
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+        nativeInputValueSetter.call(editor, prompt);
+        
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        editor.dispatchEvent(new Event('change', { bubbles: true }));
+        
+        await sleep(1500);
+      } else {
+        throw new Error("หาช่องพิมพ์ไม่เจอ");
+      }
+
+      // --- 4. CLICK CREATE/GENERATE ---
       log("ค้นหาปุ่ม Create...");
-      const generateBtn = Array.from(document.querySelectorAll("button")).find(b => {
-          const text = (b.textContent || "").toLowerCase();
-          return text.includes("create") || text.includes("generate") || text.includes("run") || b.querySelector('i')?.textContent === "arrow_forward";
-      });
+      const allButtons = Array.from(document.querySelectorAll('button:not([disabled])'));
+      let generateBtn = null;
+      
+      for (const btn of allButtons) {
+        const innerHTML = btn.innerHTML || "";
+        const text = (btn.textContent || "").toLowerCase();
+
+        // The button has an <i> with arrow_forward and a <span> with "Create"
+        if (innerHTML.includes("arrow_forward") && text.includes("create")) {
+          generateBtn = btn;
+          break;
+        }
+      }
       
       if (generateBtn) {
           log("กด Create แล้ว! กำลังรอผลลัพธ์...");
           generateBtn.click();
       } else {
-          throw new Error("หาปุ่ม Create ไม่เจอ");
+          throw new Error("หาปุ่ม Create ไม่เจอ (อาจจะรอข้อมูล)");
       }
 
       // --- 5. WAIT FOR RESULT ---
-      await sleep(20000); // รอดูผลลัพธ์
+      await sleep(20000); // Wait for generation
       log("✅ ทำงานเสร็จสิ้น");
       helper.remove();
       resolve({ ok: true });
