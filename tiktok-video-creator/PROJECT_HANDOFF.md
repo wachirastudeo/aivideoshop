@@ -209,16 +209,20 @@ Prompt ออกแบบเป็นภาษาอังกฤษตาม Goo
 ทำแล้ว:
 
 - side panel ส่ง message `OPEN_GOOGLE_FLOW`
-- background เปิด tab ใหม่ที่ `https://labs.google/fx/tools/flow`
-- รอ tab โหลดเสร็จ
-- inject script เพื่อหา `textarea`, `contenteditable`, หรือ input text
-- ใส่ prompt ลง field ถ้าพบ
-- แสดง notification และ overlay ในหน้า Flow
+- background เปิด tab ใหม่ที่ `https://labs.google/fx/tools/flow` หรือ **ใช้แท็บเดิมที่เปิดอยู่แล้วซ้ำ** เพื่อป้องกันปัญหาแท็บล้น (Tab Explosion)
+- รอ tab โหลดเสร็จโดยใช้ `waitForUI()` รองรับเว็บ SPA อย่าง React
+- inject script คล้าย Playwright ทำงานบน DOM ฝั่ง Client แบบ Fully-Automated E2E:
+  - **Dashboard Bypass:** ค้นหาและกดปุ่ม "New project" ให้อัตโนมัติถ้ายืนอยู่หน้า Dashboard
+  - **Auto-Settings:** กดเปิด dropdown ตั้งค่าเพื่อสลับโหมด Image / Video ตาม Phase และเลือกสัดส่วน 9:16 ให้อัตโนมัติ (รองรับปุ่มที่แสดงชื่อ Model)
+  - **Auto-Image Upload:** แปลง Base64 Data URL เป็น `File` และยัดเข้า `<input type="file">` ด้วย `DataTransfer`
+  - **Auto-Fill Text:** ใส่ prompt ลงใน `textarea` พร้อมยิง Event เพื่อกระตุ้น UI State
+  - **Auto-Generate:** ค้นหาปุ่มสร้างผลลัพธ์ (รองรับเคสที่มีลูกศร `arrow_forward` และซ่อนคำว่า Create) และกดให้อัตโนมัติ
+  - **Result Polling:** ฝัง `MutationObserver` รอตรวจจับรูป (`<img>`) หรือวิดีโอ (`<video>`) ใหม่ที่สร้างเสร็จ สูงสุด 2 นาที
+  - ส่ง URL ของผลลัพธ์กลับไปให้ Extension เพื่อทำงาน Phase ต่อไปทันทีแบบรวดเดียว
 
 ข้อจำกัดปัจจุบัน:
 
-- ยังไม่สามารถ upload reference image เข้า Google Flow อัตโนมัติแบบเสถียร เพราะ UI ของ Google Flow อาจเปลี่ยนและ file input อาจถูกป้องกัน
-- ตอนนี้ extension แจ้งให้ user upload/reference image เองถ้า Flow ต้องการ
+- การดักจับ UI ของ Google Flow อิงจาก Heuristic (หาข้อความ/ไอคอน/role) หากเว็บรื้อโครงสร้างใหม่หมดอาจต้องมาอัปเดต Selector
 
 ### 8. Video Output
 
@@ -440,13 +444,16 @@ file assets/icon16.png assets/icon48.png assets/icon128.png
 
 ### Priority 4 - Google Flow automation
 
-ควรทดสอบกับ UI จริงของ Google Flow แล้วปรับ:
+การทำ Auto-Flow (Playwright-like) ถูกพัฒนาให้ใช้งานได้เกือบสมบูรณ์แล้ว:
 
-- selector ของ prompt input
-- flow สำหรับ reference image
-- reuse tab เดิมแทนเปิดใหม่ทุกครั้ง
-- detect page readiness ให้แม่นขึ้น
-- fallback copy prompt ถ้า inject ไม่ได้
+- รองรับการ Reuse Tab เพื่อป้องกันเครื่องหน่วง
+- รองรับการตั้งค่า Image/Video และ 9:16 สัดส่วนอัตโนมัติ
+- รองรับการอัปโหลด Reference Image อัตโนมัติ
+
+สิ่งที่อาจต้องทำเพิ่มในอนาคต:
+
+- การดักจับ Error กรณี AI ของ Google Flow สร้างภาพไม่ผ่าน (เช่น ติด Policy) เพื่อให้คิวงานไม่ค้าง
+- ปรับจูน Timeout หรือคีย์เวิร์ดหาก UI ของ Google Flow มีการเปลี่ยนแปลง
 
 ไฟล์ที่เกี่ยวข้อง:
 
@@ -489,7 +496,7 @@ file assets/icon16.png assets/icon48.png assets/icon128.png
 - โหลดเป็น unpacked extension
 - ทดลองสร้าง prompt
 - ทดลอง upload/preview image
-- ทดลอง workflow Phase 1/Phase 2 กับ Google Flow แบบกึ่ง manual
+- ทดลอง workflow Phase 1/Phase 2 กับ Google Flow แบบ Fully Automatic E2E
 - บันทึก settings/token
 
 ยังไม่พร้อม production:
@@ -497,4 +504,3 @@ file assets/icon16.png assets/icon48.png assets/icon128.png
 - TikTok OAuth/token exchange จริง
 - TikTok Showcase API production validation
 - TikTok Content Posting API จริง
-- Google Flow reference image upload automation แบบ fully automatic
