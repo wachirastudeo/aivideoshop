@@ -72,6 +72,7 @@ const PACING = {
 };
 
 const PRESENTERS = {
+  Auto: "Let AI choose whether a presenter improves the product video",
   none: "No humans, focus entirely on the product visual",
   woman: "A trendy young woman reviewer interacting with the product",
   man: "A stylish young man reviewer presenting the product",
@@ -80,6 +81,7 @@ const PRESENTERS = {
 };
 
 const VOICE_TONES = {
+  Auto: "Let AI choose the most suitable voice tone for the product and audience",
   kind: "Kind, friendly, and gentle tone",
   fun: "Fun, high-energy, and playful tone",
   complain: "Funny complaining and slightly annoyed but hilarious tone",
@@ -93,17 +95,17 @@ const VOICE_TONES = {
  */
 export function getDefaultSettings() {
   return {
-    videoStyle: "review",
-    presenter: "none",
-    voiceTone: "kind",
-    mood: "Professional",
-    location: "Studio Minimal",
+    videoStyle: "Auto",
+    presenter: "Auto",
+    voiceTone: "Auto",
+    mood: "Auto",
+    location: "Auto",
     language: "ไทย",
-    showName: false,
+    showName: "false",
     promotionText: "",
     cta: "🛒 กดสั่งซื้อที่ตะกร้าด้านล่าง",
     customCta: "",
-    textPosition: "Bottom safe area",
+    textPosition: "Auto",
     cameraMovement: "Auto",
     pacing: 2,
     transition: "Auto"
@@ -180,8 +182,8 @@ export function buildVideoPrompt(productInfo, settings) {
   const style = VIDEO_STYLES.find((item) => item.id === settings.videoStyle) || VIDEO_STYLES[0];
   const ctaText = settings.cta === "กรอกเอง" ? settings.customCta : settings.cta;
   const textItems = [
-    settings.showName ? sanitizeText(productInfo.name) : "",
-    sanitizeText(settings.promotionText),
+    settings.showName === true || settings.showName === "true" ? sanitizeText(productInfo.name) : "",
+    settings.showName === true || settings.showName === "true" ? sanitizeText(settings.promotionText) : "",
     sanitizeText(ctaText || productInfo.cta)
   ].filter(Boolean);
 
@@ -192,11 +194,12 @@ export function buildVideoPrompt(productInfo, settings) {
     "",
     `Presenter: ${PRESENTERS[settings.presenter] || PRESENTERS.none}.`,
     `Voice Tone: ${VOICE_TONES[settings.voiceTone] || VOICE_TONES.kind}.`,
-    `Scene 1 (0-4s): Product center frame, ${sanitizeText(settings.cameraMovement)} camera movement, Location: ${sanitizeText(settings.location)}.`,
-    `Scene 2 (4-8s): Bold CTA moment with product full frame, ${sanitizeText(settings.mood)} energy, ${sanitizeText(settings.transition)} transition.`,
+    `Scene 1 (0-4s): Product center frame, clean camera movement, Location: ${sanitizeText(settings.location)}.`,
+    `Scene 2 (4-8s): Bold CTA moment with product full frame, upbeat energy, smooth transition.`,
     "",
     `Video style: ${style.name}. ${style.fragment}.`,
-    `Text overlays: ${textItems.join(" | ") || "minimal clean text overlays"}. Position text in ${sanitizeText(settings.textPosition)}.`,
+    `Text overlays: ${textItems.join(" | ") || "no text overlays except unavoidable platform UI"}. Position text in ${sanitizeText(settings.textPosition)}.`,
+    `Video text mode: ${settings.showName === "true" ? "include configured video text" : "no added video text"}.`,
     `Text language: ${sanitizeText(settings.language)}. Pacing: ${PACING[settings.pacing] || PACING[2]}.`,
     "Avoid clutter, avoid wrong logos, avoid misspelled text, keep the product as the hero."
   ].join("\n");

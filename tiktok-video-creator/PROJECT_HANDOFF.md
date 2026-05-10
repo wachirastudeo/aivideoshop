@@ -1,5 +1,7 @@
 # TikTok Video Creator Extension - Project Handoff
 
+*อัพเดตล่าสุด: พฤษภาคม 2026*
+
 ## ภาพรวมโปรเจกต์
 
 โปรเจกต์นี้คือ Chrome Extension แบบ Manifest V3 ชื่อ **TikTok Video Creator** สำหรับช่วย TikTok seller สร้างวิดีโอขายสินค้าเร็วขึ้นผ่าน side panel ของ Chrome

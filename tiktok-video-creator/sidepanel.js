@@ -12,9 +12,14 @@ const logList = document.querySelector("#activity-log-list");
 const clearLogButton = document.querySelector("#clear-log");
 const toggleLogButton = document.querySelector("#toggle-log");
 const tabButtons = [...document.querySelectorAll("[data-tab]")];
+const isTabMode = new URLSearchParams(location.search).get("mode") === "tab";
 
 let activeTab = "video";
 let activityLog = [];
+
+if (isTabMode) {
+  document.documentElement.dataset.mode = "tab";
+}
 
 /**
  * @description แสดงข้อความสถานะกลางของ side panel

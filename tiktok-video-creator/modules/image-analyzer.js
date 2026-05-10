@@ -1,6 +1,6 @@
 import { sanitizeText } from "./prompt-builder.js";
 
-const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 
 /**
  * @description แปลงไฟล์รูปเป็น data URL
@@ -36,15 +36,9 @@ export async function analyzeProductImages(imageDataUrls, productInfo = {}) {
   const base64 = firstImage.replace(/^data:.*?;base64,/, "");
   const model = encodeURIComponent(settings.geminiModel || DEFAULT_GEMINI_MODEL);
   const prompt = [
-    "Analyze this product for a Thai TikTok seller.",
-    productName ? `Known product title: ${productName}` : "No product title was provided.",
-    "Return strict JSON only with these keys:",
-    "{",
-    '  "name": "short product name in Thai if possible",',
-    '  "highlights": "3 Thai bullet lines separated by newline",',
-    '  "targetGroup": "one of: สาวออฟฟิศ, แม่บ้าน, วัยรุ่น, ทั่วไป",',
-    '  "promptAdvice": "English prompt advice for product video generation"',
-    "}"
+    "Analyze product image for TikTok Shop.",
+    productName ? `Title: ${productName}` : "No title.",
+    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English video prompt advice"}'
   ].join("\n");
   const parts = [{ text: prompt }];
 

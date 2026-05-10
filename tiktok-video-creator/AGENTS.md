@@ -1,5 +1,7 @@
 # 🤖 AGENTS.md — TikTok Video Creator Team
 
+*Last Updated: May 2026*
+
 This file defines the specialized agent roles and operational guidelines for the **TikTok Video Creator** project. Use these personas to maintain consistency across different development sessions.
 
 ---

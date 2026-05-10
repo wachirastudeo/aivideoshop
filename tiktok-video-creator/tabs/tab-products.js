@@ -139,14 +139,8 @@ function renderProducts() {
       if (e.target.checked) selectedIds.add(e.target.dataset.id);
       else selectedIds.delete(e.target.dataset.id);
       
-      const card = e.target.closest('.product-card');
-      if (e.target.checked) {
-        card.style.background = 'var(--accent-soft)';
-        card.style.borderColor = 'var(--accent)';
-      } else {
-        card.style.background = 'var(--panel)';
-        card.style.borderColor = 'var(--line)';
-      }
+      const card = e.target.closest(".product-card");
+      card?.classList.toggle("product-card--selected", e.target.checked);
       updateBatchUI();
     });
   });
@@ -178,7 +172,7 @@ function renderPagination(totalPages) {
 
   if (startPage > 1) {
     html += `<button class="pagination-button" data-page="1">1</button>`;
-    if (startPage > 2) html += `<span style="color: var(--muted); align-self: end; padding: 0 4px;">...</span>`;
+    if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
   }
   
   for (let i = startPage; i <= endPage; i++) {
@@ -186,7 +180,7 @@ function renderPagination(totalPages) {
   }
 
   if (endPage < totalPages) {
-    if (endPage < totalPages - 1) html += `<span style="color: var(--muted); align-self: end; padding: 0 4px;">...</span>`;
+    if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
     html += `<button class="pagination-button" data-page="${totalPages}">${totalPages}</button>`;
   }
   
@@ -259,40 +253,40 @@ function productMarkup(product) {
   let commissionBadge = '';
   if (Number(product.commissionRate) > 0 || product.commission) {
     const commText = [product.commission, `(${product.commissionRate}%)`].filter(Boolean).join(" ");
-    commissionBadge = `<span style="background: rgba(234, 88, 12, 0.2); color: #ea580c; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px;">🔥 ได้ ${commText}</span>`;
+    commissionBadge = `<span class="meta-badge meta-badge--commission">ได้ ${commText}</span>`;
   }
 
   const stockCount = Number(product.stockCount || 0);
   const stockBadge = stockCount <= 0 
-    ? `<span style="background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px;">❌ หมดสต๊อก</span>`
+    ? `<span class="meta-badge meta-badge--danger">หมดสต๊อก</span>`
     : '';
 
   const isSelected = selectedIds.has(product.productId);
 
   return `
-    <article class="product-card" style="display: flex; align-items: center; padding: 12px; gap: 10px; background: ${isSelected ? 'var(--accent-soft)' : 'var(--panel)'}; border: 1px solid ${isSelected ? 'var(--accent)' : 'var(--line)'}; border-radius: 12px; margin-bottom: 8px; transition: all 0.2s;">
-      <input type="checkbox" class="product-checkbox" data-id="${escapeHtml(product.productId)}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; margin: 0;">
-      <img class="product-card__image" src="${imageUrl}" alt="" style="width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex-shrink: 0;">
-      <div style="flex-grow: 1; min-width: 0;">
-        <h3 class="product-card__name" title="${escapeHtml(product.name)}" style="font-size: 13px; font-weight: 500; color: var(--text); margin: 0 0 4px 0; line-height: 1.4; white-space: normal;">${escapeHtml(product.name)}</h3>
-        <p class="product-card__meta" style="font-size: 12px; color: var(--muted); margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
-          <strong style="color: var(--success); font-weight: 600; margin-right: 2px;">${escapeHtml(formatPrice(product))}</strong> 
+    <article class="product-card ${isSelected ? "product-card--selected" : ""}">
+      <input type="checkbox" class="product-checkbox" data-id="${escapeHtml(product.productId)}" ${isSelected ? 'checked' : ''}>
+      <img class="product-card__image" src="${imageUrl}" alt="">
+      <div class="product-card__content">
+        <h3 class="product-card__name" title="${escapeHtml(product.name)}">${escapeHtml(product.name)}</h3>
+        <p class="product-card__meta">
+          <strong>${escapeHtml(formatPrice(product))}</strong>
           ${commissionBadge}
           ${stockBadge}
         </p>
       </div>
-      <button class="icon-button" type="button" data-create-video="${escapeHtml(product.productId)}" title="สร้างวิดีโอ" aria-label="สร้างวิดีโอ" style="flex-shrink: 0; background: var(--panel-2); color: var(--text); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1px solid var(--line);">🎥</button>
+      <button class="icon-button" type="button" data-create-video="${escapeHtml(product.productId)}" title="สร้างวิดีโอ" aria-label="สร้างวิดีโอ">🎥</button>
     </article>
   `;
 }
 
 function skeletonMarkup() {
   return Array.from({ length: 4 }, (_, index) => `
-    <article class="product-card" aria-hidden="true" style="opacity: 0.3;">
-      <div class="product-card__image" style="background: var(--line); width: 56px; height: 56px;"></div>
-      <div style="flex: 1;">
-        <div style="background: var(--line); height: 12px; width: 80%; margin-bottom: 6px;"></div>
-        <div style="background: var(--line); height: 10px; width: 40%;"></div>
+    <article class="product-card skeleton-card" aria-hidden="true">
+      <div class="product-card__image skeleton-block"></div>
+      <div class="product-card__content">
+        <div class="skeleton-line skeleton-line--wide"></div>
+        <div class="skeleton-line skeleton-line--short"></div>
       </div>
     </article>
   `).join("");

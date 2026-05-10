@@ -5,6 +5,8 @@ description: Build, maintain, and polish the TikTok Video Creator Chrome Extensi
 
 # TikTok Video Creator
 
+*Last Updated: May 2026*
+
 ## Core Context
 
 Work on a Chrome Extension Manifest V3 app that helps TikTok sellers create product videos from TikTok Showcase products or uploaded product images.

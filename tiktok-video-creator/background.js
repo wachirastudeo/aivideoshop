@@ -4,13 +4,18 @@ import { fetchShowcaseProducts } from "./modules/tiktok-api.js";
  * @description เปิด side panel เมื่อผู้ใช้คลิก icon extension
  */
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+  if (chrome.sidePanel?.setPanelBehavior) {
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+  }
 });
 
 chrome.action.onClicked.addListener(async (tab) => {
-  if (tab?.windowId) {
+  if (chrome.sidePanel?.open && tab?.windowId) {
     await chrome.sidePanel.open({ windowId: tab.windowId });
+    return;
   }
+
+  await openCreatorTab();
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -39,6 +44,20 @@ async function routeMessage(message, sender) {
     default:
       throw new Error("ไม่รู้จักคำสั่งที่ส่งมา");
   }
+}
+
+async function openCreatorTab() {
+  const url = chrome.runtime.getURL("sidepanel.html?mode=tab");
+  const existingTabs = await chrome.tabs.query({ url: chrome.runtime.getURL("sidepanel.html*") });
+  const existing = existingTabs[0];
+
+  if (existing?.id) {
+    await chrome.tabs.update(existing.id, { active: true });
+    return { tabId: existing.id };
+  }
+
+  const tab = await chrome.tabs.create({ url, active: true });
+  return { tabId: tab.id };
 }
 
 /**
@@ -131,6 +150,11 @@ function waitForTabComplete(tabId) {
  * @returns {Promise<object>} download id
  */
 async function downloadVideo(payload) {
+  if (!chrome.downloads?.download) {
+    const tab = await chrome.tabs.create({ url: payload.url, active: true });
+    return { tabId: tab.id, fallback: "opened-tab" };
+  }
+
   const id = await chrome.downloads.download({
     url: payload.url,
     filename: payload.filename,

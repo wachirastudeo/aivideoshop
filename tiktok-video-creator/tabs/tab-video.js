@@ -8,22 +8,22 @@ import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.j
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, publishVideo } from "../modules/video-output.js";
 
-const MOODS = ["สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"];
-const LANGUAGES = ["ไทย", "English", "ทั้งคู่"];
+const MOODS = ["Auto", "สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"];
 
 let helpers = {};
 let settings = getDefaultSettings();
 let productQueue = [];
+let isProcessing = false;
+let stopRequested = false;
 
 export async function initVideoTab(injectedHelpers) {
   helpers = injectedHelpers;
   const stored = await chrome.storage.local.get(["creatorState", "productQueue"]);
-  settings = { ...getDefaultSettings(), ...(stored.creatorState?.settings || {}) };
-  productQueue = stored.productQueue || [];
+  settings = normalizeSettings({ ...getDefaultSettings(), ...(stored.creatorState?.settings || {}) });
+  productQueue = normalizeProductQueue(stored.productQueue);
 
   populateStyleDropdown();
   renderPills("mood-pills", MOODS, settings.mood, (value) => updateSettings({ mood: value }));
-  renderPills("language-pills", LANGUAGES, settings.language, (value) => updateSettings({ language: value }));
   bindGlobalEvents();
   fillGlobalFormFromState();
   renderQueue();
@@ -31,7 +31,7 @@ export async function initVideoTab(injectedHelpers) {
 
 export async function syncSelectedProductToVideoTab() {
   const stored = await chrome.storage.local.get(["productQueue"]);
-  productQueue = stored.productQueue || [];
+  productQueue = normalizeProductQueue(stored.productQueue);
   renderQueue();
   await persistState();
   helpers.logActivity?.(`โหลดคิวสินค้าใหม่: ${productQueue.length} รายการ`, "success");
@@ -40,14 +40,19 @@ export async function syncSelectedProductToVideoTab() {
 function bindGlobalEvents() {
   [
     "video-style", "presenter", "voice-tone", "location",
-    "show-name", "promotion-text", "settings-cta",
-    "custom-cta", "text-position", "camera-movement", "pacing", "transition"
+    "show-name", "promotion-text", "text-position", "camera-movement"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
     if (el) {
       el.addEventListener("input", syncSettingsForm);
       el.addEventListener("change", syncSettingsForm);
     }
+  });
+
+  document.querySelector("#btn-batch-create")?.addEventListener("click", () => processQueue());
+  document.querySelector("#btn-batch-stop")?.addEventListener("click", () => {
+    stopRequested = true;
+    helpers.showStatus("กำลังหยุด...", "info");
   });
 }
 
@@ -56,47 +61,58 @@ function fillGlobalFormFromState() {
   setValue("presenter", settings.presenter);
   setValue("voice-tone", settings.voiceTone);
   setValue("location", settings.location);
-  setChecked("show-name", settings.showName);
+  setValue("show-name", settings.showName);
   setValue("promotion-text", settings.promotionText);
-  setValue("settings-cta", settings.cta);
-  setValue("custom-cta", settings.customCta);
   setValue("text-position", settings.textPosition);
   setValue("camera-movement", settings.cameraMovement);
-  setValue("pacing", settings.pacing);
-  setValue("transition", settings.transition);
-
-  const customCta = document.querySelector("#custom-cta");
-  if (customCta) customCta.hidden = settings.cta !== "กรอกเอง";
+  syncVideoTextSettingsVisibility();
 }
 
 function syncSettingsForm() {
-  settings = {
+  settings = normalizeSettings({
     ...settings,
     videoStyle: getValue("video-style"),
     presenter: getValue("presenter"),
     voiceTone: getValue("voice-tone"),
     location: getValue("location"),
-    showName: getChecked("show-name"),
+    showName: getValue("show-name"),
     promotionText: getValue("promotion-text"),
-    cta: getValue("settings-cta"),
-    customCta: getValue("custom-cta"),
     textPosition: getValue("text-position"),
-    cameraMovement: getValue("camera-movement"),
-    pacing: Number(getValue("pacing")),
-    transition: getValue("transition")
-  };
-  
-  const customCta = document.querySelector("#custom-cta");
-  if (customCta) customCta.hidden = settings.cta !== "กรอกเอง";
-  
+    cameraMovement: getValue("camera-movement")
+  });
+
   renderQueue();
+  syncVideoTextSettingsVisibility();
   persistState();
 }
 
 function updateSettings(patch) {
-  settings = { ...settings, ...patch };
+  settings = normalizeSettings({ ...settings, ...patch });
   renderQueue();
   persistState();
+}
+
+function normalizeProductQueue(value) {
+  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") : [];
+}
+
+function normalizeSettings(value) {
+  return {
+    ...value,
+    language: "ไทย",
+    showName: value.showName === true || value.showName === "true" ? "true" : "false",
+    cta: "กดสั่งซื้อที่ตะกร้าด้านล่าง",
+    customCta: "",
+    pacing: 2,
+    transition: "Auto"
+  };
+}
+
+function syncVideoTextSettingsVisibility() {
+  const enabled = getValue("show-name") === "true";
+  document.querySelectorAll(".video-text-setting").forEach((field) => {
+    field.hidden = !enabled;
+  });
 }
 
 function populateStyleDropdown() {
@@ -105,6 +121,7 @@ function populateStyleDropdown() {
   select.innerHTML = VIDEO_STYLES.map((style) => `
     <option value="${style.id}">${style.emoji} ${style.name} - ${style.description}</option>
   `).join("");
+  select.insertAdjacentHTML("afterbegin", `<option value="Auto">✨ อัตโนมัติ</option>`);
   select.value = settings.videoStyle;
 }
 
@@ -124,6 +141,7 @@ function renderPills(rootId, values, activeValue, onSelect) {
 
 // Queue Rendering
 function renderQueue() {
+  productQueue = normalizeProductQueue(productQueue);
   const queueCount = document.querySelector("#queue-count");
   if (queueCount) queueCount.textContent = productQueue.length;
   
@@ -141,24 +159,24 @@ function renderQueue() {
     const promptPreview = buildVideoPrompt(p, settings);
 
     return `
-      <details class="product-batch-item card" data-index="${index}" style="margin-bottom: 12px; border-color: var(--line);">
-        <summary style="display: flex; align-items: center; padding: 12px; cursor: pointer; gap: 12px; list-style: none;">
-          <img src="${imageUrl}" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line);">
-          <div style="flex-grow: 1;">
-            <h3 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--text); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(p.name)}</h3>
-            <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">สถานะ: <span class="badge" style="margin-left: 4px;">${statusText}</span></div>
+      <details class="product-batch-item card" data-index="${index}">
+        <summary class="product-batch-summary">
+          <img class="product-batch-image" src="${imageUrl}" alt="">
+          <div class="product-card__content">
+            <h3 class="product-batch-title">${escapeHtml(p.name)}</h3>
+            <div class="product-batch-status">สถานะ: <span class="badge">${statusText}</span></div>
           </div>
-          <button class="icon-button batch-remove" type="button" style="color: var(--danger); font-size: 16px;" title="ลบออกจากคิว">❌</button>
+          <button class="icon-button batch-remove" type="button" title="ลบออกจากคิว">×</button>
         </summary>
-        <div style="padding: 16px;" class="stack">
+        <div class="stack product-batch-body">
           <label class="field">
             <span class="field__label">ชื่อสินค้า (ใช้ในวิดีโอ)</span>
             <input class="input batch-name" value="${escapeHtml(p.name)}">
           </label>
           
-          <div class="inline-actions" style="margin-top: 8px;">
-             <button class="button batch-analyze" type="button" style="border-color: var(--success); color: var(--success);">✨ วิเคราะห์หาจุดขาย</button>
-             <button class="button batch-copy" type="button">📋 คัดลอก Prompt</button>
+          <div class="inline-actions">
+             <button class="button batch-analyze" type="button">วิเคราะห์หาจุดขาย</button>
+             <button class="button batch-copy" type="button">คัดลอก Prompt</button>
           </div>
           
           <label class="field">
@@ -168,19 +186,20 @@ function renderQueue() {
 
           <label class="field">
             <span class="field__label">Prompt Preview</span>
-            <textarea class="textarea batch-prompt" rows="3" readonly style="background: var(--bg); opacity: 0.8; font-family: monospace; font-size: 11px;">${escapeHtml(promptPreview)}</textarea>
+            <textarea class="textarea batch-prompt prompt-textarea" rows="3" readonly>${escapeHtml(promptPreview)}</textarea>
           </label>
 
-          <div class="inline-actions" style="margin-top: 8px; margin-bottom: 8px;">
-            <button class="button button--primary batch-flow-img" type="button">📸 Phase 1 (ภาพ)</button>
-            <button class="button button--primary batch-flow-vid" type="button">🎬 Phase 2 (วิดีโอ)</button>
+          <div class="inline-actions">
+            <button class="button button--primary batch-flow-img" type="button">Phase1 ภาพ</button>
+            <button class="button button--primary batch-flow-vid" type="button">Phase2 วิดีโอ</button>
+            <button class="button button--danger batch-stop" type="button" style="display:${p.status === 'flow1' || p.status === 'flow2' ? 'inline-block' : 'none'}">หยุดทำงาน</button>
           </div>
           
-          <div class="card" style="border-style: dashed; padding: 12px; background: var(--bg);">
-            <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
-              <img class="batch-approved-preview" src="${p.approvedImage || 'assets/icon.svg'}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line);">
-              <label class="button" style="flex: 1; min-height: 32px; font-size: 11px;">
-                🖼️ อัพโหลดภาพ Phase 1 
+          <div class="card drop-card">
+            <div class="approved-row">
+              <img class="batch-approved-preview approved-preview" src="${p.approvedImage || 'assets/icon.svg'}" alt="">
+              <label class="button button--full">
+                อัพโหลดภาพ Phase 1
                 <input type="file" class="batch-upload-approved" accept="image/png,image/jpeg,image/webp" hidden>
               </label>
             </div>
@@ -188,14 +207,15 @@ function renderQueue() {
               <span class="field__label">URL วิดีโอจาก Google Flow</span>
               <input class="input batch-video-url" type="url" placeholder="วาง URL ที่นี่" value="${escapeHtml(p.videoUrl || '')}">
             </label>
-            <div class="inline-actions" style="margin-top: 12px;">
-              <button class="button batch-download" type="button">📥 Download</button>
-              <button class="button button--primary batch-post" type="button">📱 โพสต์ลง TikTok</button>
+            <div class="inline-actions">
+              <button class="button batch-download" type="button">Download</button>
+              <button class="button button--primary batch-post" type="button">โพสต์ลง TikTok</button>
             </div>
-          </div>
-          
-          <div style="text-align: right; margin-top: 12px;">
-             <!-- ลบออกจากคิวได้จากปุ่ม X ด้านบน -->
+            <div class="inline-actions" style="margin-top:8px">
+              <button class="button button--primary batch-flow-img" type="button">Phase1 ภาพ</button>
+              <button class="button button--primary batch-flow-vid" type="button">Phase2 วิดีโอ</button>
+              <button class="button button--danger batch-stop" type="button" style="display:${p.status === 'flow1' || p.status === 'flow2' ? 'inline-block' : 'none'}">หยุดทำงาน</button>
+            </div>
           </div>
         </div>
       </details>
@@ -225,6 +245,8 @@ function bindBatchEvents() {
 
     item.querySelector(".batch-flow-img").addEventListener("click", () => launchFlow("image", p, item));
     item.querySelector(".batch-flow-vid").addEventListener("click", () => launchFlow("video", p, item));
+    const stopBtn = item.querySelector(".batch-stop");
+    if (stopBtn) stopBtn.addEventListener("click", () => handleStop(p, item));
 
     item.querySelector(".batch-upload-approved").addEventListener("change", (e) => handleUploadApproved(e, p, item));
     
@@ -300,6 +322,68 @@ async function launchFlow(phase, p, itemEl) {
   } catch (err) {
     helpers.showStatus(err.message, "error");
   }
+}
+
+async function processQueue() {
+  if (isProcessing) return;
+  isProcessing = true;
+  stopRequested = false;
+  
+  document.querySelector("#btn-batch-create").style.display = "none";
+  document.querySelector("#btn-batch-stop").style.display = "inline-block";
+  
+  helpers.showStatus("เริ่มสร้างวิดีโอทั้งหมด (ภาพ→วิดีโอ)...", "info");
+  
+  for (let i = 0; i < productQueue.length; i++) {
+    if (stopRequested) break;
+    
+    const p = productQueue[i];
+    const item = document.querySelector(`.product-batch-item[data-index="${i}"]`);
+    
+    try {
+      // Phase 1: สร้างภาพ
+      helpers.showStatus(`สินค้า ${i+1}/${productQueue.length}: กำลังสร้างภาพ...`, "info");
+      p.status = "flow1";
+      if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
+      
+      const imgPrompt = buildImagePrompt(p, settings);
+      await openGoogleFlow("image", imgPrompt, p.imageUrls?.[0]);
+      
+      // Phase 2: สร้างวิดีโอ
+      helpers.showStatus(`สินค้า ${i+1}/${productQueue.length}: กำลังสร้างวิดีโอ...`, "info");
+      p.status = "flow2";
+      if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
+      
+      const vidPrompt = buildVideoPrompt(p, settings);
+      const refImage = p.approvedImage || p.imageUrls?.[0];
+      await openGoogleFlow("video", vidPrompt, refImage);
+      
+      p.status = "done";
+      if (item) {
+        item.querySelector("summary .badge").textContent = getStatusText(p.status);
+        if (refImage) item.querySelector(".batch-approved-preview").src = refImage;
+      }
+      
+      persistState();
+    } catch (err) {
+      helpers.showStatus(`สินค้า ${i+1}: ${err.message}`, "error");
+      p.status = "analyzed";
+      if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
+    }
+  }
+  
+  isProcessing = false;
+  stopRequested = false;
+  document.querySelector("#btn-batch-create").style.display = "inline-block";
+  document.querySelector("#btn-batch-stop").style.display = "none";
+  helpers.showStatus(stopRequested ? "หยุดทำงานแล้ว" : "สร้างวิดีโอเสร็จสิ้น", "success");
+}
+
+async function handleStop(p, itemEl) {
+  p.status = "analyzed";
+  itemEl.querySelector("summary .badge").textContent = getStatusText(p.status);
+  persistState();
+  helpers.showStatus("หยุดทำงานแล้ว", "info");
 }
 
 async function handleDownload(p) {

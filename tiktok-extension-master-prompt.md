@@ -128,7 +128,6 @@ State management:
 ```
 Form ที่มี field:
 - ชื่อสินค้า (text input)
-- ราคา (number input + สกุลเงิน dropdown: THB/USD)
 - จุดขาย/ไฮไลต์ (textarea, 3 bullet points)
 - กลุ่มเป้าหมาย (dropdown: สาวออฟฟิศ / แม่บ้าน / วัยรุ่น / ทั่วไป / กรอกเอง)
 - Call to action (text: เช่น "สั่งได้เลย" "ราคาพิเศษวันนี้")
@@ -229,20 +228,12 @@ Hook แรก (3 วินาทีแรก): dropdown
 Mood/บรรยากาศ: pill buttons (เลือกได้ 1)
   สดใส / หรูหรา / น่ารัก / Professional / Trendy / มินิมัล / Dark & Moody
 
-Color Palette: dropdown
+ฉากสถานที่ (Location): dropdown
   - Auto (AI เลือกให้ตามสินค้า)
-  - White & Clean      (สะอาด ดูดี)
-  - Warm Tones         (ส้ม ครีม เบจ)
-  - Bold & Vibrant     (สีจัด โดดเด่น)
-  - Dark & Luxurious   (ดำ ทอง)
-  - Pastel Soft        (พาสเทล น่ารัก)
-  - Brand Color        (ให้กรอก hex color เอง)
-
-แสงและสไตล์ภาพ: dropdown
-  - Studio Clean       (พื้นขาว แสงสม่ำเสมอ)
+  - Studio Clean       (สตูดิโอพื้นขาว แสงสม่ำเสมอ)
   - Natural Daylight   (แสงธรรมชาติ outdoor)
-  - Warm Indoor        (แสงอุ่น cozy)
-  - Dark Dramatic      (dramatic lighting)
+  - Warm Indoor        (แสงอุ่น cozy ในห้อง)
+  - Dark Dramatic      (พื้นหลังเข้มดุดัน)
   - Neon/Colorful      (แสงสีสัน)
 
 ─── 📝 Text & Caption ───────────────────────────
@@ -251,7 +242,6 @@ Color Palette: dropdown
 
 Text ที่ต้องโชว์ใน video:
   - ชื่อสินค้า: checkbox (default ON)
-  - ราคา: checkbox + input ราคาจริง เช่น "฿299"
   - Promotion text: text input → เช่น "ลด 50%" / "ส่งฟรี" / "พร้อมส่ง"
   - Call to Action: dropdown
       "กดซื้อได้เลย" / "ลิงก์ในไบโอ" / "คอมเมนต์สั่งได้" / "สั่งในไลฟ์" / กรอกเอง
@@ -295,15 +285,15 @@ Transition Style: dropdown
 
 ตัวอย่าง prompt ที่ build ได้จาก options:
 "Create an 8-second vertical 9:16 TikTok product video for
-[ชื่อสินค้า] priced at ฿299.
+[ชื่อสินค้า].
 
 Scene 1 (0-4s): [hook ที่เลือก] — product center frame,
-[camera movement ที่เลือก], [lighting style], [color palette].
+[camera movement ที่เลือก], [location], [mood].
 Scene 2 (4-8s): Bold CTA — '[CTA text]' text bottom-safe-area,
 product full frame, [mood] energy.
 
-Color palette: [palette ที่เลือก]. Pacing: [pacing ที่เลือก].
-Text language: Thai. Transition: [transition ที่เลือก]."
+Text language: Thai. Transition: [transition ที่เลือก].
+Pacing: [pacing ที่เลือก]."
 ```
 
 ### 3E — Prompt Builder + Google Flow (2 Phase)
@@ -322,15 +312,14 @@ input ที่นำมาใช้:
   - productInfo.name          → ชื่อสินค้า
   - productInfo.highlights    → จุดเด่น
   - productInfo.targetGroup   → กลุ่มเป้าหมาย
-  - settings.colorPalette     → สีพื้นหลัง/บรรยากาศ
-  - settings.lightingStyle    → สไตล์แสง
+  - settings.location         → ฉากสถานที่
   - settings.mood             → อารมณ์ภาพ
   - settings.videoStyle       → ใช้ดูว่าสินค้าควรอยู่ในบริบทไหน
   - originalImage             → ภาพสินค้าดั้งเดิม (ส่งเป็น reference)
 
 ตัวอย่าง image prompt ที่ build ได้:
 "High quality product photography of [ชื่อสินค้า].
-[lighting: soft studio lighting with white background].
+[location: soft studio lighting with white background].
 [mood: clean and professional]. Product centered, sharp focus,
 no distractions. Style reference: [videoStyle context].
 Suitable for [targetGroup] audience.
@@ -370,7 +359,7 @@ PHASE 2 — สร้างวิดีโอจากภาพที่ approve
 Use the provided product image as the main visual reference.
 
 Scene 1 (0-4s): [hook ที่เลือก] — product from reference image,
-[camera movement], [lighting style], [color palette].
+[camera movement], [location], [mood].
 Scene 2 (4-8s): '[CTA text]' text bottom-safe-area,
 product full frame, [mood] energy.
 

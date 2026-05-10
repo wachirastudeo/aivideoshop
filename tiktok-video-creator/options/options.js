@@ -1,5 +1,5 @@
 import { VIDEO_STYLES } from "../modules/prompt-builder.js";
-import { testGeminiConnection } from "../modules/image-analyzer.js";
+import { DEFAULT_GEMINI_MODEL, testGeminiConnection } from "../modules/image-analyzer.js";
 
 const statusBox = document.querySelector("#status");
 
@@ -13,7 +13,7 @@ async function loadOptions() {
     .map((style) => `<option value="${style.id}">${style.emoji} ${style.name}</option>`)
     .join("");
   setValue("gemini-api-key", settings.geminiApiKey);
-  setValue("gemini-model", settings.geminiModel || "gemini-2.0-flash");
+  setValue("gemini-model", settings.geminiModel || DEFAULT_GEMINI_MODEL);
   setValue("default-video-style", settings.defaultVideoStyle || "review");
   setValue("default-language", settings.defaultLanguage || "ไทย");
   setValue("caption-template", settings.postDefaults?.captionTemplate || "{product_name} {price} {cta}");
@@ -27,7 +27,7 @@ async function loadOptions() {
 async function saveSettings() {
   const settings = {
     geminiApiKey: getValue("gemini-api-key"),
-    geminiModel: getValue("gemini-model") || "gemini-2.0-flash",
+    geminiModel: getValue("gemini-model") || DEFAULT_GEMINI_MODEL,
     defaultVideoStyle: getValue("default-video-style"),
     defaultLanguage: getValue("default-language"),
     postDefaults: {
