@@ -5,7 +5,7 @@ description: Build, maintain, and polish the TikTok Video Creator Chrome Extensi
 
 # TikTok Video Creator
 
-*Last Updated: May 2026*
+*Last Updated: May 10, 2026*
 
 ## Core Context
 

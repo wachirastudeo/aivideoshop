@@ -1,6 +1,6 @@
 # TikTok Video Creator Extension - Project Handoff
 
-*อัพเดตล่าสุด: พฤษภาคม 2026*
+*อัพเดตล่าสุด: 10 พฤษภาคม 2026*
 
 ## ภาพรวมโปรเจกต์
 

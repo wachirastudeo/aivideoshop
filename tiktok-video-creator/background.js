@@ -130,7 +130,10 @@ function injectPromptIntoFlow(prompt, phase, imageDataUrl) {
       const waitForUI = () => new Promise(res => {
         const start = Date.now();
         const timer = setInterval(() => {
-          const btn = Array.from(document.querySelectorAll("button")).find(b => (b.textContent || "").toLowerCase().includes("new project"));
+          const btn = Array.from(document.querySelectorAll("button, [role='button']")).find(b => {
+            const text = (b.textContent || "").toLowerCase();
+            return text.includes("new project");
+          });
           const fld = document.querySelector("textarea, [contenteditable='true']");
           if (btn || fld || Date.now() - start > 15000) {
             clearInterval(timer);
@@ -141,9 +144,13 @@ function injectPromptIntoFlow(prompt, phase, imageDataUrl) {
       await waitForUI();
 
       // 0. ตรวจสอบว่าอยู่หน้า Dashboard หรือไม่
-      const newProjectBtn = Array.from(document.querySelectorAll("button, [role='button']")).find(b => 
-        (b.textContent || "").toLowerCase().includes("new project")
-      );
+      const newProjectBtn = Array.from(document.querySelectorAll("button, [role='button']")).find(b => {
+         const text = (b.textContent || "").toLowerCase();
+         // ไม่เอาปุ่มที่มีไอคอน add_2 (นั่นคือปุ่ม attachment ใน editor)
+         const hasAddIcon = b.querySelector("i")?.textContent.includes("add_2");
+         return text.includes("new project") && !hasAddIcon;
+      });
+      
       if (newProjectBtn) {
         helper.textContent = "⏳ Clicking 'New project'...";
         newProjectBtn.click();
@@ -159,57 +166,81 @@ function injectPromptIntoFlow(prompt, phase, imageDataUrl) {
       }
 
       // 0.5 ตั้งค่า Mode (Image/Video) และสัดส่วน 9:16
-      const settingsBtn = Array.from(document.querySelectorAll("button[aria-haspopup='menu']")).find(b => 
-        b.textContent.includes("Image") || 
-        b.textContent.includes("Video") || 
-        b.textContent.includes("crop_") || 
-        b.textContent.includes("1x") ||
-        b.querySelector("i")
+      const settingsBtn = Array.from(document.querySelectorAll("button[aria-haspopup='menu'], button[aria-haspopup='dialog'], button[aria-haspopup='true']")).find(b => 
+        (b.textContent || "").includes("Image") || 
+        (b.textContent || "").includes("Video") || 
+        (b.textContent || "").includes("crop_") || 
+        (b.textContent || "").includes("1x") ||
+        (b.querySelector("i") && !b.querySelector("i").textContent.includes("add_2"))
       );
       if (settingsBtn) {
         helper.textContent = "⏳ Setting up mode and 9:16 ratio...";
         settingsBtn.click();
         await sleep(500); // รอเมนูเปิด
         
-        const tabs = Array.from(document.querySelectorAll("[role='tab']"));
+        const tabs = Array.from(document.querySelectorAll("[role='tab'], [role='menuitem']"));
         
         // เลือกโหมดตาม phase
         const modeText = phase === "image" ? "Image" : "Video";
-        const modeTab = tabs.find(t => t.textContent.trim() === modeText);
+        const modeTab = tabs.find(t => (t.textContent || "").trim() === modeText);
         if (modeTab && modeTab.getAttribute("aria-selected") !== "true") {
           modeTab.click();
           await sleep(300);
         }
         
         // เลือก 9:16
-        const ratioTab = tabs.find(t => t.textContent.includes("9:16"));
+        const ratioTab = tabs.find(t => (t.textContent || "").includes("9:16"));
         if (ratioTab && ratioTab.getAttribute("aria-selected") !== "true") {
           ratioTab.click();
           await sleep(300);
         }
         
-        // ปิดเมนู
-        if (settingsBtn.getAttribute("aria-expanded") === "true") {
+        // ปิดเมนู (ถ้าเป็น dialog อาจต้องกดที่อื่น หรือกดซ้ำ)
+        if (settingsBtn.getAttribute("aria-expanded") === "true" || settingsBtn.getAttribute("data-state") === "open") {
           settingsBtn.click();
           await sleep(500);
         }
       }
 
       // 1. Upload File ก่อน
-      if (imageDataUrl) {
+      if (imageDataUrl && imageDataUrl.startsWith("data:")) {
+        // หาปุ่ม attachment add_2 แล้วคลิกเพื่อเปิดเมนู Upload Image ถ้ายังไม่เปิด
+        const attachBtn = Array.from(document.querySelectorAll("button")).find(b => {
+          const iText = b.querySelector("i")?.textContent || "";
+          return iText.includes("add_2");
+        });
+        if (attachBtn && attachBtn.getAttribute("aria-expanded") !== "true" && attachBtn.getAttribute("data-state") !== "open") {
+          attachBtn.click();
+          await sleep(500);
+        }
+
+        const [header, base64] = imageDataUrl.split(',');
+        const mimeMatch = header.match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : "image/png";
+        const bstr = atob(base64);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) u8arr[n] = bstr.charCodeAt(n);
+        const file = new File([new Blob([u8arr], { type: mime })], "ref.png", { type: mime });
+        
+        // วิธีที่ 1: input[type="file"]
         const fileInput = document.querySelector("input[type='file']");
         if (fileInput) {
-          const [header, base64] = imageDataUrl.split(',');
-          const mime = header.match(/:(.*?);/)[1] || "image/png";
-          const bstr = atob(base64);
-          let n = bstr.length;
-          const u8arr = new Uint8Array(n);
-          while (n--) u8arr[n] = bstr.charCodeAt(n);
-          const file = new File([new Blob([u8arr], { type: mime })], "ref.png", { type: mime });
           const dt = new DataTransfer();
           dt.items.add(file);
           fileInput.files = dt.files;
           fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        
+        // วิธีที่ 2: Drop Event บนพื้นที่ Upload Image
+        const uploadDiv = Array.from(document.querySelectorAll("div")).find(d => (d.textContent || "").includes("Upload image"));
+        if (uploadDiv) {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          const dropEvent = new DragEvent("drop", {
+            bubbles: true, cancelable: true, dataTransfer: dt
+          });
+          uploadDiv.dispatchEvent(dropEvent);
         }
       }
 
@@ -225,42 +256,148 @@ function injectPromptIntoFlow(prompt, phase, imageDataUrl) {
           field.dispatchEvent(new Event("change", { bubbles: true }));
           field.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
         } else {
-          field.textContent = prompt;
-          field.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
+          // Content Editable (e.g. Slate.js)
+          document.execCommand('selectAll', false, null);
+          document.execCommand('insertText', false, prompt);
         }
       }
 
       await sleep(1500);
 
-      // 3. Click Generate (หรือกด Enter)
-      const buttons = Array.from(document.querySelectorAll("button, [role='button']"));
-      let generateBtn = buttons.find(b => {
-        const text = (b.textContent || "").toLowerCase();
-        const hasArrow = b.querySelector("i") && b.querySelector("i").textContent === "arrow_forward";
-        // ต้องไม่ถูก disable และ (มีคำที่เกี่ยวข้องซ่อนอยู่ หรือมีไอคอน arrow_forward)
-        return !b.disabled && (text.includes("generate") || text.includes("create") || text.includes("run") || text.includes("submit") || hasArrow);
+      // รอให้ UI พร้อม (รอให้ loading state หายไป)
+      helper.textContent = "⏳ Waiting for UI to be ready...";
+      const waitForUIReady = () => new Promise(res => {
+        const start = Date.now();
+        const checkInterval = setInterval(() => {
+          const buttons = document.querySelectorAll("button, [role='button']");
+          const isLoading = document.querySelector("[role='progressbar']") || 
+                           document.querySelector(".loading") || 
+                           document.querySelector("[aria-busy='true']");
+          if (buttons.length > 0 && !isLoading) {
+            clearInterval(checkInterval);
+            res();
+          }
+          if (Date.now() - start > 10000) {
+            clearInterval(checkInterval);
+            res(); // ให้ดำเนินการต่อแม้ว่ายังไม่พร้อมก็ตาม
+          }
+        }, 300);
       });
+      await waitForUIReady();
 
-      // ถ้าไม่เจอคำชัดเจน ลองหาปุ่มที่มี svg หรือ arrow_forward
-      if (!generateBtn) {
-        generateBtn = buttons.find(b => !b.disabled && (b.querySelector("svg") || (b.querySelector("i") && b.querySelector("i").textContent.includes("arrow"))) && b.getBoundingClientRect().width > 20);
-      }
+      // 3. Click Generate (หรือกด Enter)
+      const getGenerateBtn = () => {
+        const buttons = Array.from(document.querySelectorAll("button, [role='button']"));
+        
+        // ลำดับที่ 1: ค้นหาข้อความแบบ fuzzy match (generate, run, submit, create, confirm)
+        let btn = buttons.find(b => {
+          const text = (b.textContent || "").toLowerCase().trim();
+          return text.includes("generate") || text.includes("run") || text.includes("submit") || 
+                 text.includes("create") || text.includes("confirm") || text.includes("send");
+        });
+        
+        // ลำดับที่ 2: ค้นหาปุ่มที่มี arrow icon (arrow_forward, arrow_right, chevron_right)
+        if (!btn) {
+          btn = buttons.find(b => {
+            const hasArrow = b.querySelector("i") && (
+              b.querySelector("i").textContent.includes("arrow_forward") ||
+              b.querySelector("i").textContent.includes("arrow_right") ||
+              b.querySelector("i").textContent.includes("chevron_right") ||
+              b.querySelector("i").textContent.includes("play_arrow")
+            );
+            const hasSvgArrow = b.querySelector("svg") && b.innerHTML.includes("M");
+            return hasArrow || hasSvgArrow;
+          });
+        }
+        
+        // ลำดับที่ 3: ค้นหาปุ่มสีหลัก (ปุ่มที่เด่นที่สุด - primary button)
+        if (!btn) {
+          btn = buttons.find(b => {
+            const style = window.getComputedStyle(b);
+            const bgColor = style.backgroundColor;
+            const isColorful = bgColor && !bgColor.includes("transparent") && !bgColor.includes("rgba(0") && bgColor !== "rgb(0, 0, 0)";
+            return isColorful && b.getBoundingClientRect().width > 40;
+          });
+        }
+        
+        // ลำดับที่ 4: ค้นหาปุ่ม button[type="submit"] หรือ disabled false และ visible
+        if (!btn) {
+          btn = buttons.find(b => {
+            const isSubmitType = b.getAttribute("type") === "submit" || b.getAttribute("type") === "button";
+            const isVisible = b.offsetHeight > 20 && b.offsetWidth > 20;
+            const isNotDisabled = !b.disabled && !b.getAttribute("disabled");
+            return isSubmitType && isVisible && isNotDisabled;
+          });
+        }
+        
+        // ลำดับที่ 5: ค้นหาปุ่มสุดท้ายที่มี icon หรือ visible ที่สุด
+        if (!btn) {
+          btn = buttons
+            .filter(b => b.offsetHeight > 20 && b.offsetWidth > 20 && !b.disabled)
+            .sort((a, b) => b.offsetWidth * b.offsetHeight - a.offsetWidth * a.offsetHeight)[0];
+        }
+        
+        return btn;
+      };
+
+      const generateBtn = getGenerateBtn();
+      
+      const mediaType = phase === "image" ? "img" : "video";
+      const getMediaSrcs = () => Array.from(document.querySelectorAll(mediaType))
+          .map(el => el.src || el.querySelector("source")?.src)
+          .filter(src => src && !src.startsWith("data:image/svg"));
+      
+      const initialSrcs = getMediaSrcs();
 
       if (generateBtn) {
         helper.textContent = "⏳ Generating... (Waiting up to 2 mins)";
+        console.log("[AutoFlow] Generate button found. Clicking...", generateBtn);
         generateBtn.click();
       } else if (field) {
-        // Fallback
+        // Fallback: กด Enter บนช่องฟอร์ม
         helper.textContent = "⏳ Pressing Enter... (Waiting up to 2 mins)";
+        console.log("[AutoFlow] Generate button not found. Trying Enter key on field...", field);
         field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
         field.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
         field.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
       } else {
+        // Debug: ให้ข้อมูลมากขึ้นเพื่อช่วยแก้ไข
+        const allButtons = Array.from(document.querySelectorAll("button, [role='button']"));
+        const buttonTexts = allButtons.map(b => ({
+          text: (b.textContent || "").substring(0, 50),
+          hasIcon: !!b.querySelector("i") || !!b.querySelector("svg"),
+          visible: b.offsetHeight > 0 && b.offsetWidth > 0
+        }));
+        console.error("[AutoFlow] Debug - Buttons on page:", buttonTexts);
         throw new Error("หาปุ่ม Generate ไม่พบ");
       }
 
+      await sleep(3000); // รอให้ระบบเริ่ม generate
+
       // 4. Wait for output
-      const resultUrl = await waitForNewMedia(phase === "image" ? "img" : "video", 120000);
+      const resultUrl = await new Promise((res, rej) => {
+        const start = Date.now();
+        const timer = setInterval(() => {
+          const currentSrcs = getMediaSrcs();
+          const newSrc = currentSrcs.find(src => !initialSrcs.includes(src));
+          
+          const btn = getGenerateBtn();
+          const hasSpinner = document.querySelector("[role='progressbar'], .animate-spin, svg use[href*='spinner']");
+          const isGenerating = hasSpinner || (btn && (btn.disabled || (btn.textContent || "").toLowerCase().includes("stop") || (btn.textContent || "").toLowerCase().includes("cancel")));
+
+          // ถ้ามี newSrc และสถานะไม่ได้กำลัง generate (หรือเวลาผ่านไปนานกว่า 10 วิแล้วมี newSrc) 
+          // บางครั้ง UI ของ Google อาจจะไม่โชว์ spinner ชัดเจน
+          const timeElapsed = Date.now() - start;
+          if (newSrc && (!isGenerating || timeElapsed > 15000)) {
+            clearInterval(timer);
+            res(newSrc);
+          } else if (timeElapsed > 120000) {
+            clearInterval(timer);
+            if (newSrc) res(newSrc); // fallback คืนค่าเท่าที่มี
+            else rej(new Error("Timeout รอโหลด Media"));
+          }
+        }, 1000);
+      });
       
       helper.textContent = "✅ Success!";
       await sleep(1000);
