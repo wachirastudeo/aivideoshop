@@ -64,6 +64,11 @@ Primary flow:
 - `options/options.html`: settings UI.
 - `options/options.js`: token/API key/settings persistence.
 
+## Project Documentation
+
+- `PROJECT_HANDOFF.md`: Detailed project overview, current mission, and status.
+- `AGENTS.md`: Agent personas, roles, and project vibe for development teams.
+
 ## Implementation Workflow
 
 1. Read `PROJECT_HANDOFF.md` and `AGENTS.md` before large changes.

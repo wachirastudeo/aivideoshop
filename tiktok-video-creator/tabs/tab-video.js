@@ -210,6 +210,25 @@ function renderQueue() {
               <span class="field__label">URL วิดีโอจาก Google Flow</span>
               <input class="input batch-video-url" type="url" placeholder="วาง URL ที่นี่" value="${escapeHtml(p.videoUrl || '')}">
             </label>
+
+            <div class="card" style="background: rgba(255,255,255,0.05); margin-top: 10px; padding: 10px; border: none;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <label class="field">
+                  <span class="field__label">ความเป็นส่วนตัว</span>
+                  <select class="input batch-privacy">
+                    <option value="PUBLIC">สาธารณะ (Public)</option>
+                    <option value="FRIENDS">เพื่อนเท่านั้น</option>
+                    <option value="PRIVATE">ส่วนตัว (Private)</option>
+                  </select>
+                </label>
+                <div style="display: flex; flex-direction: column; gap: 5px; font-size: 11px;">
+                  <label><input type="checkbox" class="batch-allow-comment" checked> อนุญาตคอมเมนต์</label>
+                  <label><input type="checkbox" class="batch-allow-duet" checked> อนุญาต Duet</label>
+                  <label><input type="checkbox" class="batch-allow-stitch" checked> อนุญาต Stitch</label>
+                </div>
+              </div>
+            </div>
+
             <div class="inline-actions" style="margin-top: 12px;">
               <button class="button batch-download button--full" type="button" style="flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download</button>
               <button class="button button--primary batch-post button--full" type="button" style="flex:1;">โพสต์ลง TikTok</button>

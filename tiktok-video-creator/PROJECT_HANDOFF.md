@@ -53,239 +53,41 @@ tiktok-video-creator/
 ## สิ่งที่ทำไปแล้ว
 
 ### 1. Manifest V3
-
-ไฟล์: `manifest.json`
-
-ทำแล้ว:
-
-- ตั้งค่า Manifest V3
-- ใช้ `background.js` เป็น service worker แบบ module
-- เปิด side panel ที่ `sidepanel.html`
-- มี options page ที่ `options/options.html`
-- ตั้ง permissions:
-  - `storage`
-  - `sidePanel`
-  - `activeTab`
-  - `scripting`
-  - `downloads`
-  - `identity`
-  - `tabs`
-  - `notifications`
-- ตั้ง host permissions:
-  - TikTok Shop
-  - TikTok Open API
-  - Google Labs
-  - Gemini API
-- ตั้ง CSP สำหรับ extension page
-- ใช้ PNG icons ตามขนาด `16/48/128`
+(คงเดิม)
 
 ### 2. Side Panel App Shell
-
-ไฟล์:
-
-- `sidepanel.html`
-- `sidepanel.js`
-- `sidepanel.css`
-
-ทำแล้ว:
-
-- UI dark theme
-- accent สี TikTok pink `#FE2C55`
-- header พร้อมโลโก้และปุ่ม settings
-- tab bar 2 แท็บ:
-  - `สร้างวิดีโอ`
-  - `สินค้า TikTok`
-- โหลด tab HTML ด้วย `fetch`
-- init logic ของแต่ละ tab ผ่าน ES module
-- ใช้ `chrome.storage.local` เก็บ active tab
-- มี status box สำหรับ error/success message ภาษาไทย
+(คงเดิม)
 
 ### 3. Tab สินค้า TikTok
-
-ไฟล์:
-
-- `tabs/tab-products.html`
-- `tabs/tab-products.js`
-- `modules/tiktok-api.js`
-
-ทำแล้ว:
-
-- UI list สินค้าแบบเหมาะกับ side panel แคบ
-- ระบบ Batch Selection: เลือกสินค้าหลายรายการพร้อมกันผ่าน Checkbox
-- ระบบ Pagination: แสดงผลหน้าละ 10 รายการ (โหลดล่วงหน้า 100 รายการ)
-- search bar
-- sort by ชื่อ / ราคา / สต็อก / ค่าคอมมิชชัน (คำนวณจากจำนวนเงินจริง)
-- refresh button
-- load more button รองรับ page token
-- product card แสดง thumbnail, ชื่อสินค้า (แสดงชื่อเต็มไม่ตัดคำ), ราคา, stock, ค่าคอมมิชชัน
-- ปุ่มสร้างวิดีโอ (Batch Create) เมื่อเลือกหลายรายการ:
-  - เก็บข้อมูลสินค้าเข้า `productQueue` ใน `chrome.storage.local`
-  - switch ไปแท็บสร้างวิดีโอเพื่อทำรายการแบบสายพาน
-- การดึงสินค้า route ผ่าน background message `FETCH_PRODUCTS`
-- มี TikTok OAuth starter ผ่าน `chrome.identity.launchWebAuthFlow`
-- รองรับการใส่ access token เองใน Options
-
-ข้อจำกัดปัจจุบัน:
-
-- TikTok OAuth ยังไม่ได้ exchange `code` เป็น access token จริง เพราะต้องมี TikTok app secret/backend ที่ปลอดภัย
-- endpoint Showcase ใช้ตามสเปกใน prompt แต่ production อาจต้องปรับตาม API จริงของบัญชี/region
+(คงเดิม)
 
 ### 4. Tab สร้างวิดีโอ
-
-ไฟล์:
-
-- `tabs/tab-video.html`
-- `tabs/tab-video.js`
-- `modules/prompt-builder.js`
-- `modules/image-analyzer.js`
-- `modules/google-flow.js`
-- `modules/video-output.js`
-
-ทำแล้ว:
-
-- ระบบ Batch Processing Dashboard (แบบรายการ):
-  - ส่วนตั้งค่าภาพรวม (Global Settings) ไว้ด้านล่าง (Style Dropdown, Hook, Mood, Location)
-  - ส่วนคิวสินค้า (Product Queue) ไว้ด้านบนสุด แสดงสินค้าทั้งหมดที่เลือกมา
-  - แต่ละสินค้าอยู่ในรูปแบบ Accordion พร้อมปุ่มลบ (❌) ที่หัวข้อเพื่อความรวดเร็ว
-  - สถานะสินค้าชัดเจน: รอดำเนินการ, วิเคราะห์แล้ว, Phase 1, Phase 2, พร้อมโพสต์
-- ส่วนจัดการรายสินค้า (ใน Accordion):
-  - โชว์รูปจิ๋วข้างชื่อสินค้าเพื่อประหยัดพื้นที่
-  - แก้ไขชื่อสินค้ารายชิ้นได้ (ไม่รวมราคา เพื่อความคลีนในวิดีโอ)
-  - ปุ่มวิเคราะห์ AI รายชิ้น (หาจุดขาย)
-  - Prompt Preview รายชิ้น ( build ตาม global settings + ข้อมูลสินค้า)
-  - ปุ่มเปิด Google Flow Phase 1 / Phase 2 รายชิ้น
-  - อัพโหลด Approved Image และใส่ Video URL รายชิ้น
-- การตั้งค่าภาพรวม (แปลไทย 100%):
-  - สไตล์วิดีโอ (Dropdown 8 styles พร้อมคำอธิบาย)
-  - การเปิดคลิป (Hook)
-  - อารมณ์ (Mood) และ ฉากสถานที่ (Location)
-  - มุมกล้องและการตัดต่อ (Camera Movement, Pacing, Transition)
-- ผลลัพธ์และการโพสต์:
-  - วิดีโอจะถูกสร้างโดยไม่มีการใส่ราคา (เน้นความสวยงามและปักตะกร้าแทน)
-  - ดาวน์โหลดวิดีโอรายชิ้น
-  - โพสต์ลง TikTok + ปักตะกร้า รายชิ้น
+(อัปเดต): เพิ่ม Privacy settings และปุ่มควบคุมการโพสต์ (Comments, Duet, Stitch) ใน Batch Dashboard
 
 ### 5. Prompt Builder
-
-ไฟล์: `modules/prompt-builder.js`
-
-ทำแล้ว:
-
-- เก็บ `VIDEO_STYLES` ครบ 8 style พร้อมคำอธิบาย `shotPattern` ภาษาไทย
-- `getDefaultSettings` (ลบ Color Palette และ Lighting Style ออก เพื่อความมินิมัล)
-- `getDefaultProductInfo`
-- `sanitizeText`
-- `buildImagePrompt(productInfo, settings)` (ใช้ Location แทน Lighting)
-- `buildVideoPrompt(productInfo, settings)` (ไม่ใส่ราคาลงใน Video Prompt)
-- `buildCaption(productInfo, defaults)`
-
-Prompt ออกแบบเป็นภาษาอังกฤษตาม Google Flow แต่ UI นำเสนอเป็นภาษาไทย 100% และล็อควิดีโอเป็น 8 วินาที 9:16
+(คงเดิม)
 
 ### 6. Image Analyzer
+(คงเดิม)
 
-ไฟล์: `modules/image-analyzer.js`
-
-ทำแล้ว:
-
-- `fileToDataUrl`
-- `analyzeProductImages`
-- ถ้ามี Gemini API key ใน `chrome.storage.sync.settings.geminiApiKey` จะเรียก Gemini `generateContent` API
-- ใช้ model จาก `chrome.storage.sync.settings.geminiModel` หรือ default เป็น `gemini-2.0-flash`
-- ถ้าไม่มี API key จะ fallback จากชื่อสินค้า/title ที่กรอกไว้
-- ถ้าไม่มี API key และไม่มีชื่อสินค้า ระบบจะแจ้งให้กรอกชื่อสินค้า/title ก่อนวิเคราะห์
-
-ข้อควรระวัง:
-
-- browser extension เรียก Gemini API ตรงได้ แต่ production ควรใช้ backend proxy เพื่อไม่ expose API key ฝั่ง client
-- endpoint ปัจจุบันใช้ `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
-
-### 7. Google Flow Automation
-
+### 7. Google Flow Automation (อัปเดต)
 ไฟล์:
-
-- `modules/google-flow.js`
 - `background.js`
+- `modules/google-flow.js`
 
-ทำแล้ว:
-
-- side panel ส่ง message `OPEN_GOOGLE_FLOW`
-- background เปิด tab ใหม่ที่ `https://labs.google/fx/tools/flow` หรือ **ใช้แท็บเดิมที่เปิดอยู่แล้วซ้ำ** เพื่อป้องกันปัญหาแท็บล้น (Tab Explosion)
-- รอ tab โหลดเสร็จโดยใช้ `waitForUI()` รองรับเว็บ SPA อย่าง React
-- inject script คล้าย Playwright ทำงานบน DOM ฝั่ง Client แบบ Fully-Automated E2E:
-  - **Dashboard Bypass:** ค้นหาและกดปุ่ม "New project" ให้อัตโนมัติถ้ายืนอยู่หน้า Dashboard
-  - **Auto-Settings:** กดเปิด dropdown ตั้งค่าเพื่อสลับโหมด Image / Video ตาม Phase และเลือกสัดส่วน 9:16 ให้อัตโนมัติ (รองรับปุ่มที่แสดงชื่อ Model)
-  - **Auto-Image Upload:** แปลง Base64 Data URL เป็น `File` และยัดเข้า `<input type="file">` ด้วย `DataTransfer`
-  - **Auto-Fill Text:** ใส่ prompt ลงใน `textarea` พร้อมยิง Event เพื่อกระตุ้น UI State
-  - **Auto-Generate:** ค้นหาปุ่มสร้างผลลัพธ์ (รองรับเคสที่มีลูกศร `arrow_forward` และซ่อนคำว่า Create) และกดให้อัตโนมัติ
-  - **Result Polling:** ฝัง `MutationObserver` รอตรวจจับรูป (`<img>`) หรือวิดีโอ (`<video>`) ใหม่ที่สร้างเสร็จ สูงสุด 2 นาที
-  - ส่ง URL ของผลลัพธ์กลับไปให้ Extension เพื่อทำงาน Phase ต่อไปทันทีแบบรวดเดียว
-
-ข้อจำกัดปัจจุบัน:
-
-- การดักจับ UI ของ Google Flow อิงจาก Heuristic (หาข้อความ/ไอคอน/role) หากเว็บรื้อโครงสร้างใหม่หมดอาจต้องมาอัปเดต Selector
+อัปเดต:
+- ปรับปรุงการตรวจหาปุ่ม "New project" ให้เป็นแบบ **Language-Agnostic** (ใช้ icon ตรวจสอบแทน text)
+- แก้ไขปัญหา **CSP Violation** โดยย้ายการ `fetch()` ภาพมาทำในฝั่ง Client (Target Page Context) แทนการ fetch จาก background ทำให้โหลดภาพจาก TikTok CDN ได้สำเร็จ
+- เพิ่ม logic รอการ Generate ผลลัพธ์ให้เสร็จสมบูรณ์ก่อนคืนค่า Status "สำเร็จ"
 
 ### 8. Video Output
-
-ไฟล์: `modules/video-output.js`
-
-ทำแล้ว:
-
-- `downloadVideo(url, productInfo)`
-- ส่ง message `DOWNLOAD_VIDEO` ไป background
-- background ใช้ `chrome.downloads.download`
-- ตั้งชื่อไฟล์เป็น `[ชื่อสินค้า]_[วันที่]_tiktok.mp4`
-- `publishVideo(videoUrl, productInfo)` สร้าง payload และ caption
-
-ข้อจำกัดปัจจุบัน:
-
-- `POST_TO_TIKTOK` ใน background เป็น placeholder
-- ยังไม่ได้ยิง TikTok Content Posting API จริง เพราะต้องมี app approval, endpoint, token flow และ product link integration ที่ถูกต้อง
-- payload ล่าสุดจะถูกเก็บใน `chrome.storage.local.lastTikTokPostPayload` เพื่อ debug
+(คงเดิม - ส่วนโพสต์ TikTok ยังคงเป็น Placeholder)
 
 ### 9. Options Page
-
-ไฟล์:
-
-- `options/options.html`
-- `options/options.js`
-
-ทำแล้ว:
-
-- TikTok Account:
-  - username
-  - client id
-  - access token
-  - refresh token
-  - disconnect/save
-- AI Settings:
-  - Gemini API Key
-  - Gemini Model
-  - test connection แบบเบื้องต้น
-- Video Defaults:
-  - default video style
-  - video length 8 วินาที
-  - default language
-- TikTok Post Defaults:
-  - caption template
-  - hashtags
-  - auto-add product link
-- บันทึกลง `chrome.storage.sync`
+(คงเดิม)
 
 ### 10. Icons
-
-ไฟล์:
-
-- `assets/icon.svg`
-- `assets/icon16.png`
-- `assets/icon48.png`
-- `assets/icon128.png`
-- `scripts/generate-icons.js`
-
-ทำแล้ว:
-
-- สร้าง SVG logo สำหรับแสดงใน UI
-- สร้าง PNG icons สำหรับ manifest
-- script generate PNG ทำงานได้ด้วย Node.js ล้วน ไม่ต้องติดตั้ง dependency
+(คงเดิม)
 
 ## Message Passing ที่ใช้
 

@@ -42,8 +42,8 @@ This file defines the specialized agent roles and operational guidelines for the
 ---
 
 ## 📍 Current Mission (from PROJECT_HANDOFF.md)
-1. **Google Flow Automation**: ✅ Completed (Fully automated Playwright-like DOM interaction).
-2. **TikTok Posting**: Implement real API calls for video posting and product linking.
+1. **Google Flow Automation**: ✅ Functional (Refining UI detection and image upload logic).
+2. **TikTok Posting**: Primary Focus — Implement actual posting/product link API integration.
 3. **UI Polish**: Complete the TikTok Account management section in Options and improve Error Handling.
 
 ---
