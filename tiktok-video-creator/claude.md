@@ -21,6 +21,11 @@ When analyzing product images (using Claude Vision):
 - **Identify**: Product category, primary color, key features, and brand vibe.
 - **Suggest**: Target audience (e.g., Gen Z, professional, hobbyist) and a "Video Hook" based on the product's unique selling point.
 
+## 💬 Communication Style
+- **Token Efficiency**: Keep responses short, direct, and actionable. Avoid long explanations unless requested.
+- **Concise Code**: Focus on the logic change, not the entire file, unless necessary.
+- **Language**: Respond in the user's language (Thai/English) clearly and briefly.
+
 ## 📂 Key Files to Reference
 - `manifest.json`: For permissions and entry points.
 - `PROJECT_HANDOFF.md`: For the current state of the project.
