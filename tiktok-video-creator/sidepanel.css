@@ -1,17 +1,17 @@
 :root {
-  --bg: #000000;
-  --panel: #0d0d0f;
-  --panel-2: #17171a;
+  --bg: #0a0a0c;
+  --panel: #161618;
+  --panel-2: #1f1f23;
   --text: #ffffff;
   --muted: #a7a7b1;
   --muted-2: #73737d;
-  --line: #2a2a30;
+  --line: #2a2a2e;
   --accent: #fe2c55;
   --accent-soft: rgba(254, 44, 85, 0.12);
   --success: #22c55e;
   --danger: #ef4444;
   --warning: #f59e0b;
-  --radius: 0;
+  --radius: 12px;
   color-scheme: dark;
 }
 
@@ -69,14 +69,15 @@ html[data-mode="tab"] .app-shell {
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  background: var(--bg);
+  background: rgba(10, 10, 12, 0.8);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
 
 .app-header__logo {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius);
+  border-radius: 8px;
 }
 
 .app-header__title {
@@ -103,10 +104,10 @@ html[data-mode="tab"] .app-shell {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   border: 1px solid transparent;
   color: var(--muted);
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .icon-button:hover {
@@ -117,9 +118,9 @@ html[data-mode="tab"] .app-shell {
 
 .batch-remove {
   opacity: 0.6;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   padding: 4px;
-  border-radius: var(--radius);
+  border-radius: 8px;
 }
 
 .batch-remove:hover {
@@ -135,10 +136,10 @@ html[data-mode="tab"] .app-shell {
   gap: 8px;
   min-height: 38px;
   padding: 8px 14px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   font-weight: 650;
   font-size: 13px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--text);
@@ -147,17 +148,20 @@ html[data-mode="tab"] .app-shell {
 .button:hover:not(:disabled) {
   border-color: #4a4a52;
   background: var(--panel-2);
+  transform: translateY(-1px);
 }
 
 .button--primary {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), #ff3f66);
   border-color: var(--accent);
   color: white;
 }
 
 .button--primary:hover:not(:disabled) {
-  background: #ff3f66;
+  background: linear-gradient(135deg, #ff3f66, #ff5580);
   border-color: #ff3f66;
+  box-shadow: 0 4px 12px rgba(254, 44, 85, 0.3);
+  transform: translateY(-2px);
 }
 
 .button--ghost {
@@ -179,29 +183,31 @@ html[data-mode="tab"] .app-shell {
   padding: 8px 16px;
   background: var(--bg);
   border-bottom: 1px solid var(--line);
-  gap: 0;
+  gap: 8px;
 }
 
 .tab-bar__button {
   flex: 1;
   height: 34px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 650;
   color: var(--muted);
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  background: transparent;
 }
 
 .tab-bar__button:hover {
   color: var(--text);
+  background: var(--panel);
 }
 
 .tab-bar__button--active {
-  background: transparent;
-  color: var(--text);
-  border-bottom-color: var(--accent);
-  box-shadow: none;
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(254, 44, 85, 0.2);
 }
 
 .tab-root {
@@ -214,7 +220,8 @@ html[data-mode="tab"] .app-shell {
 .section--sticky {
   position: sticky;
   bottom: 0;
-  background: var(--bg);
+  background: rgba(10, 10, 12, 0.9);
+  backdrop-filter: blur(10px);
   border-top: 1px solid var(--line);
   padding: 12px 16px;
   z-index: 10;
@@ -223,7 +230,7 @@ html[data-mode="tab"] .app-shell {
 .status {
   margin: 12px 16px 0;
   padding: 10px 12px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   font-size: 13px;
   border: 1px solid var(--line);
   background: var(--panel);
@@ -270,7 +277,7 @@ html[data-mode="tab"] .app-shell {
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 12px;
   padding: 14px;
 }
 
@@ -292,11 +299,11 @@ html[data-mode="tab"] .app-shell {
   width: 100%;
   padding: 9px 10px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #000000;
+  border-radius: 8px;
+  background: #0a0a0c;
   color: var(--text);
   font-size: 13px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .input:focus,
@@ -304,7 +311,7 @@ html[data-mode="tab"] .app-shell {
 .select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: inset 3px 0 0 var(--accent);
+  box-shadow: 0 0 0 3px rgba(254, 44, 85, 0.1), inset 0 0 0 1px var(--accent);
 }
 
 .textarea {
@@ -328,7 +335,7 @@ html[data-mode="tab"] .app-shell {
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 700;
   background: var(--accent-soft);
@@ -345,10 +352,10 @@ html[data-mode="tab"] .app-shell {
 .style-card {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 12px;
   padding: 12px;
   text-align: left;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -356,13 +363,16 @@ html[data-mode="tab"] .app-shell {
 }
 
 .style-card:hover {
-  border-color: #4a4a52;
+  border-color: var(--accent);
   background: var(--panel-2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(254, 44, 85, 0.1);
 }
 
 .style-card--active {
   border-color: var(--accent);
   background: var(--accent-soft);
+  box-shadow: 0 4px 12px rgba(254, 44, 85, 0.2);
 }
 
 .style-card strong {
@@ -389,17 +399,18 @@ html[data-mode="tab"] .app-shell {
 
 .pill {
   padding: 6px 12px;
-  border-radius: var(--radius);
+  border-radius: 20px;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .pill:hover {
   background: var(--panel-2);
+  border-color: var(--accent);
 }
 
 .pill--active {
@@ -411,12 +422,12 @@ html[data-mode="tab"] .app-shell {
 .product-card {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 12px;
   padding: 12px;
   display: flex;
   gap: 10px;
   align-items: center;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   margin-bottom: 8px;
 }
 
@@ -426,14 +437,15 @@ html[data-mode="tab"] .app-shell {
 }
 
 .product-card:hover {
-  border-color: #4a4a52;
+  border-color: var(--accent);
   background: var(--panel-2);
+  transform: translateY(-1px);
 }
 
 .product-card__image {
   width: 56px;
   height: 56px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   object-fit: cover;
   background: #000;
   flex-shrink: 0;
@@ -475,7 +487,7 @@ html[data-mode="tab"] .app-shell {
   align-items: center;
   padding: 2px 6px;
   border: 1px solid currentColor;
-  border-radius: var(--radius);
+  border-radius: 6px;
   font-size: 10px;
   font-weight: 650;
   line-height: 1.2;
@@ -492,7 +504,7 @@ html[data-mode="tab"] .app-shell {
 }
 
 .product-batch-item summary {
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .product-batch-item[open] summary {
@@ -512,11 +524,12 @@ html[data-mode="tab"] .app-shell {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius);
+  border-radius: 8px;
   border: 1px solid var(--line);
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
+  transition: all 0.2s ease;
 }
 
 .pagination-button--active {
@@ -543,7 +556,7 @@ html[data-mode="tab"] .app-shell {
 .checkbox-row input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  border-radius: var(--radius);
+  border-radius: 4px;
   accent-color: var(--accent);
 }
 
@@ -591,7 +604,7 @@ html[data-mode="tab"] .app-shell {
 
 ::-webkit-scrollbar-thumb {
   background: #333;
-  border-radius: var(--radius);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -641,8 +654,8 @@ html[data-mode="tab"] .activity-log {
   background: var(--panel-2);
   border: 1px solid var(--line);
   padding: 2px 8px;
-  border-radius: var(--radius);
-  transition: all 0.2s;
+  border-radius: 6px;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
@@ -696,7 +709,7 @@ html[data-mode="tab"] .activity-log {
 .compare-grid img {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--radius);
+  border-radius: 12px;
   border: 1px solid var(--line);
   object-fit: cover;
 }
@@ -707,7 +720,7 @@ html[data-mode="tab"] .activity-log {
   color: var(--muted);
   font-size: 13px;
   border: 1px dashed var(--line);
-  border-radius: var(--radius);
+  border-radius: 12px;
 }
 
 .product-toolbar {
@@ -726,6 +739,7 @@ html[data-mode="tab"] .activity-log {
   background: var(--panel);
   border: 1px solid var(--line);
   margin-bottom: 12px;
+  border-radius: 12px;
 }
 
 .batch-actions .button {
@@ -795,7 +809,7 @@ html[data-mode="tab"] .activity-log {
 .product-batch-image {
   width: 48px;
   height: 48px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   object-fit: cover;
   border: 1px solid var(--line);
 }
@@ -831,7 +845,7 @@ html[data-mode="tab"] .activity-log {
 
 .chevron {
   color: var(--muted);
-  transition: transform 0.2s;
+  transition: transform 0.2s ease;
   display: flex;
 }
 
@@ -887,7 +901,7 @@ html[data-mode="tab"] .activity-log {
   width: 60px;
   height: 60px;
   object-fit: cover;
-  border-radius: var(--radius);
+  border-radius: 8px;
   border: 1px solid var(--line);
 }
 
@@ -966,6 +980,7 @@ html[data-mode="tab"] .activity-log {
   background: var(--panel);
   border: 1px solid var(--line);
   color: var(--muted);
+  border-radius: 12px;
 }
 
 .settings-note p {
