@@ -70,7 +70,7 @@ function injectPromptIntoFlow(prompt, phase, imageUrl) {
   return new Promise(async (resolve) => {
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const helper = document.createElement("div");
-    helper.style.cssText = "position:fixed;z-index:99999;left:16px;bottom:16px;padding:12px 16px;border-radius:8px;background:#111;color:#fff;border:1px solid #0f0;font:13px system-ui;max-width:320px;";
+    helper.style.cssText = "position:fixed;z-index:99999;left:16px;bottom:16px;padding:12px 16px;border-radius:8px;background:#111;color:#fff;border:1px solid #0f0;font:13px system-ui;max-width:320px;box-shadow: 0 4px 12px rgba(0,0,0,0.5);";
     helper.textContent = "🤖 Auto Flow กำลังทำงาน...";
     document.body.append(helper);
     const log = (msg) => { helper.textContent = "🤖 " + msg; console.log("[AutoFlow]", msg); };
@@ -81,103 +81,244 @@ function injectPromptIntoFlow(prompt, phase, imageUrl) {
       // --- 1. NEW PROJECT CHECK ---
       if (!window.location.pathname.includes('/project/')) {
           log("หน้า Dashboard: คลิกเปิดโปรเจกต์ใหม่...");
-          const addBtn = Array.from(document.querySelectorAll("i")).find(i => i.textContent === "add_2")?.closest("button");
-          if (addBtn) { addBtn.click(); await sleep(3000); }
-      } else {
-          log("อยู่ในหน้า Project แล้ว...");
+          let addBtn = Array.from(document.querySelectorAll("i")).find(i => i.textContent === "add" || i.textContent === "add_2" || i.textContent === "add_circle")?.closest("button");
+          if (!addBtn) addBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.toLowerCase().includes("new project"));
+
+          if (addBtn) { 
+            addBtn.click(); 
+            await sleep(4000); 
+          } else {
+            log("⚠️ หาปุ่ม New Project ไม่เจอ...");
+          }
       }
 
-      // --- 2. DIRECT IMAGE UPLOAD ---
+      // --- 2. ASPECT RATIO & MODE SELECTION ---
+      log(`ตั้งค่าโหมด ${phase === "image" ? "Image" : "Video"} และ Portrait (9:16)...`);
+      
+      const setModeAndRatio = async () => {
+          // 1. Open Mode/Aspect Ratio popover
+          const menuBtn = Array.from(document.querySelectorAll('button')).find(b => {
+              const text = (b.textContent || "").toLowerCase();
+              const html = b.innerHTML || "";
+              return (text.includes("video") || text.includes("image") || html.includes("crop_") || text.includes("1x")) && !b.disabled;
+          });
+
+          if (menuBtn) {
+              log("กำลังเปิดเมนูตั้งค่า...");
+              menuBtn.click();
+              await sleep(1500); // Wait for popover to open
+          } else {
+              log("หาปุ่มเปิดเมนูไม่เจอ (พยายามค้นหาการตั้งค่าโดยตรง)");
+          }
+
+          // 2. Select Mode (Image or Video)
+          const modeText = phase === "image" ? "Image" : "Video";
+          const modeTab = Array.from(document.querySelectorAll('button[role="tab"], div[role="tab"], button')).find(el => {
+              const text = el.textContent.trim().toLowerCase();
+              const aria = (el.getAttribute('aria-label') || "").toLowerCase();
+              return (text === modeText.toLowerCase() || aria === modeText.toLowerCase()) && el.offsetWidth > 0;
+          });
+          
+          if (modeTab) {
+              modeTab.click();
+              log(`กดเลือกโหมด ${modeText} แล้ว`);
+              await sleep(1000);
+          } else {
+              log(`หาโหมด ${modeText} ไม่เจอในเมนู`);
+          }
+          
+          // 3. Select 9:16 Aspect Ratio
+          let portraitBtn = document.querySelector('button[aria-label="9:16"], button[aria-label*="9:16"], button[aria-label*="Portrait"], button[id$="-PORTRAIT"]');
+          
+          if (!portraitBtn) {
+              portraitBtn = Array.from(document.querySelectorAll('button, [role="tab"], [role="option"]')).find(el => {
+                  const text = el.textContent.trim();
+                  return (text === "9:16" || text.includes("Portrait") || text.includes("9:16")) && el.offsetWidth > 0;
+              });
+          }
+
+          if (portraitBtn) {
+              portraitBtn.click();
+              log("เลือกสัดส่วน 9:16 สำเร็จ!");
+              await sleep(1000);
+          } else {
+              log("หาตัวเลือก 9:16 ไม่เจอ");
+          }
+          
+          // Close popup by clicking elsewhere
+          document.body.click();
+          await sleep(500);
+          return true;
+      };
+
+      await setModeAndRatio();
+      await sleep(1000);
+
+      // --- 3. DIRECT IMAGE UPLOAD ---
       if (imageUrl) {
-        log("กำลังดึงภาพ...");
+        log("กำลังอัปโหลดรูปภาพอ้างอิง...");
         try {
-            const fileInputs = document.querySelectorAll('input[type="file"]');
-            let fileInput = null;
-            for (const input of fileInputs) {
-              const accept = input.getAttribute("accept") || "";
-              if (accept.includes("image") || accept === "" || accept.includes("*")) {
-                fileInput = input;
-                break;
-              }
+            let fileInput = document.querySelector('input[type="file"]');
+            if (!fileInput) {
+                const addMediaBtn = Array.from(document.querySelectorAll('button')).find(b => 
+                  b.textContent.toLowerCase().includes("add media") || b.textContent.toLowerCase().includes("add ingredients")
+                );
+                if (addMediaBtn) { addMediaBtn.click(); await sleep(1500); }
+                fileInput = document.querySelector('input[type="file"]');
             }
             
             if (fileInput) {
                 const res = await fetch(imageUrl);
                 const blob = await res.blob();
                 const file = new File([blob], "image.png", { type: blob.type });
-
                 const dt = new DataTransfer();
                 dt.items.add(file);
                 fileInput.files = dt.files;
-                
-                // Trigger events to notify React
                 fileInput.dispatchEvent(new Event('change', { bubbles: true }));
                 fileInput.dispatchEvent(new Event('input', { bubbles: true }));
-                log("ยัดไฟล์ลง input สำเร็จ!");
-                await sleep(2500); // Wait for upload
-            } else {
-                throw new Error("หา input[type='file'] ไม่เจอใน DOM");
+                log("อัปโหลดภาพสำเร็จ!");
+                await sleep(3000);
             }
-        } catch (err) {
-            log("❌ อัปโหลดภาพไม่สำเร็จ: " + err.message);
-        }
+        } catch (err) { log("❌ อัปโหลดภาพไม่สำเร็จ: " + err.message); }
       }
 
-      // --- 3. INJECT PROMPT ---
-      log("กำลังพิมพ์ Prompt...");
-      
-      // Method 1: Use Google Flow's specific textarea ID
-      let editor = document.querySelector('#PINHOLE_TEXT_AREA_ELEMENT_ID');
-      
-      // Method 2: Fallback to any visible textarea
-      if (!editor) {
-          editor = document.querySelector('textarea:not([disabled])');
-      }
+      // --- 4. INJECT PROMPT ---
+      log("กำลังค้นหาช่องพิมพ์...");
+      let editor = document.querySelector('div[role="textbox"]') || 
+                   document.querySelector('#PINHOLE_TEXT_AREA_ELEMENT_ID') || 
+                   document.querySelector('textarea[placeholder*="create"]') ||
+                   document.querySelector('textarea:not([disabled])') ||
+                   document.querySelector('[contenteditable="true"]');
 
       if (editor) {
+        log(`พบช่องพิมพ์! กำลังเลื่อนหน้าจอไปหา...`);
+        
+        // Visual Feedback for User
+        editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const originalBorder = editor.style.border;
+        editor.style.border = "3px solid red";
+        editor.style.boxShadow = "0 0 10px red";
+        
+        await sleep(800);
+        editor.click();
         editor.focus();
-        await sleep(100);
+        await sleep(500);
         
-        // Native setter method for React textareas
-        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-        nativeInputValueSetter.call(editor, prompt);
+        log("กำลังพิมพ์ Prompt ลงในช่อง...");
         
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
-        editor.dispatchEvent(new Event('change', { bubbles: true }));
+        const isTextarea = editor.tagName === 'TEXTAREA' || editor.tagName === 'INPUT';
         
-        await sleep(1500);
-      } else {
-        throw new Error("หาช่องพิมพ์ไม่เจอ");
-      }
-
-      // --- 4. CLICK CREATE/GENERATE ---
-      log("ค้นหาปุ่ม Create...");
-      const allButtons = Array.from(document.querySelectorAll('button:not([disabled])'));
-      let generateBtn = null;
-      
-      for (const btn of allButtons) {
-        const innerHTML = btn.innerHTML || "";
-        const text = (btn.textContent || "").toLowerCase();
-
-        // The button has an <i> with arrow_forward and a <span> with "Create"
-        if (innerHTML.includes("arrow_forward") && text.includes("create")) {
-          generateBtn = btn;
-          break;
+        if (isTextarea) {
+            // Native React setter for textarea
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+            if (nativeInputValueSetter) {
+                nativeInputValueSetter.call(editor, prompt);
+            } else {
+                editor.value = prompt;
+            }
+        } else {
+            // For contenteditable div
+            editor.innerHTML = "";
+            try {
+                document.execCommand('insertText', false, prompt);
+            } catch (e) {
+                editor.innerText = prompt;
+            }
         }
+
+        // Final event trigger
+        ['input', 'change', 'blur'].forEach(evt => {
+            editor.dispatchEvent(new Event(evt, { bubbles: true }));
+        });
+
+        await sleep(1000);
+        editor.style.border = originalBorder; // Reset border
+        
+        // --- VERIFICATION ---
+        const finalVal = (editor.value || editor.innerText || "").trim();
+        if (finalVal.length < 5) {
+            throw new Error("⚠️ ไม่สามารถกรอก Prompt ได้ (ช่องพิมพ์ยังว่างอยู่)");
+        }
+        log("✅ กรอก Prompt สำเร็จ");
+      } else { throw new Error("หาช่องพิมพ์ไม่เจอ"); }
+
+
+
+      // --- 4. CLICK GENERATE ---
+      log("กำลังค้นหาปุ่ม Generate...");
+      await sleep(1000); // Wait for button to enable
+
+      let generateBtn = null;
+      const findBtn = () => {
+          return Array.from(document.querySelectorAll('button')).find(btn => {
+            const text = (btn.textContent || "").toLowerCase();
+            const aria = (btn.getAttribute('aria-label') || "").toLowerCase();
+            // Button must be enabled AND have "generate" or "create" text
+            return (text.includes("generate") || text.includes("create video") || aria.includes("generate")) && !btn.disabled;
+          });
+      };
+
+      // Poll for enabled button
+      for (let i = 0; i < 10; i++) {
+          generateBtn = findBtn();
+          if (generateBtn) break;
+          log(`รอปุ่ม Generate พร้อมใช้งาน... (${i+1}/10)`);
+          await sleep(1000);
       }
       
       if (generateBtn) {
-          log("กด Create แล้ว! กำลังรอผลลัพธ์...");
+          log("🚀 กดปุ่ม Generate แล้ว!");
           generateBtn.click();
       } else {
-          throw new Error("หาปุ่ม Create ไม่เจอ (อาจจะรอข้อมูล)");
+          // Final desperate fallback: look for any primary-looking button with an arrow
+          generateBtn = Array.from(document.querySelectorAll('button')).find(btn => 
+              btn.innerHTML.includes("arrow_forward") && !btn.disabled
+          );
+          if (generateBtn) {
+              log("🚀 กดปุ่ม Create (Fallback) แล้ว!");
+              generateBtn.click();
+          } else {
+              throw new Error("หาปุ่ม Generate ที่กดได้ไม่เจอ (กรุณาเช็คว่า Prompt ถูกต้องและปุ่มไม่จาง)");
+          }
       }
 
-      // --- 5. WAIT FOR RESULT ---
-      await sleep(20000); // Wait for generation
+      // --- 6. WAIT FOR RESULT & GRAB URL ---
+      // We wait for the generation to appear. In Flow, new items usually appear in a grid.
+      // We'll poll for a new image or video element.
+      let resultUrl = "";
+      const startTime = Date.now();
+      const maxWait = phase === "image" ? 45000 : 90000; // Images are faster, videos take longer
+
+      while (Date.now() - startTime < maxWait) {
+          // Look for images or videos in the workspace/clips area
+          // This is a heuristic: the first img/video with a blob or cdn URL that isn't our reference
+          const mediaElements = Array.from(document.querySelectorAll('img[src^="http"], img[src^="blob"], video[src^="http"], video[src^="blob"]'));
+          
+          // Filter out our reference image if we know its URL (might be hard with blobs)
+          // Usually, the results are in a specific container or have specific classes
+          const possibleResults = mediaElements.filter(el => {
+              const src = el.src || "";
+              // Avoid the small icons and the reference image (if it's not a blob we sent)
+              if (src === imageUrl) return false;
+              if (el.offsetWidth < 50 || el.offsetHeight < 50) return false;
+              return true;
+          });
+
+          if (possibleResults.length > 0) {
+              // Found something! Take the newest one (usually first or last depending on UI)
+              // Google Flow usually puts new ones at the beginning of the list
+              resultUrl = possibleResults[0].src;
+              log("✅ พบผลลัพธ์แล้ว!");
+              break;
+          }
+          await sleep(3000);
+          log(`รอผลลัพธ์... (${Math.round((Date.now() - startTime)/1000)}s)`);
+      }
+
+      await sleep(2000);
       log("✅ ทำงานเสร็จสิ้น");
       helper.remove();
-      resolve({ ok: true });
+      resolve({ ok: true, resultUrl });
 
     } catch (e) {
       log("❌ ผิดพลาด: " + e.message);

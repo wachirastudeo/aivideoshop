@@ -160,16 +160,33 @@ export function sanitizeText(value) {
 export function buildImagePrompt(productInfo, settings) {
   const style = VIDEO_STYLES.find((item) => item.id === settings.videoStyle) || VIDEO_STYLES[0];
   const target = productInfo.targetGroup === "กรอกเอง" ? productInfo.customTargetGroup : productInfo.targetGroup;
+  
+  const moodStr = settings.mood === "Auto" ? "professional and clean" : settings.mood;
+  const locationStr = settings.location === "Auto" ? "premium commercial studio background" : settings.location;
 
-  return [
+  const promptParts = [
     `High quality product photography of ${sanitizeText(productInfo.name) || "the product"}.`,
-    `Location: ${sanitizeText(settings.location)}.`,
-    `Mood: ${sanitizeText(settings.mood)}. Product centered, sharp focus, clear shape and texture, no distractions.`,
+    `Location: ${sanitizeText(locationStr)}.`,
+    `Mood/Atmosphere: ${sanitizeText(moodStr)}.`,
+    "Composition: Product centered, sharp focus, high-end commercial lighting, clear texture.",
     `Style reference: ${style.fragment}.`,
-    `Suitable for ${sanitizeText(target) || "general TikTok shoppers"} audience.`,
-    `Key visual details: ${sanitizeText(productInfo.highlights) || "show the strongest product benefits clearly"}.`,
-    "Vertical 9:16 composition, clean commercial product image, ready to use as a video reference."
-  ].join("\n");
+    `Target audience: ${sanitizeText(target) || "TikTok users"}.`,
+    `Visual Details: ${sanitizeText(productInfo.highlights) || "showcase product's unique design and quality"}.`,
+    "Orientation: Vertical 9:16 aspect ratio, portrait mode."
+  ];
+
+  // Explicitly handle "No Text" or "Include Text"
+  if (settings.showName === "false" || settings.showName === false) {
+    promptParts.push("Negative prompt: NO text, NO letters, NO typography, NO words, NO logos, NO watermarks, NO clutter.");
+  } else {
+    const textContext = [
+      settings.promotionText ? `Include text: "${sanitizeText(settings.promotionText)}"` : "",
+      "Professional typography integrated into the scene."
+    ].filter(Boolean).join(". ");
+    promptParts.push(textContext);
+  }
+
+  return promptParts.join("\n");
 }
 
 /**
