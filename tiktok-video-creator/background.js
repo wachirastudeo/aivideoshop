@@ -97,11 +97,21 @@ function injectPromptIntoFlow(prompt, phase, imageUrl) {
       
       const setModeAndRatio = async () => {
           // 1. Open Mode/Aspect Ratio popover
-          const menuBtn = Array.from(document.querySelectorAll('button')).find(b => {
+          let menuBtn = Array.from(document.querySelectorAll('button')).find(b => {
               const text = (b.textContent || "").toLowerCase();
-              const html = b.innerHTML || "";
-              return (text.includes("video") || text.includes("image") || html.includes("crop_") || text.includes("1x")) && !b.disabled;
+              const aria = (b.getAttribute('aria-label') || "").toLowerCase();
+              return !b.disabled && (aria.includes("aspect") || aria.includes("ratio") || aria.includes("setting") || /\d+:\d+/.test(text));
           });
+
+          if (!menuBtn) {
+              menuBtn = Array.from(document.querySelectorAll('button')).find(b => {
+                  const text = (b.textContent || "").toLowerCase();
+                  const html = b.innerHTML || "";
+                  const aria = (b.getAttribute('aria-label') || "").toLowerCase();
+                  const hasPopup = b.getAttribute('aria-haspopup') === 'menu';
+                  return !b.disabled && (aria.includes("mode") || text.includes("video") || text.includes("image") || html.includes("crop_") || text.includes("1x") || hasPopup);
+              });
+          }
 
           if (menuBtn) {
               log("กำลังเปิดเมนูตั้งค่า...");
@@ -112,28 +122,34 @@ function injectPromptIntoFlow(prompt, phase, imageUrl) {
           }
 
           // 2. Select Mode (Image or Video)
-          const modeText = phase === "image" ? "Image" : "Video";
-          const modeTab = Array.from(document.querySelectorAll('button[role="tab"], div[role="tab"], button')).find(el => {
-              const text = el.textContent.trim().toLowerCase();
-              const aria = (el.getAttribute('aria-label') || "").toLowerCase();
-              return (text === modeText.toLowerCase() || aria === modeText.toLowerCase()) && el.offsetWidth > 0;
-          });
+          const modeSelector = phase === "image" ? "button[id$='-trigger-IMAGE']" : "button[id$='-trigger-VIDEO']";
+          let modeTab = document.querySelector(modeSelector);
+          
+          if (!modeTab) {
+              const modeText = phase === "image" ? "Image" : "Video";
+              modeTab = Array.from(document.querySelectorAll('button[role="tab"], div[role="tab"], button, li')).find(el => {
+                  const aria = (el.getAttribute('aria-label') || "").toLowerCase();
+                  const text = el.textContent.trim().toLowerCase();
+                  return (aria === modeText.toLowerCase() || text === modeText.toLowerCase()) && el.offsetWidth > 0;
+              });
+          }
           
           if (modeTab) {
               modeTab.click();
-              log(`กดเลือกโหมด ${modeText} แล้ว`);
+              log(`กดเลือกโหมดแล้ว`);
               await sleep(1000);
           } else {
-              log(`หาโหมด ${modeText} ไม่เจอในเมนู`);
+              log(`หาปุ่มเปลี่ยนโหมดไม่เจอในเมนู`);
           }
           
           // 3. Select 9:16 Aspect Ratio
-          let portraitBtn = document.querySelector('button[aria-label="9:16"], button[aria-label*="9:16"], button[aria-label*="Portrait"], button[id$="-PORTRAIT"]');
+          let portraitBtn = document.querySelector("button[id$='-trigger-PORTRAIT']");
           
           if (!portraitBtn) {
-              portraitBtn = Array.from(document.querySelectorAll('button, [role="tab"], [role="option"]')).find(el => {
-                  const text = el.textContent.trim();
-                  return (text === "9:16" || text.includes("Portrait") || text.includes("9:16")) && el.offsetWidth > 0;
+              portraitBtn = Array.from(document.querySelectorAll('button, [role="tab"], [role="option"], li')).find(el => {
+                  const aria = (el.getAttribute('aria-label') || "").toLowerCase();
+                  const text = el.textContent.trim().toLowerCase();
+                  return (aria.includes("9:16") || aria.includes("portrait") || text.includes("9:16") || text.includes("portrait")) && el.offsetWidth > 0;
               });
           }
 
