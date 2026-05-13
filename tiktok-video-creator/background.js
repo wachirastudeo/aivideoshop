@@ -67,11 +67,25 @@ async function openGoogleFlow(payload) {
 }
 
 function injectPromptIntoFlow(prompt, phase, imageUrl) {
+  // Abort mechanism: set window.__autoFlowAbort = true to stop
+  window.__autoFlowAbort = false;
   return new Promise(async (resolve) => {
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const sleep = (ms) => new Promise((r, rej) => {
+      const t = setTimeout(r, ms);
+      const check = setInterval(() => {
+        if (window.__autoFlowAbort) { clearTimeout(t); clearInterval(check); rej(new Error("ABORTED")); }
+      }, 200);
+      setTimeout(() => clearInterval(check), ms + 500);
+    });
     const helper = document.createElement("div");
     helper.style.cssText = "position:fixed;z-index:99999;left:16px;bottom:16px;padding:12px 16px;border-radius:8px;background:#111;color:#fff;border:1px solid #0f0;font:13px system-ui;max-width:320px;box-shadow: 0 4px 12px rgba(0,0,0,0.5);";
     helper.textContent = "🤖 Auto Flow กำลังทำงาน...";
+    // ปุ่มหยุด
+    const stopBtn = document.createElement("button");
+    stopBtn.textContent = "⛔ หยุด";
+    stopBtn.style.cssText = "margin-top:8px;display:block;background:#e00;color:#fff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font:12px system-ui;";
+    stopBtn.onclick = () => { window.__autoFlowAbort = true; };
+    helper.append(stopBtn);
     document.body.append(helper);
     const log = (msg) => { helper.textContent = "🤖 " + msg; console.log("[AutoFlow]", msg); };
 
@@ -94,117 +108,102 @@ function injectPromptIntoFlow(prompt, phase, imageUrl) {
 
       // --- 2. ASPECT RATIO & MODE SELECTION ---
       log(`ตั้งค่าโหมด ${phase === "image" ? "Image" : "Video"} และ Portrait (9:16)...`);
-      
-      const setModeAndRatio = async () => {
-          // 1. Open Mode/Aspect Ratio popover
-          let menuBtn = Array.from(document.querySelectorAll('button')).find(b => {
-              const text = (b.textContent || "").toLowerCase();
-              const aria = (b.getAttribute('aria-label') || "").toLowerCase();
-              return !b.disabled && (aria.includes("aspect") || aria.includes("ratio") || aria.includes("setting") || /\d+:\d+/.test(text));
-          });
 
-          if (!menuBtn) {
-              menuBtn = Array.from(document.querySelectorAll('button')).find(b => {
-                  const text = (b.textContent || "").toLowerCase();
-                  const html = b.innerHTML || "";
-                  const aria = (b.getAttribute('aria-label') || "").toLowerCase();
-                  const hasPopup = b.getAttribute('aria-haspopup') === 'menu';
-                  return !b.disabled && (aria.includes("mode") || text.includes("video") || text.includes("image") || html.includes("crop_") || text.includes("1x") || hasPopup);
-              });
-          }
+      // กดปุ่ม 🍌 เพื่อเปิด dropdown
+      const menuTrigger = Array.from(document.querySelectorAll('button[aria-haspopup="menu"]')).find(b => {
+          const html = b.innerHTML || "";
+          return html.includes("crop_") && (html.includes("1x") || html.includes("Banana"));
+      });
+      if (!menuTrigger) throw new Error("หาปุ่มเปิดเมนู mode/ratio ไม่เจอ");
+      menuTrigger.click();
+      log("เปิดเมนูตั้งค่าแล้ว รอ...");
+      await sleep(1500);
 
-          if (menuBtn) {
-              log("กำลังเปิดเมนูตั้งค่า...");
-              menuBtn.click();
-              await sleep(1500); // Wait for popover to open
-          } else {
-              log("หาปุ่มเปิดเมนูไม่เจอ (พยายามค้นหาการตั้งค่าโดยตรง)");
-          }
+      // หา popper content wrapper ที่เพิ่งเปิด แล้วหา tab ใน popper โดยตรง
+      const popper = document.querySelector('[data-radix-popper-content-wrapper]');
+      if (!popper) throw new Error("เปิดเมนูแล้วแต่หา popper ไม่เจอ");
 
-          // 2. Select Mode (Image or Video)
-          const modeSelector = phase === "image" ? "button[id$='-trigger-IMAGE']" : "button[id$='-trigger-VIDEO']";
-          let modeTab = document.querySelector(modeSelector);
-          
-          if (!modeTab) {
-              const modeText = phase === "image" ? "Image" : "Video";
-              modeTab = Array.from(document.querySelectorAll('button[role="tab"], div[role="tab"], button, li')).find(el => {
-                  const aria = (el.getAttribute('aria-label') || "").toLowerCase();
-                  const text = el.textContent.trim().toLowerCase();
-                  return (aria === modeText.toLowerCase() || text === modeText.toLowerCase()) && el.offsetWidth > 0;
-              });
-          }
-          
-          if (modeTab) {
-              modeTab.click();
-              log(`กดเลือกโหมดแล้ว`);
-              await sleep(1000);
-          } else {
-              log(`หาปุ่มเปลี่ยนโหมดไม่เจอในเมนู`);
-          }
-          
-          // 3. Select 9:16 Aspect Ratio
-          let portraitBtn = document.querySelector("button[id$='-trigger-PORTRAIT']");
-          
-          if (!portraitBtn) {
-              portraitBtn = Array.from(document.querySelectorAll('button, [role="tab"], [role="option"], li')).find(el => {
-                  const aria = (el.getAttribute('aria-label') || "").toLowerCase();
-                  const text = el.textContent.trim().toLowerCase();
-                  return (aria.includes("9:16") || aria.includes("portrait") || text.includes("9:16") || text.includes("portrait")) && el.offsetWidth > 0;
-              });
-          }
+      const modeKey = phase === "image" ? "IMAGE" : "VIDEO";
+      const modeBtn = popper.querySelector(`button[id*="-trigger-${modeKey}"]`);
+      if (!modeBtn) throw new Error(`หาปุ่มโหมด ${phase} ใน popper ไม่เจอ`);
+      modeBtn.click();
+      log(`✅ เลือกโหมด ${phase} สำเร็จ`);
+      await sleep(800);
 
-          if (portraitBtn) {
-              portraitBtn.click();
-              log("เลือกสัดส่วน 9:16 สำเร็จ!");
-              await sleep(1000);
-          } else {
-              log("หาตัวเลือก 9:16 ไม่เจอ");
-          }
-          
-          // Close popup by clicking elsewhere
-          document.body.click();
-          await sleep(500);
-          return true;
-      };
+      const portraitBtn = popper.querySelector('button[id$="-trigger-PORTRAIT"]');
+      if (!portraitBtn) throw new Error("หาปุ่ม 9:16 ใน popper ไม่เจอ");
+      portraitBtn.click();
+      log("✅ เลือกสัดส่วน 9:16 สำเร็จ!");
+      await sleep(800);
 
-      await setModeAndRatio();
-      await sleep(1000);
+      // ปิด dropdown โดยกด trigger อีกครั้ง (toggle)
+      menuTrigger.click();
+      await sleep(500);
 
-      // --- 3. DIRECT IMAGE UPLOAD ---
+      // --- 3. DIRECT IMAGE UPLOAD + SELECT UPLOADED IMAGE ---
       if (imageUrl) {
         log("กำลังอัปโหลดรูปภาพอ้างอิง...");
-        try {
-            let fileInput = document.querySelector('input[type="file"]');
-            if (!fileInput) {
-                const addMediaBtn = Array.from(document.querySelectorAll('button')).find(b => 
-                  b.textContent.toLowerCase().includes("add media") || b.textContent.toLowerCase().includes("add ingredients")
-                );
-                if (addMediaBtn) { addMediaBtn.click(); await sleep(1500); }
-                fileInput = document.querySelector('input[type="file"]');
+        // Flow มี input[type="file"] อยู่ในหน้าโดยตรง
+        let fileInput = document.querySelector('input[type="file"][accept*="image"]') 
+                     || document.querySelector('input[type="file"]');
+        if (!fileInput) {
+            const addMediaBtn = Array.from(document.querySelectorAll('button')).find(b => 
+              (b.getAttribute('aria-label') || "").toLowerCase().includes("add media") ||
+              b.textContent.toLowerCase().includes("add media") || 
+              (b.innerHTML || "").includes("add_2")
+            );
+            if (!addMediaBtn) throw new Error("หาปุ่ม Add Media และ file input ไม่เจอ");
+            addMediaBtn.click();
+            await sleep(1500);
+            fileInput = document.querySelector('input[type="file"]');
+            if (!fileInput) throw new Error("หา file input ไม่เจอหลังกด Add Media");
+        }
+
+        const res = await fetch(imageUrl);
+        const blob = await res.blob();
+        const file = new File([blob], "image.png", { type: blob.type });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        fileInput.dispatchEvent(new Event('input', { bubbles: true }));
+        log("อัปโหลดภาพสำเร็จ! รอภาพโหลด...");
+        await sleep(5000);
+
+        // --- SELECT THE UPLOADED IMAGE ---
+        log("กำลังเลือกภาพที่อัปโหลด...");
+        let imageSelected = false;
+        for (let attempt = 0; attempt < 10; attempt++) {
+            // ภาพที่อัพแล้วอยู่ใน virtuoso list
+            // src pattern: /fx/api/trpc/media.getMediaUrlRedirect
+            const uploadedImg = Array.from(document.querySelectorAll('img')).find(img =>
+                img.src.includes('media.getMediaUrlRedirect') || img.src.includes('trpc/media')
+            );
+
+            if (uploadedImg) {
+                // คลิก parent container ที่ clickable
+                const clickTarget = uploadedImg.closest('[data-index], button, [role="button"], [tabindex]') 
+                                 || uploadedImg.parentElement;
+                clickTarget.click();
+                log("✅ เลือกภาพที่อัปโหลดสำเร็จ!");
+                imageSelected = true;
+                await sleep(1000);
+                break;
             }
-            
-            if (fileInput) {
-                const res = await fetch(imageUrl);
-                const blob = await res.blob();
-                const file = new File([blob], "image.png", { type: blob.type });
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                fileInput.files = dt.files;
-                fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-                fileInput.dispatchEvent(new Event('input', { bubbles: true }));
-                log("อัปโหลดภาพสำเร็จ!");
-                await sleep(3000);
-            }
-        } catch (err) { log("❌ อัปโหลดภาพไม่สำเร็จ: " + err.message); }
+            log(`รอภาพปรากฏใน media panel... (${attempt + 1}/10)`);
+            await sleep(1500);
+        }
+        if (!imageSelected) throw new Error("เลือกภาพที่อัปโหลดไม่สำเร็จ ภาพไม่ปรากฏใน panel");
       }
 
       // --- 4. INJECT PROMPT ---
       log("กำลังค้นหาช่องพิมพ์...");
-      let editor = document.querySelector('div[role="textbox"]') || 
-                   document.querySelector('#PINHOLE_TEXT_AREA_ELEMENT_ID') || 
-                   document.querySelector('textarea[placeholder*="create"]') ||
-                   document.querySelector('textarea:not([disabled])') ||
-                   document.querySelector('[contenteditable="true"]');
+      
+      const textareas = Array.from(document.querySelectorAll('textarea:not([disabled])'));
+      let editor = textareas.find(ta => {
+          const ph = (ta.placeholder || "").toLowerCase();
+          return ph.includes("create") || ph.includes("describe") || ph.includes("prompt");
+      }) || textareas[textareas.length - 1] || document.querySelector('div[role="textbox"]') || document.querySelector('[contenteditable="true"]');
 
       if (editor) {
         log(`พบช่องพิมพ์! กำลังเลื่อนหน้าจอไปหา...`);
@@ -226,33 +225,43 @@ function injectPromptIntoFlow(prompt, phase, imageUrl) {
         
         if (isTextarea) {
             // Native React setter for textarea
-            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
             if (nativeInputValueSetter) {
                 nativeInputValueSetter.call(editor, prompt);
             } else {
                 editor.value = prompt;
             }
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
         } else {
-            // For contenteditable div
-            editor.innerHTML = "";
-            try {
-                document.execCommand('insertText', false, prompt);
-            } catch (e) {
-                editor.innerText = prompt;
+            // For contenteditable div (Slate.js in Google Flow)
+            editor.focus();
+            await sleep(300); // Give React time to register focus
+            
+            // Force select all existing content to clear it properly
+            document.execCommand('selectAll', false, null);
+            await sleep(100);
+            
+            // Natively insert text, which triggers `beforeinput` and `input` that Slate listens to
+            const success = document.execCommand('insertText', false, prompt);
+            
+            if (!success) {
+                // Extreme fallback: directly modify DOM and dispatch events
+                editor.textContent = prompt;
+                editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: prompt }));
             }
         }
 
-        // Final event trigger
-        ['input', 'change', 'blur'].forEach(evt => {
+        // Final event trigger to wake up the Generate button
+        ['change', 'keyup', 'blur'].forEach(evt => {
             editor.dispatchEvent(new Event(evt, { bubbles: true }));
         });
 
-        await sleep(1000);
+        await sleep(1500); // Wait for React to enable the Create button
         editor.style.border = originalBorder; // Reset border
         
         // --- VERIFICATION ---
-        const finalVal = (editor.value || editor.innerText || "").trim();
-        if (finalVal.length < 5) {
+        const finalVal = (editor.value || editor.innerText || editor.textContent || "").trim();
+        if (finalVal.length < 3) {
             throw new Error("⚠️ ไม่สามารถกรอก Prompt ได้ (ช่องพิมพ์ยังว่างอยู่)");
         }
         log("✅ กรอก Prompt สำเร็จ");
@@ -260,17 +269,22 @@ function injectPromptIntoFlow(prompt, phase, imageUrl) {
 
 
 
-      // --- 4. CLICK GENERATE ---
+      // --- 5. CLICK GENERATE ---
       log("กำลังค้นหาปุ่ม Generate...");
       await sleep(1000); // Wait for button to enable
 
       let generateBtn = null;
       const findBtn = () => {
           return Array.from(document.querySelectorAll('button')).find(btn => {
+            if (btn.disabled) return false;
+            
+            // Check for the specific Flow button structure (icon + hidden "Create" span)
+            const span = btn.querySelector('span');
+            if (span && span.textContent.trim().toLowerCase() === "create") return true;
+            
             const text = (btn.textContent || "").toLowerCase();
             const aria = (btn.getAttribute('aria-label') || "").toLowerCase();
-            // Button must be enabled AND have "generate" or "create" text
-            return (text.includes("generate") || text.includes("create video") || aria.includes("generate")) && !btn.disabled;
+            return text.includes("generate") || text === "create" || text.includes("arrow_forwardcreate") || aria.includes("generate") || aria.includes("create");
           });
       };
 
