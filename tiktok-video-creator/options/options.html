@@ -1,95 +1,532 @@
 <!doctype html>
 <html lang="th">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TikTok Video Creator Settings</title>
-    <link rel="stylesheet" href="../sidepanel.css">
-    <style>
-      body { max-width: 760px; margin: 0 auto; }
-      .app-shell { min-height: auto; }
-      .settings-page { padding: 18px; }
-    </style>
-  </head>
-  <body>
-    <main class="app-shell settings-page">
-      <header class="app-header">
-        <img class="app-header__logo" src="../assets/icon.svg" alt="">
-        <div>
-          <h1>Settings</h1>
-          <p>ตั้งค่า TikTok, AI และค่าเริ่มต้นของวิดีโอ</p>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TikTok Video Creator — Settings</title>
+  <link rel="stylesheet" href="../sidepanel.css">
+  <style>
+    body {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .app-shell {
+      min-height: auto;
+      height: auto;
+      overflow: visible;
+    }
+
+    .settings-page {
+      padding: 20px 18px 40px;
+    }
+
+    .settings-section {
+      margin-bottom: 28px;
+    }
+
+    .settings-section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .settings-section-title .icon {
+      font-size: 15px;
+    }
+
+    .key-input-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .key-input-row .button {
+      white-space: nowrap;
+      min-height: 38px;
+    }
+
+    .test-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 650;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+    }
+
+    .test-badge[data-state="ok"] {
+      background: rgba(34, 197, 94, 0.1);
+      border-color: rgba(34, 197, 94, 0.4);
+      color: #4ade80;
+    }
+
+    .test-badge[data-state="error"] {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .flow-model-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .flow-model-card {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+
+    .flow-model-card:hover {
+      border-color: var(--accent);
+      background: var(--panel-2);
+    }
+
+    .flow-model-card input[type="radio"] {
+      display: none;
+    }
+
+    .flow-model-card.selected {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .flow-model-card strong {
+      display: block;
+      font-size: 12px;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .flow-model-card span {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .save-bar {
+      position: sticky;
+      bottom: 0;
+      background: rgba(10, 10, 12, 0.92);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--line);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 -18px -40px;
+    }
+
+    .save-bar .status-inline {
+      font-size: 12px;
+      color: var(--muted);
+      flex: 1;
+    }
+
+    .save-bar .status-inline[data-type="success"] {
+      color: #4ade80;
+    }
+
+    .save-bar .status-inline[data-type="error"] {
+      color: #fca5a5;
+    }
+
+    .info-note {
+      padding: 10px 12px;
+      background: rgba(74, 141, 255, 0.08);
+      border: 1px solid rgba(74, 141, 255, 0.25);
+      border-radius: 10px;
+      font-size: 12px;
+      color: #93c5fd;
+      line-height: 1.6;
+    }
+
+    .info-note a {
+      color: #93c5fd;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .toggle-row-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .toggle-row-label strong {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .toggle-row-label span {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--line);
+      border-radius: 11px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-track::after {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: white;
+      transition: transform 0.2s;
+    }
+
+    .toggle input:checked+.toggle-track {
+      background: var(--accent);
+    }
+
+    .toggle input:checked+.toggle-track::after {
+      transform: translateX(18px);
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app-shell settings-page">
+
+    <header class="app-header" style="margin: 0 -18px 24px; padding: 14px 18px;">
+      <img class="app-header__logo" src="../assets/icon.svg" alt="">
+      <div>
+        <h1>Settings</h1>
+        <p>ตั้งค่า TikTok, AI และ Google Flow</p>
+      </div>
+    </header>
+
+    <!-- ─── TikTok Account ─── -->
+    <div class="settings-section">
+      <h2 class="settings-section-title"><span class="icon">🎵</span> TikTok Account</h2>
+      <div class="stack">
+        <div class="info-note">
+          Extension ใช้ Session ของเบราว์เซอร์จาก
+          <a href="https://www.tiktok.com/tiktokstudio" target="_blank">TikTok Studio</a>
+          โดยอัตโนมัติ ไม่ต้อง login แยก
         </div>
-        <span></span>
-      </header>
+        <div class="inline-actions">
+          <button id="test-products" class="button" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            ทดสอบดึงสินค้า
+          </button>
+          <span id="tiktok-test-badge" class="test-badge" hidden></span>
+        </div>
+      </div>
+    </div>
 
-      <section id="status" class="status" role="status" hidden></section>
+    <!-- ─── Google Flow ─── -->
+    <div class="settings-section">
+      <h2 class="settings-section-title"><span class="icon">✨</span> Google Flow</h2>
+      <div class="stack">
+        <div class="info-note">
+          ใช้ <a href="https://labs.google/fx/tools/flow/project" target="_blank">labs.google/fx/tools/flow</a>
+          สร้างภาพและวิดีโอ — ไม่ต้อง login server แยก ใช้ Google Account ของเบราว์เซอร์โดยตรง
+        </div>
 
-      <section class="section">
-        <div class="section__header"><h2>TikTok Account</h2></div>
-        <div class="section__body stack">
-          <div class="settings-note">
-            <p><strong>ระบบเชื่อมต่ออัตโนมัติเปิดใช้งานแล้ว</strong></p>
-            <p>Extension จะใช้ Session ของเบราว์เซอร์จากหน้า <a href="https://www.tiktok.com/tiktokstudio" target="_blank">TikTok Studio</a> โดยอัตโนมัติ</p>
-          </div>
-          <div class="inline-actions">
-            <button id="test-products" class="button" type="button">Test Product Fetch</button>
+        <div class="field">
+          <span class="field__label">Video Model (Veo)</span>
+          <div class="flow-model-grid" id="video-model-grid">
+            <label class="flow-model-card selected" data-model="veo-3.1-fast">
+              <input type="radio" name="flow-video-model" value="veo-3.1-fast" checked>
+              <strong>Veo 3.1 — Fast</strong>
+              <span>สมดุลระหว่างความเร็วและคุณภาพ (แนะนำ)</span>
+            </label>
+            <label class="flow-model-card" data-model="veo-3.1-quality">
+              <input type="radio" name="flow-video-model" value="veo-3.1-quality">
+              <strong>Veo 3.1 — Quality</strong>
+              <span>คุณภาพสูงสุด ใช้เวลานานกว่า</span>
+            </label>
+            <label class="flow-model-card" data-model="veo-3.1-lite">
+              <input type="radio" name="flow-video-model" value="veo-3.1-lite">
+              <strong>Veo 3.1 — Lite</strong>
+              <span>เร็วที่สุด เหมาะกับ batch จำนวนมาก</span>
+            </label>
+            <label class="flow-model-card" data-model="veo-3.1-fast-lp">
+              <input type="radio" name="flow-video-model" value="veo-3.1-fast-lp">
+              <strong>Veo 3.1 — Fast LP</strong>
+              <span>Lower Priority queue ราคาถูกกว่า</span>
+            </label>
           </div>
         </div>
-      </section>
 
-      <section class="section">
-        <div class="section__header"><h2>AI Settings</h2></div>
-        <div class="section__body stack">
-          <label class="field">
+        <div class="field">
+          <span class="field__label">Image Model (Banana)</span>
+          <select id="flow-image-model" class="select">
+            <option value="nano-banana-pro">Nano Banana Pro (แนะนำ)</option>
+            <option value="nano-banana-2">Nano Banana 2</option>
+          </select>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-row-label">
+            <strong>Auto-select 9:16 Portrait</strong>
+            <span>ตั้งค่า aspect ratio เป็น 9:16 อัตโนมัติทุกครั้ง</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="flow-auto-portrait" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-row-label">
+            <strong>Reuse existing Flow tab</strong>
+            <span>ใช้ tab เดิมถ้าเปิด Flow อยู่แล้ว แทนการเปิด tab ใหม่</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="flow-reuse-tab" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <span class="field__label">Upload wait time (วินาที)</span>
+          <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;">
+            <input type="range" id="flow-upload-wait" class="range" min="3" max="20" value="8" step="1">
+            <span id="flow-upload-wait-label"
+              style="font-size: 13px; font-weight: 650; color: var(--text); min-width: 28px; text-align: right;">8s</span>
+          </div>
+          <span style="font-size: 11px; color: var(--muted);">รอให้ภาพอัปโหลดเสร็จก่อนเลือก — เพิ่มถ้า internet
+            ช้า</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── AI (Gemini) ─── -->
+    <div class="settings-section">
+      <h2 class="settings-section-title"><span class="icon">🤖</span> AI — Gemini</h2>
+      <div class="stack">
+        <div class="info-note">
+          ใส่ Gemini API Key เพื่อวิเคราะห์ภาพสินค้าอัตโนมัติ
+          ถ้าไม่ใส่จะใช้ชื่อสินค้าเป็น fallback แทน
+        </div>
+        <div class="key-input-row">
+          <label class="field" style="margin: 0;">
             <span class="field__label">Gemini API Key</span>
-            <input id="gemini-api-key" class="input" type="password" autocomplete="off">
+            <input id="gemini-api-key" class="input" type="password" autocomplete="off" placeholder="AIza...">
+          </label>
+          <button id="test-gemini" class="button" type="button">ทดสอบ</button>
+        </div>
+        <span id="gemini-test-badge" class="test-badge" hidden></span>
+        <label class="field">
+          <span class="field__label">Gemini Model</span>
+          <select id="gemini-model" class="select">
+            <option value="gemini-2.5-flash">gemini-2.5-flash (แนะนำ)</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <!-- ─── Image & Video Settings ─── -->
+    <div class="settings-section">
+      <h2 class="settings-section-title"><span class="icon">🖼️</span> Image & Video Settings</h2>
+      <div class="stack">
+        <div class="info-note">
+          ตั้งค่าภาพและวิดีโอที่จะสร้างจาก Google Flow — ใช้ค่าเหล่านี้เป็นค่าเริ่มต้นในการสร้าง
+        </div>
+
+        <div class="settings-grid">
+          <label class="field">
+            <span class="field__label">จำนวนภาพที่จะสร้าง</span>
+            <input id="default-image-count" class="input" type="number" min="1" max="10" value="4">
+            <span style="font-size: 11px; color: var(--muted);">จำนวนภาพที่จะสร้างต่อสินค้า (1-10)</span>
           </label>
           <label class="field">
-            <span class="field__label">Gemini Model</span>
-            <input id="gemini-model" class="input" type="text" value="gemini-2.5-flash">
+            <span class="field__label">จำนวนวิดีโอที่จะสร้าง</span>
+            <input id="default-video-count" class="input" type="number" min="1" max="10" value="2">
+            <span style="font-size: 11px; color: var(--muted);">จำนวนวิดีโอที่จะสร้างต่อสินค้า (1-10)</span>
           </label>
-          <button id="test-gemini" class="button" type="button">Test Gemini API</button>
         </div>
-      </section>
 
-      <section class="section">
-        <div class="section__header"><h2>Video Defaults</h2></div>
-        <div class="section__body stack">
+        <div class="settings-grid">
+          <label class="field">
+            <span class="field__label">ความยาววิดีโอ (วินาที)</span>
+            <select id="default-video-duration" class="select">
+              <option value="5">5 วินาที</option>
+              <option value="8">8 วินาที</option>
+              <option value="10">10 วินาที</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Aspect Ratio</span>
+            <select id="default-aspect-ratio" class="select">
+              <option value="9:16">9:16 (Portrait - TikTok)</option>
+              <option value="16:9">16:9 (Landscape)</option>
+              <option value="1:1">1:1 (Square)</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-row-label">
+            <strong>Auto-download generated content</strong>
+            <span>ดาวน์โหลดภาพและวิดีโอที่สร้างเสร็จอัตโนมัติ</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="auto-download-content" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-row-label">
+            <strong>Show generation progress</strong>
+            <span>แสดงความคืบหน้าขณะสร้างภาพและวิดีโอ</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="show-generation-progress" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Video Defaults ─── -->
+    <div class="settings-section">
+      <h2 class="settings-section-title"><span class="icon">🎬</span> Video Defaults</h2>
+      <div class="stack">
+        <div class="settings-grid">
           <label class="field">
             <span class="field__label">Default video style</span>
             <select id="default-video-style" class="select"></select>
           </label>
-          <div class="field">
-            <span class="field__label">Default video length</span>
-            <label class="checkbox-row"><input type="radio" name="video-length" value="8" checked> 8 วินาที</label>
-          </div>
           <label class="field">
             <span class="field__label">Default language</span>
             <select id="default-language" class="select">
-              <option>ไทย</option>
-              <option>English</option>
-              <option>ทั้งคู่</option>
+              <option value="ไทย">ไทย</option>
+              <option value="English">English</option>
+              <option value="ทั้งคู่">ทั้งคู่</option>
             </select>
           </label>
         </div>
-      </section>
-
-      <section class="section">
-        <div class="section__header"><h2>TikTok Post Defaults</h2></div>
-        <div class="section__body stack">
+        <div class="settings-grid">
           <label class="field">
-            <span class="field__label">Caption template</span>
-            <textarea id="caption-template" class="textarea">{product_name} {price} {cta}</textarea>
+            <span class="field__label">Default presenter</span>
+            <select id="default-presenter" class="select">
+              <option value="Auto">Auto</option>
+              <option value="none">ไม่มี presenter</option>
+              <option value="woman">ผู้หญิง</option>
+              <option value="man">ผู้ชาย</option>
+              <option value="cartoon3d">3D Cartoon</option>
+              <option value="living_product">Living Product</option>
+            </select>
           </label>
           <label class="field">
-            <span class="field__label">Default hashtags</span>
-            <input id="default-hashtags" class="input" type="text" value="#TikTokShop, #ของดีบอกต่อ">
+            <span class="field__label">Default voice tone</span>
+            <select id="default-voice-tone" class="select">
+              <option value="Auto">Auto</option>
+              <option value="kind">Kind / Friendly</option>
+              <option value="fun">Fun / Playful</option>
+              <option value="professional">Professional</option>
+              <option value="hype">Hype</option>
+              <option value="complain">Funny Complain</option>
+            </select>
           </label>
-          <label class="checkbox-row"><input id="auto-add-product-link" type="checkbox" checked> Auto-add product link</label>
-          <button id="save-settings" class="button button--primary" type="button">Save Settings</button>
         </div>
-      </section>
-    </main>
-    <script type="module" src="options.js"></script>
-  </body>
+      </div>
+    </div>
+
+    <!-- ─── TikTok Post Defaults ─── -->
+    <div class="settings-section">
+      <h2 class="settings-section-title"><span class="icon">📤</span> TikTok Post Defaults</h2>
+      <div class="stack">
+        <label class="field">
+          <span class="field__label">Caption template</span>
+          <textarea id="caption-template" class="textarea" rows="2"
+            placeholder="{product_name} {cta}">{product_name} {cta}</textarea>
+          <span style="font-size: 11px; color: var(--muted);">ตัวแปร: {product_name} {price} {cta}</span>
+        </label>
+        <label class="field">
+          <span class="field__label">Default hashtags (คั่นด้วย ,)</span>
+          <input id="default-hashtags" class="input" type="text" placeholder="#TikTokShop, #ของดีบอกต่อ">
+        </label>
+        <div class="toggle-row">
+          <div class="toggle-row-label">
+            <strong>Auto-add product link</strong>
+            <span>แนบลิงก์สินค้าใน caption อัตโนมัติ</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="auto-add-product-link" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Save bar ─── -->
+    <div class="save-bar">
+      <span id="save-status" class="status-inline"></span>
+      <button id="save-settings" class="button button--primary" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+          <polyline points="17 21 17 13 7 13 7 21" />
+          <polyline points="7 3 7 8 15 8" />
+        </svg>
+        บันทึก Settings
+      </button>
+    </div>
+
+  </main>
+  <script type="module" src="options.js"></script>
+</body>
+
 </html>

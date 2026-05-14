@@ -18,7 +18,21 @@
     "https://shop.tiktok.com/*",
     "https://open.tiktokapis.com/*",
     "https://labs.google/*",
+    "https://labs.google.com/*",
     "https://generativelanguage.googleapis.com/*"
+  ],
+  "content_scripts": [
+    {
+      "js": [
+        "content/flow-automation.js"
+      ],
+      "matches": [
+        "https://labs.google/fx/tools/flow*",
+        "https://labs.google.com/fx/tools/flow*"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
   ],
   "background": {
     "service_worker": "background.js",
@@ -42,6 +56,6 @@
     "128": "assets/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://shop.tiktok.com https://open.tiktokapis.com https://generativelanguage.googleapis.com https://*.ibyteimg.com;"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://shop.tiktok.com https://open.tiktokapis.com https://generativelanguage.googleapis.com https://*.ibyteimg.com https://labs.google https://labs.google.com;"
   }
 }

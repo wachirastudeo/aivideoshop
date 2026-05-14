@@ -16,7 +16,6 @@
     </div>
   </div>
   <div class="section__body card stack settings-card">
-    <div class="settings-group">
       <!-- สไตล์วิดีโอ -->
       <label class="field">
         <span class="field__label">สไตล์วิดีโอหลัก</span>
@@ -24,6 +23,51 @@
           <!-- จะถูกเติมข้อมูลจาก VIDEO_STYLES ใน tab-video.js -->
         </select>
       </label>
+    </div>
+
+    <div class="settings-grid">
+      <!-- จำนวนภาพ/วิดีโอ และอื่นๆ -->
+      <label class="field">
+        <span class="field__label">จำนวนรูปภาพ (ต่อสินค้า)</span>
+        <select id="image-count" class="select">
+          <option value="1">1 รูป</option>
+          <option value="2">2 รูป</option>
+          <option value="4">4 รูป</option>
+          <option value="8">8 รูป</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="field__label">จำนวนวิดีโอ (ต่อสินค้า)</span>
+        <select id="video-count" class="select">
+          <option value="1">1 คลิป</option>
+          <option value="2">2 คลิป</option>
+          <option value="4">4 คลิป</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="settings-grid">
+      <label class="field">
+        <span class="field__label">ความยาววิดีโอ</span>
+        <select id="video-duration" class="select">
+          <option value="5">5 วินาที</option>
+          <option value="8">8 วินาที</option>
+          <option value="10">10 วินาที</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="field__label">สัดส่วน (Aspect Ratio)</span>
+        <select id="aspect-ratio" class="select">
+          <option value="9:16">9:16 (แนวตั้ง TikTok)</option>
+          <option value="16:9">16:9 (แนวนอน)</option>
+          <option value="1:1">1:1 (จัตุรัส)</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="settings-group">
 
       <!-- อารมณ์ -->
       <div class="field">
@@ -90,6 +134,30 @@
           <option value="Static/Still">📍 กล้องนิ่ง</option>
           <option value="Handheld Shake">🤳 ถือถ่าย</option>
           <option value="Push In Fast">⚡ พุ่งเข้าหา</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="settings-grid">
+      <!-- จังหวะวิดีโอ (Pacing) -->
+      <label class="field">
+        <span class="field__label">จังหวะวิดีโอ (Pacing)</span>
+        <select id="pacing" class="select">
+          <option value="2">✨ อัตโนมัติ (กำลังดี)</option>
+          <option value="1">🐢 ช้าๆ เน้นความสวยงาม</option>
+          <option value="3">⚡ เร็วๆ กระชับ ฉับไว</option>
+        </select>
+      </label>
+
+      <!-- เอฟเฟกต์เปลี่ยนฉาก (Transition) -->
+      <label class="field">
+        <span class="field__label">เปลี่ยนฉาก (Transition)</span>
+        <select id="transition" class="select">
+          <option value="Auto">✨ อัตโนมัติ</option>
+          <option value="Smooth Fade">🌫️ ค่อยๆ เฟด</option>
+          <option value="Dynamic Wipe">🚀 ปัดฉากแบบเร้าใจ</option>
+          <option value="Hard Cut">✂️ ตัดชน (สไตล์ Vlog)</option>
+          <option value="Glitch">💻 Glitch Effect</option>
         </select>
       </label>
     </div>

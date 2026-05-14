@@ -19,7 +19,21 @@ let stopRequested = false;
 export async function initVideoTab(injectedHelpers) {
   helpers = injectedHelpers;
   const stored = await chrome.storage.local.get(["creatorState", "productQueue"]);
-  settings = normalizeSettings({ ...getDefaultSettings(), ...(stored.creatorState?.settings || {}) });
+  const { settings: savedOptions = {} } = await chrome.storage.sync.get("settings");
+
+  // merge: local state > options defaults > hardcoded defaults
+  const optionDefaults = {
+    videoStyle: savedOptions.defaultVideoStyle || "Auto",
+    presenter: savedOptions.defaultPresenter || "Auto",
+    voiceTone: savedOptions.defaultVoiceTone || "Auto",
+    language: savedOptions.defaultLanguage || "ไทย"
+  };
+
+  settings = normalizeSettings({
+    ...getDefaultSettings(),
+    ...optionDefaults,
+    ...(stored.creatorState?.settings || {})
+  });
   productQueue = normalizeProductQueue(stored.productQueue);
 
   populateStyleDropdown();
@@ -40,7 +54,8 @@ export async function syncSelectedProductToVideoTab() {
 function bindGlobalEvents() {
   [
     "video-style", "presenter", "voice-tone", "location",
-    "show-name", "promotion-text", "text-position", "camera-movement"
+    "show-name", "promotion-text", "text-position", "camera-movement",
+    "pacing", "transition", "image-count", "video-count", "video-duration", "aspect-ratio"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
     if (el) {
@@ -65,6 +80,15 @@ function fillGlobalFormFromState() {
   setValue("promotion-text", settings.promotionText);
   setValue("text-position", settings.textPosition);
   setValue("camera-movement", settings.cameraMovement);
+  setValue("pacing", settings.pacing);
+  setValue("transition", settings.transition);
+  
+  // Media settings
+  setValue("image-count", settings.imageCount);
+  setValue("video-count", settings.videoCount);
+  setValue("video-duration", settings.videoDuration);
+  setValue("aspect-ratio", settings.aspectRatio);
+
   syncVideoTextSettingsVisibility();
 }
 
@@ -78,7 +102,13 @@ function syncSettingsForm() {
     showName: getValue("show-name"),
     promotionText: getValue("promotion-text"),
     textPosition: getValue("text-position"),
-    cameraMovement: getValue("camera-movement")
+    cameraMovement: getValue("camera-movement"),
+    pacing: parseInt(getValue("pacing"), 10) || 2,
+    transition: getValue("transition"),
+    imageCount: parseInt(getValue("image-count"), 10) || 4,
+    videoCount: parseInt(getValue("video-count"), 10) || 2,
+    videoDuration: parseInt(getValue("video-duration"), 10) || 8,
+    aspectRatio: getValue("aspect-ratio") || "9:16"
   });
 
   renderQueue();
@@ -103,8 +133,12 @@ function normalizeSettings(value) {
     showName: value.showName === true || value.showName === "true" ? "true" : "false",
     cta: "กดสั่งซื้อที่ตะกร้าด้านล่าง",
     customCta: "",
-    pacing: 2,
-    transition: "Auto"
+    pacing: value.pacing || 2,
+    transition: value.transition || "Auto",
+    imageCount: value.imageCount || 4,
+    videoCount: value.videoCount || 2,
+    videoDuration: value.videoDuration || 8,
+    aspectRatio: value.aspectRatio || "9:16"
   };
 }
 
@@ -144,10 +178,10 @@ function renderQueue() {
   productQueue = normalizeProductQueue(productQueue);
   const queueCount = document.querySelector("#queue-count");
   if (queueCount) queueCount.textContent = productQueue.length;
-  
+
   const list = document.querySelector("#batch-product-list");
   if (!list) return;
-  
+
   if (productQueue.length === 0) {
     list.innerHTML = `<div class="empty-state">ยังไม่ได้เลือกสินค้า กรุณาเลือกจากแท็บ "เลือกสินค้า"</div>`;
     return;
@@ -253,7 +287,7 @@ function renderQueue() {
 function bindBatchEvents() {
   const list = document.querySelector("#batch-product-list");
   if (!list) return;
-  
+
   list.querySelectorAll(".product-batch-item").forEach(item => {
     const idx = parseInt(item.dataset.index, 10);
     const p = productQueue[idx];
@@ -274,7 +308,7 @@ function bindBatchEvents() {
     if (stopBtn) stopBtn.addEventListener("click", () => handleStop(p, item));
 
     item.querySelector(".batch-upload-approved").addEventListener("change", (e) => handleUploadApproved(e, p, item));
-    
+
     item.querySelector(".batch-download").addEventListener("click", () => handleDownload(p));
     item.querySelector(".batch-post").addEventListener("click", () => handlePost(p));
     item.querySelector(".batch-remove").addEventListener("click", (e) => {
@@ -311,12 +345,12 @@ async function handleAnalyze(p, itemEl) {
     p.highlights = analysis.highlights || p.highlights;
     p.name = analysis.name || p.name;
     p.status = "analyzed";
-    
+
     itemEl.querySelector(".batch-highlights").value = p.highlights;
     itemEl.querySelector(".batch-name").value = p.name;
     updatePrompt(itemEl, p);
     itemEl.querySelector("summary .badge").textContent = getStatusText(p.status);
-    
+
     persistState();
     helpers.showStatus("วิเคราะห์เสร็จสิ้น", "success");
   } catch (err) {
@@ -339,8 +373,20 @@ async function launchFlow(phase, p, itemEl) {
     helpers.showStatus(phase === "image" ? "เปิด Google Flow (ภาพ)..." : "เปิด Google Flow (วิดีโอ)...", "info");
     const prompt = phase === "image" ? buildImagePrompt(p, settings) : itemEl.querySelector(".batch-prompt").value;
     const image = phase === "image" ? p.imageUrls?.[0] : (p.approvedImage || p.imageUrls?.[0]);
-    await openGoogleFlow(phase, prompt, image);
-    
+
+    // ดึงการตั้งค่าจาก storage
+    const { settings: savedOptions = {} } = await chrome.storage.sync.get("settings");
+    const media = savedOptions.mediaSettings || {};
+
+    const options = {
+      imageCount: settings.imageCount,
+      videoCount: settings.videoCount,
+      videoDuration: settings.videoDuration,
+      aspectRatio: settings.aspectRatio
+    };
+
+    await openGoogleFlow(phase, prompt, image, options);
+
     p.status = phase === "image" ? "flow1" : "flow2";
     itemEl.querySelector("summary .badge").textContent = getStatusText(p.status);
     persistState();
@@ -353,48 +399,51 @@ async function processQueue() {
   if (isProcessing) return;
   isProcessing = true;
   stopRequested = false;
-  
+
   document.querySelector("#btn-batch-create").style.display = "none";
   document.querySelector("#btn-batch-stop").style.display = "inline-block";
-  
+
   helpers.showStatus("เริ่มสร้างวิดีโอแบบ Auto-Flow...", "info");
-  
+
+  const options = {
+    imageCount: settings.imageCount,
+    videoCount: settings.videoCount,
+    videoDuration: settings.videoDuration,
+    aspectRatio: settings.aspectRatio
+  };
+
   for (let i = 0; i < productQueue.length; i++) {
     if (stopRequested) break;
-    
+
     const p = productQueue[i];
     const item = document.querySelector(`.product-batch-item[data-index="${i}"]`);
-    
+
     try {
-      // Phase 1: สร้างรูปภาพ
-      helpers.showStatus(`สินค้า ${i+1}/${productQueue.length}: (1/2) กำลังสร้างภาพใหม่... รอสักครู่`, "info");
+      // ใช้โหมด combined เพื่อรันทั้ง 2 ขั้นตอนใน Flow รอบเดียว
+      helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังสร้างภาพและวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)... รอสักครู่`, "info");
       p.status = "flow1";
-      if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
-      
+      if (item) item.querySelector("summary .badge").textContent = "กำลังสร้าง (1/2)";
+
       const imgPrompt = buildImagePrompt(p, settings);
-      const generatedImgUrl = await openGoogleFlow("image", imgPrompt, p.imageUrls?.[0]);
-      p.approvedImage = generatedImgUrl || p.approvedImage || p.imageUrls?.[0];
+      const vidPrompt = buildVideoPrompt(p, settings);
+
+      const result = await openGoogleFlow("combined", { imagePrompt, videoPrompt: vidPrompt }, p.imageUrls?.[0], options);
+      
+      p.approvedImage = result?.imgUrl || p.approvedImage || p.imageUrls?.[0];
       if (item && p.approvedImage) item.querySelector(".batch-approved-preview").src = p.approvedImage;
 
-      // Phase 2: สร้างวิดีโอต่อทันที
-      helpers.showStatus(`สินค้า ${i+1}/${productQueue.length}: (2/2) กำลังสร้างวิดีโอ... รอสักครู่`, "info");
-      p.status = "flow2";
-      if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
-      
-      const vidPrompt = buildVideoPrompt(p, settings);
-      const generatedVidUrl = await openGoogleFlow("video", vidPrompt, p.approvedImage);
-      p.videoUrl = generatedVidUrl || p.videoUrl;
+      p.videoUrl = result?.resultUrl || p.videoUrl;
       if (item && p.videoUrl) item.querySelector(".batch-video-url").value = p.videoUrl;
-      
+
       p.status = "done";
       if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
-      
+
       persistState();
     } catch (err) {
-      helpers.showStatus(`สินค้า ${i+1} Error: ${err.message}`, "error");
+      helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
     }
   }
-  
+
   isProcessing = false;
   stopRequested = false;
   document.querySelector("#btn-batch-create").style.display = "inline-block";

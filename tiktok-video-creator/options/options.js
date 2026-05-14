@@ -1,136 +1,249 @@
 import { VIDEO_STYLES } from "../modules/prompt-builder.js";
 import { DEFAULT_GEMINI_MODEL, testGeminiConnection } from "../modules/image-analyzer.js";
 
-const statusBox = document.querySelector("#status");
+// ─── DOM refs ───────────────────────────────────────────────
+const saveStatusEl = document.querySelector("#save-status");
 
-/**
- * @description โหลด options ที่บันทึกไว้
- */
+// ─── Load ────────────────────────────────────────────────────
 async function loadOptions() {
-  const { settings = {}, tiktokAuth = {} } = await chrome.storage.sync.get(["settings", "tiktokAuth"]);
+  const { settings = {} } = await chrome.storage.sync.get("settings");
 
-  document.querySelector("#default-video-style").innerHTML = VIDEO_STYLES
-    .map((style) => `<option value="${style.id}">${style.emoji} ${style.name}</option>`)
+  // Video style dropdown
+  const styleSelect = document.querySelector("#default-video-style");
+  styleSelect.innerHTML = VIDEO_STYLES
+    .map((s) => `<option value="${s.id}">${s.emoji} ${s.name}</option>`)
     .join("");
-  setValue("gemini-api-key", settings.geminiApiKey);
-  setValue("gemini-model", settings.geminiModel || DEFAULT_GEMINI_MODEL);
-  setValue("default-video-style", settings.defaultVideoStyle || "review");
-  setValue("default-language", settings.defaultLanguage || "ไทย");
-  setValue("caption-template", settings.postDefaults?.captionTemplate || "{product_name} {price} {cta}");
-  setValue("default-hashtags", (settings.postDefaults?.hashtags || ["#TikTokShop", "#ของดีบอกต่อ"]).join(", "));
-  document.querySelector("#auto-add-product-link").checked = settings.postDefaults?.autoAddProductLink !== false;
+
+  // AI
+  setValue("gemini-api-key", settings.geminiApiKey || "");
+  setSelectValue("gemini-model", settings.geminiModel || DEFAULT_GEMINI_MODEL);
+
+  // Google Flow
+  const flow = settings.flow || {};
+  setRadio("flow-video-model", flow.videoModel || "veo-3.1-fast");
+  setSelectValue("flow-image-model", flow.imageModel || "nano-banana-pro");
+  setChecked("flow-auto-portrait", flow.autoPortrait !== false);
+  setChecked("flow-reuse-tab", flow.reuseTab !== false);
+  const uploadWait = flow.uploadWaitSec ?? 8;
+  setValue("flow-upload-wait", uploadWait);
+  document.querySelector("#flow-upload-wait-label").textContent = uploadWait + "s";
+
+  // Image & Video Settings
+  const media = settings.mediaSettings || {};
+  setValue("default-image-count", media.imageCount || 4);
+  setValue("default-video-count", media.videoCount || 2);
+  setSelectValue("default-video-duration", media.videoDuration || "8");
+  setSelectValue("default-aspect-ratio", media.aspectRatio || "9:16");
+  setChecked("auto-download-content", media.autoDownload !== false);
+  setChecked("show-generation-progress", media.showProgress !== false);
+
+  // Video defaults
+  setSelectValue("default-video-style", settings.defaultVideoStyle || "review");
+  setSelectValue("default-language", settings.defaultLanguage || "ไทย");
+  setSelectValue("default-presenter", settings.defaultPresenter || "Auto");
+  setSelectValue("default-voice-tone", settings.defaultVoiceTone || "Auto");
+
+  // Post defaults
+  const post = settings.postDefaults || {};
+  setValue("caption-template", post.captionTemplate || "{product_name} {cta}");
+  setValue("default-hashtags", (post.hashtags || ["#TikTokShop", "#ของดีบอกต่อ"]).join(", "));
+  setChecked("auto-add-product-link", post.autoAddProductLink !== false);
+
+  // Sync model card UI
+  syncModelCards();
 }
 
-/**
- * @description บันทึก settings ทั้งหมด
- */
+// ─── Save ────────────────────────────────────────────────────
 async function saveSettings() {
+  const btn = document.querySelector("#save-settings");
+  btn.disabled = true;
+
   const settings = {
     geminiApiKey: getValue("gemini-api-key"),
-    geminiModel: getValue("gemini-model") || DEFAULT_GEMINI_MODEL,
-    defaultVideoStyle: getValue("default-video-style"),
-    defaultLanguage: getValue("default-language"),
+    geminiModel: getSelectValue("gemini-model") || DEFAULT_GEMINI_MODEL,
+
+    flow: {
+      videoModel: getRadio("flow-video-model") || "veo-3.1-fast",
+      imageModel: getSelectValue("flow-image-model") || "nano-banana-pro",
+      autoPortrait: getChecked("flow-auto-portrait"),
+      reuseTab: getChecked("flow-reuse-tab"),
+      uploadWaitSec: parseInt(getValue("flow-upload-wait"), 10) || 8
+    },
+
+    mediaSettings: {
+      imageCount: parseInt(getValue("default-image-count"), 10) || 4,
+      videoCount: parseInt(getValue("default-video-count"), 10) || 2,
+      videoDuration: parseInt(getSelectValue("default-video-duration"), 10) || 8,
+      aspectRatio: getSelectValue("default-aspect-ratio") || "9:16",
+      autoDownload: getChecked("auto-download-content"),
+      showProgress: getChecked("show-generation-progress")
+    },
+
+    defaultVideoStyle: getSelectValue("default-video-style"),
+    defaultLanguage: getSelectValue("default-language"),
+    defaultPresenter: getSelectValue("default-presenter"),
+    defaultVoiceTone: getSelectValue("default-voice-tone"),
+
     postDefaults: {
       captionTemplate: getValue("caption-template"),
-      hashtags: getValue("default-hashtags").split(",").map((item) => item.trim()).filter(Boolean),
-      autoAddProductLink: document.querySelector("#auto-add-product-link").checked
+      hashtags: getValue("default-hashtags")
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      autoAddProductLink: getChecked("auto-add-product-link")
     }
   };
 
   await chrome.storage.sync.set({ settings });
-  showStatus("บันทึก Settings แล้ว", "success");
+  showSaveStatus("บันทึกแล้ว ✓", "success");
+  btn.disabled = false;
 }
 
-
-
-/**
- * @description ทดสอบดึงสินค้า TikTok Showcase ด้วย Session ปัจจุบัน
- */
+// ─── Test TikTok ─────────────────────────────────────────────
 async function testProductFetch() {
-  const button = document.querySelector("#test-products");
-
-  button.disabled = true;
-  button.textContent = "Testing...";
-  showStatus("กำลังทดสอบดึงสินค้า TikTok...", "success");
+  const btn = document.querySelector("#test-products");
+  const badge = document.querySelector("#tiktok-test-badge");
+  btn.disabled = true;
+  btn.textContent = "กำลังทดสอบ...";
+  badge.hidden = true;
 
   try {
-    const response = await chrome.runtime.sendMessage({
+    const res = await chrome.runtime.sendMessage({
       type: "FETCH_PRODUCTS",
       payload: { pageSize: 5, pageToken: "" }
     });
-
-    if (!response?.ok) {
-      throw new Error(response?.error || "ดึงสินค้าไม่สำเร็จ");
-    }
-
-    const count = response.products?.length || 0;
-    const firstName = response.products?.[0]?.name ? ` ตัวแรก: ${response.products[0].name}` : "";
-    showStatus(`ดึงสินค้าได้ ${count} รายการ${firstName}`, "success");
-  } catch (error) {
-    showStatus(error.message, "error");
+    if (!res?.ok) throw new Error(res?.error || "ดึงสินค้าไม่สำเร็จ");
+    const count = res.products?.length || 0;
+    const first = res.products?.[0]?.name ? ` · ${res.products[0].name}` : "";
+    setBadge(badge, "ok", `✓ ${count} รายการ${first}`);
+  } catch (err) {
+    setBadge(badge, "error", "✗ " + err.message);
   } finally {
-    button.disabled = false;
-    button.textContent = "Test Product Fetch";
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ทดสอบดึงสินค้า`;
   }
 }
 
-/**
- * @description ทดสอบ Gemini API key ด้วย API request จริง
- */
+// ─── Test Gemini ──────────────────────────────────────────────
 async function testGemini() {
-  const button = document.querySelector("#test-gemini");
-  if (!getValue("gemini-api-key")) {
-    showStatus("ไม่ได้ใส่ Gemini API Key: วิเคราะห์แบบ fallback ได้เมื่อมีชื่อสินค้า/title", "success");
+  const btn = document.querySelector("#test-gemini");
+  const badge = document.querySelector("#gemini-test-badge");
+  const apiKey = getValue("gemini-api-key");
+  badge.hidden = true;
+
+  if (!apiKey) {
+    setBadge(badge, "ok", "ℹ️ ไม่มี key — ใช้ fallback จากชื่อสินค้า");
     return;
   }
 
-  button.disabled = true;
-  button.textContent = "Testing...";
-  showStatus("กำลังทดสอบ Gemini API...", "success");
+  btn.disabled = true;
+  btn.textContent = "กำลังทดสอบ...";
 
   try {
     await saveSettings();
-    const result = await testGeminiConnection(getValue("gemini-api-key"), getValue("gemini-model"));
-    showStatus(`Gemini API ใช้งานได้ (${result.model})`, "success");
-  } catch (error) {
-    showStatus(error.message, "error");
+    const result = await testGeminiConnection(apiKey, getSelectValue("gemini-model"));
+    setBadge(badge, "ok", `✓ ${result.model} พร้อมใช้งาน`);
+  } catch (err) {
+    setBadge(badge, "error", "✗ " + err.message);
   } finally {
-    button.disabled = false;
-    button.textContent = "Test Gemini API";
+    btn.disabled = false;
+    btn.textContent = "ทดสอบ";
   }
 }
 
-/**
- * @description แสดง status
- * @param {string} message - message
- * @param {"success"|"error"} type - type
- */
-function showStatus(message, type) {
-  statusBox.textContent = message;
-  statusBox.dataset.type = type;
-  statusBox.hidden = false;
-}
-
-/**
- * @description อ่านค่า input
- * @param {string} id - id
- * @returns {string} value
- */
+// ─── Helpers ──────────────────────────────────────────────────
 function getValue(id) {
-  return document.querySelector(`#${id}`).value.trim();
+  return (document.querySelector(`#${id}`)?.value || "").trim();
+}
+function setValue(id, val) {
+  const el = document.querySelector(`#${id}`);
+  if (el) el.value = val ?? "";
+}
+function getSelectValue(id) {
+  return document.querySelector(`#${id}`)?.value || "";
+}
+function setSelectValue(id, val) {
+  const el = document.querySelector(`#${id}`);
+  if (!el) return;
+  // try to set; if option doesn't exist, keep default
+  const exists = [...el.options].some((o) => o.value === val);
+  if (exists) el.value = val;
+}
+function getChecked(id) {
+  return document.querySelector(`#${id}`)?.checked ?? false;
+}
+function setChecked(id, val) {
+  const el = document.querySelector(`#${id}`);
+  if (el) el.checked = Boolean(val);
+}
+function getRadio(name) {
+  return document.querySelector(`input[name="${name}"]:checked`)?.value || "";
+}
+function setRadio(name, val) {
+  const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+  if (el) el.checked = true;
+  syncModelCards();
 }
 
-/**
- * @description set input value
- * @param {string} id - id
- * @param {string} value - value
- */
-function setValue(id, value) {
-  const element = document.querySelector(`#${id}`);
-  if (element) element.value = value || "";
+function syncModelCards() {
+  document.querySelectorAll(".flow-model-card").forEach((card) => {
+    const radio = card.querySelector("input[type='radio']");
+    card.classList.toggle("selected", radio?.checked ?? false);
+  });
 }
 
+function setBadge(el, state, text) {
+  el.textContent = text;
+  el.dataset.state = state;
+  el.hidden = false;
+}
+
+function showSaveStatus(msg, type) {
+  saveStatusEl.textContent = msg;
+  saveStatusEl.dataset.type = type;
+  clearTimeout(showSaveStatus._t);
+  showSaveStatus._t = setTimeout(() => {
+    saveStatusEl.textContent = "";
+    delete saveStatusEl.dataset.type;
+  }, 3000);
+}
+
+// ─── Events ───────────────────────────────────────────────────
 document.querySelector("#save-settings").addEventListener("click", saveSettings);
 document.querySelector("#test-products").addEventListener("click", testProductFetch);
 document.querySelector("#test-gemini").addEventListener("click", testGemini);
-loadOptions().catch((error) => showStatus(error.message, "error"));
+
+// Upload wait slider live label
+document.querySelector("#flow-upload-wait").addEventListener("input", (e) => {
+  document.querySelector("#flow-upload-wait-label").textContent = e.target.value + "s";
+});
+
+// Model card radio sync
+document.querySelectorAll(".flow-model-card").forEach((card) => {
+  card.addEventListener("click", () => {
+    const radio = card.querySelector("input[type='radio']");
+    if (radio) radio.checked = true;
+    syncModelCards();
+  });
+});
+
+// Auto-save on any change (debounced)
+let autoSaveTimer;
+document.querySelectorAll("input:not([type='radio']):not([type='password']), select, textarea").forEach((el) => {
+  el.addEventListener("change", () => {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+      saveSettings().catch(() => { });
+    }, 800);
+  });
+});
+document.querySelectorAll("input[type='radio']").forEach((el) => {
+  el.addEventListener("change", () => {
+    syncModelCards();
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => saveSettings().catch(() => { }), 800);
+  });
+});
+
+// ─── Init ─────────────────────────────────────────────────────
+loadOptions().catch((err) => showSaveStatus(err.message, "error"));

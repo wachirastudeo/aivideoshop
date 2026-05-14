@@ -169,6 +169,19 @@ html[data-mode="tab"] .app-shell {
   border-color: var(--line);
 }
 
+.button--danger {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: var(--danger);
+}
+
+.button--danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: var(--danger);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  transform: translateY(-1px);
+}
+
 .button--full {
   width: 100%;
 }
