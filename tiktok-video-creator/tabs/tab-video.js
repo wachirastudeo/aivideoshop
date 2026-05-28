@@ -9,6 +9,7 @@ import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, publishVideo } from "../modules/video-output.js";
 
 const MOODS = ["Auto", "สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"];
+const RUNNING_STATUSES = new Set(["image_generating", "video_generating", "flow1", "flow2"]);
 
 let helpers = {};
 let settings = getDefaultSettings();
@@ -21,12 +22,12 @@ export async function initVideoTab(injectedHelpers) {
   const stored = await chrome.storage.local.get(["creatorState", "productQueue"]);
   const { settings: savedOptions = {} } = await chrome.storage.sync.get("settings");
 
-  // merge: local state > options defaults > hardcoded defaults
   const optionDefaults = {
     videoStyle: savedOptions.defaultVideoStyle || "Auto",
     presenter: savedOptions.defaultPresenter || "Auto",
     voiceTone: savedOptions.defaultVoiceTone || "Auto",
-    language: savedOptions.defaultLanguage || "ไทย"
+    language: savedOptions.defaultLanguage || "ไทย",
+    ...(savedOptions.mediaSettings || {})
   };
 
   settings = normalizeSettings({
@@ -58,10 +59,9 @@ function bindGlobalEvents() {
     "pacing", "transition", "image-count", "video-count", "video-duration", "aspect-ratio"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
-    if (el) {
-      el.addEventListener("input", syncSettingsForm);
-      el.addEventListener("change", syncSettingsForm);
-    }
+    if (!el) return;
+    el.addEventListener("input", syncSettingsForm);
+    el.addEventListener("change", syncSettingsForm);
   });
 
   document.querySelector("#btn-batch-create")?.addEventListener("click", () => processQueue());
@@ -82,13 +82,10 @@ function fillGlobalFormFromState() {
   setValue("camera-movement", settings.cameraMovement);
   setValue("pacing", settings.pacing);
   setValue("transition", settings.transition);
-  
-  // Media settings
   setValue("image-count", settings.imageCount);
   setValue("video-count", settings.videoCount);
   setValue("video-duration", settings.videoDuration);
   setValue("aspect-ratio", settings.aspectRatio);
-
   syncVideoTextSettingsVisibility();
 }
 
@@ -123,7 +120,24 @@ function updateSettings(patch) {
 }
 
 function normalizeProductQueue(value) {
-  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") : [];
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => item && typeof item === "object")
+    .map((item) => ({
+      ...item,
+      status: normalizeStatus(item.status),
+      errorMessage: item.errorMessage || "",
+      flowImageTileId: item.flowImageTileId || "",
+      flowVideoTileId: item.flowVideoTileId || "",
+      approvedImage: item.approvedImage || "",
+      videoUrl: item.videoUrl || ""
+    }));
+}
+
+function normalizeStatus(status) {
+  if (status === "flow1") return "image_generating";
+  if (status === "flow2") return "video_generating";
+  return status || "idle";
 }
 
 function normalizeSettings(value) {
@@ -155,7 +169,7 @@ function populateStyleDropdown() {
   select.innerHTML = VIDEO_STYLES.map((style) => `
     <option value="${style.id}">${style.emoji} ${style.name} - ${style.description}</option>
   `).join("");
-  select.insertAdjacentHTML("afterbegin", `<option value="Auto">✨ อัตโนมัติ</option>`);
+  select.insertAdjacentHTML("afterbegin", `<option value="Auto">อัตโนมัติ</option>`);
   select.value = settings.videoStyle;
 }
 
@@ -163,7 +177,7 @@ function renderPills(rootId, values, activeValue, onSelect) {
   const root = document.querySelector(`#${rootId}`);
   if (!root) return;
   root.innerHTML = values.map((value) => `
-    <button class="pill ${value === activeValue ? "pill--active" : ""}" type="button" data-value="${value}">${value}</button>
+    <button class="pill ${value === activeValue ? "pill--active" : ""}" type="button" data-value="${escapeHtml(value)}">${escapeHtml(value)}</button>
   `).join("");
   root.querySelectorAll("[data-value]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -173,147 +187,161 @@ function renderPills(rootId, values, activeValue, onSelect) {
   });
 }
 
-// Queue Rendering
 function renderQueue() {
   productQueue = normalizeProductQueue(productQueue);
   const queueCount = document.querySelector("#queue-count");
+  const readyCount = document.querySelector("#ready-count");
   if (queueCount) queueCount.textContent = productQueue.length;
+  if (readyCount) readyCount.textContent = productQueue.filter((p) => p.status !== "done" && p.status !== "error").length;
 
   const list = document.querySelector("#batch-product-list");
   if (!list) return;
 
   if (productQueue.length === 0) {
-    list.innerHTML = `<div class="empty-state">ยังไม่ได้เลือกสินค้า กรุณาเลือกจากแท็บ "เลือกสินค้า"</div>`;
+    list.innerHTML = `<div class="empty-state">ยังไม่ได้เลือกสินค้า ไปที่แท็บสินค้า TikTok แล้วเลือกสินค้าที่ต้องการสร้างวิดีโอ</div>`;
     return;
   }
 
-  list.innerHTML = productQueue.map((p, index) => {
-    const imageUrl = p.imageUrls?.[0] || 'assets/icon.svg';
-    const statusText = getStatusText(p.status);
-    const promptPreview = buildVideoPrompt(p, settings);
-
-    return `
-      <details class="product-batch-item card" data-index="${index}">
-        <summary class="product-batch-summary">
-          <img class="product-batch-image" src="${imageUrl}" alt="">
-          <div class="product-card__content">
-            <h3 class="product-batch-title" style="margin:0; font-size: 13px; font-weight: 650; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(p.name)}</h3>
-            <div class="product-batch-status" style="margin-top:4px; display: ${p.status === 'idle' ? 'none' : 'block'};"><span class="badge ${p.status === 'done' ? 'badge--success' : ''}">${statusText}</span></div>
-          </div>
-          <div class="summary-actions">
-            <button class="icon-button batch-remove" type="button" title="ลบออกจากคิว">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
-            </button>
-            <span class="chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></span>
-          </div>
-        </summary>
-        <div class="stack product-batch-body" style="padding: 0 12px 12px;">
-          <div class="divider" style="margin: 0 0 12px 0;"></div>
-          <label class="field">
-            <span class="field__label">ชื่อสินค้า (ใช้ในวิดีโอ)</span>
-            <input class="input batch-name" value="${escapeHtml(p.name)}">
-          </label>
-          
-          <div class="inline-actions">
-             <button class="button batch-analyze" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> วิเคราะห์หาจุดขาย</button>
-             <button class="button batch-copy" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg> คัดลอก Prompt</button>
-          </div>
-          
-          <label class="field">
-            <span class="field__label">จุดขาย / ไฮไลต์</span>
-            <textarea class="textarea batch-highlights" rows="2" placeholder="จุดเด่นสินค้า...">${escapeHtml(p.highlights || "")}</textarea>
-          </label>
-
-          <label class="field">
-            <span class="field__label">Prompt Preview</span>
-            <textarea class="textarea batch-prompt prompt-textarea" rows="3" readonly style="font-family: monospace; font-size: 11px; color: var(--muted); background: var(--bg);">${escapeHtml(promptPreview)}</textarea>
-          </label>
-          
-          <div class="divider" style="margin: 8px 0;"></div>
-          
-          <div class="card drop-card" style="background: var(--bg); border: 1px dashed var(--line); box-shadow: none;">
-            <div class="approved-row" style="display: flex; gap: 12px; align-items: center;">
-              <img class="batch-approved-preview approved-preview" src="${p.approvedImage || 'assets/icon.svg'}" alt="" style="width: 48px; height: 48px; border-radius: var(--radius); object-fit: cover; border: 1px solid var(--line); flex-shrink: 0;">
-              <label class="button button--full button--ghost" style="flex: 1;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                อัพโหลดภาพ Phase 1
-                <input type="file" class="batch-upload-approved" accept="image/png,image/jpeg,image/webp" hidden>
-              </label>
-            </div>
-            <label class="field" style="margin-top: 12px;">
-              <span class="field__label">URL วิดีโอจาก Google Flow</span>
-              <input class="input batch-video-url" type="url" placeholder="วาง URL ที่นี่" value="${escapeHtml(p.videoUrl || '')}">
-            </label>
-
-            <div class="card" style="background: rgba(255,255,255,0.05); margin-top: 10px; padding: 10px; border: none;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                <label class="field">
-                  <span class="field__label">ความเป็นส่วนตัว</span>
-                  <select class="input batch-privacy">
-                    <option value="PUBLIC">สาธารณะ (Public)</option>
-                    <option value="FRIENDS">เพื่อนเท่านั้น</option>
-                    <option value="PRIVATE">ส่วนตัว (Private)</option>
-                  </select>
-                </label>
-                <div style="display: flex; flex-direction: column; gap: 5px; font-size: 11px;">
-                  <label><input type="checkbox" class="batch-allow-comment" checked> อนุญาตคอมเมนต์</label>
-                  <label><input type="checkbox" class="batch-allow-duet" checked> อนุญาต Duet</label>
-                  <label><input type="checkbox" class="batch-allow-stitch" checked> อนุญาต Stitch</label>
-                </div>
-              </div>
-            </div>
-
-            <div class="inline-actions" style="margin-top: 12px;">
-              <button class="button batch-download button--full" type="button" style="flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download</button>
-              <button class="button button--primary batch-post button--full" type="button" style="flex:1;">โพสต์ลง TikTok</button>
-            </div>
-          </div>
-          
-          <div class="divider" style="margin: 8px 0;"></div>
-
-          <div class="inline-actions">
-            <button class="button button--ghost batch-flow-img button--full" type="button" style="flex:1; border-color: var(--accent); color: var(--accent);">✨ Phase1 ภาพ</button>
-            <button class="button button--ghost batch-flow-vid button--full" type="button" style="flex:1; border-color: var(--accent); color: var(--accent);">🎬 Phase2 วิดีโอ</button>
-            <button class="button button--danger batch-stop" type="button" style="display:${p.status === 'flow1' || p.status === 'flow2' ? 'inline-block' : 'none'}">หยุดทำงาน</button>
-          </div>
-        </div>
-      </details>
-    `;
-  }).join("");
-
+  list.innerHTML = productQueue.map(productMarkup).join("");
   bindBatchEvents();
+}
+
+function productMarkup(p, index) {
+  const sourceImage = p.imageUrls?.[0] || "assets/icon.svg";
+  const approvedImage = p.approvedImage || "";
+  const imagePrompt = buildImagePrompt(p, settings);
+  const videoPrompt = buildVideoPrompt(p, settings);
+  const status = getStatusMeta(p.status);
+  const imageDone = Boolean(approvedImage || p.flowImageTileId || p.status === "done" || p.status === "video_generating");
+  const videoDone = Boolean(p.videoUrl || p.flowVideoTileId || p.status === "done");
+
+  return `
+    <article class="flow-job" data-index="${index}" data-status="${escapeHtml(p.status)}">
+      <header class="flow-job__header">
+        <img class="flow-job__thumb" src="${escapeAttr(sourceImage)}" alt="" width="64" height="64">
+        <div class="flow-job__title">
+          <h3>${escapeHtml(p.name || "ไม่มีชื่อสินค้า")}</h3>
+          <span class="badge ${status.className}">${status.label}</span>
+        </div>
+        <button class="icon-button batch-remove" type="button" title="ลบออกจากคิว" aria-label="ลบออกจากคิว">${xIcon()}</button>
+      </header>
+
+      <div class="flow-steps" aria-label="Flow generation steps">
+        ${stepMarkup("1", "ภาพ", imageDone, p.status === "image_generating")}
+        ${stepMarkup("2", "วิดีโอ", videoDone, p.status === "video_generating")}
+      </div>
+
+      <div class="flow-job__grid">
+        <figure class="media-tile">
+          <img src="${escapeAttr(sourceImage)}" alt="" width="180" height="240">
+          <figcaption>ภาพ TikTok</figcaption>
+        </figure>
+        <figure class="media-tile media-tile--generated">
+          <img class="batch-approved-preview" src="${escapeAttr(approvedImage || "assets/icon.svg")}" alt="" width="180" height="240">
+          <figcaption>ภาพจาก Flow</figcaption>
+        </figure>
+      </div>
+
+      <div class="flow-job__body">
+        <label class="field">
+          <span class="field__label">ชื่อสินค้า / Hook</span>
+          <input class="input batch-name" value="${escapeAttr(p.name || "")}">
+        </label>
+
+        <label class="field">
+          <span class="field__label">จุดขาย / ไฮไลต์</span>
+          <textarea class="textarea batch-highlights" rows="2" placeholder="จุดเด่นสินค้า...">${escapeHtml(p.highlights || "")}</textarea>
+        </label>
+
+        <div class="prompt-grid">
+          <label class="field">
+            <span class="field__label">Prompt ภาพ</span>
+            <textarea class="textarea prompt-textarea batch-image-prompt" rows="5" readonly>${escapeHtml(imagePrompt)}</textarea>
+          </label>
+          <label class="field">
+            <span class="field__label">Prompt วิดีโอ</span>
+            <textarea class="textarea prompt-textarea batch-prompt" rows="5" readonly>${escapeHtml(videoPrompt)}</textarea>
+          </label>
+        </div>
+
+        <div class="flow-result-grid">
+          <label class="field upload-field">
+            <span class="field__label">ใส่ภาพ Phase 1 เอง</span>
+            <span class="button button--ghost button--full file-button">
+              อัพโหลดภาพ
+              <input type="file" class="batch-upload-approved" accept="image/png,image/jpeg,image/webp">
+            </span>
+          </label>
+          <label class="field">
+            <span class="field__label">URL วิดีโอจาก Google Flow</span>
+            <input class="input batch-video-url" type="url" placeholder="วาง URL หรือให้ระบบเติมอัตโนมัติ" value="${escapeAttr(p.videoUrl || "")}">
+          </label>
+        </div>
+
+        ${p.errorMessage ? `<p class="flow-error">${escapeHtml(p.errorMessage)}</p>` : ""}
+
+        <div class="inline-actions flow-job__actions">
+          <button class="button batch-analyze" type="button">${sparkIcon()} วิเคราะห์จุดขาย</button>
+          <button class="button batch-copy" type="button">${copyIcon()} คัดลอก Prompt</button>
+          <button class="button button--ghost batch-flow-img" type="button">Phase 1 ภาพ</button>
+          <button class="button button--ghost batch-flow-vid" type="button">Phase 2 วิดีโอ</button>
+          <button class="button button--danger batch-stop" type="button" ${RUNNING_STATUSES.has(p.status) ? "" : "hidden"}>หยุด</button>
+          <button class="button batch-download" type="button" ${p.videoUrl ? "" : "disabled"}>${downloadIcon()} Download</button>
+          <button class="button button--primary batch-post" type="button" ${p.videoUrl ? "" : "disabled"}>โพสต์ TikTok</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function stepMarkup(number, label, done, running) {
+  const state = done ? "done" : running ? "running" : "idle";
+  return `
+    <div class="flow-step flow-step--${state}">
+      <span>${number}</span>
+      <strong>${label}</strong>
+    </div>
+  `;
 }
 
 function bindBatchEvents() {
   const list = document.querySelector("#batch-product-list");
   if (!list) return;
 
-  list.querySelectorAll(".product-batch-item").forEach(item => {
+  list.querySelectorAll(".flow-job").forEach((item) => {
     const idx = parseInt(item.dataset.index, 10);
     const p = productQueue[idx];
+    if (!p) return;
 
-    item.querySelector(".batch-name").addEventListener("input", (e) => { p.name = e.target.value; updatePrompt(item, p); persistState(); });
-    item.querySelector(".batch-video-url").addEventListener("input", (e) => { p.videoUrl = e.target.value; persistState(); });
-
-    item.querySelector(".batch-analyze").addEventListener("click", () => handleAnalyze(p, item));
-    item.querySelector(".batch-copy").addEventListener("click", () => {
-      const prompt = item.querySelector(".batch-prompt").value;
-      navigator.clipboard.writeText(prompt);
-      helpers.showStatus("คัดลอก Prompt แล้ว", "success");
+    item.querySelector(".batch-name")?.addEventListener("input", (e) => {
+      p.name = e.target.value;
+      p.status = p.status === "idle" ? "prompt_ready" : p.status;
+      updatePrompts(item, p);
+      persistState();
+      renderCountersOnly();
     });
-
-    item.querySelector(".batch-flow-img").addEventListener("click", () => launchFlow("image", p, item));
-    item.querySelector(".batch-flow-vid").addEventListener("click", () => launchFlow("video", p, item));
-    const stopBtn = item.querySelector(".batch-stop");
-    if (stopBtn) stopBtn.addEventListener("click", () => handleStop(p, item));
-
-    item.querySelector(".batch-upload-approved").addEventListener("change", (e) => handleUploadApproved(e, p, item));
-
-    item.querySelector(".batch-download").addEventListener("click", () => handleDownload(p));
-    item.querySelector(".batch-post").addEventListener("click", () => handlePost(p));
-    item.querySelector(".batch-remove").addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+    item.querySelector(".batch-highlights")?.addEventListener("input", (e) => {
+      p.highlights = e.target.value;
+      p.status = p.status === "idle" ? "prompt_ready" : p.status;
+      updatePrompts(item, p);
+      persistState();
+      renderCountersOnly();
+    });
+    item.querySelector(".batch-video-url")?.addEventListener("input", (e) => {
+      p.videoUrl = e.target.value;
+      if (p.videoUrl) p.status = "done";
+      persistState();
+      renderQueue();
+    });
+    item.querySelector(".batch-analyze")?.addEventListener("click", () => handleAnalyze(p));
+    item.querySelector(".batch-copy")?.addEventListener("click", () => copyPrompts(item));
+    item.querySelector(".batch-flow-img")?.addEventListener("click", () => launchFlow("image", p));
+    item.querySelector(".batch-flow-vid")?.addEventListener("click", () => launchFlow("video", p));
+    item.querySelector(".batch-stop")?.addEventListener("click", () => handleStop(p));
+    item.querySelector(".batch-upload-approved")?.addEventListener("change", (e) => handleUploadApproved(e, p));
+    item.querySelector(".batch-download")?.addEventListener("click", () => handleDownload(p));
+    item.querySelector(".batch-post")?.addEventListener("click", () => handlePost(p));
+    item.querySelector(".batch-remove")?.addEventListener("click", () => {
       productQueue.splice(idx, 1);
       renderQueue();
       persistState();
@@ -321,173 +349,219 @@ function bindBatchEvents() {
   });
 }
 
-function updatePrompt(itemEl, p) {
-  const promptPreview = buildVideoPrompt(p, settings);
-  const textArea = itemEl.querySelector(".batch-prompt");
-  if (textArea) textArea.value = promptPreview;
+function updatePrompts(itemEl, product) {
+  const imagePrompt = itemEl.querySelector(".batch-image-prompt");
+  const videoPrompt = itemEl.querySelector(".batch-prompt");
+  if (imagePrompt) imagePrompt.value = buildImagePrompt(product, settings);
+  if (videoPrompt) videoPrompt.value = buildVideoPrompt(product, settings);
 }
 
-function getStatusText(status) {
+async function copyPrompts(itemEl) {
+  const imagePrompt = itemEl.querySelector(".batch-image-prompt")?.value || "";
+  const videoPrompt = itemEl.querySelector(".batch-prompt")?.value || "";
+  await navigator.clipboard.writeText(`IMAGE PROMPT\n${imagePrompt}\n\nVIDEO PROMPT\n${videoPrompt}`);
+  helpers.showStatus("คัดลอก Prompt แล้ว", "success");
+}
+
+function getStatusMeta(status) {
   switch (status) {
-    case "analyzed": return "พร้อมทำภาพ/วิดีโอ";
-    case "flow1": return "กำลังทำภาพ (Phase 1)";
-    case "flow2": return "กำลังทำวิดีโอ (Phase 2)";
-    case "done": return "พร้อมโพสต์ 🚀";
-    default: return "รอดำเนินการ";
+    case "prompt_ready": return { label: "พร้อมทำ", className: "badge--ready" };
+    case "analyzed": return { label: "วิเคราะห์แล้ว", className: "badge--ready" };
+    case "image_generating": return { label: "กำลังทำภาพ", className: "badge--running" };
+    case "image_done": return { label: "ภาพพร้อม", className: "badge--ready" };
+    case "video_generating": return { label: "กำลังทำวิดีโอ", className: "badge--running" };
+    case "done": return { label: "พร้อมโพสต์", className: "badge--success" };
+    case "error": return { label: "Error", className: "badge--error" };
+    default: return { label: "รอดำเนินการ", className: "" };
   }
 }
 
-async function handleAnalyze(p, itemEl) {
+async function handleAnalyze(product) {
   try {
     helpers.showStatus("กำลังวิเคราะห์ด้วย AI...", "info");
-    const urls = p.imageUrls || [];
-    const analysis = await analyzeProductImages(urls, p);
-    p.highlights = analysis.highlights || p.highlights;
-    p.name = analysis.name || p.name;
-    p.status = "analyzed";
-
-    itemEl.querySelector(".batch-highlights").value = p.highlights;
-    itemEl.querySelector(".batch-name").value = p.name;
-    updatePrompt(itemEl, p);
-    itemEl.querySelector("summary .badge").textContent = getStatusText(p.status);
-
-    persistState();
+    const analysis = await analyzeProductImages(product.imageUrls || [], product);
+    product.highlights = analysis.highlights || product.highlights;
+    product.name = analysis.name || product.name;
+    product.status = "analyzed";
+    product.errorMessage = "";
+    await persistState();
+    renderQueue();
     helpers.showStatus("วิเคราะห์เสร็จสิ้น", "success");
   } catch (err) {
+    product.status = "error";
+    product.errorMessage = err.message;
+    await persistState();
+    renderQueue();
     helpers.showStatus(err.message, "error");
   }
 }
 
-async function handleUploadApproved(e, p, itemEl) {
-  const [file] = [...e.target.files];
+async function handleUploadApproved(event, product) {
+  const [file] = [...event.target.files];
   if (!file) return;
-  p.approvedImage = await fileToDataUrl(file);
-  const preview = itemEl.querySelector(".batch-approved-preview");
-  if (preview) preview.src = p.approvedImage;
+  product.approvedImage = await fileToDataUrl(file);
+  product.status = "image_done";
+  product.errorMessage = "";
+  await persistState();
+  renderQueue();
   helpers.showStatus("อัพโหลดภาพ Phase 1 สำเร็จ", "success");
-  persistState();
 }
 
-async function launchFlow(phase, p, itemEl) {
+async function launchFlow(phase, product) {
   try {
-    helpers.showStatus(phase === "image" ? "เปิด Google Flow (ภาพ)..." : "เปิด Google Flow (วิดีโอ)...", "info");
-    const prompt = phase === "image" ? buildImagePrompt(p, settings) : itemEl.querySelector(".batch-prompt").value;
-    const image = phase === "image" ? p.imageUrls?.[0] : (p.approvedImage || p.imageUrls?.[0]);
+    const prompt = phase === "image" ? buildImagePrompt(product, settings) : buildVideoPrompt(product, settings);
+    const image = phase === "image" ? product.imageUrls?.[0] : (product.approvedImage || product.imageUrls?.[0]);
+    product.status = phase === "image" ? "image_generating" : "video_generating";
+    product.errorMessage = "";
+    await persistState();
+    renderQueue();
 
-    // ดึงการตั้งค่าจาก storage
-    const { settings: savedOptions = {} } = await chrome.storage.sync.get("settings");
-    const media = savedOptions.mediaSettings || {};
+    helpers.showStatus(phase === "image" ? "เปิด Google Flow เพื่อสร้างภาพ..." : "เปิด Google Flow เพื่อสร้างวิดีโอ...", "info");
+    const result = await openGoogleFlow(phase, prompt, image, buildFlowOptions());
 
-    const options = {
-      imageCount: settings.imageCount,
-      videoCount: settings.videoCount,
-      videoDuration: settings.videoDuration,
-      aspectRatio: settings.aspectRatio
-    };
+    if (phase === "image") {
+      product.approvedImage = result?.resultUrl || product.approvedImage;
+      product.flowImageTileId = result?.tileId || product.flowImageTileId || "";
+      product.status = "image_done";
+    } else {
+      product.videoUrl = result?.resultUrl || product.videoUrl;
+      product.flowVideoTileId = result?.tileId || product.flowVideoTileId || "";
+      product.status = "done";
+    }
 
-    await openGoogleFlow(phase, prompt, image, options);
-
-    p.status = phase === "image" ? "flow1" : "flow2";
-    itemEl.querySelector("summary .badge").textContent = getStatusText(p.status);
-    persistState();
+    await persistState();
+    renderQueue();
+    helpers.showStatus(phase === "image" ? "สร้างภาพสำเร็จ" : "สร้างวิดีโอสำเร็จ", "success");
   } catch (err) {
+    product.status = "error";
+    product.errorMessage = err.message;
+    await persistState();
+    renderQueue();
     helpers.showStatus(err.message, "error");
   }
 }
 
 async function processQueue() {
   if (isProcessing) return;
+  if (productQueue.length === 0) {
+    helpers.showStatus("ยังไม่มีสินค้าในคิว", "error");
+    return;
+  }
+
   isProcessing = true;
   stopRequested = false;
+  setBatchButtons(true);
+  helpers.showStatus("เริ่มสร้างภาพและวิดีโอแบบ Auto-Flow...", "info");
 
-  document.querySelector("#btn-batch-create").style.display = "none";
-  document.querySelector("#btn-batch-stop").style.display = "inline-block";
+  const options = buildFlowOptions();
+  let errorCount = 0;
 
-  helpers.showStatus("เริ่มสร้างวิดีโอแบบ Auto-Flow...", "info");
+  for (let i = 0; i < productQueue.length; i += 1) {
+    if (stopRequested) break;
+    const product = productQueue[i];
 
-  const options = {
+    try {
+      product.status = "image_generating";
+      product.errorMessage = "";
+      await persistState();
+      renderQueue();
+
+      helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพ แล้วต่อวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)`, "info");
+      const imgPrompt = buildImagePrompt(product, settings);
+      const vidPrompt = buildVideoPrompt(product, settings);
+      const result = await openGoogleFlow("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, product.imageUrls?.[0], options);
+
+      product.approvedImage = result?.imgUrl || product.approvedImage || product.imageUrls?.[0] || "";
+      product.flowImageTileId = result?.imgTileId || product.flowImageTileId || "";
+      product.videoUrl = result?.resultUrl || product.videoUrl || "";
+      product.flowVideoTileId = result?.tileId || product.flowVideoTileId || "";
+      product.status = "done";
+      await persistState();
+      renderQueue();
+    } catch (err) {
+      errorCount += 1;
+      product.status = "error";
+      product.errorMessage = err.message;
+      await persistState();
+      renderQueue();
+      helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
+    }
+  }
+
+  const wasStopped = stopRequested;
+  isProcessing = false;
+  stopRequested = false;
+  setBatchButtons(false);
+  const finalMessage = wasStopped
+    ? "หยุดทำงานแล้ว"
+    : errorCount > 0
+      ? `ทำงานจบ แต่มี Error ${errorCount} รายการ`
+      : "สร้างเสร็จสมบูรณ์ทุกรายการ";
+  helpers.showStatus(finalMessage, wasStopped ? "info" : errorCount > 0 ? "error" : "success");
+}
+
+function setBatchButtons(running) {
+  const createButton = document.querySelector("#btn-batch-create");
+  const stopButton = document.querySelector("#btn-batch-stop");
+  if (createButton) createButton.hidden = running;
+  if (stopButton) stopButton.hidden = !running;
+}
+
+function buildFlowOptions() {
+  return {
     imageCount: settings.imageCount,
     videoCount: settings.videoCount,
     videoDuration: settings.videoDuration,
     aspectRatio: settings.aspectRatio
   };
-
-  for (let i = 0; i < productQueue.length; i++) {
-    if (stopRequested) break;
-
-    const p = productQueue[i];
-    const item = document.querySelector(`.product-batch-item[data-index="${i}"]`);
-
-    try {
-      // ใช้โหมด combined เพื่อรันทั้ง 2 ขั้นตอนใน Flow รอบเดียว
-      helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังสร้างภาพและวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)... รอสักครู่`, "info");
-      p.status = "flow1";
-      if (item) item.querySelector("summary .badge").textContent = "กำลังสร้าง (1/2)";
-
-      const imgPrompt = buildImagePrompt(p, settings);
-      const vidPrompt = buildVideoPrompt(p, settings);
-
-      const result = await openGoogleFlow("combined", { imagePrompt, videoPrompt: vidPrompt }, p.imageUrls?.[0], options);
-      
-      p.approvedImage = result?.imgUrl || p.approvedImage || p.imageUrls?.[0];
-      if (item && p.approvedImage) item.querySelector(".batch-approved-preview").src = p.approvedImage;
-
-      p.videoUrl = result?.resultUrl || p.videoUrl;
-      if (item && p.videoUrl) item.querySelector(".batch-video-url").value = p.videoUrl;
-
-      p.status = "done";
-      if (item) item.querySelector("summary .badge").textContent = getStatusText(p.status);
-
-      persistState();
-    } catch (err) {
-      helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
-    }
-  }
-
-  isProcessing = false;
-  stopRequested = false;
-  document.querySelector("#btn-batch-create").style.display = "inline-block";
-  document.querySelector("#btn-batch-stop").style.display = "none";
-  helpers.showStatus(stopRequested ? "หยุดทำงานแล้ว" : "สร้างเสร็จสมบูรณ์ทุกรายการ!", "success");
 }
 
-async function handleStop(p, itemEl) {
-  p.status = "analyzed";
-  itemEl.querySelector("summary .badge").textContent = getStatusText(p.status);
-  persistState();
+async function handleStop(product) {
+  stopRequested = true;
+  product.status = "image_done";
+  await chrome.runtime.sendMessage({ type: "FLOW_STOP" }).catch(() => {});
+  await persistState();
+  renderQueue();
   helpers.showStatus("หยุดทำงานแล้ว", "info");
 }
 
-async function handleDownload(p) {
+async function handleDownload(product) {
   try {
-    if (!p.videoUrl) throw new Error("กรุณาวาง URL วิดีโอ");
+    if (!product.videoUrl) throw new Error("กรุณาวาง URL วิดีโอ");
     helpers.showStatus("กำลังดาวน์โหลด...", "info");
-    await downloadVideo(p.videoUrl, p);
-    p.status = "done";
+    await downloadVideo(product.videoUrl, product);
+    product.status = "done";
+    await persistState();
     renderQueue();
-    persistState();
   } catch (err) {
     helpers.showStatus(err.message, "error");
   }
 }
 
-async function handlePost(p) {
+async function handlePost(product) {
   try {
-    if (!p.videoUrl) throw new Error("กรุณาวาง URL วิดีโอ");
+    if (!product.videoUrl) throw new Error("กรุณาวาง URL วิดีโอ");
     helpers.showStatus("กำลังส่งไป TikTok...", "info");
-    await publishVideo(p.videoUrl, p);
-    p.status = "done";
+    await publishVideo(product.videoUrl, product);
+    product.status = "done";
+    await persistState();
     renderQueue();
-    persistState();
   } catch (err) {
     helpers.showStatus(err.message, "error");
   }
+}
+
+function renderCountersOnly() {
+  const queueCount = document.querySelector("#queue-count");
+  const readyCount = document.querySelector("#ready-count");
+  if (queueCount) queueCount.textContent = productQueue.length;
+  if (readyCount) readyCount.textContent = productQueue.filter((p) => p.status !== "done" && p.status !== "error").length;
 }
 
 async function persistState() {
   const creatorState = {
     settings,
-    productInfo: {}, // legacy fallback
+    productInfo: {}
   };
   await chrome.storage.local.set({ creatorState, productQueue });
 }
@@ -501,6 +575,10 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function escapeAttr(value) {
+  return escapeHtml(value).replaceAll("`", "&#096;");
+}
+
 function getValue(id) {
   return document.querySelector(`#${id}`)?.value || "";
 }
@@ -510,11 +588,18 @@ function setValue(id, value) {
   if (el) el.value = value ?? "";
 }
 
-function getChecked(id) {
-  return document.querySelector(`#${id}`)?.checked || false;
+function xIcon() {
+  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>`;
 }
 
-function setChecked(id, value) {
-  const el = document.querySelector(`#${id}`);
-  if (el) el.checked = Boolean(value);
+function sparkIcon() {
+  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3z"></path></svg>`;
+}
+
+function copyIcon() {
+  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+}
+
+function downloadIcon() {
+  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>`;
 }

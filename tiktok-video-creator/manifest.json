@@ -28,7 +28,9 @@
       ],
       "matches": [
         "https://labs.google/fx/tools/flow*",
-        "https://labs.google.com/fx/tools/flow*"
+        "https://labs.google/fx/*/tools/flow*",
+        "https://labs.google.com/fx/tools/flow*",
+        "https://labs.google.com/fx/*/tools/flow*"
       ],
       "run_at": "document_idle",
       "all_frames": false

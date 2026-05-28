@@ -48,25 +48,15 @@ async function openCreatorTab() {
 
 async function openGoogleFlow(payload) {
   const FLOW_URL = "https://labs.google/fx/tools/flow";
-  let tab;
-
-  // อ่าน settings
-  const { settings = {} } = await chrome.storage.sync.get("settings");
-  const reuseTab = settings.flow?.reuseTab !== false;
-
-  // หา tab ที่เปิด Flow อยู่แล้ว
-  const existing = await chrome.tabs.query({ url: "*://labs.google/fx/tools/flow*" });
-  if (reuseTab && existing.length > 0) {
-    tab = existing[0];
-    await chrome.tabs.update(tab.id, { active: true });
-    if (tab.status !== "complete") await waitForTabComplete(tab.id);
-  } else {
-    tab = await chrome.tabs.create({ url: FLOW_URL, active: true });
-    await waitForTabComplete(tab.id);
+  let tab = await chrome.tabs.create({ url: FLOW_URL, active: true });
+  await waitForTabComplete(tab.id);
+  tab = await chrome.tabs.get(tab.id);
+  if (tab.url?.includes("accounts.google.com")) {
+    throw new Error("Google Flow ต้อง login Google ก่อน แล้วค่อยกดสร้างใหม่");
   }
 
-  // รอ content script พร้อม (max 12s)
-  await waitForContentScript(tab.id, 12000);
+  // รอ content script พร้อม หรือ inject เองถ้า tab เปิดอยู่ก่อน reload extension
+  await ensureFlowContentScript(tab.id);
 
   // ส่ง message ไปหา content script พร้อมการตั้งค่า
   let result;
@@ -96,6 +86,7 @@ async function openGoogleFlow(payload) {
     error: result?.error, 
     resultUrl: result?.resultUrl || "",
     tileId: result?.tileId || "",
+    imgTileId: result?.imgTileId || "",
     imgUrl: result?.imgUrl || ""
   };
 }
@@ -118,11 +109,20 @@ async function getFlowSettings() {
 }
 
 async function stopFlowPipeline() {
-  const tabs = await chrome.tabs.query({ url: "*://labs.google/fx/tools/flow*" });
+  const tabs = await queryFlowTabs();
   for (const tab of tabs) {
     chrome.tabs.sendMessage(tab.id, { type: "FLOW_STOP" }).catch(() => { });
   }
   return { ok: true };
+}
+
+async function queryFlowTabs() {
+  return [
+    ...(await chrome.tabs.query({ url: "*://labs.google/fx/tools/flow*" })),
+    ...(await chrome.tabs.query({ url: "*://labs.google/fx/*/tools/flow*" })),
+    ...(await chrome.tabs.query({ url: "*://labs.google.com/fx/tools/flow*" })),
+    ...(await chrome.tabs.query({ url: "*://labs.google.com/fx/*/tools/flow*" }))
+  ].filter((candidate, index, list) => candidate.id && list.findIndex((item) => item.id === candidate.id) === index);
 }
 
 /**
@@ -133,17 +133,35 @@ function waitForContentScript(tabId, timeoutMs = 10000) {
     const start = Date.now();
     const interval = setInterval(async () => {
       try {
-        await chrome.tabs.sendMessage(tabId, { type: "FLOW_PING" });
+        const response = await chrome.tabs.sendMessage(tabId, { type: "FLOW_PING" });
         clearInterval(interval);
-        resolve();
+        resolve(Boolean(response?.pong));
       } catch {
         if (Date.now() - start > timeoutMs) {
           clearInterval(interval);
-          resolve(); // timeout — ลองส่งต่อไปเลย
+          resolve(false);
         }
       }
     }, 500);
   });
+}
+
+async function ensureFlowContentScript(tabId) {
+  if (await waitForContentScript(tabId, 2500)) return;
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content/flow-automation.js"]
+    });
+  } catch (error) {
+    throw new Error("inject content script ไปยัง Google Flow ไม่สำเร็จ: " + error.message);
+  }
+
+  const ready = await waitForContentScript(tabId, 8000);
+  if (!ready) {
+    throw new Error("content script ของ Google Flow ยังไม่พร้อมหลัง inject");
+  }
 }
 
 function waitForTabComplete(tabId) {
