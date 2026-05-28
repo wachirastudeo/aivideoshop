@@ -966,19 +966,13 @@ async function runPipeline(payload) {
         const initialPrompt = typeof prompt === "object" ? prompt.imagePrompt : prompt;
         if (!initialPrompt) throw new Error("ไม่มี prompt สำหรับสร้างภาพ/วิดีโอ");
 
-        if ((phase === "image" || phase === "combined") && uploadedTiles.length > 0) {
-            // New Flow UI: uploaded images are edited from /edit/... instead of "Add to prompt".
-            await openMediaEditWorkspace(uploadedTiles[0]);
-            if (cfg.autoPortrait) await ensureEditAspectRatio(options);
-        } else {
-            // 4. ตั้งค่า mode + ratio
-            if (cfg.autoPortrait) await ensureConfig(phase === "combined" ? "image" : phase, options);
+        // 4. ตั้งค่า mode + ratio
+        if (cfg.autoPortrait) await ensureConfig(phase === "combined" ? "image" : phase, options);
 
-            // 5. แนบรูปเข้า prompt (หน้า Uploaded)
-            if (uploadedTiles.length > 0) {
-                const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload");
-                if (attached.length !== uploadedTiles.length) throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบ จึงไม่กด Generate");
-            }
+        // 5. แนบรูปเข้า prompt (หน้า Uploaded)
+        if (uploadedTiles.length > 0) {
+            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload");
+            if (attached.length !== uploadedTiles.length) throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบ จึงไม่กด Generate");
         }
 
         // 6. กรอก prompt
