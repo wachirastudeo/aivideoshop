@@ -48,8 +48,35 @@ async function openCreatorTab() {
 
 async function openGoogleFlow(payload) {
   const FLOW_URL = "https://labs.google/fx/tools/flow";
-  let tab = await chrome.tabs.create({ url: FLOW_URL, active: true });
-  await waitForTabComplete(tab.id);
+  const existingTabs = await queryFlowTabs();
+  let tab;
+  let needNavigate = true;
+
+  if (existingTabs.length > 0) {
+    tab = existingTabs[0];
+    await chrome.tabs.update(tab.id, { active: true });
+    try {
+      await chrome.windows.update(tab.windowId, { focused: true });
+    } catch { }
+    const url = tab.url || "";
+    if (url.endsWith("/tools/flow") || url.endsWith("/tools/flow/")) {
+      needNavigate = false;
+    }
+  } else {
+    tab = await chrome.tabs.create({ url: FLOW_URL, active: true });
+    needNavigate = false;
+  }
+
+  if (needNavigate) {
+    await chrome.tabs.update(tab.id, { url: FLOW_URL });
+    await waitForTabComplete(tab.id);
+  } else {
+    const currentTab = await chrome.tabs.get(tab.id);
+    if (currentTab.status !== "complete") {
+      await waitForTabComplete(tab.id);
+    }
+  }
+
   tab = await chrome.tabs.get(tab.id);
   if (tab.url?.includes("accounts.google.com")) {
     throw new Error("Google Flow ต้อง login Google ก่อน แล้วค่อยกดสร้างใหม่");
