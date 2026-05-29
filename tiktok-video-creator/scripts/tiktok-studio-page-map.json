@@ -1,0 +1,125 @@
+{
+  "url": "https://www.tiktok.com/tiktokstudio/upload?from=creator_center&tab=video",
+  "scope": "TikTok Studio upload page, from selecting a video through post-upload settings and final actions.",
+  "notes": [
+    "Use these selectors for browser UI automation only.",
+    "Do not use this map to replay private TikTok endpoints.",
+    "Caption/settings elements appear only after a video upload finishes."
+  ],
+  "preUpload": {
+    "fileInput": "input[type=\"file\"][accept=\"video/*\"]",
+    "fileInputHtml": "<input type=\"file\" accept=\"video/*\" class=\"jsx-2094875959\" style=\"display: none;\">",
+    "selectVideoContainer": "[data-e2e=\"select_video_container\"]",
+    "selectVideoText": "Select video to upload",
+    "selectVideoRole": "[role=\"button\"]:has([data-e2e=\"select_video_container\"])",
+    "uploadLimitsText": [
+      "Maximum size: 30 GB, video duration: 60 minutes.",
+      "Recommended: .mp4",
+      "High-resolution recommended: 1080p, 1440p, 4K.",
+      "Recommended aspect ratios: 16:9 landscape, 9:16 vertical."
+    ]
+  },
+  "postUpload": {
+    "uploadStatus": {
+      "container": "[data-e2e=\"upload_status_container\"]",
+      "replaceButton": "[data-e2e=\"upload_status_container\"] button[aria-label=\"Replace\"]",
+      "observedText": "PROMPT_PLAY_20260528_105624.mp4 720P Uploaded（2.06MB） Replace"
+    },
+    "caption": {
+      "container": "[data-e2e=\"caption_container\"]",
+      "editor": "[data-e2e=\"caption_container\"] .public-DraftEditor-content[contenteditable=\"true\"]",
+      "fallbackEditor": ".notranslate.public-DraftEditor-content[contenteditable=\"true\"]",
+      "hashtagButton": "[data-e2e=\"caption_container\"] button[aria-label=\"Hashtag\"]",
+      "mentionButton": "[data-e2e=\"caption_container\"] button[aria-label=\"@mention\"]",
+      "counterTextExample": "27/4000"
+    },
+    "cover": {
+      "container": "[data-e2e=\"cover_container\"]",
+      "visibleText": "Cover Edit cover"
+    },
+    "location": {
+      "container": "[data-e2e=\"poi_container\"]",
+      "combobox": "[data-e2e=\"poi_container\"] button[role=\"combobox\"]",
+      "searchInput": "[data-e2e=\"poi_container\"] input[placeholder=\"Search locations\"]",
+      "observedSuggestions": [
+        "Chonburi",
+        "Bang Saen",
+        "Bangkok",
+        "ICONSIAM",
+        "Chiang Mai",
+        "Ko Sichang"
+      ]
+    },
+    "addLink": {
+      "container": "[data-e2e=\"anchor_container\"]",
+      "addButton": "[data-e2e=\"anchor_container\"] button",
+      "visibleText": "Add link Add"
+    },
+    "schedule": {
+      "container": "[data-e2e=\"schedule_container\"]",
+      "postNowRadio": "input[name=\"postSchedule\"][value=\"post_now\"]",
+      "scheduleRadio": "input[name=\"postSchedule\"][value=\"schedule\"]",
+      "observedDefault": "post_now"
+    },
+    "visibility": {
+      "container": "[data-e2e=\"video_visibility_container\"]",
+      "combobox": "[data-e2e=\"video_visibility_container\"] button[role=\"combobox\"]",
+      "observedDefault": "Everyone"
+    },
+    "highQualityUploads": {
+      "visibleText": "High-quality uploads HD by default when you post from Web Studio",
+      "switchRole": "switch"
+    },
+    "permissions": {
+      "container": "[data-e2e=\"user_perm_container\"]",
+      "visibleText": "Allow users to: Comment Reuse of content",
+      "observedCommentChecked": true,
+      "observedReuseChecked": true
+    },
+    "disclosure": {
+      "container": "[data-e2e=\"disclose_content_container\"]",
+      "visibleText": "Disclose post content",
+      "observedChecked": false
+    },
+    "aiGenerated": {
+      "container": "[data-e2e=\"aigc_container\"]",
+      "visibleText": "AI-generated content",
+      "observedChecked": true,
+      "previewTextWhenEnabled": "Creator labeled as AI-generated"
+    },
+    "advancedSettings": {
+      "container": "[data-e2e=\"advanced_settings_container\"]",
+      "expandedText": "Show less"
+    },
+    "checks": {
+      "copyrightContainer": "[data-e2e=\"copyright_container\"]",
+      "musicCopyrightText": "Music copyright check No issues found.",
+      "contentCheckText": "Content check lite No issues found.",
+      "warningText": "Content may be restricted. You can still post, but modifying it to follow our guidelines may improve visibility."
+    },
+    "preview": {
+      "container": "[data-e2e=\"mobile_preview_container\"]",
+      "observedText": "Feed Profile Web Play 00:00:00 / 00:00:08 Mute Expand view"
+    },
+    "actions": {
+      "postButton": "button[data-e2e=\"post_video_button\"]",
+      "saveDraftButton": "button[data-e2e=\"save_draft_button\"]",
+      "discardButton": "button[data-e2e=\"discard_post_button\"]"
+    }
+  },
+  "automationOrder": [
+    "Open TikTok Studio upload URL.",
+    "Wait for preUpload.fileInput.",
+    "Set the local video file on preUpload.fileInput.",
+    "Wait until postUpload.uploadStatus.container contains Uploaded.",
+    "Set caption through postUpload.caption.editor.",
+    "Optionally set hashtags by typing them into the caption editor or using postUpload.caption.hashtagButton.",
+    "Optionally set location through postUpload.location.searchInput.",
+    "Optionally set add link through postUpload.addLink.addButton.",
+    "Set schedule with postUpload.schedule.postNowRadio or postUpload.schedule.scheduleRadio.",
+    "Set visibility through postUpload.visibility.combobox.",
+    "Set permissions/disclosure/AI-generated switches.",
+    "Verify checks text.",
+    "Click postUpload.actions.saveDraftButton for draft or postUpload.actions.postButton for publish."
+  ]
+}

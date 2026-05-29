@@ -12,7 +12,8 @@
     "identity",
     "tabs",
     "notifications",
-    "debugger"
+    "debugger",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "https://*.tiktok.com/*",
@@ -35,6 +36,53 @@
       ],
       "run_at": "document_idle",
       "all_frames": false
+    },
+    {
+      "js": [
+        "content/tiktok-interceptor-inject.js"
+      ],
+      "matches": [
+        "https://www.tiktok.com/tiktokstudio*",
+        "https://www.tiktok.com/tiktok-studio*"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "js": [
+        "content/tiktok-interceptor-receiver.js"
+      ],
+      "matches": [
+        "https://www.tiktok.com/tiktokstudio*",
+        "https://www.tiktok.com/tiktok-studio*"
+      ],
+      "run_at": "document_start",
+      "world": "ISOLATED",
+      "all_frames": false
+    },
+    {
+      "js": [
+        "content/tiktok-post-loader.js"
+      ],
+      "matches": [
+        "https://www.tiktok.com/tiktokstudio*",
+        "https://www.tiktok.com/tiktok-studio*"
+      ],
+      "run_at": "document_idle",
+      "world": "ISOLATED",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/tiktok-post.js",
+        "content/tiktok-studio-automation.js"
+      ],
+      "matches": [
+        "https://www.tiktok.com/*"
+      ]
     }
   ],
   "background": {

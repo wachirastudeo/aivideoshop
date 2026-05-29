@@ -1412,6 +1412,21 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "FLOW_PING") { reply({ pong: true }); return false; }
     if (msg?.type === "FLOW_STOP") { stopRequested = true; reply({ ok: true }); return false; }
     if (msg?.type === "FLOW_RUN_PIPELINE") { runPipeline(msg.payload).then(reply); return true; }
+    if (msg?.type === "FLOW_FETCH_BLOB_BASE64") {
+        fetch(msg.url)
+            .then(res => res.blob())
+            .then(blob => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    reply({ ok: true, base64, mimeType: blob.type });
+                };
+                reader.onerror = (e) => reply({ ok: false, error: e.message });
+                reader.readAsDataURL(blob);
+            })
+            .catch(err => reply({ ok: false, error: err.message }));
+        return true;
+    }
     return false;
 });
 

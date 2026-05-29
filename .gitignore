@@ -1,3 +1,10 @@
 /.DS_Store
 /autogenx-v2.0.1/
 
+# Temporary Chrome profile used for testing
+/tiktok-video-creator/temp_chrome_profile/
+
+# Log files and debugging artifacts
+/tiktok-video-creator/scripts/captured-endpoints.json
+/tiktok-video-creator/scripts/tiktok-studio-playwright-inspect.json
+/tiktok-video-creator/scripts/tiktok-studio-playwright-inspect.png

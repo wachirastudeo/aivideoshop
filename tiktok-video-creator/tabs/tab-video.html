@@ -187,8 +187,9 @@
           <span class="field__label">การทำงานหลังสร้างเสร็จ</span>
           <select id="post-action" class="select select--accent">
             <option value="download">ดาวน์โหลดวิดีโอ</option>
+            <option value="draft">ส่ง Draft TikTok 📤</option>
             <option value="post">โพสต์ TikTok</option>
-            <option value="both">ดาวน์โหลดและโพสต์</option>
+            <option value="both">ดาวน์โหลด + Draft</option>
           </select>
         </label>
       </div>
@@ -205,6 +206,16 @@
     <button class="button button--danger button--full flow-primary-action" id="btn-batch-stop" type="button" hidden>
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block; vertical-align: middle;"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>
       หยุดทำงาน
+    </button>
+  </div>
+  <div class="inline-actions" style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; padding: 0 4px; font-size:11px; color:#a1a1aa;">
+    <span>TikTok API:</span>
+    <span class="badge badge--error" id="tiktok-api-status" style="font-size:10px; padding:2px 6px;">ยังไม่พร้อม</span>
+  </div>
+  <div class="inline-actions" style="margin-top:4px">
+    <button class="button button--ghost button--full" id="btn-learn-endpoint" type="button" title="เปิด TikTok Studio แล้วกดนี้ → อัปโหลดวิดีโอ 1 ครั้ง → extension จะจำ API endpoint ไว้">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px; margin-right: 5px; display: inline-block; vertical-align: middle;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      🔍 Learn TikTok Endpoint
     </button>
   </div>
 </section>

@@ -46,6 +46,13 @@ export async function initVideoTab(injectedHelpers) {
   bindGlobalEvents();
   fillGlobalFormFromState();
   renderQueue();
+
+  await updateTikTokApiStatusBadge();
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.tiktokLearnedEndpoints) {
+      updateTikTokApiStatusBadge();
+    }
+  });
 }
 
 export async function syncSelectedProductToVideoTab() {
@@ -74,6 +81,7 @@ function bindGlobalEvents() {
     stopRequested = true;
     helpers.showStatus("กำลังหยุด...", "info");
   });
+  document.querySelector("#btn-learn-endpoint")?.addEventListener("click", handleLearnEndpoint);
 }
 
 function fillGlobalFormFromState() {
@@ -225,6 +233,9 @@ function productMarkup(p, index) {
   const imageDone = Boolean(approvedImage || p.flowImageTileId || p.status === "done" || p.status === "video_generating");
   const videoDone = Boolean(p.videoUrl || p.flowVideoTileId || p.status === "done");
 
+  const postAction = settings.postAction || "download";
+  const postButtonText = (postAction === "draft" || postAction === "both") ? "ส่ง Draft TikTok" : "โพสต์ TikTok";
+
   return `
     <article class="flow-job" data-index="${index}" data-status="${escapeHtml(p.status)}">
       <header class="flow-job__header">
@@ -285,7 +296,7 @@ function productMarkup(p, index) {
           <button class="button batch-copy" type="button">${copyIcon()} คัดลอก Prompt</button>
           <button class="button button--danger batch-stop" type="button" ${RUNNING_STATUSES.has(p.status) ? "" : "hidden"}>${stopIcon()} หยุด</button>
           <button class="button batch-download" type="button" ${p.videoUrl ? "" : "disabled"}>${downloadIcon()} Download</button>
-          <button class="button button--primary batch-post" type="button" ${p.videoUrl ? "" : "disabled"}>โพสต์ TikTok</button>
+          <button class="button button--primary batch-post" type="button" ${p.videoUrl ? "" : "disabled"}>${postButtonText}</button>
         </div>
       </div>
     </article>
@@ -491,7 +502,21 @@ async function processQueue() {
             helpers.logActivity?.(`ดาวน์โหลดวิดีโอสินค้า ${i + 1} ล้มเหลว: ${err.message}`, "error");
           });
         }
-        if (action === "post" || action === "both") {
+        if (action === "draft" || action === "both") {
+          helpers.logActivity?.(`สินค้า ${i + 1}: กำลังส่ง Draft TikTok อัตโนมัติ...`, "info");
+          const caption = product.caption || product.name || "";
+          const hashtags = product.hashtags || [];
+          await chrome.runtime.sendMessage({
+            type: "TIKTOK_SEND_DRAFT",
+            payload: { videoUrl: product.videoUrl, caption, hashtags },
+          }).then(res => {
+            if (!res?.ok) throw new Error(res?.error || "ส่ง Draft ล้มเหลว");
+            helpers.logActivity?.(`ส่ง Draft TikTok สินค้า ${i + 1} สำเร็จ!`, "success");
+          }).catch(err => {
+            helpers.logActivity?.(`ส่ง Draft TikTok สินค้า ${i + 1} ล้มเหลว: ${err.message}`, "error");
+          });
+        }
+        if (action === "post") {
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังโพสต์ TikTok อัตโนมัติ...`, "info");
           await publishVideo(product.videoUrl, product).catch(err => {
             helpers.logActivity?.(`โพสต์ TikTok สินค้า ${i + 1} ล้มเหลว: ${err.message}`, "error");
@@ -561,6 +586,11 @@ async function handleDownload(product) {
 }
 
 async function handlePost(product) {
+  const action = settings.postAction || "download";
+  if (action === "draft" || action === "both") {
+    return handleSendDraft(product);
+  }
+
   try {
     if (!product.videoUrl) throw new Error("กรุณาวาง URL วิดีโอ");
     helpers.showStatus("กำลังส่งไป TikTok...", "info");
@@ -568,6 +598,45 @@ async function handlePost(product) {
     product.status = "done";
     await persistState();
     renderQueue();
+    helpers.showStatus("✅ โพสต์ TikTok สำเร็จ!", "success");
+  } catch (err) {
+    helpers.showStatus(err.message, "error");
+  }
+}
+
+async function handleLearnEndpoint() {
+  const btn = document.querySelector("#btn-learn-endpoint");
+  if (btn) btn.disabled = true;
+  helpers.showStatus("กำลังดัก API... ไปอัปโหลดวิดีโอ 1 คลิปบน TikTok Studio", "info");
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "TIKTOK_LEARN_ENDPOINT" });
+    if (result?.ok) {
+      helpers.showStatus(`✅ ${result.message || "ดัก API สำเร็จ — อัปโหลดวิดีโอบน TikTok Studio ได้เลย"}`, "success");
+    } else {
+      helpers.showStatus(result?.error || "ไม่สำเร็จ", "error");
+    }
+  } catch (err) {
+    helpers.showStatus(err.message, "error");
+  } finally {
+    setTimeout(() => { if (btn) btn.disabled = false; }, 3000);
+  }
+}
+
+async function handleSendDraft(product) {
+  try {
+    if (!product.videoUrl) throw new Error("ไม่มี videoUrl");
+    helpers.showStatus("ส่ง Draft TikTok...", "info");
+    const caption  = product.caption || product.name || "";
+    const hashtags = product.hashtags || [];
+    const result = await chrome.runtime.sendMessage({
+      type: "TIKTOK_SEND_DRAFT",
+      payload: { videoUrl: product.videoUrl, caption, hashtags },
+    });
+    if (!result?.ok) throw new Error(result?.error || "ส่ง Draft ล้มเหลว");
+    product.status = "done";
+    await persistState();
+    renderQueue();
+    helpers.showStatus("✅ ส่ง Draft TikTok สำเร็จ!", "success");
   } catch (err) {
     helpers.showStatus(err.message, "error");
   }
@@ -636,4 +705,26 @@ function playIcon() {
 
 function stopIcon() {
   return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>`;
+}
+
+async function updateTikTokApiStatusBadge() {
+  const statusEl = document.querySelector("#tiktok-api-status");
+  if (!statusEl) return;
+  const { tiktokLearnedEndpoints = {} } = await chrome.storage.local.get("tiktokLearnedEndpoints");
+  
+  const endpoints = Object.values(tiktokLearnedEndpoints);
+  const hasUpload = endpoints.some(e => e.url.includes("Action=ApplyUploadInner") || /upload/i.test(e.url));
+  const hasCommit = endpoints.some(e => e.url.includes("Action=CommitUploadInner"));
+  const hasPublish = endpoints.some(e => /publish|draft|post|create/i.test(e.url) && !e.url.includes("Action="));
+
+  if (hasUpload && hasCommit && hasPublish) {
+    statusEl.textContent = "เชื่อมต่อแล้ว ✅";
+    statusEl.className = "badge badge--success";
+  } else if (hasUpload || hasCommit || hasPublish) {
+    statusEl.textContent = "กำลังเชื่อมต่อ... ⏳";
+    statusEl.className = "badge badge--ready";
+  } else {
+    statusEl.textContent = "ยังไม่พร้อม ❌";
+    statusEl.className = "badge badge--error";
+  }
 }
