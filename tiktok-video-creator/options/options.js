@@ -1,5 +1,5 @@
 import { VIDEO_STYLES } from "../modules/prompt-builder.js";
-import { DEFAULT_GEMINI_MODEL, testGeminiConnection } from "../modules/image-analyzer.js";
+import { DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL, testGeminiConnection, testOpenAIConnection } from "../modules/image-analyzer.js";
 
 // ─── DOM refs ───────────────────────────────────────────────
 const saveStatusEl = document.querySelector("#save-status");
@@ -15,8 +15,12 @@ async function loadOptions() {
     .join("");
 
   // AI
+  setSelectValue("ai-provider", settings.aiProvider || "gemini");
   setValue("gemini-api-key", settings.geminiApiKey || "");
   setSelectValue("gemini-model", settings.geminiModel || DEFAULT_GEMINI_MODEL);
+  setValue("openai-api-key", settings.openaiApiKey || "");
+  setSelectValue("openai-model", settings.openaiModel || DEFAULT_OPENAI_MODEL);
+  updateProviderVisibility();
 
   // Google Flow
   const flow = settings.flow || {};
@@ -58,9 +62,30 @@ async function saveSettings() {
   const btn = document.querySelector("#save-settings");
   btn.disabled = true;
 
+  const provider = getSelectValue("ai-provider") || "gemini";
+  const geminiKey = getValue("gemini-api-key");
+  const openaiKey = getValue("openai-api-key");
+
+  try {
+    if (provider === "gemini" && geminiKey) {
+      showSaveStatus("กำลังตรวจสอบ Gemini API Key...", "info");
+      await testGeminiConnection(geminiKey, getSelectValue("gemini-model"));
+    } else if (provider === "openai" && openaiKey) {
+      showSaveStatus("กำลังตรวจสอบ OpenAI API Key...", "info");
+      await testOpenAIConnection(openaiKey, getSelectValue("openai-model"));
+    }
+  } catch (err) {
+    showSaveStatus(`คีย์ไม่ถูกต้อง: ${err.message}`, "error");
+    btn.disabled = false;
+    throw err;
+  }
+
   const settings = {
-    geminiApiKey: getValue("gemini-api-key"),
+    aiProvider: provider,
+    geminiApiKey: geminiKey,
     geminiModel: getSelectValue("gemini-model") || DEFAULT_GEMINI_MODEL,
+    openaiApiKey: openaiKey,
+    openaiModel: getSelectValue("openai-model") || DEFAULT_OPENAI_MODEL,
 
     flow: {
       videoModel: getRadio("flow-video-model") || "veo-3.1-fast",
@@ -71,8 +96,8 @@ async function saveSettings() {
     },
 
     mediaSettings: {
-      imageCount: parseInt(getValue("default-image-count"), 10) || 4,
-      videoCount: parseInt(getValue("default-video-count"), 10) || 2,
+      imageCount: parseInt(getValue("default-image-count"), 10) || 1,
+      videoCount: parseInt(getValue("default-video-count"), 10) || 1,
       videoDuration: parseInt(getSelectValue("default-video-duration"), 10) || 8,
       aspectRatio: getSelectValue("default-aspect-ratio") || "9:16",
       autoDownload: getChecked("auto-download-content"),
@@ -151,6 +176,47 @@ async function testGemini() {
   }
 }
 
+async function testOpenAI() {
+  const btn = document.querySelector("#test-openai");
+  const badge = document.querySelector("#openai-test-badge");
+  const apiKey = getValue("openai-api-key");
+  badge.hidden = true;
+
+  if (!apiKey) {
+    setBadge(badge, "ok", "ℹ️ ไม่มี key — ใช้ fallback จากชื่อสินค้า");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "กำลังทดสอบ...";
+
+  try {
+    await saveSettings();
+    const result = await testOpenAIConnection(apiKey, getSelectValue("openai-model"));
+    setBadge(badge, "ok", `✓ ${result.model} พร้อมใช้งาน`);
+  } catch (err) {
+    setBadge(badge, "error", "✗ " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "ทดสอบ";
+  }
+}
+
+function updateProviderVisibility() {
+  const provider = getSelectValue("ai-provider") || "gemini";
+  const geminiGroup = document.querySelector("#gemini-config-group");
+  const openaiGroup = document.querySelector("#openai-config-group");
+  if (!geminiGroup || !openaiGroup) return;
+
+  if (provider === "openai") {
+    geminiGroup.style.opacity = "0.4";
+    openaiGroup.style.opacity = "1";
+  } else {
+    geminiGroup.style.opacity = "1";
+    openaiGroup.style.opacity = "0.4";
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────
 function getValue(id) {
   return (document.querySelector(`#${id}`)?.value || "").trim();
@@ -212,6 +278,8 @@ function showSaveStatus(msg, type) {
 document.querySelector("#save-settings").addEventListener("click", saveSettings);
 document.querySelector("#test-products").addEventListener("click", testProductFetch);
 document.querySelector("#test-gemini").addEventListener("click", testGemini);
+document.querySelector("#test-openai").addEventListener("click", testOpenAI);
+document.querySelector("#ai-provider").addEventListener("change", updateProviderVisibility);
 
 // Upload wait slider live label
 document.querySelector("#flow-upload-wait").addEventListener("input", (e) => {

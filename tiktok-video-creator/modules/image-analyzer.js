@@ -1,6 +1,7 @@
 import { sanitizeText } from "./prompt-builder.js";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 
 /**
  * @description แปลงไฟล์รูปเป็น data URL
@@ -24,13 +25,27 @@ export function fileToDataUrl(file) {
  */
 export async function analyzeProductImages(imageDataUrls, productInfo = {}) {
   const { settings = {} } = await chrome.storage.sync.get("settings");
-  const apiKey = settings.geminiApiKey;
-  const productName = sanitizeText(productInfo.name);
+  const provider = settings.aiProvider || "gemini";
 
-  if (!apiKey) {
+  try {
+    if (provider === "openai") {
+      const apiKey = settings.openaiApiKey;
+      if (!apiKey) return buildTitleBasedFallback(productInfo);
+      return await analyzeWithOpenAI(imageDataUrls, productInfo, settings);
+    } else {
+      const apiKey = settings.geminiApiKey;
+      if (!apiKey) return buildTitleBasedFallback(productInfo);
+      return await analyzeWithGemini(imageDataUrls, productInfo, settings);
+    }
+  } catch (err) {
+    console.warn("AI Image Analysis API failed (falling back to title context):", err);
     return buildTitleBasedFallback(productInfo);
   }
+}
 
+async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
+  const apiKey = settings.geminiApiKey;
+  const productName = sanitizeText(productInfo.name);
   const firstImage = imageDataUrls[0] || "";
   const [, mediaType = "image/jpeg"] = firstImage.match(/^data:(.*?);base64,/) || [];
   const base64 = firstImage.replace(/^data:.*?;base64,/, "");
@@ -86,6 +101,122 @@ export async function analyzeProductImages(imageDataUrls, productInfo = {}) {
       highlights: normalizeHighlights(parsed.highlights),
       targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
       promptAdvice: sanitizeText(parsed.promptAdvice || "")
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
+  const apiKey = settings.openaiApiKey;
+  const productName = sanitizeText(productInfo.name);
+  const firstImage = imageDataUrls[0] || "";
+  const model = settings.openaiModel || DEFAULT_OPENAI_MODEL;
+
+  const prompt = [
+    "Analyze product image for TikTok Shop.",
+    productName ? `Title: ${productName}` : "No title.",
+    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English video prompt advice"}'
+  ].join("\n");
+
+  const content = [{ type: "text", text: prompt }];
+  if (firstImage) {
+    content.push({
+      type: "image_url",
+      image_url: {
+        url: firstImage
+      }
+    });
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "user",
+            content
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(`OpenAI API error: ${errData.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(text);
+
+    return {
+      name: sanitizeText(parsed.name || productName),
+      highlights: normalizeHighlights(parsed.highlights),
+      targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
+      promptAdvice: sanitizeText(parsed.promptAdvice || "")
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * @description ทดสอบ OpenAI API key
+ * @param {string} apiKey - OpenAI API key
+ * @param {string} modelName - OpenAI model name
+ * @returns {Promise<object>} ผลทดสอบ API
+ */
+export async function testOpenAIConnection(apiKey, modelName = DEFAULT_OPENAI_MODEL) {
+  const cleanKey = sanitizeText(apiKey);
+  if (!cleanKey) {
+    throw new Error("กรุณาใส่ OpenAI API Key ก่อนทดสอบ");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${cleanKey}`
+      },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [
+          {
+            role: "user",
+            content: "Return only this JSON object: {\"ok\":true}"
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || "OpenAI API Key หรือ Model ใช้งานไม่ได้");
+    }
+
+    return {
+      model: modelName,
+      message: "OpenAI API ready"
     };
   } finally {
     clearTimeout(timeout);

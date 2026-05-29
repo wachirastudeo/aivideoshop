@@ -277,7 +277,10 @@ function mediaCardStatus(cardInfo) {
     const el = findMediaCard(cardInfo);
     if (!el) return { ready: false, failed: false, progress: true, rendered: false, text: "" };
     const text = mediaCardDeepText(el).toLowerCase();
+    
+    // Check if any progress percentage is still visible (even 100% needs to disappear first)
     const progress = /\b\d{1,3}\s*%/.test(text) || text.includes("uploading") || text.includes("processing");
+    
     const failed = !progress && (text.includes("failed") || text.includes("warning") || text.includes("ล้มเหลว"));
     const rendered = hasRenderableMedia(el);
     return { ready: rendered && !progress, failed, progress, rendered, text };
@@ -290,9 +293,30 @@ function mediaCardDeepText(el) {
             parts.push(elementText(match));
         }
     }
+    
+    // Helper to stop going up when we hit list/grid/root or editor elements to prevent text bleed
+    const isCardContainer = (node) => {
+        if (!node) return false;
+        if (node.getAttribute?.("data-tile-id")) return true;
+        if (node.getAttribute?.("draggable") === "true") return true;
+        if (node.tagName === "ARTICLE") return true;
+        
+        const role = node.getAttribute?.("role");
+        if (role === "grid" || role === "list" || role === "directory") return true;
+        
+        const cl = node.className || "";
+        if (typeof cl === "string" && (cl.includes("grid") || cl.includes("gallery") || cl.includes("list"))) return true;
+        
+        // Stop if we hit any parent container that has a text box
+        if (node.querySelector?.('[role="textbox"]') || node.querySelector?.('.public-DraftEditor-content')) return true;
+        
+        return false;
+    };
+
     let node = el.parentElement;
-    for (let i = 0; i < 10 && node; i++, node = node.parentElement) {
+    for (let i = 0; i < 6 && node; i++, node = node.parentElement) {
         parts.push(elementText(node));
+        if (isCardContainer(node)) break;
         if (/\b\d{1,3}\s*%/.test(parts.join(" "))) break;
     }
     return parts.join(" ").replace(/\s+/g, " ").trim();
@@ -533,9 +557,134 @@ async function selectAspectRatio(aspectRatio) {
     log(`⚠️ ไม่เจอ aspect ratio ${ratio} ในเมนู`);
     return false;
 }
+
+async function selectBatchCount(count) {
+    let targetVal = Number(count) || 1;
+    if (targetVal < 1) targetVal = 1;
+    if (targetVal > 4) targetVal = 4;
+    
+    const label = targetVal === 1 ? "1X" : `X${targetVal}`;
+    log(`กำลังหาปุ่มสำหรับ batch count: ${label}...`);
+    
+    const menu = document.querySelector('[role="menu"][data-state="open"]');
+    if (!menu) {
+        log("⚠️ เมนู config ไม่เปิดอยู่ ไม่สามารถเลือก batch count");
+        return false;
+    }
+    
+    const tabs = menu.querySelectorAll('[role="tab"]');
+    for (const tab of tabs) {
+        if (!isVisible(tab)) continue;
+        const text = (tab.textContent || "").trim().toUpperCase();
+        if (text === label || text.includes(label)) {
+            if (tab.getAttribute("aria-selected") === "true") {
+                log(`✅ Batch count ${label} ถูกเลือกอยู่แล้ว`);
+                return true;
+            }
+            await humanClick(tab);
+            log(`✅ เลือก batch count ${label} แล้ว`);
+            return true;
+        }
+    }
+    log(`⚠️ ไม่พบปุ่มสำหรับ batch count ${label}`);
+    return false;
+}
+
+async function selectModel(modelKey) {
+    if (!modelKey) return false;
+    const menu = document.querySelector('[role="menu"][data-state="open"]');
+    if (!menu) {
+        log("⚠️ เมนู config ไม่เปิดอยู่ ไม่สามารถเลือก model");
+        return false;
+    }
+    
+    const modelBtn = menu.querySelector('button[aria-haspopup="menu"]');
+    if (!modelBtn) {
+        log("⚠️ หาปุ่มเลือก model ในเมนู config ไม่เจอ");
+        return false;
+    }
+    
+    // ⚠️ เรียงจากเฉพาะเจาะจงกว่า → กว้างกว่า เพื่อป้องกัน "LITE" match "LITE [LOWER PRIORITY]"
+    const mapping = {
+        "veo-3.1-lite-low-priority": ["VEO 3.1 - LITE [LOWER PRIORITY]", "VEO 3.1 \u2014 LITE [LOWER PRIORITY]", "LITE [LOWER PRIORITY]"],
+        "veo-3.1-fast":              ["VEO 3.1 - FAST", "VEO 3.1 — FAST", "VEO 3.1 \u2014 FAST"],
+        "veo-3.1-quality":           ["VEO 3.1 - QUALITY", "VEO 3.1 — QUALITY", "VEO 3.1 \u2014 QUALITY"],
+        "veo-3.1-lite":              ["VEO 3.1 - LITE", "VEO 3.1 — LITE", "VEO 3.1 \u2014 LITE"],
+        "omni-flash":                ["OMNI FLASH", "OMNI"],
+        "nano-banana-pro":           ["NANO BANANA PRO", "BANANA PRO"],
+        "nano-banana-2":             ["NANO BANANA 2", "BANANA 2"]
+    };
+    
+    const targets = mapping[modelKey] || [modelKey.toUpperCase()];
+    const currentText = (modelBtn.textContent || "").trim().toUpperCase();
+    
+    // ตรวจสอบว่าเลือกอยู่แล้วหรือไม่ (exact match ก่อน → substring fallback)
+    const alreadySelected = targets.some(t => currentText === t) || targets.some(t => currentText.includes(t));
+    if (alreadySelected) {
+        log(`\u2705 Model ${modelKey} ถูกเลือกอยู่แล้ว (${currentText})`);
+        return true;
+    }
+    
+    log(`สลับโมเดลเป็น ${modelKey}... (ปัจจุบัน: ${currentText})`);
+    await humanClick(modelBtn);
+    await sleep(800);
+    
+    // ค้นหา item ใน sub-menu ที่เปิดขึ้นมา
+    const matchItem = (items) => {
+        // Pass 1: exact match
+        for (const item of items) {
+            if (!isVisible(item)) continue;
+            const text = (item.textContent || "").trim().toUpperCase();
+            if (targets.some(t => text === t)) return item;
+        }
+        // Pass 2: substring match (เฉพาะ target ที่ยาวที่สุดก่อน เพื่อป้องกัน collision)
+        const sortedTargets = [...targets].sort((a, b) => b.length - a.length);
+        for (const item of items) {
+            if (!isVisible(item)) continue;
+            const text = (item.textContent || "").trim().toUpperCase();
+            if (sortedTargets.some(t => text.includes(t))) return item;
+        }
+        return null;
+    };
+
+    const openMenus = document.querySelectorAll('[role="menu"][data-state="open"], [role="listbox"], [role="menu"]');
+    for (const sub of openMenus) {
+        if (sub === menu) continue;
+        const items = sub.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="option"], [role="radio"], button, [data-radix-collection-item]');
+        const found = matchItem(Array.from(items));
+        if (found) {
+            log(`พบตัวเลือก model: ${found.textContent.trim()}, กำลังกดเลือก...`);
+            await humanClick(found);
+            await sleep(600);
+            return true;
+        }
+    }
+    
+    // Fallback: ค้นหาทั่วทั้ง document
+    const fallbackItems = document.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="option"], [role="radio"], [data-radix-collection-item]');
+    const found = matchItem(Array.from(fallbackItems));
+    if (found) {
+        log(`พบตัวเลือก model (fallback): ${found.textContent.trim()}, กำลังกดเลือก...`);
+        await humanClick(found);
+        await sleep(600);
+        return true;
+    }
+    
+    log(`\u26a0\ufe0f ไม่พบตัวเลือกสำหรับ model key: ${modelKey}`);
+    return false;
+}
+
 async function ensureConfig(phase, options = {}) {
-    const aspectRatio = options.aspectRatio || "9:16";
-    log(`ตั้งค่า ${phase === "image" ? "Image" : "Video"} + ${aspectRatio}...`);
+    const cfg = await loadSettings();
+    const aspectRatio = options.aspectRatio || cfg.aspectRatio || "9:16";
+    const count = phase === "image"
+        ? (options.imageCount || cfg.imageCount || 4)
+        : (options.videoCount || cfg.videoCount || 2);
+    const modelKey = phase === "image"
+        ? (options.imageModel || cfg.imageModel || "nano-banana-pro")
+        : (options.videoModel || cfg.videoModel || "veo-3.1-fast");
+
+    log(`ตั้งค่า ${phase === "image" ? "Image" : "Video"} + Aspect Ratio: ${aspectRatio} + Count: ${count}x + Model: ${modelKey}...`);
     let cfgBtn = null;
     for (const btn of document.querySelectorAll('button[aria-haspopup="menu"]')) {
         const i = btn.querySelector("i.google-symbols,i.material-icons");
@@ -546,12 +695,16 @@ async function ensureConfig(phase, options = {}) {
     await humanClick(cfgBtn); await sleep(500);
     const menu = await waitEl('[role="menu"][data-state="open"]', 3000);
     if (!menu) { log("⚠️ เมนู config ไม่เปิด"); return; }
+    
     await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO"); await sleep(800);
     await selectAspectRatio(aspectRatio); await sleep(800);
+    await selectBatchCount(count); await sleep(800);
+    await selectModel(modelKey); await sleep(800);
+    
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await sleep(400);
     if (document.querySelector('[role="menu"][data-state="open"]')) { document.body.click(); await sleep(300); }
-    log(`✅ ตั้งค่า mode + ${aspectRatio} สำเร็จ`);
+    log(`✅ ตั้งค่า mode + ${aspectRatio} + ${count}x + ${modelKey} สำเร็จ`);
 }
 
 async function openMediaEditWorkspace(tile) {
@@ -1142,10 +1295,15 @@ function isGeneratedResultCard(card, status, phase) {
     if (text.includes("start creating") || text.includes("drop media")) return false;
 
     const el = findMediaCard(card);
-    const hasVideo = Boolean(el?.matches?.("video") || el?.querySelector?.("video"));
+    const videoEl = el?.matches?.("video") ? el : el?.querySelector?.("video");
+    // Ensure the video element actually has an active source to prevent empty/placeholder tags from breaking image detection
+    const hasActiveVideo = Boolean(videoEl && (videoEl.src || videoEl.currentSrc || videoEl.querySelector("source")?.src));
     const hasImage = Boolean(el?.matches?.("img") || el?.querySelector?.("img,[style*='background-image']"));
-    if (phase === "video") return hasVideo || /\.(mp4|webm|mov)(\?|$)/i.test(card.mediaUrl);
-    return hasImage && !hasVideo;
+    
+    if (phase === "video") {
+        return hasActiveVideo || /\.(mp4|webm|mov)(\?|$)/i.test(card.mediaUrl);
+    }
+    return hasImage && !hasActiveVideo;
 }
 
 // ── Load settings ────────────────────────────────────────────

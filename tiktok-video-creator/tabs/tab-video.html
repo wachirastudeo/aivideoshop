@@ -6,13 +6,13 @@
       <p class="flow-hero__copy">ใช้รูปสินค้าจาก TikTok เป็น reference, อัปโหลดเข้า Flow, กรอก prompt แล้วสร้างต่อเนื่องในหน้าเดียว</p>
     </div>
     <div class="flow-hero__stats" aria-label="Queue summary">
-      <span class="flow-stat">
-        <strong id="queue-count">0</strong>
-        <span>สินค้า</span>
+      <span class="flow-badge-stat">
+        <span class="flow-badge-stat__dot"></span>
+        <span class="flow-badge-stat__value" id="queue-count">0</span> สินค้าในคิว
       </span>
-      <span class="flow-stat">
-        <strong id="ready-count">0</strong>
-        <span>พร้อมทำ</span>
+      <span class="flow-badge-stat">
+        <span class="flow-badge-stat__dot flow-badge-stat__dot--active"></span>
+        <span class="flow-badge-stat__value" id="ready-count">0</span> พร้อมทำงาน
       </span>
     </div>
   </header>
@@ -41,6 +41,25 @@
           <span class="field__label">สไตล์วิดีโอหลัก</span>
           <select id="video-style" class="select select--accent"></select>
         </label>
+        <div class="settings-grid">
+          <label class="field">
+            <span class="field__label">โมเดลรูปภาพ (Banana)</span>
+            <select id="image-model" class="select">
+              <option value="nano-banana-pro">Banana Pro (แนะนำ)</option>
+              <option value="nano-banana-2">Banana 2</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">โมเดลวิดีโอ (Veo)</span>
+            <select id="video-model" class="select">
+              <option value="veo-3.1-fast">Veo 3.1 - Fast</option>
+              <option value="veo-3.1-quality">Veo 3.1 - Quality</option>
+              <option value="veo-3.1-lite">Veo 3.1 - Lite</option>
+              <option value="veo-3.1-lite-low-priority">Veo 3.1 - Lite [Lower Priority] ⭐ (0 เครดิต)</option>
+              <option value="omni-flash">Omni Flash</option>
+            </select>
+          </label>
+        </div>
 
         <div class="settings-grid">
           <label class="field">
@@ -142,27 +161,6 @@
 
         <div class="settings-grid">
           <label class="field">
-            <span class="field__label">Pacing</span>
-            <select id="pacing" class="select">
-              <option value="2">อัตโนมัติ</option>
-              <option value="1">ช้า เน้นสวย</option>
-              <option value="3">เร็ว กระชับ</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">Transition</span>
-            <select id="transition" class="select">
-              <option value="Auto">อัตโนมัติ</option>
-              <option value="Smooth Fade">Smooth Fade</option>
-              <option value="Dynamic Wipe">Dynamic Wipe</option>
-              <option value="Hard Cut">Hard Cut</option>
-              <option value="Glitch">Glitch</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="settings-grid">
-          <label class="field">
             <span class="field__label">ข้อความในคลิป</span>
             <select id="show-name" class="select">
               <option value="false">ปิด</option>
@@ -184,6 +182,15 @@
           <span class="field__label">ข้อความโปรโมชั่น</span>
           <input id="promotion-text" class="input" type="text" placeholder="ลด 50% / ส่งฟรี / เก็บเงินปลายทาง">
         </label>
+        
+        <label class="field">
+          <span class="field__label">การทำงานหลังสร้างเสร็จ</span>
+          <select id="post-action" class="select select--accent">
+            <option value="download">ดาวน์โหลดวิดีโอ</option>
+            <option value="post">โพสต์ TikTok</option>
+            <option value="both">ดาวน์โหลดและโพสต์</option>
+          </select>
+        </label>
       </div>
     </aside>
   </div>
@@ -191,7 +198,13 @@
 
 <section class="section section--sticky flow-action-bar" aria-label="Batch actions">
   <div class="inline-actions">
-    <button class="button button--primary button--full flow-primary-action" id="btn-batch-create" type="button">สร้างภาพและวิดีโอทั้งหมด</button>
-    <button class="button button--danger button--full flow-primary-action" id="btn-batch-stop" type="button" hidden>หยุดทำงาน</button>
+    <button class="button button--primary button--full flow-primary-action" id="btn-batch-create" type="button">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block; vertical-align: middle;"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3z"></path></svg>
+      สร้างภาพและวิดีโอทั้งหมด
+    </button>
+    <button class="button button--danger button--full flow-primary-action" id="btn-batch-stop" type="button" hidden>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block; vertical-align: middle;"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>
+      หยุดทำงาน
+    </button>
   </div>
 </section>

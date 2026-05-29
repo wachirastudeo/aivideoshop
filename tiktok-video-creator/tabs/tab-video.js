@@ -27,6 +27,10 @@ export async function initVideoTab(injectedHelpers) {
     presenter: savedOptions.defaultPresenter || "Auto",
     voiceTone: savedOptions.defaultVoiceTone || "Auto",
     language: savedOptions.defaultLanguage || "ไทย",
+    imageModel: savedOptions.flow?.imageModel || "nano-banana-pro",
+    videoModel: savedOptions.flow?.videoModel || "veo-3.1-fast",
+    imageCount: savedOptions.flow?.imageCount || 1,
+    videoCount: savedOptions.flow?.videoCount || 1,
     ...(savedOptions.mediaSettings || {})
   };
 
@@ -56,7 +60,8 @@ function bindGlobalEvents() {
   [
     "video-style", "presenter", "voice-tone", "location",
     "show-name", "promotion-text", "text-position", "camera-movement",
-    "pacing", "transition", "image-count", "video-count", "video-duration", "aspect-ratio"
+    "image-count", "video-count", "video-duration", "aspect-ratio", "post-action",
+    "image-model", "video-model"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
     if (!el) return;
@@ -80,12 +85,13 @@ function fillGlobalFormFromState() {
   setValue("promotion-text", settings.promotionText);
   setValue("text-position", settings.textPosition);
   setValue("camera-movement", settings.cameraMovement);
-  setValue("pacing", settings.pacing);
-  setValue("transition", settings.transition);
+  setValue("image-model", settings.imageModel);
+  setValue("video-model", settings.videoModel);
   setValue("image-count", settings.imageCount);
   setValue("video-count", settings.videoCount);
   setValue("video-duration", settings.videoDuration);
   setValue("aspect-ratio", settings.aspectRatio);
+  setValue("post-action", settings.postAction);
   syncVideoTextSettingsVisibility();
 }
 
@@ -100,12 +106,13 @@ function syncSettingsForm() {
     promotionText: getValue("promotion-text"),
     textPosition: getValue("text-position"),
     cameraMovement: getValue("camera-movement"),
-    pacing: parseInt(getValue("pacing"), 10) || 2,
-    transition: getValue("transition"),
+    imageModel: getValue("image-model"),
+    videoModel: getValue("video-model"),
     imageCount: parseInt(getValue("image-count"), 10) || 4,
     videoCount: parseInt(getValue("video-count"), 10) || 2,
     videoDuration: parseInt(getValue("video-duration"), 10) || 8,
-    aspectRatio: getValue("aspect-ratio") || "9:16"
+    aspectRatio: getValue("aspect-ratio") || "9:16",
+    postAction: getValue("post-action")
   });
 
   renderQueue();
@@ -149,10 +156,13 @@ function normalizeSettings(value) {
     customCta: "",
     pacing: value.pacing || 2,
     transition: value.transition || "Auto",
-    imageCount: value.imageCount || 4,
-    videoCount: value.videoCount || 2,
+    imageModel: value.imageModel || "nano-banana-pro",
+    videoModel: value.videoModel || "veo-3.1-fast",
+    imageCount: value.imageCount || 1,
+    videoCount: value.videoCount || 1,
     videoDuration: value.videoDuration || 8,
-    aspectRatio: value.aspectRatio || "9:16"
+    aspectRatio: value.aspectRatio || "9:16",
+    postAction: value.postAction || "download"
   };
 }
 
@@ -260,28 +270,20 @@ function productMarkup(p, index) {
           </label>
         </div>
 
-        <div class="flow-result-grid">
-          <label class="field upload-field">
-            <span class="field__label">ใส่ภาพ Phase 1 เอง</span>
-            <span class="button button--ghost button--full file-button">
-              อัพโหลดภาพ
-              <input type="file" class="batch-upload-approved" accept="image/png,image/jpeg,image/webp">
-            </span>
-          </label>
-          <label class="field">
-            <span class="field__label">URL วิดีโอจาก Google Flow</span>
-            <input class="input batch-video-url" type="url" placeholder="วาง URL หรือให้ระบบเติมอัตโนมัติ" value="${escapeAttr(p.videoUrl || "")}">
-          </label>
-        </div>
+        <label class="field upload-field">
+          <span class="field__label">ใส่ภาพ Phase 1 เอง</span>
+          <span class="button button--ghost button--full file-button">
+            อัพโหลดภาพ
+            <input type="file" class="batch-upload-approved" accept="image/png,image/jpeg,image/webp">
+          </span>
+        </label>
 
         ${p.errorMessage ? `<p class="flow-error">${escapeHtml(p.errorMessage)}</p>` : ""}
 
         <div class="inline-actions flow-job__actions">
           <button class="button batch-analyze" type="button">${sparkIcon()} วิเคราะห์จุดขาย</button>
           <button class="button batch-copy" type="button">${copyIcon()} คัดลอก Prompt</button>
-          <button class="button button--ghost batch-flow-img" type="button">Phase 1 ภาพ</button>
-          <button class="button button--ghost batch-flow-vid" type="button">Phase 2 วิดีโอ</button>
-          <button class="button button--danger batch-stop" type="button" ${RUNNING_STATUSES.has(p.status) ? "" : "hidden"}>หยุด</button>
+          <button class="button button--danger batch-stop" type="button" ${RUNNING_STATUSES.has(p.status) ? "" : "hidden"}>${stopIcon()} หยุด</button>
           <button class="button batch-download" type="button" ${p.videoUrl ? "" : "disabled"}>${downloadIcon()} Download</button>
           <button class="button button--primary batch-post" type="button" ${p.videoUrl ? "" : "disabled"}>โพสต์ TikTok</button>
         </div>
@@ -323,16 +325,8 @@ function bindBatchEvents() {
       persistState();
       renderCountersOnly();
     });
-    item.querySelector(".batch-video-url")?.addEventListener("input", (e) => {
-      p.videoUrl = e.target.value;
-      if (p.videoUrl) p.status = "done";
-      persistState();
-      renderQueue();
-    });
     item.querySelector(".batch-analyze")?.addEventListener("click", () => handleAnalyze(p));
     item.querySelector(".batch-copy")?.addEventListener("click", () => copyPrompts(item));
-    item.querySelector(".batch-flow-img")?.addEventListener("click", () => launchFlow("image", p));
-    item.querySelector(".batch-flow-vid")?.addEventListener("click", () => launchFlow("video", p));
     item.querySelector(".batch-stop")?.addEventListener("click", () => handleStop(p));
     item.querySelector(".batch-upload-approved")?.addEventListener("change", (e) => handleUploadApproved(e, p));
     item.querySelector(".batch-download")?.addEventListener("click", () => handleDownload(p));
@@ -457,6 +451,20 @@ async function processQueue() {
     const product = productQueue[i];
 
     try {
+      if (product.status === "idle" || !product.highlights) {
+        helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังวิเคราะห์จุดเด่นสินค้าด้วย AI...`, "info");
+        try {
+          const analysis = await analyzeProductImages(product.imageUrls || [], product);
+          product.highlights = analysis.highlights || product.highlights;
+          product.name = analysis.name || product.name;
+          product.promptAdvice = analysis.promptAdvice || "";
+          await persistState();
+          renderQueue();
+        } catch (err) {
+          helpers.logActivity?.(`วิเคราะห์ภาพสินค้า ${i + 1} ล้มเหลว (ใช้ข้อมูลเริ่มต้น): ${err.message}`, "warning");
+        }
+      }
+
       product.status = "image_generating";
       product.errorMessage = "";
       await persistState();
@@ -474,6 +482,22 @@ async function processQueue() {
       product.status = "done";
       await persistState();
       renderQueue();
+
+      if (product.videoUrl) {
+        const action = settings.postAction || "download";
+        if (action === "download" || action === "both") {
+          helpers.logActivity?.(`สินค้า ${i + 1}: กำลังดาวน์โหลดวิดีโออัตโนมัติ...`, "info");
+          await downloadVideo(product.videoUrl, product).catch(err => {
+            helpers.logActivity?.(`ดาวน์โหลดวิดีโอสินค้า ${i + 1} ล้มเหลว: ${err.message}`, "error");
+          });
+        }
+        if (action === "post" || action === "both") {
+          helpers.logActivity?.(`สินค้า ${i + 1}: กำลังโพสต์ TikTok อัตโนมัติ...`, "info");
+          await publishVideo(product.videoUrl, product).catch(err => {
+            helpers.logActivity?.(`โพสต์ TikTok สินค้า ${i + 1} ล้มเหลว: ${err.message}`, "error");
+          });
+        }
+      }
     } catch (err) {
       errorCount += 1;
       product.status = "error";
@@ -505,6 +529,8 @@ function setBatchButtons(running) {
 
 function buildFlowOptions() {
   return {
+    imageModel: settings.imageModel,
+    videoModel: settings.videoModel,
     imageCount: settings.imageCount,
     videoCount: settings.videoCount,
     videoDuration: settings.videoDuration,
@@ -598,4 +624,16 @@ function copyIcon() {
 
 function downloadIcon() {
   return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>`;
+}
+
+function imageIcon() {
+  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
+}
+
+function playIcon() {
+  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+}
+
+function stopIcon() {
+  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>`;
 }

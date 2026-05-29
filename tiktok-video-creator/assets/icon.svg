@@ -1,7 +1,68 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="TikTok Video Creator">
-  <rect width="128" height="128" rx="28" fill="#0f0f13"/>
-  <path d="M47 82c0 9 7 16 17 16 11 0 18-7 18-18V38c6 8 14 13 25 14V35c-10-1-18-8-21-18H68v61c0 4-2 7-6 7s-7-3-7-7 3-7 7-7c2 0 4 1 5 2V56c-2-1-5-1-7-1-8 0-13 3-17 8l-7-6c6-8 14-12 24-12h1v13c-13 0-24 10-24 24z" fill="#25F4EE"/>
-  <path d="M39 78c0 10 8 18 19 18 12 0 20-8 20-20V34c6 8 14 13 25 14V31c-10-1-18-8-21-18H64v61c0 4-2 7-6 7s-7-3-7-7 3-7 7-7c2 0 4 1 5 2V52c-2-1-5-1-7-1-14 0-25 12-25 27z" fill="#FE2C55" opacity=".95"/>
-  <circle cx="97" cy="93" r="14" fill="#fff"/>
-  <path d="M93 86l12 7-12 7V86z" fill="#0f0f13"/>
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1E24" />
+      <stop offset="100%" stop-color="#09090B" />
+    </linearGradient>
+    
+    <!-- Border/Stroke Gradient -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#44444F" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#27272A" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.9" />
+    </linearGradient>
+
+    <!-- TikTok Cyan Glow -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="100%" stop-color="#4facfe" />
+    </linearGradient>
+
+    <!-- TikTok Pink Glow -->
+    <linearGradient id="pinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff0844" />
+      <stop offset="100%" stop-color="#ffb199" />
+    </linearGradient>
+
+    <!-- AI Magic Sparkle Gradient -->
+    <linearGradient id="magicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#a5f3fc" />
+      <stop offset="100%" stop-color="#00f2fe" />
+    </linearGradient>
+
+    <!-- Drop Shadows / Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Squircle -->
+  <rect width="128" height="128" rx="36" fill="url(#bgGrad)" />
+  <rect x="1" y="1" width="126" height="126" rx="35" fill="none" stroke="url(#borderGrad)" stroke-width="2" />
+
+  <!-- Cyan Glow in Background -->
+  <circle cx="35" cy="40" r="28" fill="#00f2fe" opacity="0.12" filter="url(#glow)" />
+  <!-- Pink Glow in Background -->
+  <circle cx="93" cy="88" r="28" fill="#ff0844" opacity="0.12" filter="url(#glow)" />
+
+  <g transform="translate(4, 4)">
+    <!-- Video Play Symbol (Minimalistic, Cyberpunk Aesthetic) -->
+    <!-- Cyan Play Shadow -->
+    <path d="M 44,38 L 84,60 L 44,82 Z" fill="none" stroke="url(#cyanGrad)" stroke-width="6" stroke-linejoin="round" opacity="0.7" transform="translate(-2, 1)" />
+    <!-- Pink Play Shadow -->
+    <path d="M 44,38 L 84,60 L 44,82 Z" fill="none" stroke="url(#pinkGrad)" stroke-width="6" stroke-linejoin="round" opacity="0.7" transform="translate(2, -1)" />
+    <!-- Main White Play Overlay -->
+    <path d="M 44,38 L 84,60 L 44,82 Z" fill="none" stroke="#ffffff" stroke-width="6" stroke-linejoin="round" />
+    <!-- Inner solid white play (smaller) -->
+    <path d="M 49,45 L 75,60 L 49,75 Z" fill="#ffffff" opacity="0.9" />
+
+    <!-- AI Sparkle 1 (Large 4-point star in upper right) -->
+    <path d="M 88,32 C 88,32 88,44 100,44 C 88,44 88,56 88,56 C 88,56 88,44 76,44 C 88,44 88,32 88,32 Z" fill="url(#magicGrad)" filter="url(#glow)" />
+
+    <!-- AI Sparkle 2 (Small 4-point star in bottom left) -->
+    <path d="M 32,84 C 32,84 32,90 38,90 C 32,90 32,96 32,96 C 32,96 32,90 26,90 C 32,90 32,84 32,84 Z" fill="#ffffff" opacity="0.8" />
+  </g>
 </svg>

@@ -160,14 +160,14 @@ toggleLogButton?.addEventListener("click", async () => {
   const logSection = document.querySelector(".activity-log");
   logSection.classList.toggle("activity-log--collapsed");
   const isCollapsed = logSection.classList.contains("activity-log--collapsed");
-  toggleLogButton.textContent = isCollapsed ? "▲" : "▼";
   await chrome.storage.local.set({ logCollapsed: isCollapsed });
 });
 
 chrome.storage.local.get(["activeTab", "activityLog", "logCollapsed"]).then(({ activeTab: storedTab, activityLog: storedLog, logCollapsed }) => {
-  if (logCollapsed) {
+  if (logCollapsed === false) {
+    document.querySelector(".activity-log").classList.remove("activity-log--collapsed");
+  } else {
     document.querySelector(".activity-log").classList.add("activity-log--collapsed");
-    if (toggleLogButton) toggleLogButton.textContent = "▲";
   }
   
   activityLog = Array.isArray(storedLog) ? storedLog.slice(0, 30) : [];

@@ -108,7 +108,8 @@ export function getDefaultSettings() {
     textPosition: "Auto",
     cameraMovement: "Auto",
     pacing: 2,
-    transition: "Auto"
+    transition: "Auto",
+    postAction: "download"
   };
 }
 
@@ -186,6 +187,10 @@ export function buildImagePrompt(productInfo, settings) {
     promptParts.push(textContext);
   }
 
+  if (productInfo.promptAdvice) {
+    promptParts.push(`AI Visual Direction: ${sanitizeText(productInfo.promptAdvice)}`);
+  }
+
   return promptParts.join("\n");
 }
 
@@ -204,7 +209,7 @@ export function buildVideoPrompt(productInfo, settings) {
     sanitizeText(ctaText || productInfo.cta)
   ].filter(Boolean);
 
-  return [
+  const promptParts = [
     `Create an 8-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
     "Use the provided product image as the main visual reference and keep product appearance accurate.",
     "Do NOT include any pricing or cost information in the video.",
@@ -221,7 +226,13 @@ export function buildVideoPrompt(productInfo, settings) {
     `Video text mode: ${settings.showName === "true" ? "include configured video text" : "no added video text"}.`,
     `Text language: ${sanitizeText(settings.language)}. Pacing: ${PACING[settings.pacing] || PACING[2]}.`,
     "Avoid clutter, avoid wrong logos, avoid misspelled text, keep the product as the hero."
-  ].join("\n");
+  ];
+
+  if (productInfo.promptAdvice) {
+    promptParts.push(`AI Creative Direction: ${sanitizeText(productInfo.promptAdvice)}`);
+  }
+
+  return promptParts.join("\n");
 }
 
 /**
