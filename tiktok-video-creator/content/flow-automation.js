@@ -16,6 +16,7 @@ const MAX_WAIT = 30000;
 const FLOW_HOME = "https://labs.google/fx/tools/flow";
 
 const PROMPT_SELECTORS = [
+    'div[role="textbox"][contenteditable="true"][data-slate-editor="true"]',
     '[data-slate-editor="true"]',
     '.public-DraftEditor-content[contenteditable="true"]',
     'div[contenteditable="true"][role="textbox"]',
@@ -257,8 +258,10 @@ function getMediaCards() {
 }
 function findMediaCard(cardInfo) {
     if (cardInfo.tileId) {
-        const byTile = document.querySelector(`[data-tile-id="${CSS.escape(cardInfo.tileId)}"]`);
-        if (byTile) return byTile;
+        const matches = [...document.querySelectorAll(`[data-tile-id="${CSS.escape(cardInfo.tileId)}"]`)];
+        if (matches.length > 0) {
+            return matches.find((el) => !el.parentElement?.closest(`[data-tile-id="${CSS.escape(cardInfo.tileId)}"]`)) || matches[0];
+        }
     }
     if (cardInfo.href) {
         const byHref = [...document.querySelectorAll('a[href*="/edit/"]')].find(link => link.href === cardInfo.href);
@@ -272,11 +275,38 @@ function findMediaCard(cardInfo) {
 }
 function mediaCardStatus(cardInfo) {
     const el = findMediaCard(cardInfo);
-    if (!el) return { ready: false, failed: false, progress: true, text: "" };
-    const text = elementText(el).toLowerCase();
-    const failed = text.includes("failed") || text.includes("warning") || text.includes("ล้มเหลว");
+    if (!el) return { ready: false, failed: false, progress: true, rendered: false, text: "" };
+    const text = mediaCardDeepText(el).toLowerCase();
     const progress = /\b\d{1,3}\s*%/.test(text) || text.includes("uploading") || text.includes("processing");
-    return { ready: !failed && !progress, failed, progress, text };
+    const failed = !progress && (text.includes("failed") || text.includes("warning") || text.includes("ล้มเหลว"));
+    const rendered = hasRenderableMedia(el);
+    return { ready: rendered && !progress, failed, progress, rendered, text };
+}
+function mediaCardDeepText(el) {
+    const parts = [elementText(el)];
+    const tileId = el.getAttribute?.("data-tile-id") || el.closest?.("[data-tile-id]")?.getAttribute("data-tile-id");
+    if (tileId) {
+        for (const match of document.querySelectorAll(`[data-tile-id="${CSS.escape(tileId)}"]`)) {
+            parts.push(elementText(match));
+        }
+    }
+    let node = el.parentElement;
+    for (let i = 0; i < 10 && node; i++, node = node.parentElement) {
+        parts.push(elementText(node));
+        if (/\b\d{1,3}\s*%/.test(parts.join(" "))) break;
+    }
+    return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+function hasRenderableMedia(el) {
+    const img = el.matches?.("img") ? el : el.querySelector?.("img");
+    if (img && (img.complete || img.naturalWidth > 0) && (img.naturalWidth || img.clientWidth) > 0) return true;
+
+    const vid = el.matches?.("video") ? el : el.querySelector?.("video");
+    if (vid && (vid.readyState >= 2 || vid.currentSrc || vid.src)) return true;
+
+    const bg = [...el.querySelectorAll?.("[style*='background-image']") || []]
+        .some(node => /url\(["']?[^"')]+["']?\)/.test(node.style.backgroundImage || ""));
+    return bg;
 }
 function getTileMediaUrl(el) {
     const vid = el.querySelector("video");
@@ -332,7 +362,6 @@ function watchNotice() {
 // ── 1. ensureProjectPage ─────────────────────────────────────
 async function ensureProjectPage() {
     await sleep(1000);
-    if (isProjectUrl(location.href) || hasPromptEditor()) return true;
     if (location.hostname.includes("accounts.google")) {
         log("❌ Google Flow ต้อง login Google ก่อน");
         return false;
@@ -352,8 +381,19 @@ async function ensureProjectPage() {
         "สร้าง"
     ];
 
+    // Every run must start from a fresh Flow project. If we are already in
+    // Flow, avoid reloading the site; use the visible app controls instead.
+    if (isProjectUrl(location.href) || hasPromptEditor()) {
+        const back = findAction(["Go Back", "arrow_back"]);
+        if (back) {
+            log("กลับไปหน้า Flow เพื่อกด New project...");
+            back.scrollIntoView({ block: "center", inline: "center" });
+            click(back);
+            await sleep(2000);
+        }
+    }
+
     for (let i = 0; i < 24; i++) {
-        if (isProjectUrl(location.href) || hasPromptEditor()) return true;
         if (location.hostname.includes("accounts.google")) {
             log("❌ Google Flow ต้อง login Google ก่อน");
             return false;
@@ -364,6 +404,7 @@ async function ensureProjectPage() {
             action.scrollIntoView({ block: "center", inline: "center" });
             click(action);
             await sleep(2500);
+            if (isProjectUrl(location.href) || hasPromptEditor()) return true;
             continue;
         }
         await sleep(POLL);
@@ -386,7 +427,7 @@ async function switchToUploadedTab() {
 }
 
 // ── 3. uploadImages ──────────────────────────────────────────
-async function uploadImages(dataUrls, waitMs = 60000) {
+async function uploadImages(dataUrls, waitMs = 300000) {
     patchFileInput();
     const tiles = [];
     for (let i = 0; i < dataUrls.length; i++) {
@@ -411,15 +452,19 @@ async function uploadImages(dataUrls, waitMs = 60000) {
         inp.dispatchEvent(new Event("input", { bubbles: true }));
 
         // รอ tile ใหม่ปรากฏและ upload เสร็จจริง
-        const secs = Math.max(1, Math.ceil(waitMs / 1000));
+        const secs = Math.max(300, Math.ceil(waitMs / 1000));
         let mediaCard = null;
+        let lastNewCard = null;
+        let lastStatus = null;
         for (let s = secs; s > 0; s--) {
             if (stopRequested) return tiles;
-            log(`รออัปโหลด ${i + 1}/${dataUrls.length}... ${s}s`);
+            log(`รออัปโหลดและรอภาพแสดง ${i + 1}/${dataUrls.length}... ${s}s`);
             await sleep(1000);
             for (const card of getMediaCards()) {
                 if (before.has(card.key)) continue;
                 const status = mediaCardStatus(card);
+                lastNewCard = card;
+                lastStatus = status;
                 if (status.ready) {
                     mediaCard = card;
                     break;
@@ -427,7 +472,11 @@ async function uploadImages(dataUrls, waitMs = 60000) {
             }
             if (mediaCard) break;
         }
-        if (!mediaCard) throw new Error("อัปโหลดรูปเข้า Google Flow แล้ว แต่ media card ยังไม่พร้อมใช้งาน");
+        if (!mediaCard) {
+            const detail = lastStatus?.text ? ` (${lastStatus.text.slice(0, 120)})` : "";
+            const key = lastNewCard?.key ? ` media=${lastNewCard.key.slice(0, 12)}` : "";
+            throw new Error(`รออัปโหลดรูปเข้า Google Flow หมดเวลา แต่ media card ยังไม่พร้อมใช้งาน${key}${detail}`);
+        }
         tiles.push(mediaCard);
         log(`✅ อัปโหลดรูป ${i + 1} สำเร็จ (media=${mediaCard.key.slice(0, 12) || "?"})`);
     }
@@ -456,6 +505,7 @@ async function clickMenuItemByText(labels) {
         '[role="menuitem"]',
         '[role="option"]',
         '[role="radio"]',
+        '[role="tab"]',
         'button',
         '[data-radix-collection-item]'
     ].join(",");
@@ -553,13 +603,26 @@ async function ensureEditAspectRatio(options = {}) {
 async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
     if (!tiles || tiles.length === 0) return [];
     log("แนบรูปเข้า prompt...");
+    if (promptHasMediaAttachment()) {
+        log("✅ รูปอยู่ใน prompt แล้ว");
+        return tiles.map(tile => tile.key || tile.tileId || tile.href || tile.mediaUrl).filter(Boolean);
+    }
+
     // สลับไป tab ที่ถูกต้อง (Uploaded หรือ Images)
     const tabBtn = byIcon(tabIcon) || byText(tabIcon === "image" ? ["Images", "Generated", "รูปภาพ"] : ["Uploaded", "Uploads", "อัปโหลด"]);
     if (tabBtn) { await humanClick(tabBtn); await sleep(1000); }
+    if (promptHasMediaAttachment()) {
+        log("✅ รูปอยู่ใน prompt แล้ว");
+        return tiles.map(tile => tile.key || tile.tileId || tile.href || tile.mediaUrl).filter(Boolean);
+    }
 
     const done = new Set();
     for (const tile of tiles) {
         if (!tile?.key && !tile?.tileId && !tile?.href && !tile?.mediaUrl) continue;
+        if (promptHasMediaAttachment()) {
+            done.add(tile.key || tile.tileId || tile.href || tile.mediaUrl);
+            continue;
+        }
         const el = findMediaCard(tile);
         const tileLabel = (tile.tileId || tile.key || tile.href || tile.mediaUrl || "?").slice(0, 12);
         if (!el) throw new Error(`ไม่เจอรูป media ${tileLabel} ใน Google Flow`);
@@ -568,6 +631,11 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
         const media = el.querySelector("img,video,[role='img']") || el;
 
         const attached = await addTileToPrompt(media);
+        if (!attached && promptHasMediaAttachment()) {
+            log("✅ รูปอยู่ใน prompt แล้ว");
+            done.add(tile.key || tile.tileId || tile.href || tile.mediaUrl);
+            continue;
+        }
         if (!attached) throw new Error(`เลือกภาพแล้ว แต่กด Add to prompt ไม่สำเร็จ (media=${tileLabel})`);
 
         log(`✅ แนบรูป media ${tileLabel} สำเร็จ`);
@@ -603,23 +671,6 @@ async function addTileToPrompt(media) {
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await sleep(300);
 
-    await humanClick(media);
-    await sleep(600);
-    const visibleAction = findAction(["Add to prompt", "Use as input", "Add image to prompt", "Reference", "เพิ่มไปยังพรอมต์"]);
-    if (visibleAction) {
-        await humanClick(visibleAction);
-        if (await waitPromptAttachment(beforeAttachCount)) return true;
-    }
-
-    media.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true, view: window }));
-    await sleep(900);
-    ctxMenu = document.querySelector('[role="menu"][data-state="open"]');
-    menuItem = ctxMenu ? findPromptMenuItem(ctxMenu) : findAction(["Add to prompt", "Use as input", "เพิ่มไปยังพรอมต์"]);
-    if (menuItem) {
-        await humanClick(menuItem);
-        if (await waitPromptAttachment(beforeAttachCount)) return true;
-    }
-
     return dragTileToPrompt(media, beforeAttachCount);
 }
 
@@ -628,7 +679,16 @@ function getPromptPanel() {
     let node = editor;
     for (let i = 0; i < 8 && node; i++) {
         const text = elementText(node).toLowerCase();
-        if (text.includes("arrow_forward") || text.includes("what do you want to create")) return node;
+        const hasEditor = node === editor || node.contains(editor);
+        const hasCreateButton = Boolean(
+            [...node.querySelectorAll?.("button,[role='button']") || []].some(btn => {
+                const label = elementText(btn).toLowerCase();
+                return label.includes("arrow_forward") || label.includes("create");
+            })
+        );
+        const hasPromptMedia = Boolean(node.querySelector?.("button img,img[alt*='media' i],video"));
+        if (hasEditor && (hasCreateButton || hasPromptMedia)) return node;
+        if (!editor && text.includes("what do you want to create") && (hasCreateButton || hasPromptMedia)) return node;
         node = node.parentElement;
     }
     return editor?.parentElement || null;
@@ -637,12 +697,19 @@ function getPromptPanel() {
 function promptAttachmentCount() {
     const panel = getPromptPanel();
     if (!panel) return 0;
-    return panel.querySelectorAll("img,video,button[aria-label*='cancel' i],button[aria-label*='remove' i],button").length;
+    return panel.querySelectorAll("img,video,button:has(img),button[aria-label*='cancel' i],button[aria-label*='remove' i]").length;
+}
+
+function promptHasMediaAttachment() {
+    const panel = getPromptPanel();
+    if (!panel) return false;
+    return Boolean(panel.querySelector("img,video,button img"));
 }
 
 async function waitPromptAttachment(beforeCount, timeoutMs = 3500) {
     const end = Date.now() + timeoutMs;
     while (Date.now() < end) {
+        if (promptHasMediaAttachment()) return true;
         if (promptAttachmentCount() > beforeCount) return true;
         await sleep(250);
     }
@@ -773,6 +840,11 @@ async function setPrompt(prompt) {
 }
 
 function findPromptEditor() {
+    const exactFlowTextbox = document.querySelector('div[role="textbox"][contenteditable="true"][data-slate-editor="true"]');
+    if (exactFlowTextbox && isVisible(exactFlowTextbox) && !exactFlowTextbox.closest("[draggable='true']")) {
+        return exactFlowTextbox;
+    }
+
     const candidates = [];
     for (const selector of PROMPT_SELECTORS) {
         for (const el of document.querySelectorAll(selector)) {
@@ -835,12 +907,43 @@ async function typeContentEditable(editor, prompt) {
 async function typeSlate(editor, prompt) {
     editor.focus(); await sleep(100);
     const sel = window.getSelection(), r = document.createRange();
-    r.selectNodeContents(editor); sel?.removeAllRanges(); sel?.addRange(r); await sleep(50);
-    if (editor.textContent?.trim().length > 0) {
-        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteContentBackward" }));
-        editor.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "deleteContentBackward" }));
-        await sleep(100);
+    r.selectNodeContents(editor);
+    sel?.removeAllRanges();
+    sel?.addRange(r);
+    await sleep(50);
+
+    try {
+        const response = await chrome.runtime.sendMessage({
+            type: "FLOW_INSERT_TEXT",
+            payload: { text: prompt, clear: true }
+        });
+        await sleep(700);
+        const inserted = (editor.textContent || "").replace(/\s+/g, "");
+        const needle = prompt.replace(/\s+/g, "").slice(0, Math.min(30, prompt.length));
+        if (response?.ok && response.inserted && inserted.includes(needle)) {
+            await sleepStop(1500);
+            return;
+        }
+    } catch (e) {
+        console.warn("[FlowAuto] debugger text insert failed:", e);
     }
+
+    document.execCommand("delete", false, null);
+    editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
+    await sleep(100);
+
+    // Flow uses Slate. Native editing commands update the contenteditable DOM
+    // and give Slate a real input path, unlike synthetic input events alone.
+    document.execCommand("insertText", false, prompt);
+    editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
+    await sleep(500);
+    const inserted = (editor.textContent || "").replace(/\s+/g, "");
+    const needle = prompt.replace(/\s+/g, "").slice(0, Math.min(30, prompt.length));
+    if (inserted.includes(needle)) {
+        await sleepStop(1500);
+        return;
+    }
+
     // Primary: ClipboardEvent paste
     try {
         const dt = new DataTransfer(); dt.setData("text/plain", prompt);
@@ -875,50 +978,155 @@ async function typeDraft(editor, prompt) {
 
 // ── 7. clickGenerate ─────────────────────────────────────────
 async function clickGenerate() {
-    log("หาปุ่ม Generate...");
+    log("รอปุ่ม Generate พร้อมกด...");
     preGenMediaKeys = snapMediaKeys();
-    const end = Date.now() + 8000;
+    const end = Date.now() + 30000;
     let btn = null;
+    let disabledArrow = false;
     while (Date.now() < end) {
         if (stopRequested) return false;
-        for (const b of document.querySelectorAll("button")) {
-            if (b.disabled || b.getAttribute("aria-disabled") === "true") continue;
-            const i = b.querySelector("i,.google-symbols,.material-icons");
-            const iconText = i?.textContent?.trim();
-            const label = `${b.textContent || ""} ${b.getAttribute("aria-label") || ""}`.toLowerCase();
-            const hasPopup = b.getAttribute("aria-haspopup") || b.getAttribute("data-state");
-            if (iconText === "arrow_forward") { btn = b; break; }
-            if (!hasPopup && (label.includes("generate") || label.includes("submit"))) { btn = b; break; }
-        }
+        btn = findGenerateButton();
+        disabledArrow = disabledArrow || Boolean(findDisabledGenerateButton());
         if (btn) break;
-        await sleep(300);
+        log(disabledArrow ? "รอปุ่ม arrow_forward Create enabled..." : "หาปุ่ม Generate...");
+        await sleep(500);
     }
     if (!btn) {
         const fb = byText(["Generate", "สร้าง"]);
         if (fb && !fb.disabled) btn = fb;
     }
-    if (!btn) throw new Error("หาปุ่ม Generate/Create ใน Google Flow ไม่เจอ");
+    if (!btn) throw new Error(disabledArrow
+        ? "ปุ่ม arrow_forward Create ยัง disabled หลังกรอก prompt/แนบรูป จึงไม่กด Generate"
+        : "หาปุ่ม Generate/Create ใน Google Flow ไม่เจอ");
     log("🚀 กด Generate!");
     btn.scrollIntoView({ block: "center", inline: "center" });
     await sleep(400);
+    await clickButtonCenterWithDebugger(btn);
+    if (await waitGenerationStarted(btn)) return true;
+
     await humanClick(btn);
-    return true;
+    if (await waitGenerationStarted(btn)) return true;
+
+    btn.click();
+    if (await waitGenerationStarted(btn)) return true;
+
+    btn.focus();
+    await pressFocusedButtonWithDebugger(" ");
+    if (await waitGenerationStarted(btn)) return true;
+
+    btn.focus();
+    await pressFocusedButtonWithDebugger("Enter");
+    if (await waitGenerationStarted(btn)) return true;
+
+    btn.focus();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    document.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true, cancelable: true }));
+    if (await waitGenerationStarted(btn)) return true;
+
+    throw new Error("กด Generate แล้ว แต่ Flow ไม่เริ่มสร้าง จึงไม่รอผลลัพธ์");
+}
+
+async function clickButtonCenterWithDebugger(button) {
+    const rect = button.getBoundingClientRect();
+    const x = Math.round(rect.left + rect.width / 2);
+    const y = Math.round(rect.top + rect.height / 2);
+    log(`กดปุ่ม Generate ที่ตำแหน่ง ${x},${y}...`);
+    try {
+        const response = await chrome.runtime.sendMessage({
+            type: "FLOW_CLICK_POINT",
+            payload: { x, y }
+        });
+        if (!response?.ok || !response.clicked) {
+            console.warn("[FlowAuto] debugger click failed response:", response);
+        }
+    } catch (e) {
+        console.warn("[FlowAuto] debugger click failed:", e);
+    }
+}
+
+async function pressFocusedButtonWithDebugger(key) {
+    try {
+        const response = await chrome.runtime.sendMessage({
+            type: "FLOW_PRESS_KEY",
+            payload: { key }
+        });
+        if (!response?.ok || !response.pressed) {
+            console.warn("[FlowAuto] debugger key press failed response:", response);
+        }
+    } catch (e) {
+        console.warn("[FlowAuto] debugger key press failed:", e);
+    }
+}
+
+function findGenerateButton() {
+    for (const icon of document.querySelectorAll("i,.google-symbols,.material-icons")) {
+        if (icon.textContent?.trim() !== "arrow_forward") continue;
+        const b = icon.closest("button");
+        if (!b || !isVisible(b)) continue;
+        const label = `${b.textContent || ""} ${b.getAttribute("aria-label") || ""}`.toLowerCase();
+        const disabled = b.disabled || b.getAttribute("aria-disabled") === "true";
+        if (disabled) continue;
+        if (b.getAttribute("aria-haspopup")) continue;
+        if (label.includes("create") || label.includes("arrow_forward")) return b;
+    }
+    return null;
+}
+
+function findDisabledGenerateButton() {
+    for (const icon of document.querySelectorAll("i,.google-symbols,.material-icons")) {
+        if (icon.textContent?.trim() !== "arrow_forward") continue;
+        const b = icon.closest("button");
+        if (!b || !isVisible(b)) continue;
+        const label = `${b.textContent || ""} ${b.getAttribute("aria-label") || ""}`.toLowerCase();
+        const disabled = b.disabled || b.getAttribute("aria-disabled") === "true";
+        if (disabled && !b.getAttribute("aria-haspopup") && label.includes("create")) return b;
+    }
+    return null;
+}
+
+async function waitGenerationStarted(button, timeoutMs = 7000) {
+    const end = Date.now() + timeoutMs;
+    while (Date.now() < end) {
+        if (stopRequested) return false;
+        const disabled = button.disabled || button.getAttribute("aria-disabled") === "true";
+        const bodyText = elementText(document.body).toLowerCase();
+        const hasBusyText = bodyText.includes("generating") || bodyText.includes("creating") || bodyText.includes("กำลังสร้าง");
+        const hasNewMedia = getMediaCards().some(card => card.key && !preGenMediaKeys.has(card.key));
+        if (disabled || hasBusyText || hasNewMedia) {
+            log("✅ Flow เริ่มสร้างแล้ว");
+            return true;
+        }
+        await sleep(350);
+    }
+    return false;
 }
 
 // ── 8. waitForResult ─────────────────────────────────────────
 async function waitForResult(phase) {
-    const maxMs = phase === "image" ? 60000 : 120000;
+    const maxMs = phase === "image" ? 180000 : 300000;
+    const progressGraceMs = 25000;
+    const startedAt = Date.now();
     const end = Date.now() + maxMs;
     log("รอผลลัพธ์จาก Flow...");
     while (Date.now() < end) {
         if (stopRequested) return { tileId: null, mediaUrl: "" };
         for (const card of getMediaCards()) {
             if (!card.key || preGenMediaKeys.has(card.key)) continue;
-            log("✅ พบผลลัพธ์แล้ว!");
+            const status = mediaCardStatus(card);
+            if (!status.progress && !status.ready && Date.now() - startedAt < progressGraceMs) {
+                log("รอ Flow เริ่มแสดงเปอร์เซ็น...");
+                continue;
+            }
+            if (status.failed) {
+                log("Flow tile แสดง Failed แต่ยังรอต่อจนกว่าจะมีผลลัพธ์หรือหมดเวลา...");
+                continue;
+            }
+            if (!isGeneratedResultCard(card, status, phase)) continue;
+            log("✅ พบผลลัพธ์ที่สร้างเสร็จแล้ว!");
             return { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key };
         }
         const rem = Math.round((end - Date.now()) / 1000);
-        log(`รอผลลัพธ์... (~${rem}s)`);
+        log(`รอผลลัพธ์ที่สร้างเสร็จ... (~${rem}s)`);
         await sleep(1000);
     }
     throw new Error(phase === "image"
@@ -926,13 +1134,30 @@ async function waitForResult(phase) {
         : "รอผลลัพธ์วิดีโอจาก Google Flow หมดเวลา หรือไม่พบ media tile ใหม่");
 }
 
+function isGeneratedResultCard(card, status, phase) {
+    if (!status.ready || !card.mediaUrl) return false;
+    const text = `${card.label || ""} ${status.text || ""}`.toLowerCase();
+    if (text.includes("uploaded image")) return false;
+    if (text.includes("upload")) return false;
+    if (text.includes("start creating") || text.includes("drop media")) return false;
+
+    const el = findMediaCard(card);
+    const hasVideo = Boolean(el?.matches?.("video") || el?.querySelector?.("video"));
+    const hasImage = Boolean(el?.matches?.("img") || el?.querySelector?.("img,[style*='background-image']"));
+    if (phase === "video") return hasVideo || /\.(mp4|webm|mov)(\?|$)/i.test(card.mediaUrl);
+    return hasImage && !hasVideo;
+}
+
 // ── Load settings ────────────────────────────────────────────
 async function loadSettings() {
     try {
         const r = await chrome.runtime.sendMessage({ type: "GET_FLOW_SETTINGS" });
-        if (r && !r.error) return r;
+        if (r && !r.error) return {
+            ...r,
+            uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 300)
+        };
     } catch { }
-    return { videoModel: "veo-3.1-fast", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 8 };
+    return { videoModel: "veo-3.1-fast", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 300 };
 }
 
 // ── Main pipeline ─────────────────────────────────────────────

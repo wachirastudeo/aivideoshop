@@ -11,7 +11,8 @@
     "downloads",
     "identity",
     "tabs",
-    "notifications"
+    "notifications",
+    "debugger"
   ],
   "host_permissions": [
     "https://*.tiktok.com/*",

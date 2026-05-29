@@ -236,10 +236,6 @@ function productMarkup(p, index) {
           <img src="${escapeAttr(sourceImage)}" alt="" width="180" height="240">
           <figcaption>ภาพ TikTok</figcaption>
         </figure>
-        <figure class="media-tile media-tile--generated">
-          <img class="batch-approved-preview" src="${escapeAttr(approvedImage || "assets/icon.svg")}" alt="" width="180" height="240">
-          <figcaption>ภาพจาก Flow</figcaption>
-        </figure>
       </div>
 
       <div class="flow-job__body">

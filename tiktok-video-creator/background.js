@@ -28,10 +28,141 @@ async function routeMessage(message, sender) {
     case "DOWNLOAD_VIDEO": return downloadVideo(message.payload);
     case "POST_TO_TIKTOK": return postToTikTok(message.payload);
     case "GET_FLOW_SETTINGS": return getFlowSettings();
+    case "FLOW_INSERT_TEXT": return insertTextWithDebugger(message.payload, sender);
+    case "FLOW_CLICK_POINT": return clickPointWithDebugger(message.payload, sender);
+    case "FLOW_PRESS_KEY": return pressKeyWithDebugger(message.payload, sender);
     case "FLOW_PING": return { pong: true };
     case "FLOW_CONTENT_READY": return { ok: true };
     case "FLOW_STOP": return stopFlowPipeline();
     default: throw new Error("ไม่รู้จักคำสั่งที่ส่งมา");
+  }
+}
+
+async function pressKeyWithDebugger(payload, sender) {
+  const tabId = sender?.tab?.id;
+  const key = String(payload?.key || "Enter");
+  const code = key === " " ? "Space" : key;
+  const windowsVirtualKeyCode = key === " " ? 32 : key === "Enter" ? 13 : 0;
+  if (!tabId) throw new Error("ไม่พบ tab สำหรับกดปุ่ม");
+
+  const target = { tabId };
+  let attached = false;
+  try {
+    await chrome.debugger.attach(target, "1.3");
+    attached = true;
+    await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key,
+      code,
+      windowsVirtualKeyCode,
+      nativeVirtualKeyCode: windowsVirtualKeyCode
+    });
+    await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key,
+      code,
+      windowsVirtualKeyCode,
+      nativeVirtualKeyCode: windowsVirtualKeyCode
+    });
+    return { pressed: true };
+  } finally {
+    if (attached) {
+      await chrome.debugger.detach(target).catch(() => { });
+    }
+  }
+}
+
+async function clickPointWithDebugger(payload, sender) {
+  const tabId = sender?.tab?.id;
+  const x = Number(payload?.x);
+  const y = Number(payload?.y);
+  if (!tabId) throw new Error("ไม่พบ tab สำหรับกดปุ่ม");
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("ตำแหน่งปุ่ม Generate ไม่ถูกต้อง");
+
+  const target = { tabId };
+  let attached = false;
+  try {
+    await chrome.debugger.attach(target, "1.3");
+    attached = true;
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x,
+      y,
+      button: "none"
+    });
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x,
+      y,
+      button: "left",
+      clickCount: 1
+    });
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x,
+      y,
+      button: "left",
+      clickCount: 1
+    });
+    return { clicked: true };
+  } finally {
+    if (attached) {
+      await chrome.debugger.detach(target).catch(() => { });
+    }
+  }
+}
+
+async function insertTextWithDebugger(payload, sender) {
+  const tabId = sender?.tab?.id;
+  const text = String(payload?.text || "");
+  if (!tabId) throw new Error("ไม่พบ tab สำหรับกรอก prompt");
+  if (!text) return { inserted: false };
+
+  const target = { tabId };
+  let attached = false;
+  try {
+    await chrome.debugger.attach(target, "1.3");
+    attached = true;
+
+    if (payload?.clear !== false) {
+      await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+        type: "keyDown",
+        key: "a",
+        code: "KeyA",
+        windowsVirtualKeyCode: 65,
+        nativeVirtualKeyCode: 65,
+        modifiers: 4
+      });
+      await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+        type: "keyUp",
+        key: "a",
+        code: "KeyA",
+        windowsVirtualKeyCode: 65,
+        nativeVirtualKeyCode: 65,
+        modifiers: 4
+      });
+      await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+        type: "keyDown",
+        key: "Backspace",
+        code: "Backspace",
+        windowsVirtualKeyCode: 8,
+        nativeVirtualKeyCode: 8
+      });
+      await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+        type: "keyUp",
+        key: "Backspace",
+        code: "Backspace",
+        windowsVirtualKeyCode: 8,
+        nativeVirtualKeyCode: 8
+      });
+    }
+
+    await chrome.debugger.sendCommand(target, "Input.insertText", { text });
+    return { inserted: true };
+  } finally {
+    if (attached) {
+      await chrome.debugger.detach(target).catch(() => { });
+    }
   }
 }
 
