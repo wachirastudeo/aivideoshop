@@ -2,6 +2,70 @@
 
 ---
 
+## [0.3.0] — 2026-05-30
+
+### Features
+
+#### Tab 3: TikTok Posting Settings
+- Added a third side panel tab for TikTok posting configuration.
+- Settings auto-save to `chrome.storage.sync.settings.postDefaults`.
+- Supported post actions:
+  - `download`: download only
+  - `draft`: download + save TikTok draft
+  - `post`: download + post TikTok
+  - `both`: download + save TikTok draft
+- Posting settings include caption template, hashtags, privacy, schedule time, location, comments, reuse, and confirmation word.
+- AI-generated disclosure is forced on and cannot be saved as off.
+
+#### Download-first TikTok Flow
+- Video tab now downloads finished videos before any TikTok upload/post action.
+- TikTok automation opens or focuses `https://www.tiktok.com/tiktokstudio/upload` automatically.
+- If no TikTok Studio tab exists, the extension creates one.
+
+#### Product ID and Product Link Flow
+- Product queue preserves `productId` and `productUrl`.
+- Download/upload filenames now use product ID: `${productId}_${YYYY-MM-DD}_tiktok.mp4`.
+- TikTok Studio automation passes `productId`, `productUrl`, and `productName` through the Draft/Post payload.
+- Added product link automation:
+  - click `เพิ่มลิงก์`
+  - click `ถัดไป`
+  - select `นำเสนอสินค้า`
+  - search by `productId`
+  - select product
+  - click `ถัดไป`
+  - set product title to max 25 characters
+  - click `เพิ่ม`
+
+#### Captions and Hashtags
+- Caption default now includes product details.
+- Caption variables:
+  - `{product_name}`
+  - `{product_id}`
+  - `{price}`
+  - `{product_details}`
+  - `{highlights}`
+  - `{shop_name}`
+  - `{cta}`
+- Hashtags are normalized, deduplicated, prefixed with `#`, and capped at 5.
+
+### Validation
+
+- Ran syntax checks for updated JS files:
+  - `node --check tabs/tab-post.js`
+  - `node --check tabs/tab-video.js`
+  - `node --check modules/video-output.js`
+  - `node --check modules/prompt-builder.js`
+  - `node --check options/options.js`
+  - `node --check background.js`
+  - `node --check content/tiktok-studio-automation.js`
+
+### Notes
+
+- TikTok Studio Add link was inspected live up to the final `เพิ่ม` modal, but the final click was not pressed manually to avoid modifying a real TikTok draft outside the automated flow.
+- The UI automation remains selector-sensitive because TikTok Studio can change its DOM.
+
+---
+
 ## [0.2.1] — 2026-05-29
 
 ### 🐛 Bug Fixes

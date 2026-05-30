@@ -1,6 +1,6 @@
 # TikTok Video Creator Extension - Project Handoff
 
-*อัพเดตล่าสุด: 10 พฤษภาคม 2026*
+*อัพเดตล่าสุด: 30 พฤษภาคม 2026*
 
 ## ภาพรวมโปรเจกต์
 
@@ -14,6 +14,7 @@
 4. Phase 1: สร้างภาพสินค้าใหม่ให้สวยก่อน
 5. Phase 2: ใช้ภาพที่ approve แล้วสร้างวิดีโอ 8 วินาที
 6. ดาวน์โหลดวิดีโอ หรือเตรียมโพสต์ลง TikTok พร้อม product link
+7. ตั้งค่าการโพสต์ TikTok แยกใน Tab 3 และให้ระบบดาวน์โหลดก่อนอัปโหลด/โพสต์อัตโนมัติ
 
 โปรเจกต์ใช้ **vanilla JavaScript ES modules**, HTML, CSS เท่านั้น ไม่มี framework และไม่มี bundler
 
@@ -46,6 +47,8 @@ tiktok-video-creator/
 └── tabs/
     ├── tab-products.html
     ├── tab-products.js
+    ├── tab-post.html
+    ├── tab-post.js
     ├── tab-video.html
     └── tab-video.js
 ```
@@ -62,7 +65,21 @@ tiktok-video-creator/
 (คงเดิม)
 
 ### 4. Tab สร้างวิดีโอ
-(อัปเดต): เพิ่ม Privacy settings และปุ่มควบคุมการโพสต์ (Comments, Duet, Stitch) ใน Batch Dashboard
+(อัปเดต): หลังสร้างวิดีโอเสร็จสามารถเลือกได้ว่าจะดาวน์โหลดอย่างเดียว, ดาวน์โหลด + บันทึกแบบร่าง TikTok, หรือดาวน์โหลด + โพสต์ TikTok โดย flow TikTok จะดาวน์โหลดไฟล์ก่อนเสมอ แล้วจึงเปิด/โฟกัส `https://www.tiktok.com/tiktokstudio/upload` เพื่ออัปโหลดต่อ
+
+### 4.1 Tab ตั้งค่าโพสต์ TikTok
+ไฟล์:
+- `tabs/tab-post.html`
+- `tabs/tab-post.js`
+
+ความสามารถ:
+- ตั้งค่า action หลังสร้างวิดีโอ: `download`, `draft`, `post`, `both`
+- Auto-save ทุก field ลง `chrome.storage.sync.settings.postDefaults`
+- ตั้ง caption template พร้อม variables: `{product_name}`, `{product_id}`, `{price}`, `{product_details}`, `{highlights}`, `{shop_name}`, `{cta}`
+- จำกัด hashtags สูงสุด 5 อัน
+- บังคับเปิด AI-generated disclosure เสมอ (`aiGenerated: true`)
+- ตั้งค่า privacy, schedule time, location, comments, reuse
+- ปุ่มเปิด `https://www.tiktok.com/tiktokstudio/upload`
 
 ### 5. Prompt Builder
 (คงเดิม)
@@ -81,7 +98,37 @@ tiktok-video-creator/
 - เพิ่ม logic รอการ Generate ผลลัพธ์ให้เสร็จสมบูรณ์ก่อนคืนค่า Status "สำเร็จ"
 
 ### 8. Video Output
-(คงเดิม - ส่วนโพสต์ TikTok ยังคงเป็น Placeholder)
+(อัปเดต): `modules/video-output.js` จัดการ download และส่ง payload ไป `TIKTOK_SEND_DRAFT` สำหรับ TikTok Studio automation
+
+รายละเอียด:
+- ชื่อไฟล์ใช้ `productId`: `${productId}_${YYYY-MM-DD}_tiktok.mp4`
+- `publishVideo()` ไม่ใช้ placeholder `POST_TO_TIKTOK` แล้ว แต่ส่งไป background เพื่อเปิด TikTok Studio upload page
+- ส่ง `productId`, `productUrl`, `productName`, `filename`, `caption`, `hashtags`, schedule/privacy/permission settings ไป content script
+
+### 8.1 TikTok Studio Automation
+ไฟล์:
+- `background.js`
+- `content/tiktok-studio-automation.js`
+- `modules/video-output.js`
+
+Flow:
+1. ถ้า TikTok Studio upload tab เปิดอยู่ จะ focus tab นั้น
+2. ถ้ามี TikTok Studio tab อื่น จะเปลี่ยน URL เป็น `https://www.tiktok.com/tiktokstudio/upload`
+3. ถ้าไม่มี tab จะสร้าง tab ใหม่ที่ `https://www.tiktok.com/tiktokstudio/upload`
+4. ดาวน์โหลด/แปลงวิดีโอ แล้ว inject เข้า file input
+5. กรอก caption + hashtags (สูงสุด 5)
+6. เปิด AI-generated content เสมอ
+7. ตั้ง privacy, schedule, location, comments/reuse ตาม settings
+8. เพิ่ม product link โดยใช้ `productId`:
+   - คลิก `เพิ่มลิงก์`
+   - คลิก `ถัดไป`
+   - เลือก `นำเสนอสินค้า`
+   - ค้นหาด้วย `productId`
+   - เลือกสินค้า
+   - คลิก `ถัดไป`
+   - ตั้งชื่อสินค้าไม่เกิน 25 ตัวอักษร
+   - คลิก `เพิ่ม`
+9. บันทึกแบบร่างหรือโพสต์ตาม settings
 
 ### 9. Options Page
 (คงเดิม)
@@ -98,6 +145,8 @@ FETCH_PRODUCTS
 OPEN_GOOGLE_FLOW
 DOWNLOAD_VIDEO
 POST_TO_TIKTOK
+TIKTOK_SEND_DRAFT
+TIKTOK_UPLOAD_VIDEO
 ```
 
 รายละเอียด:
@@ -105,7 +154,9 @@ POST_TO_TIKTOK
 - `FETCH_PRODUCTS`: เรียก `fetchShowcaseProducts` จาก `modules/tiktok-api.js`
 - `OPEN_GOOGLE_FLOW`: เปิด Google Flow และ inject prompt
 - `DOWNLOAD_VIDEO`: download URL ด้วย `chrome.downloads.download`
-- `POST_TO_TIKTOK`: placeholder สำหรับ upload/post จริง
+- `POST_TO_TIKTOK`: legacy placeholder
+- `TIKTOK_SEND_DRAFT`: เปิด/โฟกัส TikTok Studio upload page, เตรียมวิดีโอ, ส่ง payload ไป content script
+- `TIKTOK_UPLOAD_VIDEO`: content script อัปโหลดวิดีโอ กรอกข้อมูล ตั้งค่าโพสต์ เพิ่ม product link และ save draft/post
 
 ## Storage ที่ใช้
 
@@ -115,10 +166,7 @@ POST_TO_TIKTOK
 
 ```js
 {
-  activeTab: "video" | "products",
-```js
-{
-  activeTab: "video" | "products",
+  activeTab: "video" | "products" | "post",
   productQueue: [
     {
       productId,
@@ -127,6 +175,7 @@ POST_TO_TIKTOK
       imageUrls,
       approvedImage,
       videoUrl,
+      productUrl,
       highlights,
       status, // idle, analyzed, flow1, flow2, done
     }
@@ -136,8 +185,6 @@ POST_TO_TIKTOK
     settings, // Global Video Settings
   },
   lastTikTokPostPayload: {}
-}
-```
 }
 ```
 
@@ -157,7 +204,16 @@ POST_TO_TIKTOK
     postDefaults: {
       captionTemplate,
       hashtags,
-      autoAddProductLink
+      autoAddProductLink,
+      afterCreateAction, // download | draft | post | both
+      defaultMode, // draft | now | schedule
+      privacy,
+      scheduleTime,
+      location,
+      aiGenerated, // forced true
+      allowComment,
+      allowReuse,
+      confirmPost
     }
   },
   tiktokAuth: {
@@ -227,15 +283,22 @@ file assets/icon16.png assets/icon48.png assets/icon128.png
 - `background.js`
 - `options/options.js`
 
-### Priority 3 - TikTok Content Posting API
+### Priority 3 - TikTok Studio Posting Automation
+
+ทำแล้วบางส่วน:
+
+- เปิด/โฟกัส `https://www.tiktok.com/tiktokstudio/upload` อัตโนมัติ
+- อัปโหลดวิดีโอผ่าน UI automation
+- กรอก caption/hashtags/settings
+- เพิ่ม product link จาก `productId`
+- save draft/post ตาม settings
 
 ต้องทำเพิ่ม:
 
-- เพิ่ม endpoint upload video จริง
-- เพิ่ม init/upload/publish flow ตาม TikTok API ปัจจุบัน
-- ผูก product link/ตะกร้า ถ้า API อนุญาต
+- ทดสอบ live หลังอัปโหลดจริงครบ flow ทุก modal
 - เพิ่ม progress bar จริงใน UI
-- handle error code จาก TikTok
+- เพิ่ม fallback selector เมื่อ TikTok Studio เปลี่ยน UI
+- handle error เฉพาะของ TikTok Studio ให้ละเอียดขึ้น
 
 ไฟล์ที่เกี่ยวข้อง:
 
@@ -300,9 +363,15 @@ file assets/icon16.png assets/icon48.png assets/icon128.png
 - ทดลอง upload/preview image
 - ทดลอง workflow Phase 1/Phase 2 กับ Google Flow แบบ Fully Automatic E2E
 - บันทึก settings/token
+- ตั้งค่า TikTok posting ใน Tab 3
+- ดาวน์โหลดวิดีโอแล้วอัปโหลดต่อไป TikTok Studio ผ่าน UI automation
+- ตั้งชื่อไฟล์ด้วย `productId`
+- สร้าง caption จาก product details และจำกัด hashtags สูงสุด 5
+- บังคับเปิด AI-generated disclosure
 
 ยังไม่พร้อม production:
 
 - TikTok OAuth/token exchange จริง
 - TikTok Showcase API production validation
-- TikTok Content Posting API จริง
+- TikTok Content Posting API official endpoint จริง
+- TikTok Studio UI automation ยังต้องทดสอบ live หลังอัปโหลดจริงทุกขั้นตอน
