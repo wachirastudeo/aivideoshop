@@ -202,12 +202,15 @@ html[data-mode="tab"] .app-shell {
 
 .tab-bar__button {
   flex: 1;
+  min-width: 0;
   height: 28px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--muted);
   border: none;
+  overflow: hidden;
+  white-space: nowrap;
   transition: all 0.15s ease;
   background: transparent;
 }
@@ -324,6 +327,11 @@ html[data-mode="tab"] .app-shell {
   font-size: 11px;
   font-weight: 550;
   color: var(--muted);
+}
+
+.field__hint {
+  font-size: 11px;
+  color: var(--muted-2);
 }
 
 .input,
@@ -865,6 +873,20 @@ html[data-mode="tab"] .activity-log {
   gap: 12px;
 }
 
+.post-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.post-checkbox {
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #121215;
+}
+
 .premium-title,
 .section__header h2 {
   margin: 0;
@@ -1279,7 +1301,8 @@ html[data-mode="tab"] .activity-log {
 
 .flow-job__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 150px);
+  justify-content: start;
   gap: 10px;
   padding: 12px;
   border-bottom: 1px solid var(--line);
@@ -1295,7 +1318,7 @@ html[data-mode="tab"] .activity-log {
 
 .media-tile img {
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
 }
 
 .media-tile figcaption {
@@ -1404,6 +1427,10 @@ html[data-mode="tab"] .activity-log {
   .flow-result-grid,
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .flow-job__grid {
+    grid-template-columns: minmax(0, 140px);
   }
 
   .flow-job__title h3 {

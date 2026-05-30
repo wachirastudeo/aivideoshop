@@ -17,6 +17,8 @@ const TIKTOK_SELECTORS = {
   scheduleContainer: '[data-e2e="schedule_container"]',
   postNowRadio: 'input[name="postSchedule"][value="post_now"]',
   scheduleRadio: 'input[name="postSchedule"][value="schedule"]',
+  addLinkContainer: '[data-e2e="anchor_container"]',
+  addLinkButton: '[data-e2e="anchor_container"] button, [data-e2e="anchor_container"] [role="button"]',
   aiGeneratedSwitch: '[data-e2e="aigc_container"] input[type="checkbox"]',
   userPermChecks: '[data-e2e="user_perm_container"] input[type="checkbox"]',
   postButton: 'button[data-e2e="post_video_button"]',
@@ -129,6 +131,10 @@ async function handleVideoUpload(payload = {}) {
       scheduleTime = "",
       location = "",
       privacy = "",
+      productId = "",
+      productUrl = "",
+      productName = "",
+      filename = "",
       aiGenerated,
       allowComment,
       allowReuse,
@@ -142,11 +148,11 @@ async function handleVideoUpload(payload = {}) {
 
     await discardRecoveryDraftIfNeeded();
     sendPipelineLog("info", "กำลังอัปโหลดวิดีโอ...");
-    await uploadVideoFromUrl(videoUrl);
+    await uploadVideoFromUrl(videoUrl, filename || buildVideoFilename({ productId }));
     sendPipelineLog("info", "รอ TikTok ประมวลผลวิดีโอ...");
     await waitForUploadFinished();
     await fillCaptionAndHashtags(caption, hashtags);
-    await applyUploadSettings({ postType, scheduleTime, location, privacy, aiGenerated, allowComment, allowReuse });
+    await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, aiGenerated, allowComment, allowReuse });
 
     if (mode === "post") {
       await clickPost();
@@ -233,16 +239,16 @@ async function handleDraftUpload(payload) {
   }
 }
 
-async function uploadVideoFromUrl(videoUrl) {
+async function uploadVideoFromUrl(videoUrl, filename = "video.mp4") {
   const input = await waitForElement(TIKTOK_SELECTORS.fileInput, 30000);
-  const file = await videoUrlToFile(videoUrl);
+  const file = await videoUrlToFile(videoUrl, filename);
   setInputFiles(input, file);
   log(`เลือกไฟล์วิดีโอแล้ว: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
 }
 
-async function videoUrlToFile(videoUrl) {
+async function videoUrlToFile(videoUrl, filename = "video.mp4") {
   if (videoUrl.startsWith("data:")) {
-    return dataUrlToFile(videoUrl, "video.mp4");
+    return dataUrlToFile(videoUrl, filename);
   }
 
   const response = await fetch(videoUrl);
@@ -251,7 +257,7 @@ async function videoUrlToFile(videoUrl) {
   }
 
   const blob = await response.blob();
-  return new File([blob], "video.mp4", { type: blob.type || "video/mp4" });
+  return new File([blob], filename, { type: blob.type || "video/mp4" });
 }
 
 function dataUrlToFile(dataUrl, filename) {
@@ -311,7 +317,7 @@ async function fillCaptionAndHashtags(caption, hashtags) {
     document.execCommand("insertText", false, caption);
   }
 
-  for (const rawTag of hashtags || []) {
+  for (const rawTag of normalizeHashtags(hashtags)) {
     const tag = String(rawTag || "").replace(/^#/, "").trim();
     if (!tag) continue;
     document.execCommand("insertText", false, ` #${tag}`);
@@ -328,6 +334,7 @@ async function fillCaptionAndHashtags(caption, hashtags) {
 
 async function applyUploadSettings(settings) {
   await applyScheduleSettings(settings.postType, settings.scheduleTime);
+  await applyProductLink(settings.productId, settings.productUrl, settings.productName);
 
   if (settings.location) {
     const locationInput = document.querySelector(TIKTOK_SELECTORS.locationSearch);
@@ -358,6 +365,71 @@ async function applyUploadSettings(settings) {
   const permissionChecks = [...document.querySelectorAll(TIKTOK_SELECTORS.userPermChecks)];
   await setCheckboxState(permissionChecks[0], settings.allowComment);
   await setCheckboxState(permissionChecks[1], settings.allowReuse);
+}
+
+async function applyProductLink(productId, productUrl, productName) {
+  const productKey = String(productId || productUrl || "").trim();
+  if (!productKey) return;
+
+  const addButton = document.querySelector(TIKTOK_SELECTORS.addLinkButton) || findButtonByText(["add link", "add", "เพิ่มลิงก์", "เพิ่ม"]);
+  if (!isClickable(addButton)) {
+    log("ไม่พบปุ่ม Add link สำหรับสินค้า");
+    return;
+  }
+
+  realClick(addButton);
+  await sleep(1200);
+
+  const nextButton = findButtonByText(["ถัดไป", "next"]);
+  if (isClickable(nextButton)) {
+    realClick(nextButton);
+    await sleep(1200);
+  }
+
+  const showcaseOption = findButtonByText(["นำเสนอสินค้า", "showcase product", "product showcase", "สินค้า"]);
+  if (isClickable(showcaseOption)) {
+    realClick(showcaseOption);
+    await sleep(1000);
+  }
+
+  const searchInput = findVisibleInput(["search", "ค้นหา", "product", "สินค้า"]);
+  if (!searchInput) {
+    log("เปิด Add link แล้ว แต่ไม่พบช่องค้นหาสินค้า");
+    return;
+  }
+
+  searchInput.focus();
+  searchInput.value = "";
+  searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+  searchInput.value = productKey;
+  searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+  await sleep(1800);
+
+  const selectableProduct = findSelectableProduct(productId, productUrl);
+  if (!selectableProduct) {
+    log(`ไม่พบสินค้าในผลค้นหา: ${productKey}`);
+    return;
+  }
+
+  realClick(selectableProduct);
+  await sleep(800);
+
+  const productNextButton = findButtonByText(["ถัดไป", "next"]);
+  if (isClickable(productNextButton)) {
+    realClick(productNextButton);
+    await sleep(1000);
+  }
+
+  const titleInput = findVisibleInput(["ชื่อสินค้า", "product name", "title"]);
+  if (titleInput) {
+    setNativeValue(titleInput, buildProductLinkTitle(productName, productId));
+    await sleep(400);
+  }
+
+  const finalAddButton = findButtonByText(["เพิ่ม", "add"]);
+  if (isClickable(finalAddButton)) {
+    realClick(finalAddButton);
+  }
 }
 
 async function applyScheduleSettings(postType, scheduleTime) {
@@ -550,7 +622,7 @@ async function fillCaption(caption, hashtags) {
   await sleep(300);
 
   // เพิ่ม hashtags
-  for (const tag of hashtags) {
+  for (const tag of normalizeHashtags(hashtags)) {
     const normalized = tag.startsWith("#") ? tag : `#${tag}`;
     document.execCommand("insertText", false, ` ${normalized}`);
     await sleep(150);
@@ -622,7 +694,7 @@ function sleep(ms) {
 }
 
 function findButtonByText(words) {
-  const normalizedWords = words.map((word) => normalizeText(word));
+  const normalizedWords = words.map((word) => normalizeText(word)).filter(Boolean);
   const elements = document.querySelectorAll(TIKTOK_SELECTORS.anyButton);
 
   for (const element of elements) {
@@ -637,6 +709,71 @@ function findButtonByText(words) {
   }
 
   return null;
+}
+
+function findVisibleInput(words = []) {
+  const normalizedWords = words.map((word) => normalizeText(word)).filter(Boolean);
+  const inputs = document.querySelectorAll("input:not([type='hidden']), textarea, [contenteditable='true']");
+
+  for (const input of inputs) {
+    if (!isVisible(input)) continue;
+    const text = normalizeText([
+      input.getAttribute("aria-label"),
+      input.getAttribute("placeholder"),
+      input.getAttribute("name"),
+      input.closest("[data-e2e]")?.textContent,
+    ].filter(Boolean).join(" "));
+
+    if (!normalizedWords.length || normalizedWords.some((word) => text.includes(word))) {
+      return input;
+    }
+  }
+
+  return null;
+}
+
+function findSelectableProduct(productId, productUrl) {
+  const keys = [productId, productUrl].map((value) => normalizeText(value)).filter(Boolean);
+  const controls = document.querySelectorAll("input[type='checkbox'], input[type='radio'], button, [role='button'], [role='checkbox'], [role='radio']");
+
+  for (const control of controls) {
+    if (!isVisible(control)) continue;
+    const card = control.closest("label, [role='row'], [class*='card'], [class*='item'], [class*='product'], div") || control;
+    const text = normalizeText(card.textContent);
+    if (!keys.length || keys.some((key) => text.includes(key))) {
+      return control;
+    }
+  }
+
+  return null;
+}
+
+function buildProductLinkTitle(productName, productId) {
+  const base = String(productName || productId || "สินค้า").replace(/\s+/g, " ").trim();
+  return Array.from(base).slice(0, 25).join("");
+}
+
+function setNativeValue(element, value) {
+  element.focus();
+
+  if (element.isContentEditable) {
+    selectAllEditable(element);
+    document.execCommand("delete", false);
+    document.execCommand("insertText", false, value);
+  } else {
+    element.value = "";
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.value = value;
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+}
+
+function buildVideoFilename(productInfo = {}) {
+  const rawId = productInfo.productId || productInfo.id || "product";
+  const safeId = String(rawId).replace(/[^\w-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) || "product";
+  const date = new Date().toISOString().slice(0, 10);
+  return `${safeId}_${date}_tiktok.mp4`;
 }
 
 async function waitForButtonByText(words, timeoutMs = 30000) {
@@ -667,6 +804,27 @@ function isVisible(element) {
 
 function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function normalizeHashtags(value) {
+  const rawTags = Array.isArray(value) ? value : String(value || "").split(",");
+  const seen = new Set();
+  const tags = [];
+
+  for (const rawTag of rawTags) {
+    const cleaned = String(rawTag || "").trim().replace(/\s+/g, "").replace(/^#+/, "");
+    if (!cleaned) continue;
+
+    const tag = `#${cleaned}`;
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    tags.push(tag);
+    if (tags.length >= 5) break;
+  }
+
+  return tags;
 }
 
 function selectAllEditable(element) {

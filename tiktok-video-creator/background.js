@@ -34,9 +34,7 @@ async function routeMessage(message, sender) {
     case "FLOW_PING":                return { pong: true };
     case "FLOW_CONTENT_READY":       return { ok: true };
     case "FLOW_STOP":                return stopFlowPipeline();
-    case "TIKTOK_LEARN_ENDPOINT":   return learnTikTokEndpoint();
     case "TIKTOK_SEND_DRAFT":        return sendTikTokDraft(message.payload);
-    case "TIKTOK_LEARNED_PAYLOAD":   return saveTikTokLearnedPayload(message.payload);
     case "TIKTOK_STUDIO_LOG":        console.log("TikTok Studio:", message.message); return { ok: true };
     case "TIKTOK_DONE":              console.log("TikTok Done:", message.payload); return { ok: true };
     case "PIPELINE_LOG":             console.log("Pipeline:", message.payload); return { ok: true };
@@ -344,7 +342,7 @@ function waitForTabComplete(tabId) {
 }
 
 async function downloadVideo(payload) {
-  const id = await chrome.downloads.download({ url: payload.url, filename: payload.filename, saveAs: true });
+  const id = await chrome.downloads.download({ url: payload.url, filename: payload.filename, saveAs: false });
   return { downloadId: id };
 }
 
@@ -353,120 +351,6 @@ async function postToTikTok(payload) {
   if (!tiktokAuth?.accessToken) throw new Error("ยังไม่มี Access Token");
   await chrome.storage.local.set({ lastTikTokPostPayload: payload });
   throw new Error("ยังไม่ได้ตั้งค่า endpoint สำหรับโพสต์จริง");
-}
-
-// ─── TikTok Studio: Learn API endpoint via debugger ────────────────────────
-let _learnListener = null;
-
-async function learnTikTokEndpoint() {
-  // หา tab TikTok Studio ที่เปิดอยู่
-  const tabs = [
-    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/*" })),
-    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktok-studio/*" })),
-  ];
-  if (!tabs[0]) throw new Error(
-    "กรุณาเปิด https://www.tiktok.com/tiktokstudio/upload ก่อน แล้วกดอีกครั้ง"
-  );
-
-  const tabId = tabs[0].id;
-  const target = { tabId };
-  const capturedRequests = {};
-
-  // Detach ถ้า attach ค้างอยู่
-  await chrome.debugger.detach(target).catch(() => {});
-  await chrome.debugger.attach(target, "1.3");
-  await chrome.debugger.sendCommand(target, "Network.enable", {});
-
-  // Remove listener เก่า
-  if (_learnListener) {
-    chrome.debugger.onEvent.removeListener(_learnListener);
-  }
-
-  _learnListener = async (source, method, params) => {
-    if (source.tabId !== tabId) return;
-
-    // จับ request ที่เกี่ยวกับ upload/publish/post/create ที่ส่งไปหา TikTok
-    if (method === "Network.requestWillBeSent") {
-      const url = params.request?.url || "";
-      const isTikTok = url.includes("tiktok.com") || url.includes("tiktokcdn.com");
-      const matchesKeyword = /upload|publish|draft|post|create|top\/v1/i.test(url);
-
-      if (isTikTok && matchesKeyword && ["POST", "PUT"].includes(params.request?.method)) {
-        capturedRequests[params.requestId] = {
-          url,
-          method: params.request.method,
-          headers: params.request.headers,
-          postData: params.request.postData || "",
-        };
-      }
-    }
-
-    // จับ response body
-    if (method === "Network.loadingFinished" && capturedRequests[params.requestId]) {
-      try {
-        let responseBody = {};
-        try {
-          const bodyResult = await chrome.debugger.sendCommand(target, "Network.getResponseBody", {
-            requestId: params.requestId,
-          });
-          responseBody = JSON.parse(bodyResult.body || "{}");
-        } catch (_) {
-          // ละเว้นหากดึง body ไม่สำเร็จ หรือไม่ใช่ JSON (เช่น PUT upload chunk)
-        }
-        
-        const req = capturedRequests[params.requestId];
-        
-        // ลองดึง postData เต็มจาก debugger protocol
-        let fullPostData = req.postData;
-        try {
-          const postDataResult = await chrome.debugger.sendCommand(target, "Network.getRequestPostData", {
-            requestId: params.requestId,
-          });
-          if (postDataResult?.postData) {
-            fullPostData = postDataResult.postData;
-          }
-        } catch (_) {}
-
-        const urlObj = new URL(req.url);
-        
-        let key = urlObj.pathname;
-        const actionParam = urlObj.searchParams.get("Action");
-        if (actionParam) {
-          key = `${urlObj.pathname}?Action=${actionParam}`;
-        }
-
-        // ดึงข้อมูลเดิมจาก storage ก่อน เพื่อนำมารวมกัน ไม่ให้เขียนทับกันเอง
-        const stored = await chrome.storage.local.get("tiktokLearnedEndpoints");
-        const currentEndpoints = stored.tiktokLearnedEndpoints || {};
-
-        currentEndpoints[key] = {
-          url: req.url,
-          method: req.method,
-          postData: fullPostData,
-          sampleResponse: responseBody,
-          capturedAt: Date.now(),
-        };
-
-        // บันทึกทันทีทุกครั้งที่จับได้
-        await chrome.storage.local.set({ tiktokLearnedEndpoints: currentEndpoints });
-        await notify("TikTok Endpoint Captured", `จับ API: ${key}`);
-      } catch (err) {
-        console.error("Error saving captured endpoint:", err);
-      }
-    }
-  };
-
-  chrome.debugger.onEvent.addListener(_learnListener);
-
-  // Detach อัตโนมัติหลัง 10 นาที
-  setTimeout(async () => {
-    if (_learnListener) chrome.debugger.onEvent.removeListener(_learnListener);
-    await chrome.debugger.detach(target).catch(() => {});
-    _learnListener = null;
-    await notify("TikTok Interceptor", "หยุดดักจับ API แล้ว (ครบ 10 นาที)");
-  }, 600_000);
-
-  return { ok: true, watching: tabId, message: "กำลังดักจับ API — ไปอัปโหลดวิดีโอบน TikTok Studio ได้เลย" };
 }
 
 // ─── TikTok Studio: Send draft (ยิงตรงเหมือน fetchShowcaseProducts) ────────
@@ -488,29 +372,17 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ─── TikTok Studio: Send draft (ผ่าน Page UI Automation หรือ Direct API) ──────
+const TIKTOK_STUDIO_UPLOAD_URL = "https://www.tiktok.com/tiktokstudio/upload";
+
+// ─── TikTok Studio: Send draft/post ผ่าน Page UI Automation บนหน้า upload ──────
 async function sendTikTokDraft(payload) {
   const { videoUrl, caption = "", hashtags = [] } = payload;
+  const { settings = {} } = await chrome.storage.sync.get("settings");
+  const postDefaults = settings.postDefaults || {};
+  const postType = payload.postType || postDefaults.defaultMode || "draft";
+  const mode = payload.mode || (postType === "now" || postType === "schedule" ? "post" : "draft");
 
-  // 1. หาหรือเปิด Tab TikTok Studio Upload
-  let tabs = [
-    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/*" })),
-    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktok-studio/*" })),
-  ];
-  
-  let tabId;
-  if (tabs[0]) {
-    tabId = tabs[0].id;
-    await chrome.tabs.update(tabId, { active: true });
-    try {
-      await chrome.windows.update(tabs[0].windowId, { focused: true });
-    } catch (_) {}
-  } else {
-    const newTab = await chrome.tabs.create({ url: "https://www.tiktok.com/tiktokstudio/upload", active: true });
-    tabId = newTab.id;
-    await waitForTabComplete(tabId);
-    await sleep(3000); // รอให้หน้าเว็บเซตอัพตัวสักครู่
-  }
+  const tabId = await openTikTokStudioUploadTab();
 
   // 2. ดึงข้อมูลวิดีโอและแปลงเป็น Base64
   await notify("TikTok Automation", "กำลังดาวน์โหลดไฟล์วิดีโอเพื่อเตรียมกรอกหน้าเว็บ...");
@@ -560,16 +432,26 @@ async function sendTikTokDraft(payload) {
   // 4. ส่งข้อมูลไปให้ Content Script ดำเนินการอัปโหลดและกรอกรายละเอียด
   await notify("TikTok Automation", "กำลังเริ่มขั้นตอนอัปโหลดและกรอกข้อมูลอัตโนมัติ...");
   
+  const dataUrl = `data:${mimeType || "video/mp4"};base64,${base64Data}`;
   const response = await chrome.tabs.sendMessage(tabId, {
-    type: "TIKTOK_UPLOAD_DRAFT",
+    type: "TIKTOK_UPLOAD_VIDEO",
     payload: {
-      videoBlob: {
-        data: base64Data,
-        mimeType: mimeType,
-        filename: "video.mp4"
-      },
+      videoUrl: dataUrl,
+      filename: payload.filename || buildTikTokVideoFilename(payload),
+      productId: payload.productId || "",
+      productUrl: payload.productUrl || "",
+      productName: payload.productName || "",
       caption,
-      hashtags
+      hashtags: normalizeHashtags(hashtags.length ? hashtags : (postDefaults.hashtags || [])),
+      mode,
+      postType,
+      scheduleTime: payload.scheduleTime || postDefaults.scheduleTime || "",
+      location: payload.location ?? postDefaults.location ?? "",
+      privacy: payload.privacy ?? postDefaults.privacy ?? "",
+      aiGenerated: true,
+      allowComment: payload.allowComment ?? postDefaults.allowComment ?? true,
+      allowReuse: payload.allowReuse ?? postDefaults.allowReuse ?? true,
+      confirmPost: payload.confirmPost ?? postDefaults.confirmPost ?? ""
     }
   });
 
@@ -577,40 +459,78 @@ async function sendTikTokDraft(payload) {
     throw new Error(response?.error || "การกรอกและอัปโหลดวิดีโอบนหน้าเว็บล้มเหลว");
   }
 
-  await notify("TikTok Automation", "บันทึกร่างดราฟต์บนหน้าเว็บสำเร็จแล้ว! 🎉");
-  return { ok: true, drafted: true };
+  const doneMessage = response.posted
+    ? "โพสต์บนหน้าเว็บสำเร็จแล้ว"
+    : "บันทึกร่างดราฟต์บนหน้าเว็บสำเร็จแล้ว";
+  await notify("TikTok Automation", doneMessage);
+  return { ok: true, ...response };
+}
+
+function buildTikTokVideoFilename(productInfo = {}) {
+  const rawId = productInfo.productId || productInfo.id || productInfo.name || "product";
+  const safeId = String(rawId).replace(/[^\w-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) || "product";
+  const date = new Date().toISOString().slice(0, 10);
+  return `${safeId}_${date}_tiktok.mp4`;
+}
+
+async function openTikTokStudioUploadTab() {
+  const uploadTabs = [
+    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/upload*" })),
+    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktok-studio/upload*" })),
+  ];
+
+  let tab = uploadTabs[0];
+  if (tab) {
+    await chrome.tabs.update(tab.id, { active: true });
+    try {
+      await chrome.windows.update(tab.windowId, { focused: true });
+    } catch (_) {}
+    return tab.id;
+  }
+
+  const studioTabs = [
+    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/*" })),
+    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktok-studio/*" })),
+  ];
+
+  tab = studioTabs[0];
+  if (tab) {
+    await chrome.tabs.update(tab.id, { url: TIKTOK_STUDIO_UPLOAD_URL, active: true });
+    try {
+      await chrome.windows.update(tab.windowId, { focused: true });
+    } catch (_) {}
+    await waitForTabComplete(tab.id);
+    await sleep(3000);
+    return tab.id;
+  }
+
+  const newTab = await chrome.tabs.create({ url: TIKTOK_STUDIO_UPLOAD_URL, active: true });
+  await waitForTabComplete(newTab.id);
+  await sleep(3000);
+  return newTab.id;
 }
 
 async function notify(title, message) {
   try { await chrome.notifications.create({ type: "basic", iconUrl: "assets/icon128.png", title, message }); } catch { }
 }
 
-async function saveTikTokLearnedPayload(payload) {
-  const { url, method, postData, responseBody } = payload;
-  try {
-    const urlObj = new URL(url, "https://www.tiktok.com");
-    let key = urlObj.pathname;
-    const actionParam = urlObj.searchParams.get("Action");
-    if (actionParam) {
-      key = `${urlObj.pathname}?Action=${actionParam}`;
-    }
+function normalizeHashtags(value) {
+  const rawTags = Array.isArray(value) ? value : String(value || "").split(",");
+  const seen = new Set();
+  const tags = [];
 
-    const stored = await chrome.storage.local.get("tiktokLearnedEndpoints");
-    const currentEndpoints = stored.tiktokLearnedEndpoints || {};
+  for (const rawTag of rawTags) {
+    const cleaned = String(rawTag || "").trim().replace(/\s+/g, "").replace(/^#+/, "");
+    if (!cleaned) continue;
 
-    currentEndpoints[key] = {
-      url: urlObj.href,
-      method,
-      postData,
-      sampleResponse: responseBody,
-      capturedAt: Date.now(),
-    };
+    const tag = `#${cleaned}`;
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
 
-    await chrome.storage.local.set({ tiktokLearnedEndpoints: currentEndpoints });
-    await notify("TikTok Endpoint Captured", `ดักจับ API สำเร็จ: ${key}`);
-    return { ok: true };
-  } catch (err) {
-    console.error("Error saving captured stealth endpoint:", err);
-    return { ok: false, error: err.message };
+    seen.add(key);
+    tags.push(tag);
+    if (tags.length >= 5) break;
   }
+
+  return tags;
 }

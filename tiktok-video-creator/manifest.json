@@ -39,30 +39,6 @@
     },
     {
       "js": [
-        "content/tiktok-interceptor-inject.js"
-      ],
-      "matches": [
-        "https://www.tiktok.com/tiktokstudio*",
-        "https://www.tiktok.com/tiktok-studio*"
-      ],
-      "run_at": "document_start",
-      "world": "MAIN",
-      "all_frames": false
-    },
-    {
-      "js": [
-        "content/tiktok-interceptor-receiver.js"
-      ],
-      "matches": [
-        "https://www.tiktok.com/tiktokstudio*",
-        "https://www.tiktok.com/tiktok-studio*"
-      ],
-      "run_at": "document_start",
-      "world": "ISOLATED",
-      "all_frames": false
-    },
-    {
-      "js": [
         "content/tiktok-post-loader.js"
       ],
       "matches": [

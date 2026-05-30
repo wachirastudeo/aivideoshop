@@ -1,9 +1,11 @@
 import { initVideoTab, syncSelectedProductToVideoTab } from "./tabs/tab-video.js";
 import { initProductsTab } from "./tabs/tab-products.js";
+import { initPostTab } from "./tabs/tab-post.js";
 
 const TAB_HTML = {
   video: "tabs/tab-video.html",
-  products: "tabs/tab-products.html"
+  products: "tabs/tab-products.html",
+  post: "tabs/tab-post.html"
 };
 
 const tabRoot = document.querySelector("#tab-root");
@@ -105,12 +107,12 @@ function escapeHtml(value) {
 
 /**
  * @description โหลด HTML ของแท็บและ init logic ที่ตรงกัน
- * @param {"video"|"products"} tabName - ชื่อแท็บ
+ * @param {"video"|"products"|"post"} tabName - ชื่อแท็บ
  */
 async function loadTab(tabName) {
   activeTab = tabName;
   tabRoot.setAttribute("aria-busy", "true");
-  logActivity(`กำลังโหลดแท็บ ${tabName === "video" ? "สร้างวิดีโอ" : "สินค้า TikTok"}`).catch(() => {});
+  logActivity(`กำลังโหลดแท็บ ${getTabLabel(tabName)}`).catch(() => {});
   tabButtons.forEach((button) => {
     button.classList.toggle("tab-bar__button--active", button.dataset.tab === tabName);
   });
@@ -131,9 +133,20 @@ async function loadTab(tabName) {
     await initProductsTab({ showStatus, logActivity, switchTab: loadTab });
   }
 
+  if (tabName === "post") {
+    await initPostTab({ showStatus, logActivity, switchTab: loadTab });
+  }
+
   tabRoot.setAttribute("aria-busy", "false");
   await chrome.storage.local.set({ activeTab: tabName });
-  logActivity(`โหลดแท็บ ${tabName === "video" ? "สร้างวิดีโอ" : "สินค้า TikTok"} แล้ว`, "success").catch(() => {});
+  logActivity(`โหลดแท็บ ${getTabLabel(tabName)} แล้ว`, "success").catch(() => {});
+}
+
+function getTabLabel(tabName) {
+  if (tabName === "video") return "สร้างวิดีโอ";
+  if (tabName === "products") return "สินค้า TikTok";
+  if (tabName === "post") return "โพสต์ TikTok";
+  return tabName;
 }
 
 tabButtons.forEach((button) => {

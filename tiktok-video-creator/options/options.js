@@ -1,4 +1,4 @@
-import { VIDEO_STYLES } from "../modules/prompt-builder.js";
+import { normalizeHashtags, VIDEO_STYLES } from "../modules/prompt-builder.js";
 import { DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL, testGeminiConnection, testOpenAIConnection } from "../modules/image-analyzer.js";
 
 // ─── DOM refs ───────────────────────────────────────────────
@@ -49,7 +49,7 @@ async function loadOptions() {
 
   // Post defaults
   const post = settings.postDefaults || {};
-  setValue("caption-template", post.captionTemplate || "{product_name} {cta}");
+  setValue("caption-template", post.captionTemplate || "{product_name}\n{product_details}\n{cta}");
   setValue("default-hashtags", (post.hashtags || ["#TikTokShop", "#ของดีบอกต่อ"]).join(", "));
   setChecked("auto-add-product-link", post.autoAddProductLink !== false);
 
@@ -111,10 +111,7 @@ async function saveSettings() {
 
     postDefaults: {
       captionTemplate: getValue("caption-template"),
-      hashtags: getValue("default-hashtags")
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
+      hashtags: normalizeHashtags(getValue("default-hashtags")),
       autoAddProductLink: getChecked("auto-add-product-link")
     }
   };

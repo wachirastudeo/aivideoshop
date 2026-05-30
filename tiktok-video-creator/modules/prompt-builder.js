@@ -99,7 +99,7 @@ export function getDefaultSettings() {
     presenter: "Auto",
     voiceTone: "Auto",
     mood: "Auto",
-    location: "Auto",
+    location: "Modern Living Room",
     language: "ไทย",
     showName: "false",
     promotionText: "",
@@ -163,7 +163,7 @@ export function buildImagePrompt(productInfo, settings) {
   const target = productInfo.targetGroup === "กรอกเอง" ? productInfo.customTargetGroup : productInfo.targetGroup;
   
   const moodStr = settings.mood === "Auto" ? "professional and clean" : settings.mood;
-  const locationStr = settings.location === "Auto" ? "premium commercial studio background" : settings.location;
+  const locationStr = settings.location === "Auto" ? "Modern Living Room" : settings.location;
 
   const promptParts = [
     `High quality product photography of ${sanitizeText(productInfo.name) || "the product"}.`,
@@ -202,6 +202,7 @@ export function buildImagePrompt(productInfo, settings) {
  */
 export function buildVideoPrompt(productInfo, settings) {
   const style = VIDEO_STYLES.find((item) => item.id === settings.videoStyle) || VIDEO_STYLES[0];
+  const locationStr = settings.location === "Auto" ? "Modern Living Room" : settings.location;
   const ctaText = settings.cta === "กรอกเอง" ? settings.customCta : settings.cta;
   const textItems = [
     settings.showName === true || settings.showName === "true" ? sanitizeText(productInfo.name) : "",
@@ -217,7 +218,7 @@ export function buildVideoPrompt(productInfo, settings) {
     `Presenter: ${PRESENTERS[settings.presenter] || PRESENTERS.none}.`,
     `Voice Tone: ${VOICE_TONES[settings.voiceTone] || VOICE_TONES.kind}.`,
     `Camera Movement: ${sanitizeText(settings.cameraMovement === "Auto" ? "Clean and dynamic" : settings.cameraMovement)}.`,
-    `Scene 1 (0-4s): Product center frame, Location: ${sanitizeText(settings.location)}.`,
+    `Scene 1 (0-4s): Product center frame in a modern living room, Location: ${sanitizeText(locationStr)}.`,
     `Scene 2 (4-8s): Bold CTA moment with product full frame, upbeat energy.`,
     `Transition: ${sanitizeText(settings.transition === "Auto" ? "Smooth transition" : settings.transition)}.`,
     "",
@@ -242,11 +243,51 @@ export function buildVideoPrompt(productInfo, settings) {
  * @returns {string} caption
  */
 export function buildCaption(productInfo, defaults = {}) {
-  const template = defaults.captionTemplate || "{product_name} {cta}";
-  const hashtags = Array.isArray(defaults.hashtags) ? defaults.hashtags : ["#TikTokShop", "#ของดีบอกต่อ"];
+  const template = defaults.captionTemplate || "{product_name}\n{product_details}\n{cta}";
+  const hashtags = normalizeHashtags(defaults.hashtags);
   return template
     .replaceAll("{product_name}", sanitizeText(productInfo.name))
+    .replaceAll("{product_id}", sanitizeText(productInfo.productId))
+    .replaceAll("{price}", formatPrice(productInfo))
+    .replaceAll("{shop_name}", sanitizeText(productInfo.shopName))
+    .replaceAll("{product_details}", buildProductDetails(productInfo))
+    .replaceAll("{highlights}", sanitizeText(productInfo.highlights))
     .replaceAll("{cta}", sanitizeText(productInfo.cta || "สั่งได้เลย"))
     .concat(" ", hashtags.join(" "))
     .trim();
+}
+
+export function normalizeHashtags(value) {
+  const rawTags = Array.isArray(value) ? value : String(value || "").split(",");
+  const seen = new Set();
+  const tags = [];
+
+  for (const rawTag of rawTags) {
+    const cleaned = String(rawTag || "")
+      .trim()
+      .replace(/\s+/g, "")
+      .replace(/^#+/, "");
+    if (!cleaned) continue;
+
+    const tag = `#${cleaned}`;
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    tags.push(tag);
+    if (tags.length >= 5) break;
+  }
+
+  return tags.length ? tags : ["#TikTokShop", "#ของดีบอกต่อ"];
+}
+
+function buildProductDetails(productInfo) {
+  const details = [
+    productInfo.productId ? `รหัสสินค้า: ${sanitizeText(productInfo.productId)}` : "",
+    formatPrice(productInfo) ? `ราคา: ${formatPrice(productInfo)}` : "",
+    productInfo.highlights ? `จุดเด่น: ${sanitizeText(productInfo.highlights)}` : "",
+    productInfo.shopName ? `ร้าน: ${sanitizeText(productInfo.shopName)}` : "",
+  ].filter(Boolean);
+
+  return details.join("\n");
 }

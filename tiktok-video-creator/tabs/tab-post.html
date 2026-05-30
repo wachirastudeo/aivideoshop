@@ -1,0 +1,119 @@
+<section class="flow-dashboard post-settings" aria-labelledby="post-settings-title">
+  <header class="flow-hero">
+    <div>
+      <p class="eyebrow">TikTok Posting</p>
+      <h2 id="post-settings-title">ตั้งค่าการโพสต์ TikTok</h2>
+      <p class="flow-hero__copy">กำหนด caption, hashtag, privacy, schedule และ permission ก่อนส่ง Draft หรือโพสต์จริง</p>
+    </div>
+  </header>
+
+  <div class="post-settings-layout">
+    <section class="flow-panel" aria-labelledby="post-caption-title">
+      <div class="flow-panel__header">
+        <div>
+          <p class="eyebrow">Caption Defaults</p>
+          <h3 id="post-caption-title">ข้อความโพสต์</h3>
+        </div>
+      </div>
+      <div class="settings-stack">
+        <label class="field" for="post-caption-template">
+          <span class="field__label">Caption Template</span>
+          <textarea id="post-caption-template" class="textarea" rows="4" aria-describedby="caption-template-help"></textarea>
+          <span id="caption-template-help" class="field__hint">ใช้ {product_name}, {product_id}, {price}, {product_details}, {highlights}, {shop_name}, {cta}</span>
+        </label>
+        <label class="field" for="post-hashtags">
+          <span class="field__label">Hashtags สูงสุด 5 อัน</span>
+          <input id="post-hashtags" class="input" type="text" placeholder="#TikTokShop, #ของดีบอกต่อ">
+        </label>
+        <label class="checkbox-row post-checkbox" for="post-auto-product-link">
+          <input id="post-auto-product-link" type="checkbox">
+          <span>แนบลิงก์สินค้าเมื่อระบบรองรับ</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="flow-panel" aria-labelledby="post-publish-title">
+      <div class="flow-panel__header">
+        <div>
+          <p class="eyebrow">Publish Settings</p>
+          <h3 id="post-publish-title">รูปแบบการส่ง</h3>
+        </div>
+      </div>
+      <div class="settings-stack">
+        <label class="field" for="post-after-create-action">
+          <span class="field__label">หลังสร้างวิดีโอเสร็จ</span>
+          <select id="post-after-create-action" class="select select--accent">
+            <option value="download">Download only</option>
+            <option value="draft">Send TikTok Draft</option>
+            <option value="post">Post TikTok</option>
+            <option value="both">Download + Draft</option>
+          </select>
+        </label>
+        <div class="settings-grid">
+          <label class="field" for="post-default-mode">
+            <span class="field__label">ค่าเริ่มต้น</span>
+            <select id="post-default-mode" class="select select--accent">
+              <option value="draft">Save Draft</option>
+              <option value="now">Post Now</option>
+              <option value="schedule">Schedule</option>
+            </select>
+          </label>
+          <label class="field" for="post-privacy">
+            <span class="field__label">Visibility</span>
+            <select id="post-privacy" class="select">
+              <option value="">ใช้ค่าเดิมบน TikTok</option>
+              <option value="Public">Public</option>
+              <option value="Friends">Friends</option>
+              <option value="Only you">Only you</option>
+            </select>
+          </label>
+        </div>
+        <div class="settings-grid">
+          <label class="field" for="post-schedule-time">
+            <span class="field__label">เวลา Schedule</span>
+            <input id="post-schedule-time" class="input" type="datetime-local">
+          </label>
+          <label class="field" for="post-location">
+            <span class="field__label">Location</span>
+            <input id="post-location" class="input" type="text" placeholder="Bangkok">
+          </label>
+        </div>
+        <label class="field" for="post-confirm-word">
+          <span class="field__label">คำยืนยันก่อนโพสต์จริง</span>
+          <input id="post-confirm-word" class="input" type="text" placeholder="POST">
+        </label>
+      </div>
+    </section>
+
+    <section class="flow-panel" aria-labelledby="post-permission-title">
+      <div class="flow-panel__header">
+        <div>
+          <p class="eyebrow">Permissions</p>
+          <h3 id="post-permission-title">ตัวเลือกบนหน้า TikTok Studio</h3>
+        </div>
+      </div>
+      <div class="settings-stack">
+        <label class="checkbox-row post-checkbox" for="post-ai-generated">
+          <input id="post-ai-generated" type="checkbox" checked disabled>
+          <span>Disclose AI-generated content</span>
+        </label>
+        <label class="checkbox-row post-checkbox" for="post-allow-comment">
+          <input id="post-allow-comment" type="checkbox">
+          <span>Allow comments</span>
+        </label>
+        <label class="checkbox-row post-checkbox" for="post-allow-reuse">
+          <input id="post-allow-reuse" type="checkbox">
+          <span>Allow reuse / duet / stitch</span>
+        </label>
+      </div>
+    </section>
+  </div>
+</section>
+
+<section class="section section--sticky flow-action-bar" aria-label="Post settings actions">
+  <div class="inline-actions">
+    <button class="button button--ghost button--full" id="post-open-upload" type="button">เปิด TikTok Upload</button>
+    <button class="button button--ghost button--full" id="post-reset-settings" type="button">คืนค่าเริ่มต้น</button>
+    <button class="button button--primary button--full" id="post-save-settings" type="button">บันทึกการตั้งค่า</button>
+  </div>
+</section>
