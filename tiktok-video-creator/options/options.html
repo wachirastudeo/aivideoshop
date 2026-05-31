@@ -286,8 +286,8 @@
         <div class="field">
           <span class="field__label">Video Model (Veo)</span>
           <div class="flow-model-grid" id="video-model-grid">
-            <label class="flow-model-card selected" data-model="veo-3.1-fast">
-              <input type="radio" name="flow-video-model" value="veo-3.1-fast" checked>
+            <label class="flow-model-card" data-model="veo-3.1-fast">
+              <input type="radio" name="flow-video-model" value="veo-3.1-fast">
               <strong>Veo 3.1 — Fast</strong>
               <span>สมดุลระหว่างความเร็วและคุณภาพ (แนะนำ)</span>
             </label>
@@ -296,8 +296,8 @@
               <strong>Veo 3.1 — Quality</strong>
               <span>คุณภาพสูงสุด ใช้เวลานานกว่า</span>
             </label>
-            <label class="flow-model-card" data-model="veo-3.1-lite">
-              <input type="radio" name="flow-video-model" value="veo-3.1-lite">
+            <label class="flow-model-card selected" data-model="veo-3.1-lite">
+              <input type="radio" name="flow-video-model" value="veo-3.1-lite" checked>
               <strong>Veo 3.1 — Lite</strong>
               <span>เร็ว ประหยัดเครดิต เหมาะ batch</span>
             </label>
@@ -489,39 +489,39 @@
       <div class="stack">
         <div class="settings-grid">
           <label class="field">
-            <span class="field__label">Default video style</span>
+            <span class="field__label">สไตล์วิดีโอเริ่มต้น</span>
             <select id="default-video-style" class="select"></select>
           </label>
           <label class="field">
-            <span class="field__label">Default language</span>
+            <span class="field__label">ภาษาเริ่มต้น</span>
             <select id="default-language" class="select">
               <option value="ไทย">ไทย</option>
-              <option value="English">English</option>
+              <option value="English">อังกฤษ</option>
               <option value="ทั้งคู่">ทั้งคู่</option>
             </select>
           </label>
         </div>
         <div class="settings-grid">
           <label class="field">
-            <span class="field__label">Default presenter</span>
+            <span class="field__label">ผู้พรีเซนต์เริ่มต้น</span>
             <select id="default-presenter" class="select">
-              <option value="Auto">Auto</option>
-              <option value="none">ไม่มี presenter</option>
+              <option value="Auto">อัตโนมัติ</option>
+              <option value="none">ไม่มีคน</option>
               <option value="woman">ผู้หญิง</option>
               <option value="man">ผู้ชาย</option>
-              <option value="cartoon3d">3D Cartoon</option>
-              <option value="living_product">Living Product</option>
+              <option value="cartoon3d">ตัวการ์ตูน 3D</option>
+              <option value="living_product">สินค้ามีชีวิต</option>
             </select>
           </label>
           <label class="field">
-            <span class="field__label">Default voice tone</span>
+            <span class="field__label">โทนเสียงพูดเริ่มต้น</span>
             <select id="default-voice-tone" class="select">
-              <option value="Auto">Auto</option>
-              <option value="kind">Kind / Friendly</option>
-              <option value="fun">Fun / Playful</option>
-              <option value="professional">Professional</option>
-              <option value="hype">Hype</option>
-              <option value="complain">Funny Complain</option>
+              <option value="Auto">อัตโนมัติ</option>
+              <option value="kind">ใจดี / เป็นกันเอง</option>
+              <option value="fun">สนุกสนาน / ขี้เล่น</option>
+              <option value="professional">มืออาชีพ</option>
+              <option value="hype">ตื่นเต้นเร้าใจ</option>
+              <option value="complain">ขี้บ่นแบบตลก</option>
             </select>
           </label>
         </div>
@@ -539,7 +539,7 @@
           <span style="font-size: 11px; color: var(--muted);">ตัวแปร: {product_name} {price} {cta}</span>
         </label>
         <label class="field">
-          <span class="field__label">Default hashtags (คั่นด้วย , สูงสุด 5 อัน)</span>
+          <span class="field__label">แฮชแท็กเริ่มต้น (คั่นด้วย , สูงสุด 5 อัน)</span>
           <input id="default-hashtags" class="input" type="text" placeholder="#TikTokShop, #ของดีบอกต่อ">
         </label>
         <div class="toggle-row">

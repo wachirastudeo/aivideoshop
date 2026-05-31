@@ -29,7 +29,7 @@ export async function initVideoTab(injectedHelpers) {
     voiceTone: savedOptions.defaultVoiceTone || "Auto",
     language: savedOptions.defaultLanguage || "ไทย",
     imageModel: savedOptions.flow?.imageModel || "nano-banana-pro",
-    videoModel: savedOptions.flow?.videoModel || "veo-3.1-fast",
+    videoModel: savedOptions.flow?.videoModel || "veo-3.1-lite",
     imageCount: savedOptions.flow?.imageCount || 1,
     videoCount: savedOptions.flow?.videoCount || 1,
     postAction: savedOptions.postDefaults?.afterCreateAction || "download",
@@ -162,12 +162,12 @@ function normalizeSettings(value) {
     pacing: value.pacing || 2,
     transition: value.transition || "Auto",
     imageModel: value.imageModel || "nano-banana-pro",
-    videoModel: value.videoModel || "veo-3.1-fast",
+    videoModel: value.videoModel || "veo-3.1-lite",
     imageCount: value.imageCount || 1,
     videoCount: value.videoCount || 1,
     videoDuration: value.videoDuration || 8,
     aspectRatio: value.aspectRatio || "9:16",
-    postAction: value.postAction || "download"
+    postAction: value.postAction === "both" ? "draft" : (value.postAction || "download")
   };
 }
 
@@ -492,13 +492,13 @@ async function processQueue() {
 
       if (product.videoUrl) {
         const action = await getPostAction();
-        if (["download", "draft", "post", "both"].includes(action)) {
+        if (["download", "draft", "post"].includes(action)) {
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังดาวน์โหลดวิดีโออัตโนมัติ...`, "info");
           await downloadVideo(product.videoUrl, product).catch(err => {
             helpers.logActivity?.(`ดาวน์โหลดวิดีโอสินค้า ${i + 1} ล้มเหลว: ${err.message}`, "error");
           });
         }
-        if (action === "draft" || action === "both") {
+        if (action === "draft") {
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังส่ง Draft TikTok อัตโนมัติ...`, "info");
           const { settings: syncSettings = {} } = await chrome.storage.sync.get("settings");
           const postDefaults = syncSettings.postDefaults || {};
@@ -599,7 +599,7 @@ async function handlePost(product) {
     return handleDownload(product);
   }
 
-  if (action === "draft" || action === "both") {
+  if (action === "draft") {
     return handleSendDraft(product);
   }
 
@@ -627,7 +627,7 @@ async function getPostAction() {
 
 function getActionButtonText(action) {
   if (action === "download") return "Download";
-  if (action === "draft" || action === "both") return "บันทึกแบบร่าง";
+  if (action === "draft") return "บันทึกแบบร่าง";
   return "โพสต์ TikTok";
 }
 

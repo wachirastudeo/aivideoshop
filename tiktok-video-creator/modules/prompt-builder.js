@@ -195,7 +195,7 @@ export function buildImagePrompt(productInfo, settings) {
 }
 
 /**
- * @description สร้าง prompt วิดีโอ 8 วินาทีสำหรับ Phase 2
+ * @description สร้าง prompt วิดีโอสำหรับ Phase 2
  * @param {object} productInfo - ข้อมูลสินค้า
  * @param {object} settings - settings ของวิดีโอ
  * @returns {string} prompt ภาษาอังกฤษ
@@ -204,6 +204,9 @@ export function buildVideoPrompt(productInfo, settings) {
   const style = VIDEO_STYLES.find((item) => item.id === settings.videoStyle) || VIDEO_STYLES[0];
   const locationStr = settings.location === "Auto" ? "Modern Living Room" : settings.location;
   const ctaText = settings.cta === "กรอกเอง" ? settings.customCta : settings.cta;
+  const durationSeconds = Number.parseInt(settings.videoDuration, 10) || 8;
+  const midpointSeconds = Math.max(1, Math.floor(durationSeconds / 2));
+  const voiceWordLimit = Math.max(6, Math.min(16, Math.floor(durationSeconds * 1.5)));
   const textItems = [
     settings.showName === true || settings.showName === "true" ? sanitizeText(productInfo.name) : "",
     settings.showName === true || settings.showName === "true" ? sanitizeText(settings.promotionText) : "",
@@ -211,15 +214,16 @@ export function buildVideoPrompt(productInfo, settings) {
   ].filter(Boolean);
 
   const promptParts = [
-    `Create an 8-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
+    `Create a ${durationSeconds}-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
     "Use the provided product image as the main visual reference and keep product appearance accurate.",
     "Do NOT include any pricing or cost information in the video.",
     "",
     `Presenter: ${PRESENTERS[settings.presenter] || PRESENTERS.none}.`,
     `Voice Tone: ${VOICE_TONES[settings.voiceTone] || VOICE_TONES.kind}.`,
+    `Voiceover timing: use one short complete ${sanitizeText(settings.language)} sentence only, maximum ${voiceWordLimit} words, and finish the spoken sentence by ${Math.max(1, durationSeconds - 1)}s. Do not start a sentence that cannot finish before the video ends. No cut-off speech.`,
     `Camera Movement: ${sanitizeText(settings.cameraMovement === "Auto" ? "Clean and dynamic" : settings.cameraMovement)}.`,
-    `Scene 1 (0-4s): Product center frame in a modern living room, Location: ${sanitizeText(locationStr)}.`,
-    `Scene 2 (4-8s): Bold CTA moment with product full frame, upbeat energy.`,
+    `Scene 1 (0-${midpointSeconds}s): Product center frame in a modern living room, Location: ${sanitizeText(locationStr)}.`,
+    `Scene 2 (${midpointSeconds}-${durationSeconds}s): Bold CTA moment with product full frame, upbeat energy.`,
     `Transition: ${sanitizeText(settings.transition === "Auto" ? "Smooth transition" : settings.transition)}.`,
     "",
     `Video style: ${style.name}. ${style.fragment}.`,

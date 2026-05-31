@@ -138,13 +138,9 @@ async function handleVideoUpload(payload = {}) {
       aiGenerated,
       allowComment,
       allowReuse,
-      confirmPost = "",
     } = normalizedPayload;
 
     if (!videoUrl) throw new Error("missing videoUrl");
-    if (mode === "post" && confirmPost !== "POST") {
-      throw new Error('refusing to post without confirmPost: "POST"');
-    }
 
     await discardRecoveryDraftIfNeeded();
     sendPipelineLog("info", "กำลังอัปโหลดวิดีโอ...");

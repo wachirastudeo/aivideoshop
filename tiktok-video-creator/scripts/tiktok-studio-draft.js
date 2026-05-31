@@ -39,7 +39,6 @@ Options:
   --allow-comment  Optional. true/false.
   --allow-reuse    Optional. true/false.
   --action         Optional. draft or post. Defaults to draft.
-  --confirm-post   Required as POST when --action post is used.
   --profile        Optional. Chrome user data dir. Defaults to ./temp_chrome_profile.
   --keep-open      Optional. Keep Chrome open after the action.
 
@@ -204,11 +203,8 @@ async function clickSaveDraft(page) {
   throw new Error("Could not find a visible Save Draft button.");
 }
 
-async function clickFinalAction(page, action, confirmPost) {
+async function clickFinalAction(page, action) {
   if (action === "post") {
-    if (confirmPost !== "POST") {
-      throw new Error('Refusing to publish without --confirm-post POST');
-    }
     const postButton = page.locator('button[data-e2e="post_video_button"]').first();
     await postButton.scrollIntoViewIfNeeded().catch(() => {});
     await postButton.click();
@@ -291,7 +287,7 @@ async function run() {
     await applyPostSettings(page, settings);
 
     console.log(`Running final action: ${action}`);
-    await clickFinalAction(page, action, args["confirm-post"]);
+    await clickFinalAction(page, action);
 
     await page
       .locator('text=/draft|saved|success|ร่าง|สำเร็จ/i')

@@ -48,8 +48,7 @@ export async function publishVideo(videoUrl, productInfo) {
       privacy: postDefaults.privacy || "Public",
       aiGenerated: true,
       allowComment: postDefaults.allowComment !== false,
-      allowReuse: postDefaults.allowReuse !== false,
-      confirmPost: postDefaults.confirmPost || ""
+      allowReuse: postDefaults.allowReuse !== false
     }
   });
 

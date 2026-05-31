@@ -682,7 +682,7 @@ async function ensureConfig(phase, options = {}) {
         : (options.videoCount || cfg.videoCount || 2);
     const modelKey = phase === "image"
         ? (options.imageModel || cfg.imageModel || "nano-banana-pro")
-        : (options.videoModel || cfg.videoModel || "veo-3.1-fast");
+        : (options.videoModel || cfg.videoModel || "veo-3.1-lite");
 
     log(`ตั้งค่า ${phase === "image" ? "Image" : "Video"} + Aspect Ratio: ${aspectRatio} + Count: ${count}x + Model: ${modelKey}...`);
     let cfgBtn = null;
@@ -1315,7 +1315,7 @@ async function loadSettings() {
             uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 300)
         };
     } catch { }
-    return { videoModel: "veo-3.1-fast", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 300 };
+    return { videoModel: "veo-3.1-lite", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 300 };
 }
 
 // ── Main pipeline ─────────────────────────────────────────────
@@ -1413,8 +1413,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "FLOW_STOP") { stopRequested = true; reply({ ok: true }); return false; }
     if (msg?.type === "FLOW_RUN_PIPELINE") { runPipeline(msg.payload).then(reply); return true; }
     if (msg?.type === "FLOW_FETCH_BLOB_BASE64") {
-        fetch(msg.url)
-            .then(res => res.blob())
+        fetch(msg.url, { credentials: "include" })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.blob();
+            })
             .then(blob => {
                 const reader = new FileReader();
                 reader.onloadend = () => {

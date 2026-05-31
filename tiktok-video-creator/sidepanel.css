@@ -341,10 +341,31 @@ html[data-mode="tab"] .app-shell {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #121215;
+  background-color: #121215;
   color: var(--text);
   font-size: 12px;
   transition: all 0.15s ease;
+}
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px 16px;
+  cursor: pointer;
+}
+
+.select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f4f4f5' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+.select:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .input:focus,
@@ -820,7 +841,7 @@ html[data-mode="tab"] .activity-log {
 .select--accent {
   font-weight: 650;
   border-color: var(--accent);
-  background: var(--accent-soft);
+  background-color: var(--accent-soft);
   color: var(--text);
 }
 
@@ -1301,7 +1322,7 @@ html[data-mode="tab"] .activity-log {
 
 .flow-job__grid {
   display: grid;
-  grid-template-columns: minmax(0, 150px);
+  grid-template-columns: 104px;
   justify-content: start;
   gap: 10px;
   padding: 12px;
@@ -1318,14 +1339,16 @@ html[data-mode="tab"] .activity-log {
 
 .media-tile img {
   width: 100%;
+  height: 104px;
   aspect-ratio: 1 / 1;
 }
 
 .media-tile figcaption {
-  padding: 6px 8px;
+  padding: 5px 7px;
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 10px;
+  line-height: 1.2;
 }
 
 .media-tile--generated {

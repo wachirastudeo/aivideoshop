@@ -43,45 +43,40 @@
         <label class="field" for="post-after-create-action">
           <span class="field__label">หลังสร้างวิดีโอเสร็จ</span>
           <select id="post-after-create-action" class="select select--accent">
-            <option value="download">Download only</option>
-            <option value="draft">Send TikTok Draft</option>
-            <option value="post">Post TikTok</option>
-            <option value="both">Download + Draft</option>
+            <option value="download">ดาวน์โหลดอย่างเดียว</option>
+            <option value="draft">ส่งเป็นร่าง TikTok</option>
+            <option value="post">โพสต์ TikTok ทันที</option>
           </select>
         </label>
         <div class="settings-grid">
           <label class="field" for="post-default-mode">
             <span class="field__label">ค่าเริ่มต้น</span>
             <select id="post-default-mode" class="select select--accent">
-              <option value="draft">Save Draft</option>
-              <option value="now">Post Now</option>
-              <option value="schedule">Schedule</option>
+              <option value="draft">บันทึกร่าง</option>
+              <option value="now">โพสต์ทันที</option>
+              <option value="schedule">ตั้งเวลาโพสต์</option>
             </select>
           </label>
           <label class="field" for="post-privacy">
-            <span class="field__label">Visibility</span>
+            <span class="field__label">การมองเห็น</span>
             <select id="post-privacy" class="select">
               <option value="">ใช้ค่าเดิมบน TikTok</option>
-              <option value="Public">Public</option>
-              <option value="Friends">Friends</option>
-              <option value="Only you">Only you</option>
+              <option value="Public">สาธารณะ</option>
+              <option value="Friends">เพื่อน</option>
+              <option value="Only you">เฉพาะฉัน</option>
             </select>
           </label>
         </div>
         <div class="settings-grid">
           <label class="field" for="post-schedule-time">
-            <span class="field__label">เวลา Schedule</span>
+            <span class="field__label">เวลาโพสต์</span>
             <input id="post-schedule-time" class="input" type="datetime-local">
           </label>
           <label class="field" for="post-location">
-            <span class="field__label">Location</span>
+            <span class="field__label">สถานที่</span>
             <input id="post-location" class="input" type="text" placeholder="Bangkok">
           </label>
         </div>
-        <label class="field" for="post-confirm-word">
-          <span class="field__label">คำยืนยันก่อนโพสต์จริง</span>
-          <input id="post-confirm-word" class="input" type="text" placeholder="POST">
-        </label>
       </div>
     </section>
 

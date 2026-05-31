@@ -9,7 +9,6 @@ type TikTokUploadPayload = {
   postType?: PostType;
   scheduleTime?: string | number | Date;
   notAiGenerated?: boolean;
-  confirmPost?: "POST";
 };
 
 type UploadResult = {
@@ -130,10 +129,6 @@ function normalizePayload(payload: TikTokUploadPayload): TikTokUploadPayload {
 }
 
 async function handleUpload(payload: TikTokUploadPayload): Promise<UploadResult> {
-  if ((payload.postType === "now" || payload.postType === "schedule") && payload.confirmPost !== "POST") {
-    throw new Error('refusing to post without confirmPost: "POST"');
-  }
-
   sendPipelineLog("info", "เริ่มโพสต์ TikTok...");
   await waitForPageReady(20_000);
   await discardRecoveredDraftIfNeeded();

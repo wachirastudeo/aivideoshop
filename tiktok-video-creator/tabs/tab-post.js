@@ -11,8 +11,7 @@ const DEFAULT_POST_SETTINGS = {
   location: "",
   aiGenerated: true,
   allowComment: true,
-  allowReuse: true,
-  confirmPost: ""
+  allowReuse: true
 };
 
 let helpers = {};
@@ -48,7 +47,7 @@ function bindEvents() {
   });
 
   document.querySelectorAll(
-    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-privacy, #post-schedule-time, #post-location, #post-confirm-word, #post-allow-comment, #post-allow-reuse"
+    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-privacy, #post-schedule-time, #post-location, #post-allow-comment, #post-allow-reuse"
   ).forEach((input) => {
     input.addEventListener("input", scheduleAutoSave);
     input.addEventListener("change", scheduleAutoSave);
@@ -89,7 +88,6 @@ function fillForm(value) {
   setValue("post-privacy", post.privacy);
   setValue("post-schedule-time", post.scheduleTime);
   setValue("post-location", post.location);
-  setValue("post-confirm-word", post.confirmPost);
   setChecked("post-ai-generated", post.aiGenerated);
   setChecked("post-allow-comment", post.allowComment);
   setChecked("post-allow-reuse", post.allowReuse);
@@ -119,7 +117,6 @@ function readForm() {
     privacy: getValue("post-privacy"),
     scheduleTime: getValue("post-schedule-time"),
     location: getValue("post-location"),
-    confirmPost: getValue("post-confirm-word"),
     aiGenerated: true,
     allowComment: getChecked("post-allow-comment"),
     allowReuse: getChecked("post-allow-reuse")
@@ -136,15 +133,14 @@ function normalizePostSettings(value = {}) {
     ...post,
     captionTemplate: post.captionTemplate || DEFAULT_POST_SETTINGS.captionTemplate,
     hashtags: normalizeHashtags(hashtags),
-    afterCreateAction: ["download", "draft", "post", "both"].includes(post.afterCreateAction)
-      ? post.afterCreateAction
-      : "download",
+    afterCreateAction: post.afterCreateAction === "both"
+      ? "draft"
+      : (["download", "draft", "post"].includes(post.afterCreateAction) ? post.afterCreateAction : "download"),
     defaultMode: ["draft", "now", "schedule"].includes(post.defaultMode) ? post.defaultMode : "draft",
     autoAddProductLink: post.autoAddProductLink !== false,
     aiGenerated: true,
     allowComment: post.allowComment !== false,
-    allowReuse: post.allowReuse !== false,
-    confirmPost: String(post.confirmPost || "")
+    allowReuse: post.allowReuse !== false
   };
 }
 
@@ -160,7 +156,7 @@ function syncPublishModeState() {
   if (!modeSelect) return;
 
   modeSelect.disabled = action !== "post";
-  if (action === "draft" || action === "both") {
+  if (action === "draft") {
     modeSelect.value = "draft";
   }
   if (action === "post" && modeSelect.value === "draft") {

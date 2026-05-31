@@ -257,7 +257,7 @@ async function getFlowSettings() {
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const media = settings.mediaSettings || {};
   return {
-    videoModel: settings.flow?.videoModel || "veo-3.1-fast",
+    videoModel: settings.flow?.videoModel || "veo-3.1-lite",
     imageModel: settings.flow?.imageModel || "nano-banana-pro",
     autoPortrait: settings.flow?.autoPortrait !== false,
     uploadWaitSec: settings.flow?.uploadWaitSec ?? 8,
@@ -390,32 +390,21 @@ async function sendTikTokDraft(payload) {
   let mimeType = "video/mp4";
 
   if (videoUrl.startsWith("blob:")) {
-    // หา Tab Google Flow เพื่อให้ช่วยดาวน์โหลด blob url
-    const flowTabs = await queryFlowTabs();
-    if (flowTabs.length > 0) {
-      const flowTabId = flowTabs[0].id;
-      // ให้แน่ใจว่า content script พร้อมในหน้า Google Flow
-      await ensureFlowContentScript(flowTabId);
-      const res = await chrome.tabs.sendMessage(flowTabId, {
-        type: "FLOW_FETCH_BLOB_BASE64",
-        url: videoUrl
-      });
-      if (res?.ok) {
-        base64Data = res.base64;
-        mimeType = res.mimeType || mimeType;
-      } else {
-        throw new Error("ดาวน์โหลด blob วิดีโอผ่านหน้า Google Flow ล้มเหลว: " + (res?.error || "ไม่ทราบสาเหตุ"));
-      }
-    } else {
-      throw new Error("ตรวจพบ blob URL แต่ไม่พบหน้าเว็บ Google Flow ที่เปิดอยู่เพื่อดึงไฟล์");
-    }
+    const result = await fetchVideoBase64FromFlowTab(videoUrl);
+    base64Data = result.base64;
+    mimeType = result.mimeType || mimeType;
   } else {
-    // ดึงตรงผ่าน background
-    const videoRes = await fetch(videoUrl, { credentials: "omit" });
-    if (!videoRes.ok) throw new Error(`ดาวน์โหลดวิดีโอล้มเหลว: ${videoRes.status}`);
-    const videoBlob = await videoRes.blob();
-    base64Data = await blobToBase64(videoBlob);
-    mimeType = videoBlob.type;
+    try {
+      const videoRes = await fetch(videoUrl, { credentials: "include" });
+      if (!videoRes.ok) throw new Error(`HTTP ${videoRes.status}`);
+      const videoBlob = await videoRes.blob();
+      base64Data = await blobToBase64(videoBlob);
+      mimeType = videoBlob.type;
+    } catch (error) {
+      const result = await fetchVideoBase64FromFlowTab(videoUrl, error.message);
+      base64Data = result.base64;
+      mimeType = result.mimeType || mimeType;
+    }
   }
 
   // 3. ตรวจสอบและ Inject Content Script สำหรับควบคุมหน้าเว็บ
@@ -433,10 +422,11 @@ async function sendTikTokDraft(payload) {
   await notify("TikTok Automation", "กำลังเริ่มขั้นตอนอัปโหลดและกรอกข้อมูลอัตโนมัติ...");
   
   const dataUrl = `data:${mimeType || "video/mp4"};base64,${base64Data}`;
+  const videoPayloadUrl = await transferVideoDataUrl(tabId, dataUrl);
   const response = await chrome.tabs.sendMessage(tabId, {
     type: "TIKTOK_UPLOAD_VIDEO",
     payload: {
-      videoUrl: dataUrl,
+      videoUrl: videoPayloadUrl,
       filename: payload.filename || buildTikTokVideoFilename(payload),
       productId: payload.productId || "",
       productUrl: payload.productUrl || "",
@@ -450,8 +440,7 @@ async function sendTikTokDraft(payload) {
       privacy: payload.privacy ?? postDefaults.privacy ?? "",
       aiGenerated: true,
       allowComment: payload.allowComment ?? postDefaults.allowComment ?? true,
-      allowReuse: payload.allowReuse ?? postDefaults.allowReuse ?? true,
-      confirmPost: payload.confirmPost ?? postDefaults.confirmPost ?? ""
+      allowReuse: payload.allowReuse ?? postDefaults.allowReuse ?? true
     }
   });
 
@@ -464,6 +453,60 @@ async function sendTikTokDraft(payload) {
     : "บันทึกร่างดราฟต์บนหน้าเว็บสำเร็จแล้ว";
   await notify("TikTok Automation", doneMessage);
   return { ok: true, ...response };
+}
+
+async function fetchVideoBase64FromFlowTab(videoUrl, previousError = "") {
+  const flowTabs = await queryFlowTabs();
+  if (!flowTabs.length) {
+    throw new Error(previousError
+      ? `ดาวน์โหลดวิดีโอล้มเหลว: ${previousError}`
+      : "ตรวจพบ blob URL แต่ไม่พบหน้าเว็บ Google Flow ที่เปิดอยู่เพื่อดึงไฟล์");
+  }
+
+  const flowTabId = flowTabs[0].id;
+  await ensureFlowContentScript(flowTabId);
+  const res = await chrome.tabs.sendMessage(flowTabId, {
+    type: "FLOW_FETCH_BLOB_BASE64",
+    url: videoUrl
+  });
+
+  if (!res?.ok) {
+    const detail = res?.error || previousError || "ไม่ทราบสาเหตุ";
+    throw new Error("ดาวน์โหลดวิดีโอผ่านหน้า Google Flow ล้มเหลว: " + detail);
+  }
+
+  return { base64: res.base64, mimeType: res.mimeType || "video/mp4" };
+}
+
+async function transferVideoDataUrl(tabId, dataUrl) {
+  const maxChunkSize = 512 * 1024;
+  const key = `tiktok-video-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const totalChunks = Math.ceil(dataUrl.length / maxChunkSize);
+
+  const init = await chrome.tabs.sendMessage(tabId, {
+    type: "CHUNK_INIT",
+    payload: { key, totalChunks, totalSize: dataUrl.length }
+  });
+  if (!init?.ok) throw new Error(init?.error || "เริ่มส่งวิดีโอแบบ chunk ไม่สำเร็จ");
+
+  for (let index = 0; index < totalChunks; index += 1) {
+    const data = dataUrl.slice(index * maxChunkSize, (index + 1) * maxChunkSize);
+    const pushed = await chrome.tabs.sendMessage(tabId, {
+      type: "CHUNK_PUSH",
+      payload: { key, index, data }
+    });
+    if (!pushed?.ok) {
+      throw new Error(pushed?.error || `ส่งวิดีโอ chunk ${index + 1}/${totalChunks} ไม่สำเร็จ`);
+    }
+  }
+
+  const done = await chrome.tabs.sendMessage(tabId, {
+    type: "CHUNK_DONE",
+    payload: { key }
+  });
+  if (!done?.ok) throw new Error(done?.error || "ประกอบวิดีโอจาก chunk ไม่สำเร็จ");
+
+  return `chunked:${key}`;
 }
 
 function buildTikTokVideoFilename(productInfo = {}) {
