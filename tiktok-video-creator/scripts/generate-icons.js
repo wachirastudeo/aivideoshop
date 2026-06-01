@@ -40,10 +40,10 @@ function chunk(type, data) {
  * @returns {boolean} true ถ้าอยู่ใน shape
  */
 function isPlayTriangle(x, y, size) {
-  const left = size * 0.38;
-  const top = size * 0.31;
-  const bottom = size * 0.69;
-  const right = size * 0.72;
+  const left = size * 0.36;
+  const top = size * 0.28;
+  const bottom = size * 0.72;
+  const right = size * 0.75;
   if (x < left || x > right || y < top || y > bottom) return false;
   const mid = size * 0.5;
   const edge = x - left;
@@ -59,33 +59,59 @@ function isPlayTriangle(x, y, size) {
  */
 function createIcon(size) {
   const raw = Buffer.alloc((size * 4 + 1) * size);
+  const radius = size * 0.22;
   for (let y = 0; y < size; y += 1) {
     const rowStart = y * (size * 4 + 1);
     raw[rowStart] = 0;
     for (let x = 0; x < size; x += 1) {
       const offset = rowStart + 1 + x * 4;
-      const dx = Math.min(x, size - 1 - x);
-      const dy = Math.min(y, size - 1 - y);
-      const rounded = dx + dy > size * 0.18 || (dx > size * 0.08 && dy > size * 0.08);
+      const px = x + 0.5;
+      const py = y + 0.5;
+      const left = radius;
+      const right = size - radius;
+      const top = radius;
+      const bottom = size - radius;
+      const cx = px < left ? left : px > right ? right : px;
+      const cy = py < top ? top : py > bottom ? bottom : py;
+      const rounded = Math.hypot(px - cx, py - cy) <= radius;
       const inPlay = isPlayTriangle(x, y, size);
-      const accentLine = Math.abs(x - y) < Math.max(1, size * 0.035);
+      const playShadowCyan = isPlayTriangle(x + size * 0.04, y - size * 0.02, size);
+      const playShadowPink = isPlayTriangle(x - size * 0.04, y + size * 0.02, size);
+      const sparkleLarge = Math.abs(x - size * 0.73) + Math.abs(y - size * 0.31) < size * 0.075;
+      const sparkleSmall = Math.abs(x - size * 0.29) + Math.abs(y - size * 0.72) < size * 0.08;
+      const t = (x + y) / (size * 2);
 
       if (!rounded) {
         raw[offset + 3] = 0;
+      } else if (sparkleLarge) {
+        raw[offset] = 255;
+        raw[offset + 1] = 255;
+        raw[offset + 2] = 255;
+        raw[offset + 3] = 245;
+      } else if (sparkleSmall) {
+        raw[offset] = 37;
+        raw[offset + 1] = 244;
+        raw[offset + 2] = 238;
+        raw[offset + 3] = 235;
       } else if (inPlay) {
         raw[offset] = 255;
         raw[offset + 1] = 255;
         raw[offset + 2] = 255;
         raw[offset + 3] = 255;
-      } else if (accentLine) {
+      } else if (playShadowCyan) {
         raw[offset] = 37;
         raw[offset + 1] = 244;
         raw[offset + 2] = 238;
-        raw[offset + 3] = 255;
-      } else {
+        raw[offset + 3] = 230;
+      } else if (playShadowPink) {
         raw[offset] = 254;
         raw[offset + 1] = 44;
         raw[offset + 2] = 85;
+        raw[offset + 3] = 230;
+      } else {
+        raw[offset] = Math.round(32 - 24 * t);
+        raw[offset + 1] = Math.round(32 - 27 * t);
+        raw[offset + 2] = Math.round(39 - 33 * t);
         raw[offset + 3] = 255;
       }
     }

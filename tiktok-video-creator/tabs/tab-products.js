@@ -275,7 +275,7 @@ function productMarkup(product) {
           ${stockBadge}
         </p>
       </div>
-      <button class="icon-button" type="button" data-create-video="${escapeHtml(product.productId)}" title="สร้างวิดีโอ" aria-label="สร้างวิดีโอ">🎥</button>
+      <button class="icon-button" type="button" data-create-video="${escapeHtml(product.productId)}" title="สร้างวิดีโอ" aria-label="สร้างวิดีโอ">${videoIcon()}</button>
     </article>
   `;
 }
@@ -290,6 +290,10 @@ function skeletonMarkup() {
       </div>
     </article>
   `).join("");
+}
+
+function videoIcon() {
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2.2"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`;
 }
 
 function escapeHtml(value) {

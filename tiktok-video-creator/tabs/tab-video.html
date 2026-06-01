@@ -18,7 +18,7 @@
   </header>
 
   <div class="flow-layout">
-    <section class="flow-panel flow-panel--queue" aria-labelledby="queue-title">
+    <section class="flow-panel flow-panel--queue" aria-labelledby="queue-title" data-collapsible data-collapse-key="video.queue">
       <div class="flow-panel__header">
         <div>
           <p class="eyebrow">Selected Products</p>
@@ -28,7 +28,7 @@
       <div id="batch-product-list" class="flow-queue" aria-live="polite"></div>
     </section>
 
-    <aside class="flow-panel flow-panel--settings" aria-labelledby="settings-title">
+    <aside class="flow-panel flow-panel--settings" aria-labelledby="settings-title" data-collapsible data-collapse-key="video.settings">
       <div class="flow-panel__header">
         <div>
           <p class="eyebrow">Prompt Controls</p>
@@ -37,160 +37,183 @@
       </div>
 
       <div class="settings-stack">
-        <label class="field">
-          <span class="field__label">สไตล์วิดีโอหลัก</span>
-          <select id="video-style" class="select select--accent"></select>
-        </label>
-        <div class="settings-grid">
-          <label class="field">
-            <span class="field__label">โมเดลรูปภาพ (Banana)</span>
-            <select id="image-model" class="select">
-              <option value="nano-banana-pro">Banana Pro (แนะนำ)</option>
-              <option value="nano-banana-2">Banana 2</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">โมเดลวิดีโอ (Veo)</span>
-            <select id="video-model" class="select">
-              <option value="veo-3.1-fast">Veo 3.1 - Fast</option>
-              <option value="veo-3.1-quality">Veo 3.1 - Quality</option>
-              <option value="veo-3.1-lite">Veo 3.1 - Lite</option>
-              <option value="veo-3.1-lite-low-priority">Veo 3.1 - Lite [Lower Priority] ⭐ (0 เครดิต)</option>
-              <option value="omni-flash">Omni Flash</option>
-            </select>
-          </label>
+        <div class="settings-group" data-collapsible data-collapse-key="video.group.basic">
+          <div class="settings-group__header">
+            <h4>พื้นฐาน</h4>
+          </div>
+          <div class="settings-group__body">
+            <label class="field">
+              <span class="field__label">สไตล์วิดีโอหลัก</span>
+              <select id="video-style" class="select select--accent"></select>
+            </label>
+            <div class="settings-grid">
+              <label class="field">
+                <span class="field__label">โมเดลรูปภาพ (Banana)</span>
+                <select id="image-model" class="select">
+                  <option value="nano-banana-pro">Banana Pro (แนะนำ)</option>
+                  <option value="nano-banana-2">Banana 2</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field__label">โมเดลวิดีโอ (Veo)</span>
+                <select id="video-model" class="select">
+                  <option value="veo-3.1-fast">Veo 3.1 - Fast</option>
+                  <option value="veo-3.1-quality">Veo 3.1 - Quality</option>
+                  <option value="veo-3.1-lite">Veo 3.1 - Lite</option>
+                  <option value="veo-3.1-lite-low-priority">Veo 3.1 - Lite [Lower Priority] ⭐ (0 เครดิต)</option>
+                  <option value="omni-flash">Omni Flash</option>
+                </select>
+              </label>
+            </div>
+          </div>
         </div>
 
-        <div class="settings-grid">
-          <label class="field">
-            <span class="field__label">จำนวนรูปภาพ</span>
-            <select id="image-count" class="select">
-              <option value="1">1 รูป</option>
-              <option value="2">2 รูป</option>
-              <option value="4">4 รูป</option>
-              <option value="8">8 รูป</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">จำนวนวิดีโอ</span>
-            <select id="video-count" class="select">
-              <option value="1">1 คลิป</option>
-              <option value="2">2 คลิป</option>
-              <option value="4">4 คลิป</option>
-            </select>
-          </label>
+        <div class="settings-group" data-collapsible data-collapse-key="video.group.output" data-collapsed-default="true">
+          <div class="settings-group__header">
+            <h4>จำนวนและขนาด</h4>
+          </div>
+          <div class="settings-group__body">
+            <div class="settings-grid">
+              <label class="field">
+                <span class="field__label">จำนวนรูปภาพ</span>
+                <select id="image-count" class="select">
+                  <option value="1">1 รูป</option>
+                  <option value="2">2 รูป</option>
+                  <option value="4">4 รูป</option>
+                  <option value="8">8 รูป</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field__label">จำนวนวิดีโอ</span>
+                <select id="video-count" class="select">
+                  <option value="1">1 คลิป</option>
+                  <option value="2">2 คลิป</option>
+                  <option value="4">4 คลิป</option>
+                </select>
+              </label>
+            </div>
+            <div class="settings-grid">
+              <label class="field">
+                <span class="field__label">ความยาววิดีโอ</span>
+                <select id="video-duration" class="select">
+                  <option value="5">5 วินาที</option>
+                  <option value="8">8 วินาที</option>
+                  <option value="10">10 วินาที</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field__label">สัดส่วน</span>
+                <select id="aspect-ratio" class="select">
+                  <option value="9:16">9:16 TikTok</option>
+                  <option value="16:9">16:9</option>
+                  <option value="1:1">1:1</option>
+                </select>
+              </label>
+            </div>
+          </div>
         </div>
 
-        <div class="settings-grid">
-          <label class="field">
-            <span class="field__label">ความยาววิดีโอ</span>
-            <select id="video-duration" class="select">
-              <option value="5">5 วินาที</option>
-              <option value="8">8 วินาที</option>
-              <option value="10">10 วินาที</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">สัดส่วน</span>
-            <select id="aspect-ratio" class="select">
-              <option value="9:16">9:16 TikTok</option>
-              <option value="16:9">16:9</option>
-              <option value="1:1">1:1</option>
-            </select>
-          </label>
+        <div class="settings-group" data-collapsible data-collapse-key="video.group.scene" data-collapsed-default="true">
+          <div class="settings-group__header">
+            <h4>ฉากและคนพรีเซนต์</h4>
+          </div>
+          <div class="settings-group__body">
+            <div class="field">
+              <span class="field__label">อารมณ์ภาพ</span>
+              <div id="mood-pills" class="pill-group"></div>
+            </div>
+            <div class="settings-grid">
+              <label class="field">
+                <span class="field__label">ผู้พรีเซนต์</span>
+                <select id="presenter" class="select">
+                  <option value="Auto">อัตโนมัติ</option>
+                  <option value="none">ไม่มีคน</option>
+                  <option value="woman">ผู้หญิง</option>
+                  <option value="man">ผู้ชาย</option>
+                  <option value="cartoon3d">ตัวการ์ตูน 3D</option>
+                  <option value="living_product">สินค้ามีชีวิต</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field__label">โทนเสียงพูด</span>
+                <select id="voice-tone" class="select">
+                  <option value="Auto">อัตโนมัติ</option>
+                  <option value="kind">ใจดี</option>
+                  <option value="fun">สนุกสนาน</option>
+                  <option value="complain">ขี้บ่น</option>
+                  <option value="professional">มืออาชีพ</option>
+                  <option value="hype">ตื่นเต้น</option>
+                </select>
+              </label>
+            </div>
+            <div class="settings-grid">
+              <label class="field">
+                <span class="field__label">สถานที่</span>
+                <select id="location" class="select">
+                  <option value="Auto">อัตโนมัติ</option>
+                  <option value="Modern Living Room">ห้องนั่งเล่นโมเดิร์น</option>
+                  <option value="Studio Minimal">สตูดิโอมินิมอล</option>
+                  <option value="Warehouse / Stockroom">คลังสินค้า / ห้องสต็อก</option>
+                  <option value="Urban Street">ถนนในเมือง</option>
+                  <option value="Nature / Outdoor">ธรรมชาติ / กลางแจ้ง</option>
+                  <option value="Luxury Showroom">โชว์รูมหรู</option>
+                  <option value="Cafe / Coffee Shop">คาเฟ่ / ร้านกาแฟ</option>
+                  <option value="Office / Workspace">ออฟฟิศ / พื้นที่ทำงาน</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field__label">มุมกล้อง</span>
+                <select id="camera-movement" class="select">
+                  <option value="Auto">อัตโนมัติ</option>
+                  <option value="Slow Zoom In">ซูมเข้าช้าๆ</option>
+                  <option value="Orbit / 360°">หมุนรอบสินค้า 360</option>
+                  <option value="Pan Left to Right">แพนซ้ายไปขวา</option>
+                  <option value="Static/Still">กล้องนิ่ง</option>
+                  <option value="Handheld Shake">ถือกล้องถ่าย</option>
+                  <option value="Push In Fast">พุ่งเข้าหาสินค้าเร็ว</option>
+                </select>
+              </label>
+            </div>
+          </div>
         </div>
 
-        <div class="field">
-          <span class="field__label">อารมณ์ภาพ</span>
-          <div id="mood-pills" class="pill-group"></div>
+        <div class="settings-group" data-collapsible data-collapse-key="video.group.text" data-collapsed-default="true">
+          <div class="settings-group__header">
+            <h4>ข้อความและโพสต์</h4>
+          </div>
+          <div class="settings-group__body">
+            <div class="settings-grid">
+              <label class="field">
+                <span class="field__label">ข้อความในคลิป</span>
+                <select id="show-name" class="select">
+                  <option value="false">ปิด</option>
+                  <option value="true">เปิด</option>
+                </select>
+              </label>
+              <label class="field video-text-setting">
+                <span class="field__label">ตำแหน่งข้อความ</span>
+                <select id="text-position" class="select">
+                  <option value="Auto">อัตโนมัติ</option>
+                  <option value="Bottom safe area">ด้านล่าง</option>
+                  <option value="Center overlay">ตรงกลาง</option>
+                  <option value="Top third">ด้านบน</option>
+                </select>
+              </label>
+            </div>
+            <label class="field video-text-setting">
+              <span class="field__label">ข้อความโปรโมชั่น</span>
+              <input id="promotion-text" class="input" type="text" placeholder="ลด 50% / ส่งฟรี / เก็บเงินปลายทาง">
+            </label>
+            <label class="field">
+              <span class="field__label">การทำงานหลังสร้างเสร็จ</span>
+              <select id="post-action" class="select select--accent">
+                <option value="download">ดาวน์โหลดอย่างเดียว</option>
+                <option value="draft">ดาวน์โหลด + บันทึกแบบร่าง TikTok</option>
+                <option value="post">ดาวน์โหลด + โพสต์ TikTok</option>
+              </select>
+            </label>
+          </div>
         </div>
-
-        <div class="settings-grid">
-          <label class="field">
-            <span class="field__label">ผู้พรีเซนต์</span>
-            <select id="presenter" class="select">
-              <option value="Auto">อัตโนมัติ</option>
-              <option value="none">ไม่มีคน</option>
-              <option value="woman">ผู้หญิง</option>
-              <option value="man">ผู้ชาย</option>
-              <option value="cartoon3d">ตัวการ์ตูน 3D</option>
-              <option value="living_product">สินค้ามีชีวิต</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">โทนเสียงพูด</span>
-            <select id="voice-tone" class="select">
-              <option value="Auto">อัตโนมัติ</option>
-              <option value="kind">ใจดี</option>
-              <option value="fun">สนุกสนาน</option>
-              <option value="complain">ขี้บ่น</option>
-              <option value="professional">มืออาชีพ</option>
-              <option value="hype">ตื่นเต้น</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="settings-grid">
-          <label class="field">
-            <span class="field__label">สถานที่</span>
-            <select id="location" class="select">
-              <option value="Auto">อัตโนมัติ</option>
-              <option value="Modern Living Room">ห้องนั่งเล่นโมเดิร์น</option>
-              <option value="Studio Minimal">สตูดิโอมินิมอล</option>
-              <option value="Warehouse / Stockroom">คลังสินค้า / ห้องสต็อก</option>
-              <option value="Urban Street">ถนนในเมือง</option>
-              <option value="Nature / Outdoor">ธรรมชาติ / กลางแจ้ง</option>
-              <option value="Luxury Showroom">โชว์รูมหรู</option>
-              <option value="Cafe / Coffee Shop">คาเฟ่ / ร้านกาแฟ</option>
-              <option value="Office / Workspace">ออฟฟิศ / พื้นที่ทำงาน</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">มุมกล้อง</span>
-            <select id="camera-movement" class="select">
-              <option value="Auto">อัตโนมัติ</option>
-              <option value="Slow Zoom In">ซูมเข้าช้าๆ</option>
-              <option value="Orbit / 360°">หมุนรอบสินค้า 360</option>
-              <option value="Pan Left to Right">แพนซ้ายไปขวา</option>
-              <option value="Static/Still">กล้องนิ่ง</option>
-              <option value="Handheld Shake">ถือกล้องถ่าย</option>
-              <option value="Push In Fast">พุ่งเข้าหาสินค้าเร็ว</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="settings-grid">
-          <label class="field">
-            <span class="field__label">ข้อความในคลิป</span>
-            <select id="show-name" class="select">
-              <option value="false">ปิด</option>
-              <option value="true">เปิด</option>
-            </select>
-          </label>
-          <label class="field video-text-setting">
-            <span class="field__label">ตำแหน่งข้อความ</span>
-            <select id="text-position" class="select">
-              <option value="Auto">อัตโนมัติ</option>
-              <option value="Bottom safe area">ด้านล่าง</option>
-              <option value="Center overlay">ตรงกลาง</option>
-              <option value="Top third">ด้านบน</option>
-            </select>
-          </label>
-        </div>
-
-        <label class="field video-text-setting">
-          <span class="field__label">ข้อความโปรโมชั่น</span>
-          <input id="promotion-text" class="input" type="text" placeholder="ลด 50% / ส่งฟรี / เก็บเงินปลายทาง">
-        </label>
-        
-        <label class="field">
-          <span class="field__label">การทำงานหลังสร้างเสร็จ</span>
-          <select id="post-action" class="select select--accent">
-            <option value="download">ดาวน์โหลดอย่างเดียว</option>
-            <option value="draft">ดาวน์โหลด + บันทึกแบบร่าง TikTok</option>
-            <option value="post">ดาวน์โหลด + โพสต์ TikTok</option>
-          </select>
-        </label>
       </div>
     </aside>
   </div>
@@ -199,11 +222,11 @@
 <section class="section section--sticky flow-action-bar" aria-label="Batch actions">
   <div class="inline-actions">
     <button class="button button--primary button--full flow-primary-action" id="btn-batch-create" type="button">
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block; vertical-align: middle;"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3z"></path></svg>
+      <svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3z"></path></svg>
       สร้างภาพและวิดีโอทั้งหมด
     </button>
     <button class="button button--danger button--full flow-primary-action" id="btn-batch-stop" type="button" hidden>
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin-right: 6px; display: inline-block; vertical-align: middle;"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>
+      <svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>
       หยุดทำงาน
     </button>
   </div>

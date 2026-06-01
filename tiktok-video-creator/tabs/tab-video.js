@@ -141,7 +141,9 @@ function normalizeProductQueue(value) {
       approvedImage: item.approvedImage || "",
       videoUrl: item.videoUrl || "",
       productId: item.productId || item.id || "",
-      productUrl: item.productUrl || item.url || ""
+      productUrl: item.productUrl || item.url || "",
+      promptAdvice: item.promptAdvice || "",
+      autoOptions: item.autoOptions && typeof item.autoOptions === "object" ? item.autoOptions : null
     }));
 }
 
@@ -158,7 +160,7 @@ function normalizeSettings(value) {
     showName: value.showName === true || value.showName === "true" ? "true" : "false",
     cta: "กดสั่งซื้อที่ตะกร้าด้านล่าง",
     customCta: "",
-    location: value.location === "Auto" ? "Modern Living Room" : (value.location || "Modern Living Room"),
+    location: value.location || "Auto",
     pacing: value.pacing || 2,
     transition: value.transition || "Auto",
     imageModel: value.imageModel || "nano-banana-pro",
@@ -280,7 +282,7 @@ function productMarkup(p, index) {
         <label class="field upload-field">
           <span class="field__label">ใส่ภาพ Phase 1 เอง</span>
           <span class="button button--ghost button--full file-button">
-            อัพโหลดภาพ
+            ${imageIcon()} อัพโหลดภาพ
             <input type="file" class="batch-upload-approved" accept="image/png,image/jpeg,image/webp">
           </span>
         </label>
@@ -379,6 +381,9 @@ async function handleAnalyze(product) {
     const analysis = await analyzeProductImages(product.imageUrls || [], product);
     product.highlights = analysis.highlights || product.highlights;
     product.name = analysis.name || product.name;
+    product.targetGroup = analysis.targetGroup || product.targetGroup;
+    product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
+    product.autoOptions = analysis.autoOptions || product.autoOptions || null;
     product.status = "analyzed";
     product.errorMessage = "";
     await persistState();
@@ -458,13 +463,15 @@ async function processQueue() {
     const product = productQueue[i];
 
     try {
-      if (product.status === "idle" || !product.highlights) {
+      if (product.status === "idle" || !product.highlights || !product.autoOptions) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังวิเคราะห์จุดเด่นสินค้าด้วย AI...`, "info");
         try {
           const analysis = await analyzeProductImages(product.imageUrls || [], product);
           product.highlights = analysis.highlights || product.highlights;
           product.name = analysis.name || product.name;
-          product.promptAdvice = analysis.promptAdvice || "";
+          product.targetGroup = analysis.targetGroup || product.targetGroup;
+          product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
+          product.autoOptions = analysis.autoOptions || product.autoOptions || null;
           await persistState();
           renderQueue();
         } catch (err) {
@@ -626,9 +633,9 @@ async function getPostAction() {
 }
 
 function getActionButtonText(action) {
-  if (action === "download") return "Download";
-  if (action === "draft") return "บันทึกแบบร่าง";
-  return "โพสต์ TikTok";
+  if (action === "download") return `${downloadIcon()} Download`;
+  if (action === "draft") return `${saveIcon()} บันทึกแบบร่าง`;
+  return `${sendIcon()} โพสต์ TikTok`;
 }
 
 async function handleSendDraft(product) {
@@ -701,29 +708,37 @@ function setValue(id, value) {
 }
 
 function xIcon() {
-  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>`;
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>`;
 }
 
 function sparkIcon() {
-  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3z"></path></svg>`;
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3z"></path></svg>`;
 }
 
 function copyIcon() {
-  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
 }
 
 function downloadIcon() {
-  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>`;
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>`;
 }
 
 function imageIcon() {
-  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
 }
 
 function playIcon() {
-  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
 }
 
 function stopIcon() {
-  return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>`;
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect></svg>`;
+}
+
+function saveIcon() {
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg>`;
+}
+
+function sendIcon() {
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg>`;
 }

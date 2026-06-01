@@ -53,7 +53,8 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
   const prompt = [
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
-    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English video prompt advice"}'
+    "Recommend creative options for an 8-second vertical TikTok product video.",
+    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English video prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
   const parts = [{ text: prompt }];
 
@@ -100,7 +101,8 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
       name: sanitizeText(parsed.name || productName),
       highlights: normalizeHighlights(parsed.highlights),
       targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
-      promptAdvice: sanitizeText(parsed.promptAdvice || "")
+      promptAdvice: sanitizeText(parsed.promptAdvice || ""),
+      autoOptions: normalizeAutoOptions(parsed.autoOptions, productInfo)
     };
   } finally {
     clearTimeout(timeout);
@@ -116,7 +118,8 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
   const prompt = [
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
-    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English video prompt advice"}'
+    "Recommend creative options for an 8-second vertical TikTok product video.",
+    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English video prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
 
   const content = [{ type: "text", text: prompt }];
@@ -166,7 +169,8 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
       name: sanitizeText(parsed.name || productName),
       highlights: normalizeHighlights(parsed.highlights),
       targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
-      promptAdvice: sanitizeText(parsed.promptAdvice || "")
+      promptAdvice: sanitizeText(parsed.promptAdvice || ""),
+      autoOptions: normalizeAutoOptions(parsed.autoOptions, productInfo)
     };
   } finally {
     clearTimeout(timeout);
@@ -301,8 +305,57 @@ function buildTitleBasedFallback(productInfo) {
       "• ใช้ภาพสินค้า close-up พร้อมแสงสะอาดเพื่อเพิ่มความน่าเชื่อถือ"
     ].join("\n"),
     targetGroup,
-    promptAdvice: `Create a clean TikTok product video for "${name}". Use the product title as the main context, show a clear hero shot, emphasize benefits and CTA, and keep the visual simple because no vision API key was provided.`
+    promptAdvice: `Create a clean TikTok product video for "${name}". Use the product title as the main context, show a clear hero shot, emphasize benefits and CTA, and keep the visual simple because no vision API key was provided.`,
+    autoOptions: inferAutoOptionsFromProduct(productInfo)
   };
+}
+
+function normalizeAutoOptions(value, productInfo = {}) {
+  const inferred = inferAutoOptionsFromProduct(productInfo);
+  const raw = value && typeof value === "object" ? value : {};
+  return {
+    videoStyle: pickAllowed(raw.videoStyle, ["review", "lifestyle", "flash-sale", "unboxing", "before-after", "testimonial", "cinematic", "trending-hook"], inferred.videoStyle),
+    presenter: pickAllowed(raw.presenter, ["none", "woman", "man", "cartoon3d", "living_product"], inferred.presenter),
+    voiceTone: pickAllowed(raw.voiceTone, ["kind", "fun", "complain", "professional", "hype"], inferred.voiceTone),
+    mood: pickAllowed(raw.mood, ["สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"], inferred.mood),
+    location: pickAllowed(raw.location, ["Modern Living Room", "Studio Minimal", "Warehouse / Stockroom", "Urban Street", "Nature / Outdoor", "Luxury Showroom", "Cafe / Coffee Shop", "Office / Workspace"], inferred.location),
+    cameraMovement: pickAllowed(raw.cameraMovement, ["Slow Zoom In", "Orbit / 360°", "Pan Left to Right", "Static/Still", "Handheld Shake", "Push In Fast"], inferred.cameraMovement),
+    transition: pickAllowed(raw.transition, ["Cut ตรง", "Zoom Transition", "Swipe", "Fade", "Whip Pan"], inferred.transition),
+    reason: sanitizeText(raw.reason || inferred.reason)
+  };
+}
+
+function inferAutoOptionsFromProduct(productInfo = {}) {
+  const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
+
+  if (/(ลด|sale|โปร|flash|discount|ถูก|ส่งฟรี)/i.test(text)) {
+    return buildAutoOptions("flash-sale", "none", "hype", "Trendy", "Studio Minimal", "Push In Fast", "Whip Pan", "เหมาะกับโปรโมชันและการเร่งตัดสินใจ");
+  }
+  if (/(ครีม|เซรั่ม|สกินแคร์|makeup|beauty|เครื่องสำอาง|น้ำหอม|jewelry|เครื่องประดับ)/i.test(text)) {
+    return buildAutoOptions("cinematic", "woman", "kind", "หรูหรา", "Luxury Showroom", "Slow Zoom In", "Fade", "สินค้าแนวความงามควรเน้นภาพพรีเมียมและรายละเอียดผิวสัมผัส");
+  }
+  if (/(เสื้อ|กางเกง|รองเท้า|กระเป๋า|แฟชั่น|wear|shirt|dress|bag|shoe)/i.test(text)) {
+    return buildAutoOptions("lifestyle", "woman", "fun", "Trendy", "Urban Street", "Handheld Shake", "Swipe", "สินค้าแฟชั่นเหมาะกับการเห็นการใช้งานจริง");
+  }
+  if (/(ของเล่น|เด็ก|น่ารัก|cute|toy|kid|pet|สัตว์เลี้ยง)/i.test(text)) {
+    return buildAutoOptions("trending-hook", "cartoon3d", "fun", "น่ารัก", "Modern Living Room", "Push In Fast", "Zoom Transition", "สินค้าน่ารักควรเปิดด้วย hook สนุกและภาพจำง่าย");
+  }
+  if (/(ครัว|บ้าน|เครื่องใช้|organizer|storage|clean|ทำความสะอาด)/i.test(text)) {
+    return buildAutoOptions("before-after", "none", "professional", "Professional", "Modern Living Room", "Pan Left to Right", "Swipe", "สินค้าใช้ในบ้านควรเห็นปัญหาก่อนใช้และผลลัพธ์หลังใช้");
+  }
+  if (/(กล่อง|แพ็ค|package|เซ็ต|bundle|gift)/i.test(text)) {
+    return buildAutoOptions("unboxing", "none", "kind", "มินิมัล", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "สินค้าแบบเซ็ตเหมาะกับการ reveal ผ่าน unboxing");
+  }
+
+  return buildAutoOptions("review", "none", "professional", "Professional", "Studio Minimal", "Orbit / 360°", "Cut ตรง", "ใช้ข้อมูลสินค้าเพื่อโชว์จุดขายให้ชัดที่สุด");
+}
+
+function buildAutoOptions(videoStyle, presenter, voiceTone, mood, location, cameraMovement, transition, reason) {
+  return { videoStyle, presenter, voiceTone, mood, location, cameraMovement, transition, reason };
+}
+
+function pickAllowed(value, allowed, fallback) {
+  return allowed.includes(value) ? value : fallback;
 }
 
 /**

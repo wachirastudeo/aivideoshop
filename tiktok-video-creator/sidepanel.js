@@ -18,6 +18,7 @@ const isTabMode = new URLSearchParams(location.search).get("mode") === "tab";
 
 let activeTab = "video";
 let activityLog = [];
+let collapsedGroups = {};
 
 if (isTabMode) {
   document.documentElement.dataset.mode = "tab";
@@ -124,6 +125,7 @@ async function loadTab(tabName) {
 
   tabRoot.innerHTML = await response.text();
   tabRoot.scrollTop = 0;
+  await initCollapsibleSections(tabName);
 
   if (tabName === "video") {
     await initVideoTab({ showStatus, logActivity, switchTab: loadTab });
@@ -147,6 +149,73 @@ function getTabLabel(tabName) {
   if (tabName === "products") return "สินค้า TikTok";
   if (tabName === "post") return "โพสต์ TikTok";
   return tabName;
+}
+
+async function initCollapsibleSections(tabName) {
+  const stored = await chrome.storage.local.get(["collapsedGroups"]);
+  collapsedGroups = stored.collapsedGroups && typeof stored.collapsedGroups === "object"
+    ? stored.collapsedGroups
+    : {};
+
+  tabRoot.querySelectorAll("[data-collapsible]").forEach((section, index) => {
+    const body = getCollapsibleBody(section);
+    const header = getCollapsibleHeader(section);
+    if (!body || !header) return;
+
+    const key = section.dataset.collapseKey || `${tabName}.${index}`;
+    const bodyId = body.id || `collapsible-${tabName}-${index}`;
+    body.id = bodyId;
+
+    const collapsedDefault = section.dataset.collapsedDefault === "true";
+    const isCollapsed = key in collapsedGroups ? Boolean(collapsedGroups[key]) : collapsedDefault;
+    const button = buildCollapseButton(bodyId, isCollapsed);
+
+    header.append(button);
+    setCollapsedState(section, body, button, isCollapsed);
+
+    button.addEventListener("click", async () => {
+      const nextCollapsed = !section.classList.contains("is-collapsed");
+      collapsedGroups = { ...collapsedGroups, [key]: nextCollapsed };
+      setCollapsedState(section, body, button, nextCollapsed);
+      await chrome.storage.local.set({ collapsedGroups });
+    });
+  });
+}
+
+function getCollapsibleHeader(section) {
+  return section.querySelector(":scope > .flow-panel__header")
+    || section.querySelector(":scope > .settings-group__header")
+    || section.querySelector(":scope > .section__header");
+}
+
+function getCollapsibleBody(section) {
+  return section.querySelector(":scope > .settings-stack")
+    || section.querySelector(":scope > .flow-queue")
+    || section.querySelector(":scope > .settings-group__body")
+    || section.querySelector(":scope > .section__body");
+}
+
+function buildCollapseButton(controlsId, isCollapsed) {
+  const button = document.createElement("button");
+  button.className = "collapse-toggle";
+  button.type = "button";
+  button.setAttribute("aria-controls", controlsId);
+  button.innerHTML = `
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  `;
+  button.title = isCollapsed ? "แสดง" : "ซ่อน";
+  button.setAttribute("aria-label", button.title);
+  return button;
+}
+
+function setCollapsedState(section, body, button, isCollapsed) {
+  section.classList.toggle("is-collapsed", isCollapsed);
+  body.hidden = isCollapsed;
+  button.setAttribute("aria-expanded", String(!isCollapsed));
+  button.title = isCollapsed ? "แสดง" : "ซ่อน";
+  button.setAttribute("aria-label", button.title);
 }
 
 tabButtons.forEach((button) => {
@@ -176,13 +245,14 @@ toggleLogButton?.addEventListener("click", async () => {
   await chrome.storage.local.set({ logCollapsed: isCollapsed });
 });
 
-chrome.storage.local.get(["activeTab", "activityLog", "logCollapsed"]).then(({ activeTab: storedTab, activityLog: storedLog, logCollapsed }) => {
+chrome.storage.local.get(["activeTab", "activityLog", "logCollapsed", "collapsedGroups"]).then(({ activeTab: storedTab, activityLog: storedLog, logCollapsed, collapsedGroups: storedCollapsedGroups }) => {
   if (logCollapsed === false) {
     document.querySelector(".activity-log").classList.remove("activity-log--collapsed");
   } else {
     document.querySelector(".activity-log").classList.add("activity-log--collapsed");
   }
   
+  collapsedGroups = storedCollapsedGroups && typeof storedCollapsedGroups === "object" ? storedCollapsedGroups : {};
   activityLog = Array.isArray(storedLog) ? storedLog.slice(0, 30) : [];
   renderActivityLog();
   loadTab(storedTab || "video").catch((error) => showStatus(error.message, "error"));

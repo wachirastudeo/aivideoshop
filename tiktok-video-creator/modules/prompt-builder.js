@@ -99,7 +99,7 @@ export function getDefaultSettings() {
     presenter: "Auto",
     voiceTone: "Auto",
     mood: "Auto",
-    location: "Modern Living Room",
+    location: "Auto",
     language: "ไทย",
     showName: "false",
     promotionText: "",
@@ -159,11 +159,12 @@ export function sanitizeText(value) {
  * @returns {string} prompt ภาษาอังกฤษ
  */
 export function buildImagePrompt(productInfo, settings) {
-  const style = VIDEO_STYLES.find((item) => item.id === settings.videoStyle) || VIDEO_STYLES[0];
+  const auto = resolveAutoSettings(productInfo, settings);
+  const style = VIDEO_STYLES.find((item) => item.id === auto.videoStyle) || VIDEO_STYLES[0];
   const target = productInfo.targetGroup === "กรอกเอง" ? productInfo.customTargetGroup : productInfo.targetGroup;
   
-  const moodStr = settings.mood === "Auto" ? "professional and clean" : settings.mood;
-  const locationStr = settings.location === "Auto" ? "Modern Living Room" : settings.location;
+  const moodStr = auto.mood;
+  const locationStr = auto.location;
 
   const promptParts = [
     `High quality product photography of ${sanitizeText(productInfo.name) || "the product"}.`,
@@ -191,6 +192,10 @@ export function buildImagePrompt(productInfo, settings) {
     promptParts.push(`AI Visual Direction: ${sanitizeText(productInfo.promptAdvice)}`);
   }
 
+  if (auto.reason) {
+    promptParts.push(`Auto option rationale: ${sanitizeText(auto.reason)}`);
+  }
+
   return promptParts.join("\n");
 }
 
@@ -201,8 +206,9 @@ export function buildImagePrompt(productInfo, settings) {
  * @returns {string} prompt ภาษาอังกฤษ
  */
 export function buildVideoPrompt(productInfo, settings) {
-  const style = VIDEO_STYLES.find((item) => item.id === settings.videoStyle) || VIDEO_STYLES[0];
-  const locationStr = settings.location === "Auto" ? "Modern Living Room" : settings.location;
+  const auto = resolveAutoSettings(productInfo, settings);
+  const style = VIDEO_STYLES.find((item) => item.id === auto.videoStyle) || VIDEO_STYLES[0];
+  const locationStr = auto.location;
   const ctaText = settings.cta === "กรอกเอง" ? settings.customCta : settings.cta;
   const durationSeconds = Number.parseInt(settings.videoDuration, 10) || 8;
   const midpointSeconds = Math.max(1, Math.floor(durationSeconds / 2));
@@ -218,13 +224,15 @@ export function buildVideoPrompt(productInfo, settings) {
     "Use the provided product image as the main visual reference and keep product appearance accurate.",
     "Do NOT include any pricing or cost information in the video.",
     "",
-    `Presenter: ${PRESENTERS[settings.presenter] || PRESENTERS.none}.`,
-    `Voice Tone: ${VOICE_TONES[settings.voiceTone] || VOICE_TONES.kind}.`,
+    `Auto-selected creative plan: style=${style.id}, presenter=${auto.presenter}, voiceTone=${auto.voiceTone}, mood=${auto.mood}, location=${auto.location}, camera=${auto.cameraMovement}, transition=${auto.transition}.`,
+    auto.reason ? `Selection rationale: ${sanitizeText(auto.reason)}.` : "",
+    `Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}.`,
+    `Voice Tone: ${VOICE_TONES[auto.voiceTone] || VOICE_TONES.kind}.`,
     `Voiceover timing: use one short complete ${sanitizeText(settings.language)} sentence only, maximum ${voiceWordLimit} words, and finish the spoken sentence by ${Math.max(1, durationSeconds - 1)}s. Do not start a sentence that cannot finish before the video ends. No cut-off speech.`,
-    `Camera Movement: ${sanitizeText(settings.cameraMovement === "Auto" ? "Clean and dynamic" : settings.cameraMovement)}.`,
-    `Scene 1 (0-${midpointSeconds}s): Product center frame in a modern living room, Location: ${sanitizeText(locationStr)}.`,
+    `Camera Movement: ${sanitizeText(auto.cameraMovement)}.`,
+    `Scene 1 (0-${midpointSeconds}s): Product center frame at ${sanitizeText(locationStr)}.`,
     `Scene 2 (${midpointSeconds}-${durationSeconds}s): Bold CTA moment with product full frame, upbeat energy.`,
-    `Transition: ${sanitizeText(settings.transition === "Auto" ? "Smooth transition" : settings.transition)}.`,
+    `Transition: ${sanitizeText(auto.transition)}.`,
     "",
     `Video style: ${style.name}. ${style.fragment}.`,
     `Text overlays: ${textItems.join(" | ") || "no text overlays except unavoidable platform UI"}. Position text in ${sanitizeText(settings.textPosition)}.`,
@@ -238,6 +246,57 @@ export function buildVideoPrompt(productInfo, settings) {
   }
 
   return promptParts.join("\n");
+}
+
+function resolveAutoSettings(productInfo = {}, settings = {}) {
+  const inferred = inferPromptAutoOptions(productInfo);
+  const recommended = productInfo.autoOptions && typeof productInfo.autoOptions === "object"
+    ? productInfo.autoOptions
+    : {};
+
+  return {
+    videoStyle: isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle,
+    presenter: isAuto(settings.presenter) ? (recommended.presenter || inferred.presenter) : settings.presenter,
+    voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
+    mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
+    location: isAuto(settings.location) ? (recommended.location || inferred.location) : settings.location,
+    cameraMovement: isAuto(settings.cameraMovement) ? (recommended.cameraMovement || inferred.cameraMovement) : settings.cameraMovement,
+    transition: isAuto(settings.transition) ? (recommended.transition || inferred.transition) : settings.transition,
+    reason: recommended.reason || inferred.reason || ""
+  };
+}
+
+function isAuto(value) {
+  return value === undefined || value === null || value === "" || value === "Auto";
+}
+
+function inferPromptAutoOptions(productInfo = {}) {
+  const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
+
+  if (/(ลด|sale|โปร|flash|discount|ถูก|ส่งฟรี)/i.test(text)) {
+    return promptAutoOptions("flash-sale", "none", "hype", "Trendy", "Studio Minimal", "Push In Fast", "Whip Pan", "Promotion-led product, optimized for urgency and fast conversion");
+  }
+  if (/(ครีม|เซรั่ม|สกินแคร์|makeup|beauty|เครื่องสำอาง|น้ำหอม|jewelry|เครื่องประดับ)/i.test(text)) {
+    return promptAutoOptions("cinematic", "woman", "kind", "หรูหรา", "Luxury Showroom", "Slow Zoom In", "Fade", "Beauty or premium product, optimized for trust and texture detail");
+  }
+  if (/(เสื้อ|กางเกง|รองเท้า|กระเป๋า|แฟชั่น|wear|shirt|dress|bag|shoe)/i.test(text)) {
+    return promptAutoOptions("lifestyle", "woman", "fun", "Trendy", "Urban Street", "Handheld Shake", "Swipe", "Fashion product, optimized for in-use lifestyle context");
+  }
+  if (/(ของเล่น|เด็ก|น่ารัก|cute|toy|kid|pet|สัตว์เลี้ยง)/i.test(text)) {
+    return promptAutoOptions("trending-hook", "cartoon3d", "fun", "น่ารัก", "Modern Living Room", "Push In Fast", "Zoom Transition", "Cute product, optimized for playful thumb-stop hook");
+  }
+  if (/(ครัว|บ้าน|เครื่องใช้|organizer|storage|clean|ทำความสะอาด)/i.test(text)) {
+    return promptAutoOptions("before-after", "none", "professional", "Professional", "Modern Living Room", "Pan Left to Right", "Swipe", "Home utility product, optimized to show the problem and result clearly");
+  }
+  if (/(กล่อง|แพ็ค|package|เซ็ต|bundle|gift)/i.test(text)) {
+    return promptAutoOptions("unboxing", "none", "kind", "มินิมัล", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "Bundle or packaged product, optimized for reveal and detail shots");
+  }
+
+  return promptAutoOptions("review", "none", "professional", "Professional", "Studio Minimal", "Orbit / 360°", "Cut ตรง", "General product, optimized for clear feature presentation");
+}
+
+function promptAutoOptions(videoStyle, presenter, voiceTone, mood, location, cameraMovement, transition, reason) {
+  return { videoStyle, presenter, voiceTone, mood, location, cameraMovement, transition, reason };
 }
 
 /**
