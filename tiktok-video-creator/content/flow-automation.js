@@ -177,6 +177,36 @@ function findAction(labels) {
     });
     return candidates[0]?.el || null;
 }
+function findOpenAgentToggle() {
+    for (const button of document.querySelectorAll('button[aria-pressed="true"]')) {
+        if (!isVisible(button)) continue;
+        const text = elementText(button).toLowerCase();
+        const hasAgentContent = [...button.querySelectorAll(".content,span")]
+            .some(node => (node.textContent || "").trim().toLowerCase() === "agent");
+        if (hasAgentContent || /\bagent\b/.test(text)) return button;
+    }
+    return null;
+}
+async function closeOpenAgentToggle() {
+    const button = findOpenAgentToggle();
+    if (!button) return false;
+
+    log("ปิด Agent ที่เปิดอยู่ก่อนเริ่มงาน...");
+    button.scrollIntoView({ block: "center", inline: "center" });
+    click(button);
+
+    const end = Date.now() + 5000;
+    while (Date.now() < end) {
+        await sleep(250);
+        if (!findOpenAgentToggle()) {
+            log("✅ ปิด Agent แล้ว");
+            return true;
+        }
+    }
+
+    log("⚠️ กดปิด Agent แล้ว แต่สถานะ aria-pressed ยังเป็น true");
+    return false;
+}
 function hasPromptEditor() {
     const el = findPromptEditor();
     return Boolean(el && isVisible(el));
@@ -1325,6 +1355,7 @@ async function runPipeline(payload) {
     try {
         log("เริ่ม Auto Flow...");
         watchNotice();
+        await closeOpenAgentToggle();
         const cfg = await loadSettings();
 
         // 1. ไปหน้า project
@@ -1332,6 +1363,7 @@ async function runPipeline(payload) {
         if (!ok) throw new Error("ไม่สามารถเปิดหน้า project ได้ (ตรวจสอบว่า login Google แล้ว)");
         await sleep(1500);
         dismissIAgree();
+        await closeOpenAgentToggle();
 
         // 2. สลับไป Uploaded tab
         await switchToUploadedTab();

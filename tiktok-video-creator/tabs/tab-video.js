@@ -230,7 +230,6 @@ function productMarkup(p, index) {
   const videoPrompt = buildVideoPrompt(p, settings);
   const status = getStatusMeta(p.status);
   const imageDone = Boolean(approvedImage || p.flowImageTileId || p.status === "done" || p.status === "video_generating");
-  const videoDone = Boolean(p.videoUrl || p.flowVideoTileId || p.status === "done");
 
   const postButtonText = getActionButtonText(settings.postAction || "download");
 
@@ -245,9 +244,8 @@ function productMarkup(p, index) {
         <button class="icon-button batch-remove" type="button" title="ลบออกจากคิว" aria-label="ลบออกจากคิว">${xIcon()}</button>
       </header>
 
-      <div class="flow-steps" aria-label="Flow generation steps">
+      <div class="flow-steps" aria-label="Image generation step">
         ${stepMarkup("1", "ภาพ", imageDone, p.status === "image_generating")}
-        ${stepMarkup("2", "วิดีโอ", videoDone, p.status === "video_generating")}
       </div>
 
       <div class="flow-job__grid">

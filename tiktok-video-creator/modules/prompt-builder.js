@@ -72,13 +72,15 @@ const PACING = {
 };
 
 const PRESENTERS = {
-  Auto: "Let AI choose whether a presenter improves the product video",
+  Auto: "Let AI choose whether a Thai presenter improves the product video",
   none: "No humans, focus entirely on the product visual",
-  woman: "A trendy young woman reviewer interacting with the product",
-  man: "A stylish young man reviewer presenting the product",
+  woman: "A trendy young Thai woman reviewer interacting with the product",
+  man: "A stylish young Thai man reviewer presenting the product",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
   living_product: "The product itself becomes a living character with cute 3D eyes and personality"
 };
+
+const THAI_PERSON_DIRECTION = "Human direction: if any real person appears, make them clearly Thai, with authentic Thai local styling, facial features, gestures, and everyday Thai-market presentation energy.";
 
 const VOICE_TONES = {
   Auto: "Let AI choose the most suitable voice tone for the product and audience",
@@ -172,6 +174,7 @@ export function buildImagePrompt(productInfo, settings) {
     `Mood/Atmosphere: ${sanitizeText(moodStr)}.`,
     "Composition: Product centered, sharp focus, high-end commercial lighting, clear texture.",
     `Style reference: ${style.fragment}.`,
+    THAI_PERSON_DIRECTION,
     `Target audience: ${sanitizeText(target) || "TikTok users"}.`,
     `Visual Details: ${sanitizeText(productInfo.highlights) || "showcase product's unique design and quality"}.`,
     "Orientation: Vertical 9:16 aspect ratio, portrait mode."
@@ -227,6 +230,7 @@ export function buildVideoPrompt(productInfo, settings) {
     `Auto-selected creative plan: style=${style.id}, presenter=${auto.presenter}, voiceTone=${auto.voiceTone}, mood=${auto.mood}, location=${auto.location}, camera=${auto.cameraMovement}, transition=${auto.transition}.`,
     auto.reason ? `Selection rationale: ${sanitizeText(auto.reason)}.` : "",
     `Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}.`,
+    THAI_PERSON_DIRECTION,
     `Voice Tone: ${VOICE_TONES[auto.voiceTone] || VOICE_TONES.kind}.`,
     `Voiceover timing: use one short complete ${sanitizeText(settings.language)} sentence only, maximum ${voiceWordLimit} words, and finish the spoken sentence by ${Math.max(1, durationSeconds - 1)}s. Do not start a sentence that cannot finish before the video ends. No cut-off speech.`,
     `Camera Movement: ${sanitizeText(auto.cameraMovement)}.`,
