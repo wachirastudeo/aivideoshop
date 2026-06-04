@@ -4,8 +4,8 @@ const DEFAULT_POST_SETTINGS = {
   captionTemplate: "{product_name}\n{product_details}\n{cta}",
   hashtags: ["#TikTokShop", "#ของดีบอกต่อ"],
   autoAddProductLink: true,
-  afterCreateAction: "download",
-  defaultMode: "draft",
+  afterCreateAction: "post",
+  defaultMode: "now",
   privacy: "",
   scheduleTime: "",
   location: "",
@@ -135,8 +135,8 @@ function normalizePostSettings(value = {}) {
     hashtags: normalizeHashtags(hashtags),
     afterCreateAction: post.afterCreateAction === "both"
       ? "draft"
-      : (["download", "draft", "post"].includes(post.afterCreateAction) ? post.afterCreateAction : "download"),
-    defaultMode: ["draft", "now", "schedule"].includes(post.defaultMode) ? post.defaultMode : "draft",
+      : (["download", "draft", "post"].includes(post.afterCreateAction) ? post.afterCreateAction : "post"),
+    defaultMode: ["draft", "now", "schedule"].includes(post.defaultMode) ? post.defaultMode : "now",
     autoAddProductLink: post.autoAddProductLink !== false,
     aiGenerated: true,
     allowComment: post.allowComment !== false,

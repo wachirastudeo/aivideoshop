@@ -1,3 +1,5 @@
+import { resolveProductUrl } from "./prompt-builder.js";
+
 const SHOWCASE_ENDPOINT = "https://shop.tiktok.com/api/v1/streamer_desktop/showcase_product/list";
 
 
@@ -69,7 +71,7 @@ export function normalizeProduct(item) {
   const commissionRate = (commissionRateNum / 1000).toFixed(1);
   const commission = item.affiliate_info?.est_commission_expense ?? "";
 
-  return {
+  const normalized = {
     productId: item.product_id || item.id || "",
     name: item.title || item.product_name || item.name || "Untitled product",
     imageUrls: imageUrls.length > 0 ? imageUrls : ["assets/icon.svg"],
@@ -79,9 +81,13 @@ export function normalizeProduct(item) {
     category: item.category_info?.name || item.category || "",
     shopName: item.seller_info?.shop_name || "",
     productUrl: item.product_url || item.url || "",
+    details: item.detail || item.description || item.desc || "",
+    rawProduct: item,
     commissionRate,
     commission
   };
+  normalized.productUrl = resolveProductUrl(normalized);
+  return normalized;
 }
 
 /**

@@ -438,12 +438,12 @@
         <div class="settings-grid">
           <label class="field">
             <span class="field__label">จำนวนภาพที่จะสร้าง</span>
-            <input id="default-image-count" class="input" type="number" min="1" max="10" value="4">
+            <input id="default-image-count" class="input" type="number" min="1" max="10" value="1">
             <span style="font-size: 11px; color: var(--muted);">จำนวนภาพที่จะสร้างต่อสินค้า (1-10)</span>
           </label>
           <label class="field">
             <span class="field__label">จำนวนวิดีโอที่จะสร้าง</span>
-            <input id="default-video-count" class="input" type="number" min="1" max="10" value="2">
+            <input id="default-video-count" class="input" type="number" min="1" max="10" value="1">
             <span style="font-size: 11px; color: var(--muted);">จำนวนวิดีโอที่จะสร้างต่อสินค้า (1-10)</span>
           </label>
         </div>
@@ -550,7 +550,7 @@
           <span class="field__label">Caption template</span>
           <textarea id="caption-template" class="textarea" rows="2"
             placeholder="{product_name} {cta}">{product_name} {cta}</textarea>
-          <span style="font-size: 11px; color: var(--muted);">ตัวแปร: {product_name} {price} {cta}</span>
+          <span style="font-size: 11px; color: var(--muted);">ตัวแปร: {product_name} {product_id} {product_url} {price} {product_details} {highlights} {shop_name} {category} {cta}</span>
         </label>
         <label class="field">
           <span class="field__label">แฮชแท็กเริ่มต้น (คั่นด้วย , สูงสุด 5 อัน)</span>

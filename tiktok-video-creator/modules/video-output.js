@@ -1,4 +1,4 @@
-import { buildCaption } from "./prompt-builder.js";
+import { buildCaption, normalizeHashtags, resolveProductUrl } from "./prompt-builder.js";
 
 /**
  * @description ดาวน์โหลดวิดีโอผ่าน background service worker
@@ -31,16 +31,22 @@ export async function publishVideo(videoUrl, productInfo) {
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const postDefaults = settings.postDefaults || {};
   const postType = postDefaults.defaultMode === "schedule" ? "schedule" : "now";
+  const productUrl = resolveProductUrl(productInfo);
+  productInfo.productUrl = productUrl;
+  const caption = buildCaption(productInfo, postDefaults);
+  const hashtags = normalizeHashtags(postDefaults.hashtags);
+  assertPostMetadata({ productInfo, caption, hashtags });
+
   const response = await chrome.runtime.sendMessage({
     type: "TIKTOK_SEND_DRAFT",
     payload: {
       videoUrl,
       productId: productInfo.productId,
-      productUrl: productInfo.productUrl,
+      productUrl,
       productName: productInfo.name,
       filename: buildTikTokVideoFilename(productInfo),
-      caption: buildCaption(productInfo, postDefaults),
-      hashtags: postDefaults.hashtags || [],
+      caption,
+      hashtags,
       mode: "post",
       postType,
       scheduleTime: postDefaults.scheduleTime || "",
@@ -61,4 +67,15 @@ export function buildTikTokVideoFilename(productInfo = {}) {
   const safeId = String(rawId).replace(/[^\w-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) || "product";
   const date = new Date().toISOString().slice(0, 10);
   return `${safeId}_${date}_tiktok.mp4`;
+}
+
+export function assertPostMetadata({ productInfo = {}, caption = "", hashtags = [] } = {}) {
+  const missing = [];
+  if (!String(caption || "").trim()) missing.push("caption");
+  if (!normalizeHashtags(hashtags).length) missing.push("hashtags");
+  if (!resolveProductUrl(productInfo)) missing.push("productUrl");
+
+  if (missing.length) {
+    throw new Error(`ห้ามโพสต์: ข้อมูลโพสต์ไม่ครบ (${missing.join(", ")})`);
+  }
 }

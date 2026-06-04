@@ -314,7 +314,7 @@ function normalizeAutoOptions(value, productInfo = {}) {
   const inferred = inferAutoOptionsFromProduct(productInfo);
   const raw = value && typeof value === "object" ? value : {};
   return {
-    videoStyle: pickAllowed(raw.videoStyle, ["review", "lifestyle", "flash-sale", "unboxing", "before-after", "testimonial", "cinematic", "trending-hook"], inferred.videoStyle),
+    videoStyle: pickAllowed(raw.videoStyle, ["sales", "review", "lifestyle", "flash-sale", "unboxing", "before-after", "testimonial", "cinematic", "trending-hook"], inferred.videoStyle),
     presenter: pickAllowed(raw.presenter, ["none", "woman", "man", "cartoon3d", "living_product"], inferred.presenter),
     voiceTone: pickAllowed(raw.voiceTone, ["kind", "fun", "complain", "professional", "hype"], inferred.voiceTone),
     mood: pickAllowed(raw.mood, ["สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"], inferred.mood),
@@ -347,7 +347,7 @@ function inferAutoOptionsFromProduct(productInfo = {}) {
     return buildAutoOptions("unboxing", "none", "kind", "มินิมัล", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "สินค้าแบบเซ็ตเหมาะกับการ reveal ผ่าน unboxing");
   }
 
-  return buildAutoOptions("review", "none", "professional", "Professional", "Studio Minimal", "Orbit / 360°", "Cut ตรง", "ใช้ข้อมูลสินค้าเพื่อโชว์จุดขายให้ชัดที่สุด");
+  return buildAutoOptions("sales", "none", "professional", "Professional", "Studio Minimal", "Orbit / 360°", "Cut ตรง", "ใช้ข้อมูลสินค้าเพื่อขายสินค้าและโชว์จุดขายให้ชัดที่สุด");
 }
 
 function buildAutoOptions(videoStyle, presenter, voiceTone, mood, location, cameraMovement, transition, reason) {

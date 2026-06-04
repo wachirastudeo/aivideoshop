@@ -1,4 +1,5 @@
 import { fetchShowcaseProducts } from "./modules/tiktok-api.js";
+import { resolveProductUrl } from "./modules/prompt-builder.js";
 
 chrome.runtime.onInstalled.addListener(() => {
   if (chrome.sidePanel?.setPanelBehavior) {
@@ -193,10 +194,7 @@ async function openGoogleFlow(payload) {
     try {
       await chrome.windows.update(tab.windowId, { focused: true });
     } catch { }
-    const url = tab.url || "";
-    if (url.endsWith("/tools/flow") || url.endsWith("/tools/flow/")) {
-      needNavigate = false;
-    }
+    needNavigate = true;
   } else {
     tab = await chrome.tabs.create({ url: FLOW_URL, active: true });
     needNavigate = false;
@@ -261,8 +259,8 @@ async function getFlowSettings() {
     imageModel: settings.flow?.imageModel || "nano-banana-pro",
     autoPortrait: settings.flow?.autoPortrait !== false,
     uploadWaitSec: settings.flow?.uploadWaitSec ?? 8,
-    imageCount: media.imageCount || 4,
-    videoCount: media.videoCount || 2,
+    imageCount: media.imageCount || 1,
+    videoCount: media.videoCount || 1,
     videoDuration: media.videoDuration || 8,
     aspectRatio: media.aspectRatio || "9:16",
     autoDownload: media.autoDownload !== false,
@@ -373,6 +371,8 @@ function sleep(ms) {
 }
 
 const TIKTOK_STUDIO_UPLOAD_URL = "https://www.tiktok.com/tiktokstudio/upload";
+const VIDEO_PREP_RETRY_ATTEMPTS = 2;
+const VIDEO_PREP_RETRY_DELAY_MS = 60000;
 
 // ─── TikTok Studio: Send draft/post ผ่าน Page UI Automation บนหน้า upload ──────
 async function sendTikTokDraft(payload) {
@@ -381,31 +381,21 @@ async function sendTikTokDraft(payload) {
   const postDefaults = settings.postDefaults || {};
   const postType = payload.postType || postDefaults.defaultMode || "draft";
   const mode = payload.mode || (postType === "now" || postType === "schedule" ? "post" : "draft");
+  const productUrl = resolveProductUrl(payload);
+  const finalHashtags = normalizeHashtags(hashtags.length ? hashtags : (postDefaults.hashtags || []));
+  assertTikTokPostMetadata({
+    caption,
+    hashtags: finalHashtags,
+    productUrl
+  });
 
   const tabId = await openTikTokStudioUploadTab();
 
   // 2. ดึงข้อมูลวิดีโอและแปลงเป็น Base64
   await notify("TikTok Automation", "กำลังดาวน์โหลดไฟล์วิดีโอเพื่อเตรียมกรอกหน้าเว็บ...");
-  let base64Data = "";
-  let mimeType = "video/mp4";
-
-  if (videoUrl.startsWith("blob:")) {
-    const result = await fetchVideoBase64FromFlowTab(videoUrl);
-    base64Data = result.base64;
-    mimeType = result.mimeType || mimeType;
-  } else {
-    try {
-      const videoRes = await fetch(videoUrl, { credentials: "include" });
-      if (!videoRes.ok) throw new Error(`HTTP ${videoRes.status}`);
-      const videoBlob = await videoRes.blob();
-      base64Data = await blobToBase64(videoBlob);
-      mimeType = videoBlob.type;
-    } catch (error) {
-      const result = await fetchVideoBase64FromFlowTab(videoUrl, error.message);
-      base64Data = result.base64;
-      mimeType = result.mimeType || mimeType;
-    }
-  }
+  const preparedVideo = await retryVideoPreparation(videoUrl);
+  const base64Data = preparedVideo.base64;
+  const mimeType = preparedVideo.mimeType || "video/mp4";
 
   // 3. ตรวจสอบและ Inject Content Script สำหรับควบคุมหน้าเว็บ
   try {
@@ -429,10 +419,10 @@ async function sendTikTokDraft(payload) {
       videoUrl: videoPayloadUrl,
       filename: payload.filename || buildTikTokVideoFilename(payload),
       productId: payload.productId || "",
-      productUrl: payload.productUrl || "",
+      productUrl,
       productName: payload.productName || "",
       caption,
-      hashtags: normalizeHashtags(hashtags.length ? hashtags : (postDefaults.hashtags || [])),
+      hashtags: finalHashtags,
       mode,
       postType,
       scheduleTime: payload.scheduleTime || postDefaults.scheduleTime || "",
@@ -453,6 +443,60 @@ async function sendTikTokDraft(payload) {
     : "บันทึกร่างดราฟต์บนหน้าเว็บสำเร็จแล้ว";
   await notify("TikTok Automation", doneMessage);
   return { ok: true, ...response };
+}
+
+async function retryVideoPreparation(videoUrl) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= VIDEO_PREP_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      if (attempt > 1) {
+        await notify("TikTok Automation", `ลองเตรียมวิดีโอใหม่รอบ ${attempt}/${VIDEO_PREP_RETRY_ATTEMPTS}`);
+      }
+      return await prepareVideoBase64ForTikTok(videoUrl);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= VIDEO_PREP_RETRY_ATTEMPTS) break;
+      await notify("TikTok Automation", `เตรียมวิดีโอล้มเหลว: ${error.message} — รอ 60 วินาทีแล้วลองใหม่`);
+      await sleep(VIDEO_PREP_RETRY_DELAY_MS);
+    }
+  }
+  throw lastError;
+}
+
+async function prepareVideoBase64ForTikTok(videoUrl) {
+  if (videoUrl.startsWith("blob:")) {
+    try {
+      return await fetchVideoBase64FromFlowTab(videoUrl);
+    } catch (error) {
+      return recordVideoBase64FromFlowTab(videoUrl, error.message);
+    }
+  }
+
+  try {
+    const videoRes = await fetch(videoUrl, { credentials: "include" });
+    if (!videoRes.ok) throw new Error(`HTTP ${videoRes.status}`);
+    const videoBlob = await videoRes.blob();
+    return {
+      base64: await blobToBase64(videoBlob),
+      mimeType: videoBlob.type
+    };
+  } catch (error) {
+    try {
+      return await fetchVideoBase64FromFlowTab(videoUrl, error.message);
+    } catch (flowFetchError) {
+      return recordVideoBase64FromFlowTab(videoUrl, flowFetchError.message || error.message);
+    }
+  }
+}
+
+function assertTikTokPostMetadata({ caption = "", hashtags = [], productUrl = "" } = {}) {
+  const missing = [];
+  if (!String(caption || "").trim()) missing.push("caption");
+  if (!normalizeHashtags(hashtags).length) missing.push("hashtags");
+  if (!String(productUrl || "").trim()) missing.push("productUrl");
+  if (missing.length) {
+    throw new Error(`ห้ามโพสต์: ข้อมูลโพสต์ไม่ครบ (${missing.join(", ")})`);
+  }
 }
 
 async function fetchVideoBase64FromFlowTab(videoUrl, previousError = "") {
@@ -476,6 +520,29 @@ async function fetchVideoBase64FromFlowTab(videoUrl, previousError = "") {
   }
 
   return { base64: res.base64, mimeType: res.mimeType || "video/mp4" };
+}
+
+async function recordVideoBase64FromFlowTab(videoUrl, previousError = "") {
+  const flowTabs = await queryFlowTabs();
+  if (!flowTabs.length) {
+    throw new Error(previousError
+      ? `บันทึกวิดีโอจากหน้า Google Flow ไม่สำเร็จ: ${previousError}`
+      : "ไม่พบหน้าเว็บ Google Flow ที่เปิดอยู่เพื่อบันทึกวิดีโอ");
+  }
+
+  const flowTabId = flowTabs[0].id;
+  await ensureFlowContentScript(flowTabId);
+  const res = await chrome.tabs.sendMessage(flowTabId, {
+    type: "FLOW_RECORD_VIDEO_BASE64",
+    url: videoUrl
+  });
+
+  if (!res?.ok) {
+    const detail = res?.error || previousError || "ไม่ทราบสาเหตุ";
+    throw new Error("บันทึกวิดีโอผ่านหน้า Google Flow ล้มเหลว: " + detail);
+  }
+
+  return { base64: res.base64, mimeType: res.mimeType || "video/webm" };
 }
 
 async function transferVideoDataUrl(tabId, dataUrl) {

@@ -187,24 +187,46 @@ function findOpenAgentToggle() {
     }
     return null;
 }
-async function closeOpenAgentToggle() {
-    const button = findOpenAgentToggle();
-    if (!button) return false;
+async function closeOpenAgentToggle(options = {}) {
+    const waitMs = options.waitMs ?? 0;
+    const required = options.required === true;
+    const end = Date.now() + waitMs;
 
-    log("ปิด Agent ที่เปิดอยู่ก่อนเริ่มงาน...");
-    button.scrollIntoView({ block: "center", inline: "center" });
-    click(button);
-
-    const end = Date.now() + 5000;
-    while (Date.now() < end) {
-        await sleep(250);
-        if (!findOpenAgentToggle()) {
-            log("✅ ปิด Agent แล้ว");
-            return true;
+    do {
+        const button = findOpenAgentToggle();
+        if (!button) {
+            if (Date.now() >= end) return false;
+            await sleep(250);
+            continue;
         }
+
+        log("ปิด Agent ที่เปิดอยู่ก่อนอัปโหลด...");
+        button.scrollIntoView({ block: "center", inline: "center" });
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            await clickElementCenterWithDebugger(button, "Agent");
+            click(button);
+
+            const verifyEnd = Date.now() + 2000;
+            while (Date.now() < verifyEnd) {
+                await sleep(250);
+                if (!findOpenAgentToggle()) {
+                    log("✅ ปิด Agent แล้ว");
+                    return true;
+                }
+            }
+            log(`ลองปิด Agent ซ้ำ ${attempt}/3...`);
+        }
+
+        if (required) throw new Error("Agent ยังเปิดอยู่ จึงไม่อัปโหลดรูป");
+        log("⚠️ กดปิด Agent แล้ว แต่สถานะ aria-pressed ยังเป็น true");
+        return false;
+    } while (Date.now() < end);
+
+    if (required && findOpenAgentToggle()) {
+        throw new Error("Agent ยังเปิดอยู่ จึงไม่อัปโหลดรูป");
     }
 
-    log("⚠️ กดปิด Agent แล้ว แต่สถานะ aria-pressed ยังเป็น true");
     return false;
 }
 function hasPromptEditor() {
@@ -302,6 +324,47 @@ function findMediaCard(cardInfo) {
         if (byMedia) return byMedia.closest("[data-tile-id], [draggable='true'], article") || byMedia;
     }
     return null;
+}
+async function waitForMediaCard(tile, options = {}) {
+    const timeoutMs = options.timeoutMs ?? 12000;
+    const phase = options.phase || "";
+    const tabIcon = options.tabIcon || "";
+    const end = Date.now() + timeoutMs;
+
+    while (Date.now() < end) {
+        const exact = findMediaCard(tile);
+        if (exact) return { el: exact, fallback: false };
+
+        const fallback = findFallbackMediaCard(tile, phase, tabIcon);
+        if (fallback) return { el: fallback, fallback: true };
+
+        await sleep(500);
+    }
+    return { el: null, fallback: false };
+}
+function findFallbackMediaCard(tile, phase = "", tabIcon = "") {
+    if (phase !== "image" && tabIcon !== "image") return null;
+
+    const cards = getMediaCards()
+        .map(card => ({ card, status: mediaCardStatus(card), el: findMediaCard(card) }))
+        .filter(item => item.el && isGeneratedResultCard(item.card, item.status, "image"));
+
+    if (!cards.length) return null;
+
+    if (tile?.mediaUrl) {
+        const byMediaUrl = cards.find(item => item.card.mediaUrl && sameMediaUrl(item.card.mediaUrl, tile.mediaUrl));
+        if (byMediaUrl) return byMediaUrl.el;
+    }
+    if (tile?.href) {
+        const byHref = cards.find(item => item.card.href && item.card.href === tile.href);
+        if (byHref) return byHref.el;
+    }
+
+    return cards[0].el;
+}
+function sameMediaUrl(a = "", b = "") {
+    const clean = (value) => String(value || "").split("?")[0].split("#")[0];
+    return Boolean(clean(a) && clean(a) === clean(b));
 }
 function mediaCardStatus(cardInfo) {
     const el = findMediaCard(cardInfo);
@@ -482,9 +545,11 @@ async function switchToUploadedTab() {
 
 // ── 3. uploadImages ──────────────────────────────────────────
 async function uploadImages(dataUrls, waitMs = 300000) {
+    await closeOpenAgentToggle({ waitMs: 8000, required: true });
     patchFileInput();
     const tiles = [];
     for (let i = 0; i < dataUrls.length; i++) {
+        await closeOpenAgentToggle({ waitMs: 1000, required: true });
         log(`อัปโหลดรูป ${i + 1}/${dataUrls.length}...`);
         const before = snapMediaKeys();
 
@@ -708,8 +773,8 @@ async function ensureConfig(phase, options = {}) {
     const cfg = await loadSettings();
     const aspectRatio = options.aspectRatio || cfg.aspectRatio || "9:16";
     const count = phase === "image"
-        ? (options.imageCount || cfg.imageCount || 4)
-        : (options.videoCount || cfg.videoCount || 2);
+        ? (options.imageCount || cfg.imageCount || 1)
+        : (options.videoCount || cfg.videoCount || 1);
     const modelKey = phase === "image"
         ? (options.imageModel || cfg.imageModel || "nano-banana-pro")
         : (options.videoModel || cfg.videoModel || "veo-3.1-lite");
@@ -792,8 +857,7 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
     }
 
     // สลับไป tab ที่ถูกต้อง (Uploaded หรือ Images)
-    const tabBtn = byIcon(tabIcon) || byText(tabIcon === "image" ? ["Images", "Generated", "รูปภาพ"] : ["Uploaded", "Uploads", "อัปโหลด"]);
-    if (tabBtn) { await humanClick(tabBtn); await sleep(1000); }
+    await switchMediaTab(tabIcon);
     if (promptHasMediaAttachment()) {
         log("✅ รูปอยู่ใน prompt แล้ว");
         return tiles.map(tile => tile.key || tile.tileId || tile.href || tile.mediaUrl).filter(Boolean);
@@ -806,9 +870,17 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
             done.add(tile.key || tile.tileId || tile.href || tile.mediaUrl);
             continue;
         }
-        const el = findMediaCard(tile);
         const tileLabel = (tile.tileId || tile.key || tile.href || tile.mediaUrl || "?").slice(0, 12);
+        const result = await waitForMediaCard(tile, {
+            tabIcon,
+            phase: tabIcon === "image" ? "image" : "",
+            timeoutMs: tabIcon === "image" ? 15000 : 8000
+        });
+        const el = result.el;
         if (!el) throw new Error(`ไม่เจอรูป media ${tileLabel} ใน Google Flow`);
+        if (result.fallback) {
+            log(`⚠️ ไม่เจอ media ${tileLabel} แบบ exact ใช้รูปภาพล่าสุดที่สร้างเสร็จแทน`);
+        }
         el.scrollIntoView({ block: "center", behavior: "instant" });
         await sleep(400);
         const media = el.querySelector("img,video,[role='img']") || el;
@@ -830,6 +902,17 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
         }
     }
     return [...done];
+}
+
+async function switchMediaTab(tabIcon) {
+    const labels = tabIcon === "image"
+        ? ["View images", "Images", "Generated", "รูปภาพ"]
+        : ["View uploaded media", "Uploaded", "Uploads", "อัปโหลด"];
+    const tabBtn = byIcon(tabIcon) || byText(labels);
+    if (tabBtn) {
+        await humanClick(tabBtn);
+        await sleep(1200);
+    }
 }
 
 async function addTileToPrompt(media) {
@@ -1227,6 +1310,24 @@ async function clickButtonCenterWithDebugger(button) {
     }
 }
 
+async function clickElementCenterWithDebugger(el, label = "element") {
+    const rect = el.getBoundingClientRect();
+    const x = Math.round(rect.left + rect.width / 2);
+    const y = Math.round(rect.top + rect.height / 2);
+    log(`กด ${label} ที่ตำแหน่ง ${x},${y}...`);
+    try {
+        const response = await chrome.runtime.sendMessage({
+            type: "FLOW_CLICK_POINT",
+            payload: { x, y }
+        });
+        if (!response?.ok || !response.clicked) {
+            console.warn("[FlowAuto] debugger click failed response:", response);
+        }
+    } catch (e) {
+        console.warn("[FlowAuto] debugger click failed:", e);
+    }
+}
+
 async function pressFocusedButtonWithDebugger(key) {
     try {
         const response = await chrome.runtime.sendMessage({
@@ -1363,10 +1464,11 @@ async function runPipeline(payload) {
         if (!ok) throw new Error("ไม่สามารถเปิดหน้า project ได้ (ตรวจสอบว่า login Google แล้ว)");
         await sleep(1500);
         dismissIAgree();
-        await closeOpenAgentToggle();
+        await closeOpenAgentToggle({ waitMs: 10000, required: true });
 
         // 2. สลับไป Uploaded tab
         await switchToUploadedTab();
+        await closeOpenAgentToggle({ waitMs: 2000, required: true });
 
         // 3. อัปโหลดรูป
         let uploadedTiles = [];
@@ -1374,6 +1476,7 @@ async function runPipeline(payload) {
             const dataUrls = imageUrl.startsWith("data:") || imageUrl.startsWith("http")
                 ? [imageUrl] : [];
             if (dataUrls.length > 0) {
+                await closeOpenAgentToggle({ waitMs: 3000, required: true });
                 uploadedTiles = await uploadImages(dataUrls, cfg.uploadWaitSec * 1000);
             }
         }
@@ -1439,6 +1542,96 @@ async function runPipeline(payload) {
     }
 }
 
+async function recordVideoBase64(videoUrl = "") {
+    const video = findRecordableVideo(videoUrl);
+    if (!video) throw new Error("ไม่พบวิดีโอที่เล่นได้ในหน้า Google Flow");
+    if (typeof video.captureStream !== "function") throw new Error("เบราว์เซอร์ไม่รองรับ captureStream สำหรับวิดีโอ");
+
+    video.scrollIntoView({ block: "center", inline: "center" });
+    video.muted = true;
+    video.playsInline = true;
+
+    if (Number.isFinite(video.duration) && video.duration > 0) {
+        try { video.currentTime = 0; } catch { }
+    }
+
+    await video.play();
+    const stream = video.captureStream();
+    const mimeType = [
+        "video/mp4;codecs=avc1.42E01E",
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm"
+    ].find(type => MediaRecorder.isTypeSupported(type)) || "";
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    const chunks = [];
+
+    recorder.ondataavailable = (event) => {
+        if (event.data?.size) chunks.push(event.data);
+    };
+
+    const stopped = new Promise((resolve, reject) => {
+        recorder.onerror = () => reject(recorder.error || new Error("MediaRecorder error"));
+        recorder.onstop = resolve;
+    });
+
+    const durationMs = Number.isFinite(video.duration) && video.duration > 0
+        ? Math.min(Math.max(video.duration * 1000 + 1000, 3000), 30000)
+        : 12000;
+
+    recorder.start(500);
+    await Promise.race([
+        once(video, "ended"),
+        sleep(durationMs)
+    ]);
+    if (recorder.state !== "inactive") recorder.stop();
+    await stopped;
+    stream.getTracks().forEach(track => track.stop());
+
+    const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
+    if (!blob.size) throw new Error("บันทึกวิดีโอจาก Flow ได้ไฟล์ว่าง");
+
+    const dataUrl = await blobToDataUrl(blob);
+    return {
+        base64: dataUrl.split(",")[1],
+        mimeType: blob.type || "video/webm"
+    };
+}
+
+function findRecordableVideo(videoUrl = "") {
+    const videos = [...document.querySelectorAll("video")]
+        .filter(video => isVisible(video) && (video.readyState >= 1 || video.currentSrc || video.src));
+    if (!videos.length) return null;
+
+    const target = String(videoUrl || "").split("?")[0].split("#")[0];
+    if (target) {
+        const exact = videos.find(video => {
+            const urls = [video.currentSrc, video.src, video.querySelector("source")?.src]
+                .map(value => String(value || "").split("?")[0].split("#")[0])
+                .filter(Boolean);
+            return urls.includes(target);
+        });
+        if (exact) return exact;
+    }
+
+    return videos
+        .map(video => ({ video, area: video.getBoundingClientRect().width * video.getBoundingClientRect().height }))
+        .sort((a, b) => b.area - a.area)[0]?.video || videos[0];
+}
+
+function once(target, eventName) {
+    return new Promise(resolve => target.addEventListener(eventName, resolve, { once: true }));
+}
+
+function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error("อ่านไฟล์วิดีโอไม่สำเร็จ"));
+        reader.readAsDataURL(blob);
+    });
+}
+
 // ── Message listener ──────────────────────────────────────────
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "FLOW_PING") { reply({ pong: true }); return false; }
@@ -1459,6 +1652,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
                 reader.onerror = (e) => reply({ ok: false, error: e.message });
                 reader.readAsDataURL(blob);
             })
+            .catch(err => reply({ ok: false, error: err.message }));
+        return true;
+    }
+    if (msg?.type === "FLOW_RECORD_VIDEO_BASE64") {
+        recordVideoBase64(msg.url)
+            .then(result => reply({ ok: true, ...result }))
             .catch(err => reply({ ok: false, error: err.message }));
         return true;
     }

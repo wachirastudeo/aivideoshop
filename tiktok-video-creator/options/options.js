@@ -34,15 +34,15 @@ async function loadOptions() {
 
   // Image & Video Settings
   const media = settings.mediaSettings || {};
-  setValue("default-image-count", media.imageCount || 4);
-  setValue("default-video-count", media.videoCount || 2);
+  setValue("default-image-count", media.imageCount || 1);
+  setValue("default-video-count", media.videoCount || 1);
   setSelectValue("default-video-duration", media.videoDuration || "8");
   setSelectValue("default-aspect-ratio", media.aspectRatio || "9:16");
   setChecked("auto-download-content", media.autoDownload !== false);
   setChecked("show-generation-progress", media.showProgress !== false);
 
   // Video defaults
-  setSelectValue("default-video-style", settings.defaultVideoStyle || "review");
+  setSelectValue("default-video-style", settings.defaultVideoStyle || "sales");
   setSelectValue("default-language", settings.defaultLanguage || "ไทย");
   setSelectValue("default-presenter", settings.defaultPresenter || "Auto");
   setSelectValue("default-voice-tone", settings.defaultVoiceTone || "Auto");
@@ -110,9 +110,12 @@ async function saveSettings() {
     defaultVoiceTone: getSelectValue("default-voice-tone"),
 
     postDefaults: {
+      ...(settings.postDefaults || {}),
       captionTemplate: getValue("caption-template"),
       hashtags: normalizeHashtags(getValue("default-hashtags")),
-      autoAddProductLink: getChecked("auto-add-product-link")
+      autoAddProductLink: getChecked("auto-add-product-link"),
+      afterCreateAction: settings.postDefaults?.afterCreateAction || "post",
+      defaultMode: settings.postDefaults?.defaultMode || "now"
     }
   };
 

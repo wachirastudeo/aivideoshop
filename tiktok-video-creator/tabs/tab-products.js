@@ -1,5 +1,5 @@
 
-import { formatPrice } from "../modules/prompt-builder.js";
+import { formatPrice, resolveProductUrl } from "../modules/prompt-builder.js";
 
 let products = [];
 let nextPageToken = "";
@@ -229,19 +229,23 @@ function sortProducts(a, b, sortBy) {
 
 async function selectProduct(product) {
   if (!product) return;
+  const productUrl = resolveProductUrl(product);
   const selectedProduct = {
     productId: product.productId,
     name: product.name,
     price: product.price,
     currency: product.currency,
-    highlights: "",
+    highlights: product.highlights || product.details || product.category || "",
     targetGroup: "ทั่วไป",
     cta: "สั่งได้เลย",
     imageUrls: product.imageUrls,
-    productUrl: product.productUrl
+    productUrl,
+    shopName: product.shopName || "",
+    category: product.category || "",
+    details: product.details || ""
   };
 
-  await chrome.storage.local.set({ selectedProduct, activeTab: "video" });
+  await chrome.storage.local.set({ selectedProduct, productQueue: [selectedProduct], activeTab: "video" });
   helpers.logActivity?.(`เลือกสินค้าเพื่อสร้างวิดีโอ: ${product.name}`, "success");
   helpers.showStatus("ส่งสินค้าไปหน้า สร้างวิดีโอ แล้ว", "success");
   await helpers.switchTab("video");

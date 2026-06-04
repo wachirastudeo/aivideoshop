@@ -1,5 +1,13 @@
 export const VIDEO_STYLES = [
   {
+    id: "sales",
+    emoji: "🛒",
+    name: "ขายสินค้า",
+    description: "เน้นปิดการขาย โชว์สินค้า จุดขาย และ CTA ชัด",
+    shotPattern: "[Hook สินค้า] → [โชว์จุดขายหลัก] → [สาธิต/ซูมรายละเอียด] → [CTA สั่งซื้อ]",
+    fragment: "conversion-focused TikTok shop product video, clear product hero shots, strong benefit demonstration, fast product reveal, persuasive shopping CTA moment, clean commercial lighting, purchase-intent pacing"
+  },
+  {
     id: "review",
     emoji: "🎯",
     name: "Review สินค้า",
@@ -97,7 +105,7 @@ const VOICE_TONES = {
  */
 export function getDefaultSettings() {
   return {
-    videoStyle: "Auto",
+    videoStyle: "sales",
     presenter: "Auto",
     voiceTone: "Auto",
     mood: "Auto",
@@ -111,7 +119,7 @@ export function getDefaultSettings() {
     cameraMovement: "Auto",
     pacing: 2,
     transition: "Auto",
-    postAction: "download"
+    postAction: "post"
   };
 }
 
@@ -182,11 +190,13 @@ export function buildImagePrompt(productInfo, settings) {
 
   // Explicitly handle "No Text" or "Include Text"
   if (settings.showName === "false" || settings.showName === false) {
-    promptParts.push("Negative prompt: NO text, NO letters, NO typography, NO words, NO logos, NO watermarks, NO clutter.");
+    promptParts.push("Negative prompt: ABSOLUTELY NO visible text, NO letters, NO numbers, NO typography, NO words, NO subtitles, NO labels, NO signs, NO logos, NO watermarks, NO readable packaging text, NO UI text.");
   } else {
     const textContext = [
       settings.promotionText ? `Include text: "${sanitizeText(settings.promotionText)}"` : "",
-      "Professional typography integrated into the scene."
+      "Professional typography integrated into the scene.",
+      "All visible text must be clear, correct, natural Thai language only, with accurate spelling, readable typography, and no broken or garbled Thai characters.",
+      "Do not add English text, romanized Thai, placeholder words, random labels, logos, watermarks, or extra unconfigured text."
     ].filter(Boolean).join(". ");
     promptParts.push(textContext);
   }
@@ -216,11 +226,24 @@ export function buildVideoPrompt(productInfo, settings) {
   const durationSeconds = Number.parseInt(settings.videoDuration, 10) || 8;
   const midpointSeconds = Math.max(1, Math.floor(durationSeconds / 2));
   const voiceWordLimit = Math.max(6, Math.min(16, Math.floor(durationSeconds * 1.5)));
+  const textEnabled = settings.showName === true || settings.showName === "true";
   const textItems = [
-    settings.showName === true || settings.showName === "true" ? sanitizeText(productInfo.name) : "",
-    settings.showName === true || settings.showName === "true" ? sanitizeText(settings.promotionText) : "",
-    sanitizeText(ctaText || productInfo.cta)
+    textEnabled ? sanitizeText(productInfo.name) : "",
+    textEnabled ? sanitizeText(settings.promotionText) : "",
+    textEnabled ? sanitizeText(ctaText || productInfo.cta) : ""
   ].filter(Boolean);
+
+  const textRule = textEnabled
+    ? [
+        `Visible text is enabled. Use ONLY these exact Thai-language text overlays: ${textItems.join(" | ") || sanitizeText(productInfo.name) || "ข้อความภาษาไทย"}.`,
+        "All visible text, subtitles, labels, CTA text, stickers, signs, packaging callouts, and on-screen typography must be clear, correct, natural Thai only.",
+        "Thai spelling must be accurate and readable. Do not generate broken Thai characters, random Thai words, mixed-language text, English text, romanized Thai, placeholder words, random captions, misspelled text, watermarks, UI labels, logos, or extra text beyond the configured Thai overlays."
+      ].join(" ")
+    : [
+        "Visible text is disabled. ABSOLUTELY NO visible text anywhere in the video.",
+        "Do not show letters, words, numbers, subtitles, captions, CTA text, stickers, labels, signs, packaging callouts, logos, watermarks, UI text, or typography in any language.",
+        "If a surface would normally contain text, keep it blank, cropped out, blurred beyond readability, or replaced with plain non-text graphics."
+      ].join(" ");
 
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
@@ -239,8 +262,8 @@ export function buildVideoPrompt(productInfo, settings) {
     `Transition: ${sanitizeText(auto.transition)}.`,
     "",
     `Video style: ${style.name}. ${style.fragment}.`,
-    `Text overlays: ${textItems.join(" | ") || "no text overlays except unavoidable platform UI"}. Position text in ${sanitizeText(settings.textPosition)}.`,
-    `Video text mode: ${settings.showName === "true" ? "include configured video text" : "no added video text"}.`,
+    textRule,
+    `Video text mode: ${textEnabled ? "configured Thai text only" : "no visible text at all"}. Position text in ${textEnabled ? sanitizeText(settings.textPosition) : "not applicable because text is disabled"}.`,
     `Text language: ${sanitizeText(settings.language)}. Pacing: ${PACING[settings.pacing] || PACING[2]}.`,
     "Avoid clutter, avoid wrong logos, avoid misspelled text, keep the product as the hero."
   ];
@@ -296,7 +319,7 @@ function inferPromptAutoOptions(productInfo = {}) {
     return promptAutoOptions("unboxing", "none", "kind", "มินิมัล", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "Bundle or packaged product, optimized for reveal and detail shots");
   }
 
-  return promptAutoOptions("review", "none", "professional", "Professional", "Studio Minimal", "Orbit / 360°", "Cut ตรง", "General product, optimized for clear feature presentation");
+  return promptAutoOptions("sales", "none", "professional", "Professional", "Studio Minimal", "Orbit / 360°", "Cut ตรง", "General product, optimized for product sales conversion");
 }
 
 function promptAutoOptions(videoStyle, presenter, voiceTone, mood, location, cameraMovement, transition, reason) {
@@ -312,16 +335,70 @@ function promptAutoOptions(videoStyle, presenter, voiceTone, mood, location, cam
 export function buildCaption(productInfo, defaults = {}) {
   const template = defaults.captionTemplate || "{product_name}\n{product_details}\n{cta}";
   const hashtags = normalizeHashtags(defaults.hashtags);
-  return template
+  const productUrl = resolveProductUrl(productInfo);
+  const caption = template
     .replaceAll("{product_name}", sanitizeText(productInfo.name))
     .replaceAll("{product_id}", sanitizeText(productInfo.productId))
+    .replaceAll("{product_url}", sanitizeText(productUrl))
     .replaceAll("{price}", formatPrice(productInfo))
     .replaceAll("{shop_name}", sanitizeText(productInfo.shopName))
+    .replaceAll("{category}", sanitizeText(productInfo.category))
     .replaceAll("{product_details}", buildProductDetails(productInfo))
     .replaceAll("{highlights}", sanitizeText(productInfo.highlights))
     .replaceAll("{cta}", sanitizeText(productInfo.cta || "สั่งได้เลย"))
-    .concat(" ", hashtags.join(" "))
     .trim();
+
+  const linkLine = defaults.autoAddProductLink !== false && productUrl
+    ? `\n${sanitizeText(productUrl)}`
+    : "";
+
+  return `${caption}${linkLine} ${hashtags.join(" ")}`.trim();
+}
+
+export function resolveProductUrl(productInfo = {}) {
+  const direct = [
+    productInfo.productUrl,
+    productInfo.product_url,
+    productInfo.url,
+    productInfo.shareUrl,
+    productInfo.share_url,
+    productInfo.affiliateUrl,
+    productInfo.affiliate_url,
+    productInfo.rawProduct?.product_url,
+    productInfo.rawProduct?.url,
+    productInfo.rawProduct?.share_url,
+    productInfo.rawProduct?.affiliate_url
+  ].map(value => String(value || "").trim()).find(isLikelyProductUrl);
+  if (direct) return direct;
+
+  const nested = findNestedProductUrl(productInfo.rawProduct || productInfo);
+  if (nested) return nested;
+
+  const productId = String(productInfo.productId || productInfo.product_id || productInfo.id || "").trim();
+  if (/^\d{8,}$/.test(productId)) {
+    return `https://www.tiktok.com/view/product/${productId}`;
+  }
+  return "";
+}
+
+function isLikelyProductUrl(value) {
+  return /^https?:\/\//i.test(value) && /(?:tiktok|shop)/i.test(value);
+}
+
+function findNestedProductUrl(value, seen = new Set()) {
+  if (!value || typeof value !== "object" || seen.has(value)) return "";
+  seen.add(value);
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (/url|link/i.test(key) && isLikelyProductUrl(String(nestedValue || "").trim())) {
+      return String(nestedValue).trim();
+    }
+  }
+  for (const nestedValue of Object.values(value)) {
+    const found = findNestedProductUrl(nestedValue, seen);
+    if (found) return found;
+  }
+  return "";
 }
 
 export function normalizeHashtags(value) {
@@ -353,6 +430,7 @@ function buildProductDetails(productInfo) {
     productInfo.productId ? `รหัสสินค้า: ${sanitizeText(productInfo.productId)}` : "",
     formatPrice(productInfo) ? `ราคา: ${formatPrice(productInfo)}` : "",
     productInfo.highlights ? `จุดเด่น: ${sanitizeText(productInfo.highlights)}` : "",
+    productInfo.category ? `หมวดหมู่: ${sanitizeText(productInfo.category)}` : "",
     productInfo.shopName ? `ร้าน: ${sanitizeText(productInfo.shopName)}` : "",
   ].filter(Boolean);
 
