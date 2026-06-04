@@ -237,10 +237,22 @@ async function handleDraftUpload(payload) {
 
 async function uploadVideoFromUrl(videoUrl, filename = "video.mp4") {
   const file = await videoUrlToFile(videoUrl, filename);
+  log(`สร้างไฟล์วิดีโอแล้ว: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB, ${file.type})`);
   const input = await findUploadInput(45000);
+  log("พบช่อง upload แล้ว กำลังยัดไฟล์ (DataTransfer)...");
   setInputFiles(input, file);
+
+  // fallback: ถ้า drop แล้ว input ยังว่าง → re-decode base64 ยัดผ่าน input.files ตรง ๆ
+  await sleep(400);
+  if (!input.files || input.files.length === 0) {
+    log("DataTransfer ไม่ติด — fallback ยัด base64 File ผ่าน input.files");
+    forceSetInputFile(input, file);
+  } else {
+    log("ไฟล์ติด input แล้วผ่าน DataTransfer");
+  }
+
   await verifyFileAccepted(input, file);
-  log(`เลือกไฟล์วิดีโอแล้ว: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+  log(`เลือกไฟล์วิดีโอแล้ว: ${file.name}`);
 }
 
 async function videoUrlToFile(videoUrl, filename = "video.mp4") {
@@ -274,16 +286,40 @@ function dataUrlToFile(dataUrl, filename) {
 }
 
 function setInputFiles(input, file) {
+  // 1) ลองทาง DataTransfer drag-drop ก่อน (TikTok dropzone รับทางนี้เป็นหลัก)
+  dispatchFileDrop(input, file);
+
+  // 2) แล้วค่อยยัด input.files ผ่าน native setter / defineProperty เป็น fallback
   const dataTransfer = new DataTransfer();
   dataTransfer.items.add(file);
-  Object.defineProperty(input, "files", { value: dataTransfer.files, configurable: true });
+  try {
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files")?.set;
+    if (nativeSetter) nativeSetter.call(input, dataTransfer.files);
+  } catch (_) {}
+  if (!input.files || input.files.length === 0) {
+    Object.defineProperty(input, "files", { value: dataTransfer.files, configurable: true });
+  }
+
   input.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1, pointerType: "mouse" }));
   input.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
   input.dispatchEvent(new Event("input", { bubbles: true }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
   input.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
   input.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1, pointerType: "mouse" }));
-  dispatchFileDrop(input, file);
+}
+
+function forceSetInputFile(input, file) {
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  try {
+    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files")?.set;
+    if (nativeSetter) nativeSetter.call(input, dt.files);
+  } catch (_) {}
+  if (!input.files || input.files.length === 0) {
+    Object.defineProperty(input, "files", { value: dt.files, configurable: true });
+  }
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 async function findUploadInput(timeoutMs = 30000) {
@@ -291,10 +327,13 @@ async function findUploadInput(timeoutMs = 30000) {
   let clicked = false;
 
   while (Date.now() < deadline) {
-    const inputs = [...document.querySelectorAll(TIKTOK_SELECTORS.fileInput)]
-      .filter(input => !input.disabled && input.type === "file");
-    if (inputs.length) {
-      return inputs.find(input => String(input.accept || "").toLowerCase().includes("video")) || inputs[0];
+    const docs = [document, ...sameOriginFrameDocuments()];
+    for (const doc of docs) {
+      const inputs = [...doc.querySelectorAll(TIKTOK_SELECTORS.fileInput)]
+        .filter(input => !input.disabled && input.type === "file");
+      if (inputs.length) {
+        return inputs.find(input => String(input.accept || "").toLowerCase().includes("video")) || inputs[0];
+      }
     }
 
     if (!clicked) {
@@ -305,6 +344,19 @@ async function findUploadInput(timeoutMs = 30000) {
   }
 
   throw new Error("ไม่พบช่อง upload วิดีโอใน TikTok Studio");
+}
+
+function sameOriginFrameDocuments() {
+  const docs = [];
+  for (const frame of document.querySelectorAll("iframe")) {
+    try {
+      const doc = frame.contentDocument;
+      if (doc) docs.push(doc);
+    } catch (_) {
+      // cross-origin frame — เข้าไม่ได้ ข้าม
+    }
+  }
+  return docs;
 }
 
 function clickUploadEntryPoint() {
@@ -348,8 +400,10 @@ function dispatchFileDrop(input, file) {
 
 async function verifyFileAccepted(input, file) {
   const deadline = Date.now() + 15000;
+  let hadInputFile = false;
   while (Date.now() < deadline) {
     const hasInputFile = input.files?.length > 0;
+    if (hasInputFile) hadInputFile = true;
     const bodyText = normalizeText(document.body.innerText);
     const fileNameVisible = bodyText.includes(normalizeText(file.name));
     const uploadStarted =
@@ -363,29 +417,58 @@ async function verifyFileAccepted(input, file) {
     if (hasInputFile && (fileNameVisible || uploadStarted)) return;
     await sleep(500);
   }
+
+  // TikTok ยังไม่แสดงผลตอบสนองชัดเจน แต่ถ้าไฟล์อยู่ใน input แล้วก็ปล่อยให้ waitForUploadFinished ตรวจต่อ
+  if (hadInputFile) {
+    log("คำเตือน: ยังไม่เห็นสัญญาณ upload ชัดเจน แต่ไฟล์อยู่ใน input แล้ว — ดำเนินการต่อ");
+    return;
+  }
   throw new Error("TikTok Studio ไม่รับไฟล์วิดีโอหลังใส่เข้า input");
 }
 
-async function waitForUploadFinished(timeoutMs = 180000) {
+async function waitForUploadFinished(timeoutMs = 300000) {
   const deadline = Date.now() + timeoutMs;
+  let lastLog = 0;
 
   while (Date.now() < deadline) {
     const statusText = normalizeText(document.body.innerText);
     const postButton = document.querySelector(TIKTOK_SELECTORS.postButton);
     const saveDraftButton = document.querySelector(TIKTOK_SELECTORS.saveDraftButton) || findButtonByText(TIKTOK_TEXT.saveDraft);
 
-    if (
-      statusText.includes("uploaded") &&
-      (isClickable(postButton) || isClickable(saveDraftButton))
-    ) {
+    // สัญญาณว่าโปรเซสเสร็จ: ปุ่ม Post/Save กดได้ (ไม่ผูกกับภาษา) — เป็นตัวชี้วัดหลัก
+    const buttonReady = isClickable(postButton) || isClickable(saveDraftButton);
+
+    // ยังกำลังประมวลผลอยู่หรือไม่ (มี progress bar / สถานะ uploading-processing ใด ๆ)
+    const stillProcessing =
+      statusText.includes("uploading") ||
+      statusText.includes("processing") ||
+      statusText.includes("กำลังอัปโหลด") ||
+      statusText.includes("กำลังประมวลผล") ||
+      Boolean(document.querySelector("[class*='progress'][role='progressbar'], progress"));
+
+    const uploadedHint =
+      statusText.includes("uploaded") ||
+      statusText.includes("อัปโหลดแล้ว") ||
+      statusText.includes("อัปโหลดสำเร็จ") ||
+      Boolean(document.querySelector("video, [class*='cover']"));
+
+    if (buttonReady && !stillProcessing && (uploadedHint || hasVideoPreview())) {
       await sleep(1500);
       return;
     }
 
+    if (Date.now() - lastLog > 15000) {
+      lastLog = Date.now();
+      log(`รอ TikTok ประมวลผล... (ปุ่มพร้อม=${buttonReady}, กำลังประมวลผล=${stillProcessing})`);
+    }
     await sleep(1000);
   }
 
   throw new Error("upload timeout");
+}
+
+function hasVideoPreview() {
+  return Boolean(document.querySelector("video[src], [class*='cover'] img, [class*='preview'] video"));
 }
 
 async function fillCaptionAndHashtags(caption, hashtags) {
@@ -941,6 +1024,7 @@ function realClick(element) {
 }
 
 function log(msg) {
+  console.log("[TikTokPost]", msg);
   chrome.runtime.sendMessage({ type: "TIKTOK_STUDIO_LOG", message: msg }).catch(() => {});
 }
 

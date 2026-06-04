@@ -80,6 +80,39 @@
       </div>
     </section>
 
+    <section class="flow-panel" aria-labelledby="post-test-title" data-collapsible data-collapse-key="post.test">
+      <div class="flow-panel__header">
+        <div>
+          <p class="eyebrow">Manual Test</p>
+          <h3 id="post-test-title">ทดสอบอัพโหลด & โพสต์</h3>
+        </div>
+      </div>
+      <div class="settings-stack">
+        <label class="field" for="post-test-file">
+          <span class="field__label">เลือกไฟล์วิดีโอ</span>
+          <input id="post-test-file" class="input" type="file" accept="video/*">
+          <span class="field__hint" id="post-test-file-info">ยังไม่ได้เลือกไฟล์</span>
+        </label>
+        <label class="field" for="post-test-caption">
+          <span class="field__label">Caption</span>
+          <textarea id="post-test-caption" class="textarea" rows="3" placeholder="ทดสอบโพสต์จาก extension"></textarea>
+        </label>
+        <label class="field" for="post-test-product-url">
+          <span class="field__label">ลิงก์สินค้า (จำเป็นเมื่อโพสต์จริง)</span>
+          <input id="post-test-product-url" class="input" type="text" placeholder="https://shop.tiktok.com/...">
+        </label>
+        <label class="field" for="post-test-mode">
+          <span class="field__label">วิธีส่ง</span>
+          <select id="post-test-mode" class="select select--accent">
+            <option value="draft">บันทึกร่าง (ทดสอบ ไม่ต้องมีลิงก์)</option>
+            <option value="now">โพสต์ทันที</option>
+          </select>
+        </label>
+        <button class="button button--primary button--full" id="post-test-run" type="button">ยิงทดสอบเข้า TikTok Studio</button>
+        <p class="field__hint" id="post-test-status" role="status"></p>
+      </div>
+    </section>
+
     <section class="flow-panel" aria-labelledby="post-permission-title" data-collapsible data-collapse-key="post.permissions" data-collapsed-default="true">
       <div class="flow-panel__header">
         <div>

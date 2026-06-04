@@ -383,11 +383,13 @@ async function sendTikTokDraft(payload) {
   const mode = payload.mode || (postType === "now" || postType === "schedule" ? "post" : "draft");
   const productUrl = resolveProductUrl(payload);
   const finalHashtags = normalizeHashtags(hashtags.length ? hashtags : (postDefaults.hashtags || []));
-  assertTikTokPostMetadata({
-    caption,
-    hashtags: finalHashtags,
-    productUrl
-  });
+  if (mode === "post") {
+    assertTikTokPostMetadata({
+      caption,
+      hashtags: finalHashtags,
+      productUrl
+    });
+  }
 
   const tabId = await openTikTokStudioUploadTab();
 

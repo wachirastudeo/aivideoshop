@@ -32,6 +32,8 @@ async function loadPostSettings() {
 function bindEvents() {
   document.querySelector("#post-save-settings")?.addEventListener("click", savePostSettings);
   document.querySelector("#post-open-upload")?.addEventListener("click", openTikTokUpload);
+  document.querySelector("#post-test-file")?.addEventListener("change", onTestFileChange);
+  document.querySelector("#post-test-run")?.addEventListener("click", runTestUpload);
   document.querySelector("#post-reset-settings")?.addEventListener("click", async () => {
     fillForm(DEFAULT_POST_SETTINGS);
     await savePostSettings();
@@ -60,6 +62,83 @@ function bindEvents() {
 async function openTikTokUpload() {
   await chrome.tabs.create({ url: "https://www.tiktok.com/tiktokstudio/upload", active: true });
   helpers.showStatus?.("เปิดหน้า TikTok Studio Upload แล้ว", "success");
+}
+
+function onTestFileChange(event) {
+  const file = event.target.files?.[0];
+  const info = document.querySelector("#post-test-file-info");
+  if (!info) return;
+  info.textContent = file
+    ? `${file.name} — ${(file.size / 1024 / 1024).toFixed(2)} MB`
+    : "ยังไม่ได้เลือกไฟล์";
+}
+
+function setTestStatus(message, kind = "") {
+  const el = document.querySelector("#post-test-status");
+  if (el) el.textContent = message;
+  if (message) helpers.showStatus?.(message, kind || "info");
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("อ่านไฟล์ไม่สำเร็จ"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function runTestUpload() {
+  const button = document.querySelector("#post-test-run");
+  const file = document.querySelector("#post-test-file")?.files?.[0];
+  if (!file) {
+    setTestStatus("กรุณาเลือกไฟล์วิดีโอก่อน", "error");
+    return;
+  }
+
+  const mode = getValue("post-test-mode") || "draft";
+  const postType = mode === "now" ? "now" : "draft";
+  const caption = getValue("post-test-caption").trim();
+  const productUrl = getValue("post-test-product-url").trim();
+  const hashtags = getValue("post-hashtags")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+  if (postType === "now") {
+    if (!caption) { setTestStatus("โพสต์จริงต้องมี caption", "error"); return; }
+    if (!productUrl) { setTestStatus("โพสต์จริงต้องมีลิงก์สินค้า", "error"); return; }
+  }
+
+  try {
+    if (button) button.disabled = true;
+    setTestStatus("กำลังอ่านไฟล์...", "info");
+    const dataUrl = await fileToDataUrl(file);
+
+    setTestStatus("ส่งเข้า TikTok Studio... ดู log ที่แท็บ TikTok (console [TikTokPost])", "info");
+    const response = await chrome.runtime.sendMessage({
+      type: "TIKTOK_SEND_DRAFT",
+      payload: {
+        videoUrl: dataUrl,
+        filename: file.name,
+        caption: caption || "ทดสอบโพสต์",
+        hashtags,
+        productUrl,
+        mode: postType === "now" ? "post" : "draft",
+        postType
+      }
+    });
+
+    if (response?.ok) {
+      setTestStatus(response.posted ? "โพสต์สำเร็จ ✅" : "บันทึกร่างสำเร็จ ✅", "success");
+    } else {
+      setTestStatus("ล้มเหลว: " + (response?.error || "ไม่ทราบสาเหตุ"), "error");
+    }
+  } catch (error) {
+    setTestStatus("error: " + (error?.message || error), "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 async function savePostSettings() {
