@@ -466,6 +466,13 @@ async function retryVideoPreparation(videoUrl) {
 }
 
 async function prepareVideoBase64ForTikTok(videoUrl) {
+  if (videoUrl.startsWith("data:")) {
+    const [meta, base64] = videoUrl.split(",");
+    if (!base64) throw new Error("invalid data url");
+    const mimeType = meta.match(/data:(.*?);base64/i)?.[1] || "video/mp4";
+    return { base64, mimeType };
+  }
+
   if (videoUrl.startsWith("blob:")) {
     try {
       return await fetchVideoBase64FromFlowTab(videoUrl);

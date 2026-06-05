@@ -79,6 +79,10 @@ function setTestStatus(message, kind = "") {
   if (message) helpers.showStatus?.(message, kind || "info");
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -99,6 +103,7 @@ async function runTestUpload() {
   const mode = getValue("post-test-mode") || "draft";
   const postType = mode === "now" ? "now" : "draft";
   const caption = getValue("post-test-caption").trim();
+  const productId = getValue("post-test-product-id").trim();
   const productUrl = getValue("post-test-product-url").trim();
   const hashtags = getValue("post-hashtags")
     .split(",")
@@ -116,24 +121,38 @@ async function runTestUpload() {
     const dataUrl = await fileToDataUrl(file);
 
     setTestStatus("ส่งเข้า TikTok Studio... ดู log ที่แท็บ TikTok (console [TikTokPost])", "info");
-    const response = await chrome.runtime.sendMessage({
-      type: "TIKTOK_SEND_DRAFT",
-      payload: {
-        videoUrl: dataUrl,
-        filename: file.name,
-        caption: caption || "ทดสอบโพสต์",
-        hashtags,
-        productUrl,
-        mode: postType === "now" ? "post" : "draft",
-        postType
-      }
-    });
+    const payload = {
+      videoUrl: dataUrl,
+      filename: file.name,
+      caption: caption || "ทดสอบโพสต์",
+      hashtags,
+      productId,
+      productUrl,
+      mode: postType === "now" ? "post" : "draft",
+      postType
+    };
 
-    if (response?.ok) {
-      setTestStatus(response.posted ? "โพสต์สำเร็จ ✅" : "บันทึกร่างสำเร็จ ✅", "success");
-    } else {
-      setTestStatus("ล้มเหลว: " + (response?.error || "ไม่ทราบสาเหตุ"), "error");
-    }
+    // pipeline ใช้เวลานาน (อัพโหลด+รอประมวลผล) channel อาจปิดก่อนได้ response
+    // → ไม่ block รอจนจบ ถือว่าเริ่มแล้ว แล้วติดตามจาก log แทน
+    chrome.runtime.sendMessage({ type: "TIKTOK_SEND_DRAFT", payload })
+      .then((response) => {
+        if (response?.ok) {
+          setTestStatus(response.posted ? "โพสต์สำเร็จ ✅" : "บันทึกร่างสำเร็จ ✅", "success");
+        } else if (response) {
+          setTestStatus("ล้มเหลว: " + (response.error || "ไม่ทราบสาเหตุ"), "error");
+        }
+      })
+      .catch((error) => {
+        const msg = error?.message || String(error);
+        if (msg.includes("message channel closed")) {
+          setTestStatus("กำลังอัพโหลดเบื้องหลัง — ดู log แท็บ TikTok / Notification", "info");
+        } else {
+          setTestStatus("error: " + msg, "error");
+        }
+      });
+
+    await sleep(800);
+    setTestStatus("เริ่มอัพโหลดแล้ว — ดูความคืบหน้าที่แท็บ TikTok Studio", "info");
   } catch (error) {
     setTestStatus("error: " + (error?.message || error), "error");
   } finally {

@@ -148,13 +148,34 @@ async function handleVideoUpload(payload = {}) {
     sendPipelineLog("info", "รอ TikTok ประมวลผลวิดีโอ...");
     await waitForUploadFinished();
     await fillCaptionAndHashtags(caption, hashtags);
-    await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, aiGenerated, allowComment, allowReuse });
+    const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, aiGenerated, allowComment, allowReuse });
 
     if (mode === "post") {
-      await clickPost();
-      log("คลิก Post สำเร็จ");
-      sendPipelineLog("info", "เสร็จสิ้น");
-      return { posted: true, mode, postType, scheduleTime };
+      // ถ้าอะไรไม่ครบ/ไม่สำเร็จ → ตกลงมาเป็น draft เสมอ
+      const blockers = [];
+      if (settingsResult.productRequired && !settingsResult.productAdded) blockers.push("เพิ่มลิงก์สินค้าไม่สำเร็จ");
+      if (!settingsResult.aigcOk) blockers.push("ตั้ง AI-generated ไม่สำเร็จ");
+
+      if (blockers.length) {
+        sendPipelineLog("warn", `โพสต์ไม่ได้ (${blockers.join(", ")}) → บันทึกเป็น draft แทน`);
+        await clickSaveDraftV2();
+        log("Fallback: คลิก Save Draft สำเร็จ");
+        sendPipelineLog("info", "เสร็จสิ้น (draft)");
+        return { drafted: true, mode: "draft", postType, fallback: true, reason: blockers.join(", ") };
+      }
+
+      try {
+        await clickPost();
+        log("คลิก Post สำเร็จ");
+        sendPipelineLog("info", "เสร็จสิ้น");
+        return { posted: true, mode, postType, scheduleTime };
+      } catch (postError) {
+        sendPipelineLog("warn", `กด Post ล้มเหลว (${postError.message}) → บันทึกเป็น draft แทน`);
+        await clickSaveDraftV2();
+        log("Fallback: คลิก Save Draft สำเร็จ");
+        sendPipelineLog("info", "เสร็จสิ้น (draft)");
+        return { drafted: true, mode: "draft", postType, fallback: true, reason: postError.message };
+      }
     }
 
     await clickSaveDraftV2();
@@ -322,9 +343,9 @@ function forceSetInputFile(input, file) {
   input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-async function findUploadInput(timeoutMs = 30000) {
+async function findUploadInput(timeoutMs = 60000) {
   const deadline = Date.now() + timeoutMs;
-  let clicked = false;
+  let lastTick = -1;
 
   while (Date.now() < deadline) {
     const docs = [document, ...sameOriginFrameDocuments()];
@@ -332,18 +353,22 @@ async function findUploadInput(timeoutMs = 30000) {
       const inputs = [...doc.querySelectorAll(TIKTOK_SELECTORS.fileInput)]
         .filter(input => !input.disabled && input.type === "file");
       if (inputs.length) {
+        log("✅ พบช่อง upload วิดีโอ");
         return inputs.find(input => String(input.accept || "").toLowerCase().includes("video")) || inputs[0];
       }
     }
 
-    if (!clicked) {
-      clicked = true;
-      clickUploadEntryPoint();
+    // กดปุ่มเปิด upload ซ้ำทุกครั้งที่วน (กันเน็ตช้า/หน้ายังไม่พร้อม)
+    clickUploadEntryPoint();
+    const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    if (remain !== lastTick) {
+      lastTick = remain;
+      log(`⏳ หาช่อง upload วิดีโอ... เหลือ ${remain}s`);
     }
-    await sleep(500);
+    await sleep(800);
   }
 
-  throw new Error("ไม่พบช่อง upload วิดีโอใน TikTok Studio");
+  throw new Error("ไม่พบช่อง upload วิดีโอใน TikTok Studio (หมดเวลา)");
 }
 
 function sameOriginFrameDocuments() {
@@ -457,14 +482,15 @@ async function waitForUploadFinished(timeoutMs = 300000) {
       return;
     }
 
-    if (Date.now() - lastLog > 15000) {
+    if (Date.now() - lastLog > 10000) {
       lastLog = Date.now();
-      log(`รอ TikTok ประมวลผล... (ปุ่มพร้อม=${buttonReady}, กำลังประมวลผล=${stillProcessing})`);
+      const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      log(`⏳ รอ TikTok ประมวลผลวิดีโอ... เหลือ ${remain}s (ปุ่มพร้อม=${buttonReady}, กำลังประมวลผล=${stillProcessing})`);
     }
     await sleep(1000);
   }
 
-  throw new Error("upload timeout");
+  throw new Error("upload timeout (หมดเวลาประมวลผลวิดีโอ)");
 }
 
 function hasVideoPreview() {
@@ -472,7 +498,11 @@ function hasVideoPreview() {
 }
 
 async function fillCaptionAndHashtags(caption, hashtags) {
-  const editor = await waitForElement(TIKTOK_SELECTORS.captionEditor, 30000);
+  const editor = await retryUntil("รอช่อง Caption", () => document.querySelector(TIKTOK_SELECTORS.captionEditor), 30000);
+  if (!editor) {
+    log("⚠️ ไม่พบช่อง Caption หลังหมดเวลา — ข้ามการกรอก caption");
+    return;
+  }
   editor.focus();
   editor.click();
   selectAllEditable(editor);
@@ -499,7 +529,8 @@ async function fillCaptionAndHashtags(caption, hashtags) {
 
 async function applyUploadSettings(settings) {
   await applyScheduleSettings(settings.postType, settings.scheduleTime);
-  await applyProductLink(settings.productId, settings.productUrl, settings.productName);
+  const productRequired = Boolean(String(settings.productId || settings.productUrl || "").trim());
+  const productAdded = await applyProductLink(settings.productId, settings.productUrl, settings.productName);
 
   if (settings.location) {
     const locationInput = document.querySelector(TIKTOK_SELECTORS.locationSearch);
@@ -525,76 +556,186 @@ async function applyUploadSettings(settings) {
     }
   }
 
-  await setCheckboxState(document.querySelector(TIKTOK_SELECTORS.aiGeneratedSwitch), settings.aiGenerated);
+  const aigcOk = await setAigcSwitch(settings.aiGenerated);
 
   const permissionChecks = [...document.querySelectorAll(TIKTOK_SELECTORS.userPermChecks)];
   await setCheckboxState(permissionChecks[0], settings.allowComment);
   await setCheckboxState(permissionChecks[1], settings.allowReuse);
+
+  return { productRequired, productAdded, aigcOk };
 }
 
 async function applyProductLink(productId, productUrl, productName) {
   const productKey = String(productId || productUrl || "").trim();
-  if (!productKey) return;
+  if (!productKey) return true; // ไม่ได้ระบุสินค้า ไม่ถือว่าพลาด
 
-  const addButton = document.querySelector(TIKTOK_SELECTORS.addLinkButton) || findButtonByText(["add link", "add", "เพิ่มลิงก์", "เพิ่ม"]);
-  if (!isClickable(addButton)) {
-    log("ไม่พบปุ่ม Add link สำหรับสินค้า");
-    return;
+  const selectorModalOpen = () =>
+    document.querySelector('.product-selector-modal, [aria-label="Add product links"]') ||
+    document.querySelector('input[placeholder="Search products"]');
+
+  // STEP 1: เปิด Add link จน modal โผล่
+  const opened = await retryUntil("STEP1 คลิก Add link", async () => {
+    const btn = document.querySelector(TIKTOK_SELECTORS.addLinkButton) || findButtonByText(["add link", "เพิ่มลิงก์", "add"]);
+    if (isClickable(btn)) { realClick(btn); try { btn.click(); } catch (_) {} }
+    return document.querySelector('.TUXModal, [role="dialog"]') || selectorModalOpen() ? true : null;
+  }, 30000);
+  if (!opened) return false;
+
+  // STEP 2: modal "Add link" (Link type = Products) → กด Next จนเข้าหน้าเลือกสินค้า
+  await retryUntil("STEP2 กด Next (Link type=Products)", async () => {
+    if (selectorModalOpen()) return true; // เข้าหน้าเลือกสินค้าแล้ว
+    const ltModal = [...document.querySelectorAll('.TUXModal, [role="dialog"]')].find((el) =>
+      isVisible(el) && el.querySelector(".button-group, .TUXSelect") && /link type|products/i.test(el.textContent)
+    );
+    if (ltModal) {
+      const next = modalFooterButton(["next", "ถัดไป"]) || findButtonByText(["next", "ถัดไป"]);
+      if (isClickable(next)) { realClick(next); try { next.click(); } catch (_) {} }
+    }
+    return selectorModalOpen() ? true : null;
+  }, 30000);
+
+  // STEP 3: รอ modal เลือกสินค้า
+  const selectorReady = await retryUntil("STEP3 รอ modal เลือกสินค้า", () => selectorModalOpen() ? true : null, 30000);
+  if (!selectorReady) return false;
+
+  // STEP 4: เลือกแท็บ Showcase products + รอช่องค้นหา
+  const searchInput = await retryUntil("STEP4 เลือก Showcase + รอช่องค้นหา", () => {
+    const tab = findButtonByText(["showcase products", "นำเสนอสินค้า"]);
+    if (isClickable(tab) && tab.getAttribute("data-active") === null) realClick(tab);
+    return document.querySelector('input[placeholder="Search products"], .product-search-input input, .product-selector-modal input[placeholder*="Search product"]');
+  }, 30000);
+  if (!searchInput) return false;
+
+  // STEP 5: กรอก ID + กดค้นหา วนจนเจอแถวสินค้า
+  const row = await retryUntil(`STEP5 ค้นหาสินค้า ${productKey}`, async () => {
+    typeIntoInput(searchInput, "");
+    await sleep(200);
+    typeIntoInput(searchInput, productKey);
+    triggerSearch(searchInput);
+    await sleep(1500);
+    return findProductRow(productKey);
+  }, 40000, 2000);
+  if (!row) {
+    log(`❌ ไม่พบสินค้า: ${productKey}`);
+    return false;
   }
 
-  realClick(addButton);
-  await sleep(1200);
+  // STEP 6: เลือก radio วนจนปุ่ม Next ใน footer enable
+  const nextBtn = await retryUntil("STEP6 เลือกสินค้า + รอ Next enable", async () => {
+    const r = findProductRow(productKey) || row;
+    if (r) {
+      selectProductRadio(r);
+      realClick(r.querySelector(".product-info-cell, .product-name-cell") || r);
+    }
+    const b = modalFooterButton(["next", "ถัดไป"]);
+    return isClickable(b) ? b : null;
+  }, 30000, 1000);
+  if (!nextBtn) return false;
+  realClick(nextBtn);
+  try { nextBtn.click(); } catch (_) {}
 
-  const nextButton = findButtonByText(["ถัดไป", "next"]);
-  if (isClickable(nextButton)) {
-    realClick(nextButton);
-    await sleep(1200);
-  }
+  // STEP 7: รอเข้าหน้าตั้งชื่อ/ยืนยัน
+  await retryUntil("STEP7 เข้าหน้าตั้งชื่อ/ยืนยัน", () => {
+    return findVisibleInput(["ชื่อสินค้า", "product name", "title", "name"]) ||
+           modalFooterButton(["add", "done", "เพิ่ม", "เสร็จ"]) ? true : null;
+  }, 20000);
 
-  const showcaseOption = findButtonByText(["นำเสนอสินค้า", "showcase product", "product showcase", "สินค้า"]);
-  if (isClickable(showcaseOption)) {
-    realClick(showcaseOption);
-    await sleep(1000);
-  }
-
-  const searchInput = findVisibleInput(["search", "ค้นหา", "product", "สินค้า"]);
-  if (!searchInput) {
-    log("เปิด Add link แล้ว แต่ไม่พบช่องค้นหาสินค้า");
-    return;
-  }
-
-  searchInput.focus();
-  searchInput.value = "";
-  searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-  searchInput.value = productKey;
-  searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-  await sleep(1800);
-
-  const selectableProduct = findSelectableProduct(productId, productUrl);
-  if (!selectableProduct) {
-    log(`ไม่พบสินค้าในผลค้นหา: ${productKey}`);
-    return;
-  }
-
-  realClick(selectableProduct);
-  await sleep(800);
-
-  const productNextButton = findButtonByText(["ถัดไป", "next"]);
-  if (isClickable(productNextButton)) {
-    realClick(productNextButton);
-    await sleep(1000);
-  }
-
-  const titleInput = findVisibleInput(["ชื่อสินค้า", "product name", "title"]);
+  // STEP 8: แก้ชื่อ (clean) ถ้ามีช่อง
+  const titleInput = findVisibleInput(["ชื่อสินค้า", "product name", "title", "name"]);
   if (titleInput) {
-    setNativeValue(titleInput, buildProductLinkTitle(productName, productId));
+    const existingTitle = titleInput.isContentEditable ? titleInput.textContent : titleInput.value;
+    const finalTitle = buildProductLinkTitle(productName, existingTitle);
+    setNativeValue(titleInput, finalTitle);
+    log(`STEP8 ตั้งชื่อสินค้า: ${finalTitle}`);
     await sleep(400);
   }
 
-  const finalAddButton = findButtonByText(["เพิ่ม", "add"]);
-  if (isClickable(finalAddButton)) {
-    realClick(finalAddButton);
+  // STEP 9: กดยืนยัน (Add/Done) วนจน modal ปิด = เพิ่มสำเร็จ
+  const added = await retryUntil("STEP9 ยืนยันเพิ่มสินค้า", async () => {
+    const b = modalFooterButton(["add", "done", "เพิ่ม", "เสร็จ", "next", "ถัดไป"]) || findButtonByText(["เพิ่ม", "add"]);
+    if (isClickable(b)) { realClick(b); try { b.click(); } catch (_) {} }
+    await sleep(800);
+    return selectorModalOpen() ? null : true; // modal ปิดแล้ว = สำเร็จ
+  }, 25000, 1500);
+  if (!added) {
+    log("⚠️ ยืนยันเพิ่มสินค้าไม่สำเร็จ");
+    return false;
   }
+  log("✅ เพิ่มลิงก์สินค้าสำเร็จ");
+  return true;
+}
+
+// หาแถวสินค้าที่ตรงกับ key (product ID / ชื่อ) — match จาก Product ID cell ก่อน
+function findProductRow(key) {
+  const nkey = normalizeText(key);
+  const rows = [...document.querySelectorAll('tr.product-tb-row, [class*="product-tb-row"]')].filter(isVisible);
+  if (!rows.length) return null;
+  const exact = rows.find((row) =>
+    [...row.querySelectorAll('.product-tb-cell, td')].some((cell) => normalizeText(cell.textContent) === nkey)
+  );
+  if (exact) return exact;
+  const partial = rows.find((row) => normalizeText(row.textContent).includes(nkey));
+  return partial || rows[0];
+}
+
+// เลือก radio ของสินค้าให้ React รับรู้ (set checked + .click() จริง)
+function selectProductRadio(row) {
+  const radio = row.querySelector('input[type="radio"], input.TUXRadioStandalone-input');
+  if (radio) {
+    radio.scrollIntoView({ block: "center" });
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "checked")?.set;
+    if (setter) setter.call(radio, true);
+    else radio.checked = true;
+    try { radio.click(); } catch (_) {}
+    radio.dispatchEvent(new Event("input", { bubbles: true }));
+    radio.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
+  realClick(row.querySelector(".product-info-cell, .TUXRadio") || row);
+}
+
+// หาปุ่มใน footer ของ modal ตาม label
+function modalFooterButton(words) {
+  const nwords = words.map(normalizeText);
+  const buttons = [...document.querySelectorAll(
+    '.common-modal-footer button, .TUXModal button, [role="dialog"] button'
+  )].filter(isVisible);
+  for (const button of buttons) {
+    const text = normalizeText(button.textContent);
+    if (!text) continue;
+    if (nwords.some((word) => text === word || text.includes(word))) return button;
+  }
+  return null;
+}
+
+// สั่งค้นหา: กด Enter ในช่อง + คลิกไอคอนแว่นขยาย
+function triggerSearch(input) {
+  pressEnter(input);
+  const icon = document.querySelector('.product-search-icon, .TUXTextInputCore-trailingIconWrapper');
+  if (icon && isVisible(icon)) realClick(icon);
+}
+
+function pressEnter(el) {
+  for (const type of ["keydown", "keypress", "keyup"]) {
+    el.dispatchEvent(new KeyboardEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      key: "Enter",
+      code: "Enter",
+      keyCode: 13,
+      which: 13,
+    }));
+  }
+}
+
+// พิมพ์ลง input แบบ React-aware (native setter + input/change) ไม่ blur
+function typeIntoInput(input, value) {
+  input.focus();
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  if (setter) setter.call(input, value);
+  else input.value = value;
+  input.dispatchEvent(new InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 async function applyScheduleSettings(postType, scheduleTime) {
@@ -696,6 +837,43 @@ function findReadonlyInput(pattern) {
   return inputs.find((input) => pattern.test(input.value)) || null;
 }
 
+async function setAigcSwitch(desired) {
+  if (desired === undefined) return true;
+  const container = document.querySelector('[data-e2e="aigc_container"]');
+  if (!container) { log("ไม่พบสวิตช์ AI-generated content"); return false; }
+
+  const stateEl = container.querySelector('[data-state], [aria-checked]');
+  const input = container.querySelector('input[role="switch"], input[type="checkbox"]');
+  const isChecked = () => {
+    if (stateEl) {
+      return stateEl.getAttribute("data-state") === "checked" ||
+             stateEl.getAttribute("aria-checked") === "true";
+    }
+    return Boolean(input?.checked);
+  };
+
+  if (isChecked() === Boolean(desired)) {
+    log(`AI-generated content = ${desired} อยู่แล้ว`);
+    return true;
+  }
+
+  const clickTarget = container.querySelector('.Switch__content, [data-layout="switch-root"], [role="switch"]') || input;
+
+  // คลิก + verify หลายรอบ จนกว่าจะได้สถานะที่ต้องการ
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    const target = attempt % 2 === 1 ? (clickTarget || input) : (input || clickTarget);
+    if (target) realClick(target);
+    await sleep(400);
+    if (isChecked() === Boolean(desired)) {
+      log(`ตั้ง AI-generated content = ${desired} สำเร็จ (รอบ ${attempt})`);
+      return true;
+    }
+  }
+
+  log(`⚠️ ตั้ง AI-generated content ไม่สำเร็จ (ค่าปัจจุบัน=${isChecked()}, ต้องการ=${desired}) — กรุณาเช็คเอง`);
+  return false;
+}
+
 async function setCheckboxState(input, desired) {
   if (desired === undefined || !input) return;
   if (Boolean(input.checked) === Boolean(desired)) return;
@@ -704,18 +882,24 @@ async function setCheckboxState(input, desired) {
 }
 
 async function clickSaveDraftV2() {
-  const button = document.querySelector(TIKTOK_SELECTORS.saveDraftButton) ||
-    await waitForButtonByText(TIKTOK_TEXT.saveDraft, 30000);
-
-  if (!isClickable(button)) throw new Error("save draft button is disabled");
+  const button = await retryUntil("กดปุ่ม Save Draft", () => {
+    const b = document.querySelector(TIKTOK_SELECTORS.saveDraftButton) || findButtonByText(TIKTOK_TEXT.saveDraft);
+    return isClickable(b) ? b : null;
+  }, 60000);
+  if (!button) throw new Error("ไม่พบปุ่ม Save Draft ที่กดได้ (หมดเวลา 60s)");
   realClick(button);
+  try { button.click(); } catch (_) {}
   await clickConfirmIfNeeded();
 }
 
 async function clickPost() {
-  const button = await waitForElement(TIKTOK_SELECTORS.postButton, 30000);
-  if (!isClickable(button)) throw new Error("post button is disabled");
+  const button = await retryUntil("กดปุ่ม Post", () => {
+    const b = document.querySelector(TIKTOK_SELECTORS.postButton) || findButtonByText(TIKTOK_TEXT.post);
+    return isClickable(b) ? b : null;
+  }, 60000);
+  if (!button) throw new Error("ไม่พบปุ่ม Post ที่กดได้ (หมดเวลา 60s)");
   realClick(button);
+  try { button.click(); } catch (_) {}
   await clickConfirmIfNeeded();
 }
 
@@ -858,6 +1042,43 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// poll predicate จนได้ค่า truthy หรือหมดเวลา
+async function waitFor(predicate, timeoutMs = 10000, intervalMs = 300) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const result = predicate();
+      if (result) return result;
+    } catch (_) {}
+    await sleep(intervalMs);
+  }
+  return null;
+}
+
+// วน fn ซ้ำจนสำเร็จ พร้อมแสดง countdown วินาทีที่เหลือทุก step
+async function retryUntil(label, fn, totalMs = 30000, intervalMs = 1000) {
+  const deadline = Date.now() + totalMs;
+  let lastTick = -1;
+  log(`▶ ${label} — เริ่ม (สูงสุด ${Math.round(totalMs / 1000)}s)`);
+  while (Date.now() < deadline) {
+    try {
+      const result = await fn();
+      if (result) {
+        log(`✅ ${label} — สำเร็จ`);
+        return result;
+      }
+    } catch (_) {}
+    const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    if (remain !== lastTick) {
+      lastTick = remain;
+      log(`⏳ ${label} — ลองใหม่... เหลือ ${remain}s`);
+    }
+    await sleep(intervalMs);
+  }
+  log(`⚠️ ${label} — หมดเวลา ${Math.round(totalMs / 1000)}s ยังไม่สำเร็จ`);
+  return null;
+}
+
 function findButtonByText(words) {
   const normalizedWords = words.map((word) => normalizeText(word)).filter(Boolean);
   const elements = document.querySelectorAll(TIKTOK_SELECTORS.anyButton);
@@ -913,9 +1134,34 @@ function findSelectableProduct(productId, productUrl) {
   return null;
 }
 
-function buildProductLinkTitle(productName, productId) {
-  const base = String(productName || productId || "สินค้า").replace(/\s+/g, " ").trim();
-  return Array.from(base).slice(0, 25).join("");
+// TikTok จำกัดชื่อ 30 ตัวอักษร — เผื่อไว้ใช้แค่ 25
+const PRODUCT_TITLE_MAX = 25;
+
+function buildProductLinkTitle(productName, fallbackTitle) {
+  const userName = String(productName || "").trim();
+  // ถ้า user กำหนดชื่อมา ใช้ตามนั้น; ถ้าไม่ เอาชื่อที่ TikTok เติมไว้มา clean
+  const base = userName || cleanProductTitle(fallbackTitle);
+  const safe = stripWeirdChars(base) || "สินค้า";
+  return Array.from(safe).slice(0, PRODUCT_TITLE_MAX).join("").trim();
+}
+
+function cleanProductTitle(raw) {
+  return String(raw || "")
+    // ตัดวงเล็บ/ก้ามปูที่มีคำว่า live เช่น (Live) [Live] 【Live】
+    .replace(/[（(\[【]\s*live\s*[）)\]】]/gi, " ")
+    // ตัดคำว่า live ที่ห้อยหน้า-หลังพร้อมตัวคั่น
+    .replace(/^\s*live\b[\s:|/\-–·]*/i, "")
+    .replace(/[\s:|/\-–·]*\blive\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// เก็บเฉพาะตัวอักษร(ไทย/อังกฤษ/ภาษาอื่น) ตัวเลข และเว้นวรรค — ตัด emoji/สัญลักษณ์แปลก ๆ ออก
+function stripWeirdChars(raw) {
+  return String(raw || "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function setNativeValue(element, value) {
