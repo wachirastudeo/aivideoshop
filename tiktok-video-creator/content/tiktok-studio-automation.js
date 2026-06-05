@@ -116,6 +116,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 async function handleVideoUpload(payload = {}) {
   if (isRunning) throw new Error("กำลังอัปโหลดอยู่แล้ว");
   isRunning = true;
+  logSeq = 0;
 
   try {
     sendPipelineLog("info", "เริ่มโพสต์ TikTok...");
@@ -155,11 +156,23 @@ async function handleVideoUpload(payload = {}) {
       if (!settingsResult.aigcOk) blockers.push("ตั้ง AI-generated ไม่สำเร็จ");
 
       if (blockers.length) {
+        log(`⛔ ไม่กด Post เพราะ: ${blockers.join(", ")} → จะบันทึกเป็น draft แทน`);
         sendPipelineLog("warn", `โพสต์ไม่ได้ (${blockers.join(", ")}) → บันทึกเป็น draft แทน`);
         await clickSaveDraftV2();
         log("Fallback: คลิก Save Draft สำเร็จ");
         sendPipelineLog("info", "เสร็จสิ้น (draft)");
         return { drafted: true, mode: "draft", postType, fallback: true, reason: blockers.join(", ") };
+      }
+
+      // ย้ำติ๊ก AI-generated content อีกครั้งก่อนกด Post ทุกครั้ง (กันถูกรีเซ็ตหลังเพิ่มสินค้า)
+      log("ตรวจ AI-generated content ก่อนโพสต์...");
+      const aigcBeforePost = await setAigcSwitch(aiGenerated ?? true);
+      if (!aigcBeforePost) {
+        sendPipelineLog("warn", "AI-generated content ไม่ติดก่อนโพสต์ → บันทึกเป็น draft แทน");
+        await clickSaveDraftV2();
+        log("Fallback: คลิก Save Draft สำเร็จ");
+        sendPipelineLog("info", "เสร็จสิ้น (draft)");
+        return { drafted: true, mode: "draft", postType, fallback: true, reason: "AI-generated ไม่ติดก่อนโพสต์" };
       }
 
       try {
@@ -176,6 +189,9 @@ async function handleVideoUpload(payload = {}) {
       }
     }
 
+    // โหมด draft: ย้ำ AI-generated content ก่อนบันทึกเช่นกัน
+    log("ตรวจ AI-generated content ก่อนบันทึก draft...");
+    await setAigcSwitch(aiGenerated ?? true);
     await clickSaveDraftV2();
     log("คลิก Save Draft สำเร็จ");
     sendPipelineLog("info", "เสร็จสิ้น");
@@ -571,26 +587,41 @@ async function applyProductLink(productId, productUrl, productName) {
     document.querySelector('.product-selector-modal, [aria-label="Add product links"]') ||
     document.querySelector('input[placeholder="Search products"]');
 
-  // STEP 1: เปิด Add link จน modal โผล่
-  const opened = await retryUntil("STEP1 คลิก Add link", async () => {
-    const btn = document.querySelector(TIKTOK_SELECTORS.addLinkButton) || findButtonByText(["add link", "เพิ่มลิงก์", "add"]);
-    if (isClickable(btn)) { realClick(btn); try { btn.click(); } catch (_) {} }
-    return document.querySelector('.TUXModal, [role="dialog"]') || selectorModalOpen() ? true : null;
-  }, 30000);
-  if (!opened) return false;
+  // STEP 1: หาปุ่ม Add link → คลิก "ครั้งเดียว" → รอ modal เปิด (ไม่คลิกซ้ำ)
+  const addBtn = await retryUntil("STEP1 หาปุ่ม Add link", () => {
+    const b = document.querySelector(TIKTOK_SELECTORS.addLinkButton) || findButtonByText(["add link", "เพิ่มลิงก์", "add"]);
+    return isClickable(b) ? b : null;
+  }, 30000, 1500, () => {
+    const b = document.querySelector(TIKTOK_SELECTORS.addLinkButton) || findButtonByText(["add link", "เพิ่มลิงก์", "add"]);
+    return b ? `พบปุ่ม Add link clickable=${isClickable(b)}` : "ยังไม่พบปุ่ม Add link";
+  });
+  if (!addBtn) { log("❌ ไม่พบปุ่ม Add link"); return false; }
+  await sleep(600);
+  realClick(addBtn);
+  try { addBtn.click(); } catch (_) {}
+  log("STEP1 คลิก Add link (ครั้งเดียว) — รอ modal");
+  const opened = await retryUntil("STEP1b รอ modal เปิด", () =>
+    (document.querySelector('.TUXModal, [role="dialog"]') || selectorModalOpen()) ? true : null,
+    20000, 1500, () => "modal=" + !!(document.querySelector('.TUXModal, [role="dialog"]') || selectorModalOpen()));
+  if (!opened) { log("❌ คลิก Add link แล้ว modal ไม่เปิด"); return false; }
 
-  // STEP 2: modal "Add link" (Link type = Products) → กด Next จนเข้าหน้าเลือกสินค้า
-  await retryUntil("STEP2 กด Next (Link type=Products)", async () => {
-    if (selectorModalOpen()) return true; // เข้าหน้าเลือกสินค้าแล้ว
-    const ltModal = [...document.querySelectorAll('.TUXModal, [role="dialog"]')].find((el) =>
-      isVisible(el) && el.querySelector(".button-group, .TUXSelect") && /link type|products/i.test(el.textContent)
-    );
-    if (ltModal) {
-      const next = modalPrimaryButton(["next", "ถัดไป"]) || modalFooterButton(["next", "ถัดไป"]) || findButtonByText(["next", "ถัดไป"]);
-      if (isClickable(next)) { realClick(next); try { next.click(); } catch (_) {} }
+  // STEP 2: modal "Add link" (Link type = Products) → กด Next "ครั้งเดียว" → รอหน้าเลือกสินค้า
+  if (!selectorModalOpen()) {
+    const ltNext = await retryUntil("STEP2 หาปุ่ม Next (Link type=Products)", () => {
+      const ltModal = [...document.querySelectorAll('.TUXModal, [role="dialog"]')].find((el) =>
+        isVisible(el) && el.querySelector(".button-group, .TUXSelect") && /link type|products/i.test(el.textContent)
+      );
+      if (!ltModal) return selectorModalOpen() ? "skip" : null; // ไม่มี modal นี้ = ข้ามไปเลือกสินค้าแล้ว
+      const b = modalPrimaryButton(["next", "ถัดไป"]) || modalFooterButton(["next", "ถัดไป"]) || findButtonByText(["next", "ถัดไป"]);
+      return isClickable(b) ? b : null;
+    }, 20000, 1500, () => diagPrimaryButton(["next", "ถัดไป"]));
+    if (ltNext && ltNext !== "skip") {
+      await sleep(500);
+      realClick(ltNext);
+      try { ltNext.click(); } catch (_) {}
+      log("STEP2 คลิก Next (ครั้งเดียว) — รอหน้าเลือกสินค้า");
     }
-    return selectorModalOpen() ? true : null;
-  }, 30000);
+  }
 
   // STEP 3: รอ modal เลือกสินค้า
   const selectorReady = await retryUntil("STEP3 รอ modal เลือกสินค้า", () => selectorModalOpen() ? true : null, 30000);
@@ -612,22 +643,61 @@ async function applyProductLink(productId, productUrl, productName) {
     triggerSearch(searchInput);
     await sleep(1500);
     return findProductRow(productKey);
-  }, 40000, 2000);
+  }, 40000, 2000, () => {
+    const n = document.querySelectorAll('tr.product-tb-row').length;
+    return `ผลค้นหา ${n} แถว, ตรง ID=${!!findProductRow(productKey)}`;
+  });
   if (!row) {
     log(`❌ ไม่พบสินค้า: ${productKey}`);
     return false;
   }
 
-  // STEP 6: เลือก radio วนจนปุ่ม Next ใน footer enable
-  const nextBtn = await retryUntil("STEP6 เลือกสินค้า + รอ Next enable", async () => {
-    const r = findProductRow(productKey) || row;
-    if (r) selectProductRadio(r);
-    const b = modalPrimaryButton(["next", "ถัดไป"]);
+  // STEP 6a: เลือกสินค้า (ครั้งเดียว) แล้วรอปุ่ม Next enable — re-select เฉพาะถ้ายังไม่ enable
+  await selectProductRadio(findProductRow(productKey) || row);
+  log("STEP6 เลือกสินค้าแล้ว — รอ Next enable");
+  const diagNext = () => {
+    const b = productSelectorNext();
+    return b ? `Next: clickable=${isClickable(b)} disabled=${b.disabled} aria=${b.getAttribute("aria-disabled")}` : "ยังไม่พบปุ่ม Next ใน product-selector-modal";
+  };
+  let nextBtn = await retryUntil("STEP6a รอ Next enable", () => {
+    const b = productSelectorNext();
     return isClickable(b) ? b : null;
-  }, 30000, 1000);
-  if (!nextBtn) return false;
-  realClick(nextBtn);
-  try { nextBtn.click(); } catch (_) {}
+  }, 25000, 1000, diagNext);
+  if (!nextBtn) {
+    log("STEP6 Next ยังไม่ enable — เลือกสินค้าซ้ำอีกรอบ");
+    await selectProductRadio(findProductRow(productKey) || row);
+    nextBtn = await retryUntil("STEP6a รอ Next enable (รอบ2)", () => {
+      const b = productSelectorNext();
+      return isClickable(b) ? b : null;
+    }, 25000, 1000, diagNext);
+  }
+  if (!nextBtn) {
+    log("❌ ปุ่ม Next ไม่ enable (เลือกสินค้าไม่ติด)");
+    return false;
+  }
+
+  // STEP 6b: รอ Next display/enable นิ่งก่อน → re-fetch ปุ่มสด ๆ → คลิกครั้งเดียว
+  await sleep(900); // รอปุ่ม Next แสดง/นิ่ง
+  const freshNext = productSelectorNext();
+  const btnToClick = isClickable(freshNext) ? freshNext : nextBtn;
+  log(`STEP6b คลิก Next (clickable=${isClickable(btnToClick)})`);
+  realClick(btnToClick);
+  try { btnToClick.click(); } catch (_) {}
+  let advanced = await retryUntil("STEP6b รอเข้าหน้าตั้งชื่อ", () =>
+    (findProductNameInput() || !document.querySelector(".product-table")) ? true : null,
+    10000, 1500);
+  if (!advanced) {
+    log("STEP6b ยังไม่เปลี่ยนหน้า — กด Next ซ้ำอีกครั้ง");
+    const b = productSelectorNext();
+    if (isClickable(b)) { realClick(b); try { b.click(); } catch (_) {} }
+    advanced = await retryUntil("STEP6b รอเข้าหน้าตั้งชื่อ (รอบ2)", () =>
+      (findProductNameInput() || !document.querySelector(".product-table")) ? true : null,
+      10000, 1500);
+  }
+  if (!advanced) {
+    log("❌ กด Next แล้วไม่เข้าหน้าตั้งชื่อ");
+    return false;
+  }
 
   // STEP 7: รอเข้าหน้าตั้งชื่อสินค้า (modal "Product name")
   const titleInput = await retryUntil("STEP7 เข้าหน้าตั้งชื่อสินค้า", () => findProductNameInput(), 20000);
@@ -645,15 +715,28 @@ async function applyProductLink(productId, productUrl, productName) {
     log("STEP8 ไม่พบช่องชื่อสินค้า — ใช้ชื่อเดิมของ TikTok");
   }
 
-  // STEP 9: กด Add วนจนช่องชื่อหาย = modal ปิด = เพิ่มสำเร็จ
-  const added = await retryUntil("STEP9 กด Add ยืนยันสินค้า", async () => {
-    const b = modalPrimaryButton(["add", "done", "เพิ่ม", "เสร็จ"]) ||
-              modalFooterButton(["add", "done", "เพิ่ม", "เสร็จ"]) ||
-              findButtonByText(["เพิ่ม", "add"]);
-    if (isClickable(b)) { realClick(b); try { b.click(); } catch (_) {} }
-    await sleep(900);
-    return findProductNameInput() ? null : true; // ช่องชื่อหาย = modal ปิด = สำเร็จ
-  }, 25000, 1500);
+  // STEP 9: กด Add "ครั้งเดียว" แล้วรอช่องชื่อหาย = modal ปิด (re-click เฉพาะถ้าค้าง)
+  const findAddBtn = () => modalPrimaryButton(["add", "done", "เพิ่ม", "เสร็จ"]) ||
+                           modalFooterButton(["add", "done", "เพิ่ม", "เสร็จ"]) ||
+                           findButtonByText(["เพิ่ม", "add"]);
+  const addBtn9 = await retryUntil("STEP9 หาปุ่ม Add", () => {
+    const b = findAddBtn();
+    return isClickable(b) ? b : null;
+  }, 15000, 1500, () => diagPrimaryButton(["add", "done", "เพิ่ม", "เสร็จ"]));
+  let added = false;
+  if (addBtn9) {
+    await sleep(500);
+    realClick(addBtn9);
+    try { addBtn9.click(); } catch (_) {}
+    log("STEP9 กด Add (ครั้งเดียว) — รอ modal ปิด");
+    added = await retryUntil("STEP9 รอ modal ปิด", () => findProductNameInput() ? null : true, 10000, 1500);
+    if (!added) {
+      log("STEP9 ยังไม่ปิด — กด Add ซ้ำอีกครั้ง");
+      const b = findAddBtn();
+      if (isClickable(b)) { realClick(b); try { b.click(); } catch (_) {} }
+      added = await retryUntil("STEP9 รอ modal ปิด (รอบ2)", () => findProductNameInput() ? null : true, 10000, 1500);
+    }
+  }
   if (!added) {
     log("⚠️ กด Add ยืนยันสินค้าไม่สำเร็จ");
     return false;
@@ -678,38 +761,47 @@ function findProductNameInput() {
   return labeled || inputs[0];
 }
 
-// หาแถวสินค้าที่ตรงกับ key (product ID / ชื่อ) — match จาก Product ID cell ก่อน
+// หาแถวสินค้าที่ "ตรงกับ key จริง" เท่านั้น (ไม่ fallback rows[0])
+// → ต้องรอผลค้นหา filter เจอสินค้านั้นก่อนถึงคืนค่า แล้วค่อยเลือก
 function findProductRow(key) {
   const nkey = normalizeText(key);
   const rows = [...document.querySelectorAll('tr.product-tb-row, [class*="product-tb-row"]')].filter(isVisible);
   if (!rows.length) return null;
+  // 1) Product ID cell ตรงเป๊ะ
   const exact = rows.find((row) =>
     [...row.querySelectorAll('.product-tb-cell, td')].some((cell) => normalizeText(cell.textContent) === nkey)
   );
   if (exact) return exact;
-  const partial = rows.find((row) => normalizeText(row.textContent).includes(nkey));
-  return partial || rows[0];
+  // 2) เผื่อ key เป็นชื่อ/URL — แถวที่ข้อความมี key
+  return rows.find((row) => normalizeText(row.textContent).includes(nkey)) || null;
 }
 
-// เลือก radio ของสินค้าให้ React รับรู้ (set checked + .click() จริง + คลิก wrapper/label/row)
-function selectProductRadio(row) {
+// เลือกสินค้า "คลิกครั้งเดียว" ที่ radio (set checked + realClick เดียว ให้ React รับรู้)
+async function selectProductRadio(row) {
   const radio = row.querySelector('input[type="radio"], input.TUXRadioStandalone-input');
+  const target = radio || row.querySelector(".TUXRadioStandalone, .TUXRadio, .product-info-cell") || row;
+  target.scrollIntoView({ block: "center" });
+  await sleep(400);
   if (radio) {
-    radio.scrollIntoView({ block: "center" });
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "checked")?.set;
     if (setter) setter.call(radio, true);
     else radio.checked = true;
-    try { radio.click(); } catch (_) {}
-    radio.dispatchEvent(new Event("input", { bubbles: true }));
-    radio.dispatchEvent(new Event("change", { bubbles: true }));
-
-    // เผื่อ React ผูก handler ไว้ที่ label/wrapper/row แทน input
-    const label = radio.id ? row.querySelector(`label[for="${CSS.escape(radio.id)}"]`) : null;
-    const wrapper = row.querySelector(".TUXRadioStandalone, .TUXRadio");
-    if (wrapper) realClick(wrapper);
-    if (label) realClick(label);
   }
-  realClick(row.querySelector(".product-info-cell, .product-name-cell") || row);
+  realClick(target); // คลิกเลือกครั้งเดียวพอ
+  if (radio) radio.dispatchEvent(new Event("change", { bubbles: true }));
+  await sleep(400);
+}
+
+// หาปุ่ม Next ใน footer ของ "modal เลือกสินค้า" โดยเฉพาะ (กันไปโดน Next ของ modal อื่นที่ค้างใน DOM)
+function productSelectorNext() {
+  const modal = document.querySelector(".product-selector-modal");
+  if (!modal) return null;
+  const buttons = [...modal.querySelectorAll(".common-modal-footer button, .common-modal-footer .TUXButton")].filter(isVisible);
+  return buttons.find((b) => {
+    const t = normalizeText(b.textContent);
+    if (t.includes("cancel") || t.includes("ยกเลิก")) return false;
+    return t === "next" || t.includes("next") || t.includes("ถัดไป") || b.classList.contains("TUXButton--primary");
+  }) || null;
 }
 
 // หาปุ่ม primary (Next/Add) ใน footer ของ modal — เลี่ยงปุ่ม Cancel (secondary)
@@ -922,6 +1014,7 @@ async function clickSaveDraftV2() {
     return isClickable(b) ? b : null;
   }, 60000);
   if (!button) throw new Error("ไม่พบปุ่ม Save Draft ที่กดได้ (หมดเวลา 60s)");
+  await sleep(800);
   realClick(button);
   try { button.click(); } catch (_) {}
   await clickConfirmIfNeeded();
@@ -933,6 +1026,7 @@ async function clickPost() {
     return isClickable(b) ? b : null;
   }, 60000);
   if (!button) throw new Error("ไม่พบปุ่ม Post ที่กดได้ (หมดเวลา 60s)");
+  await sleep(800);
   realClick(button);
   try { button.click(); } catch (_) {}
   await clickConfirmIfNeeded();
@@ -1090,11 +1184,17 @@ async function waitFor(predicate, timeoutMs = 10000, intervalMs = 300) {
   return null;
 }
 
-// วน fn ซ้ำจนสำเร็จ พร้อมแสดง countdown วินาทีที่เหลือทุก step
-async function retryUntil(label, fn, totalMs = 30000, intervalMs = 1000) {
+// วน fn ซ้ำจนสำเร็จ พร้อม countdown + diagnose บอกว่าหาอะไรเจอ/ไม่เจอ
+// เริ่มช้า ๆ แบบมนุษย์: หน่วงให้เว็บ render ก่อนเช็คครั้งแรก
+async function retryUntil(label, fn, totalMs = 30000, intervalMs = 1500, diagnose = null) {
   const deadline = Date.now() + totalMs;
   let lastTick = -1;
+  const diag = () => {
+    if (!diagnose) return "";
+    try { return ` | ${diagnose()}`; } catch (_) { return ""; }
+  };
   log(`▶ ${label} — เริ่ม (สูงสุด ${Math.round(totalMs / 1000)}s)`);
+  await sleep(700); // รอหน้าโหลด/ปุ่มแสดงก่อนเช็คครั้งแรก
   while (Date.now() < deadline) {
     try {
       const result = await fn();
@@ -1106,12 +1206,20 @@ async function retryUntil(label, fn, totalMs = 30000, intervalMs = 1000) {
     const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
     if (remain !== lastTick) {
       lastTick = remain;
-      log(`⏳ ${label} — ลองใหม่... เหลือ ${remain}s`);
+      log(`🔄 ${label} — ยังไม่เจอ กำลังวนหา/ลองใหม่... เหลือ ${remain}s${diag()}`);
     }
     await sleep(intervalMs);
   }
-  log(`⚠️ ${label} — หมดเวลา ${Math.round(totalMs / 1000)}s ยังไม่สำเร็จ`);
+  log(`⚠️ ${label} — หมดเวลา ${Math.round(totalMs / 1000)}s ยังไม่เจอ${diag()}`);
   return null;
+}
+
+// อธิบายสถานะปุ่ม primary (พบ/clickable/disabled) สำหรับ diagnose
+function diagPrimaryButton(words) {
+  const b = modalPrimaryButton(words);
+  if (!b) return `ไม่พบปุ่ม primary [${words.join("/")}]`;
+  const aria = b.getAttribute("aria-disabled");
+  return `พบปุ่ม "${normalizeText(b.textContent)}" clickable=${isClickable(b)} disabled=${b.disabled} aria-disabled=${aria}`;
 }
 
 function findButtonByText(words) {
@@ -1304,9 +1412,12 @@ function realClick(element) {
   element.dispatchEvent(new MouseEvent("click", options));
 }
 
+let logSeq = 0;
 function log(msg) {
-  console.log("[TikTokPost]", msg);
-  chrome.runtime.sendMessage({ type: "TIKTOK_STUDIO_LOG", message: msg }).catch(() => {});
+  logSeq += 1;
+  const line = `#${String(logSeq).padStart(2, "0")} ${msg}`;
+  console.log("[TikTokPost]", line);
+  chrome.runtime.sendMessage({ type: "TIKTOK_STUDIO_LOG", message: line }).catch(() => {});
 }
 
 function sendDone(result) {

@@ -55,10 +55,24 @@ export async function logActivity(message, type = "info") {
     type,
     time: new Date().toISOString()
   };
-  activityLog = [entry, ...activityLog].slice(0, 30);
+  activityLog = [entry, ...activityLog].slice(0, 100);
   renderActivityLog();
   await chrome.storage.local.set({ activityLog });
 }
+
+// รับ log ละเอียดจาก content/background (TikTok automation) มาแสดงในแผงสถานะ
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "TIKTOK_STUDIO_LOG" && message.message) {
+    logActivity(message.message, "info").catch(() => {});
+    return false;
+  }
+  if (message?.type === "PIPELINE_LOG" && message.payload?.message) {
+    const type = message.payload.level === "warn" || message.payload.level === "error" ? "error" : "info";
+    logActivity(message.payload.message, type).catch(() => {});
+    return false;
+  }
+  return false;
+});
 
 /**
  * @description วาด activity log ลง UI
@@ -253,7 +267,7 @@ chrome.storage.local.get(["activeTab", "activityLog", "logCollapsed", "collapsed
   }
   
   collapsedGroups = storedCollapsedGroups && typeof storedCollapsedGroups === "object" ? storedCollapsedGroups : {};
-  activityLog = Array.isArray(storedLog) ? storedLog.slice(0, 30) : [];
+  activityLog = Array.isArray(storedLog) ? storedLog.slice(0, 100) : [];
   renderActivityLog();
   loadTab(storedTab || "video").catch((error) => showStatus(error.message, "error"));
 });
