@@ -37,7 +37,7 @@ async function routeMessage(message, sender) {
     case "FLOW_STOP":                return stopFlowPipeline();
     case "TIKTOK_SEND_DRAFT":        return sendTikTokDraft(message.payload);
     case "TIKTOK_STUDIO_LOG":        console.log("TikTok Studio:", message.message); return { ok: true };
-    case "TIKTOK_DONE":              console.log("TikTok Done:", message.payload); return { ok: true };
+    case "TIKTOK_DONE":              return handleTikTokDone(message.payload);
     case "PIPELINE_LOG":             console.log("Pipeline:", message.payload); return { ok: true };
     default: throw new Error("ไม่รู้จักคำสั่งที่ส่งมา");
   }
@@ -440,11 +440,9 @@ async function sendTikTokDraft(payload) {
     throw new Error(response?.error || "การกรอกและอัปโหลดวิดีโอบนหน้าเว็บล้มเหลว");
   }
 
-  const doneMessage = response.posted
-    ? "โพสต์บนหน้าเว็บสำเร็จแล้ว"
-    : "บันทึกร่างดราฟต์บนหน้าเว็บสำเร็จแล้ว";
-  await notify("TikTok Automation", doneMessage);
-  return { ok: true, ...response };
+  // content รัน pipeline เบื้องหลังและตอบ started ทันที — ผลจริงจะมาทาง TIKTOK_DONE
+  await notify("TikTok Automation", "เริ่มอัปโหลด/กรอกข้อมูลบนหน้า TikTok แล้ว ดูความคืบหน้าที่แท็บ TikTok");
+  return { ok: true, started: true };
 }
 
 async function retryVideoPreparation(videoUrl) {
@@ -627,6 +625,19 @@ async function openTikTokStudioUploadTab() {
   await waitForTabComplete(newTab.id);
   await sleep(3000);
   return newTab.id;
+}
+
+async function handleTikTokDone(payload = {}) {
+  console.log("TikTok Done:", payload);
+  if (payload.success) {
+    const msg = payload.posted
+      ? "โพสต์ TikTok สำเร็จแล้ว ✅"
+      : (payload.fallback ? `บันทึกร่างแทน (${payload.reason || "บางขั้นตอนไม่สำเร็จ"})` : "บันทึกร่าง TikTok สำเร็จแล้ว ✅");
+    await notify("TikTok Automation", msg);
+  } else {
+    await notify("TikTok Automation", "ล้มเหลว: " + (payload.error || "ไม่ทราบสาเหตุ"));
+  }
+  return { ok: true };
 }
 
 async function notify(title, message) {

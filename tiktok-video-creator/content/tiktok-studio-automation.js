@@ -86,17 +86,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
   if (message.type === "TIKTOK_UPLOAD_VIDEO") {
+    // ตอบกลับทันที (started) แล้วรัน pipeline เบื้องหลัง — กัน message channel ปิดตอน pipeline ยาว
+    sendResponse({ ok: true, started: true });
     handleVideoUpload(message.payload)
-      .then((result) => {
-        sendDone({ success: true });
-        sendResponse({ ok: true, success: true, ...result });
-      })
+      .then((result) => sendDone({ success: true, ...result }))
       .catch((err) => {
         const error = err instanceof Error ? err.message : String(err);
         sendDone({ success: false, error });
-        sendResponse({ ok: false, success: false, error });
       });
-    return true;
+    return false;
   }
   if (message.type === "TIKTOK_UPLOAD_DRAFT") {
     handleDraftUpload(message.payload)
@@ -588,7 +586,7 @@ async function applyProductLink(productId, productUrl, productName) {
       isVisible(el) && el.querySelector(".button-group, .TUXSelect") && /link type|products/i.test(el.textContent)
     );
     if (ltModal) {
-      const next = modalFooterButton(["next", "ถัดไป"]) || findButtonByText(["next", "ถัดไป"]);
+      const next = modalPrimaryButton(["next", "ถัดไป"]) || modalFooterButton(["next", "ถัดไป"]) || findButtonByText(["next", "ถัดไป"]);
       if (isClickable(next)) { realClick(next); try { next.click(); } catch (_) {} }
     }
     return selectorModalOpen() ? true : null;
@@ -623,46 +621,61 @@ async function applyProductLink(productId, productUrl, productName) {
   // STEP 6: เลือก radio วนจนปุ่ม Next ใน footer enable
   const nextBtn = await retryUntil("STEP6 เลือกสินค้า + รอ Next enable", async () => {
     const r = findProductRow(productKey) || row;
-    if (r) {
-      selectProductRadio(r);
-      realClick(r.querySelector(".product-info-cell, .product-name-cell") || r);
-    }
-    const b = modalFooterButton(["next", "ถัดไป"]);
+    if (r) selectProductRadio(r);
+    const b = modalPrimaryButton(["next", "ถัดไป"]);
     return isClickable(b) ? b : null;
   }, 30000, 1000);
   if (!nextBtn) return false;
   realClick(nextBtn);
   try { nextBtn.click(); } catch (_) {}
 
-  // STEP 7: รอเข้าหน้าตั้งชื่อ/ยืนยัน
-  await retryUntil("STEP7 เข้าหน้าตั้งชื่อ/ยืนยัน", () => {
-    return findVisibleInput(["ชื่อสินค้า", "product name", "title", "name"]) ||
-           modalFooterButton(["add", "done", "เพิ่ม", "เสร็จ"]) ? true : null;
-  }, 20000);
+  // STEP 7: รอเข้าหน้าตั้งชื่อสินค้า (modal "Product name")
+  const titleInput = await retryUntil("STEP7 เข้าหน้าตั้งชื่อสินค้า", () => findProductNameInput(), 20000);
 
-  // STEP 8: แก้ชื่อ (clean) ถ้ามีช่อง
-  const titleInput = findVisibleInput(["ชื่อสินค้า", "product name", "title", "name"]);
+  // STEP 8: แก้ชื่อ (clean) — กรอกผ่าน React setter ให้ word count อัปเดต
   if (titleInput) {
-    const existingTitle = titleInput.isContentEditable ? titleInput.textContent : titleInput.value;
+    const existingTitle = titleInput.value;
     const finalTitle = buildProductLinkTitle(productName, existingTitle);
-    setNativeValue(titleInput, finalTitle);
+    titleInput.focus();
+    try { titleInput.select(); } catch (_) {}
+    typeIntoInput(titleInput, finalTitle);
     log(`STEP8 ตั้งชื่อสินค้า: ${finalTitle}`);
-    await sleep(400);
+    await sleep(500);
+  } else {
+    log("STEP8 ไม่พบช่องชื่อสินค้า — ใช้ชื่อเดิมของ TikTok");
   }
 
-  // STEP 9: กดยืนยัน (Add/Done) วนจน modal ปิด = เพิ่มสำเร็จ
-  const added = await retryUntil("STEP9 ยืนยันเพิ่มสินค้า", async () => {
-    const b = modalFooterButton(["add", "done", "เพิ่ม", "เสร็จ", "next", "ถัดไป"]) || findButtonByText(["เพิ่ม", "add"]);
+  // STEP 9: กด Add วนจนช่องชื่อหาย = modal ปิด = เพิ่มสำเร็จ
+  const added = await retryUntil("STEP9 กด Add ยืนยันสินค้า", async () => {
+    const b = modalPrimaryButton(["add", "done", "เพิ่ม", "เสร็จ"]) ||
+              modalFooterButton(["add", "done", "เพิ่ม", "เสร็จ"]) ||
+              findButtonByText(["เพิ่ม", "add"]);
     if (isClickable(b)) { realClick(b); try { b.click(); } catch (_) {} }
-    await sleep(800);
-    return selectorModalOpen() ? null : true; // modal ปิดแล้ว = สำเร็จ
+    await sleep(900);
+    return findProductNameInput() ? null : true; // ช่องชื่อหาย = modal ปิด = สำเร็จ
   }, 25000, 1500);
   if (!added) {
-    log("⚠️ ยืนยันเพิ่มสินค้าไม่สำเร็จ");
+    log("⚠️ กด Add ยืนยันสินค้าไม่สำเร็จ");
     return false;
   }
   log("✅ เพิ่มลิงก์สินค้าสำเร็จ");
   return true;
+}
+
+// หา input ชื่อสินค้าในหน้าแก้ชื่อ (label = Product name) — ไม่มี placeholder/name จึงต้องดู label/desc
+function findProductNameInput() {
+  const inputs = [...document.querySelectorAll(
+    '.TUXModal input[type="text"], [role="dialog"] input[type="text"], .common-modal-body input.TUXTextInputCore-input, .common-modal-body input[type="text"]'
+  )].filter((el) => isVisible(el) && !el.placeholder);
+  if (!inputs.length) return null;
+  const labeled = inputs.find((input) => {
+    const label = input.id ? document.querySelector(`label[for="${CSS.escape(input.id)}"]`) : null;
+    const descId = input.getAttribute("aria-describedby");
+    const desc = descId ? document.getElementById(descId) : null;
+    const text = normalizeText([label?.textContent, desc?.textContent].filter(Boolean).join(" "));
+    return /product name|ชื่อสินค้า/.test(text);
+  });
+  return labeled || inputs[0];
 }
 
 // หาแถวสินค้าที่ตรงกับ key (product ID / ชื่อ) — match จาก Product ID cell ก่อน
@@ -678,7 +691,7 @@ function findProductRow(key) {
   return partial || rows[0];
 }
 
-// เลือก radio ของสินค้าให้ React รับรู้ (set checked + .click() จริง)
+// เลือก radio ของสินค้าให้ React รับรู้ (set checked + .click() จริง + คลิก wrapper/label/row)
 function selectProductRadio(row) {
   const radio = row.querySelector('input[type="radio"], input.TUXRadioStandalone-input');
   if (radio) {
@@ -689,9 +702,31 @@ function selectProductRadio(row) {
     try { radio.click(); } catch (_) {}
     radio.dispatchEvent(new Event("input", { bubbles: true }));
     radio.dispatchEvent(new Event("change", { bubbles: true }));
-    return;
+
+    // เผื่อ React ผูก handler ไว้ที่ label/wrapper/row แทน input
+    const label = radio.id ? row.querySelector(`label[for="${CSS.escape(radio.id)}"]`) : null;
+    const wrapper = row.querySelector(".TUXRadioStandalone, .TUXRadio");
+    if (wrapper) realClick(wrapper);
+    if (label) realClick(label);
   }
-  realClick(row.querySelector(".product-info-cell, .TUXRadio") || row);
+  realClick(row.querySelector(".product-info-cell, .product-name-cell") || row);
+}
+
+// หาปุ่ม primary (Next/Add) ใน footer ของ modal — เลี่ยงปุ่ม Cancel (secondary)
+function modalPrimaryButton(words = []) {
+  const nwords = words.map(normalizeText).filter(Boolean);
+  const buttons = [...document.querySelectorAll(
+    '.common-modal-footer .TUXButton--primary, [role="dialog"] .TUXButton--primary, .TUXModal .TUXButton--primary, .button-group .TUXButton--primary'
+  )].filter(isVisible);
+  if (!buttons.length) return null;
+  if (nwords.length) {
+    const matched = buttons.find((b) => {
+      const t = normalizeText(b.textContent);
+      return nwords.some((w) => t === w || t.includes(w));
+    });
+    if (matched) return matched;
+  }
+  return buttons.find(isClickable) || buttons[0];
 }
 
 // หาปุ่มใน footer ของ modal ตาม label

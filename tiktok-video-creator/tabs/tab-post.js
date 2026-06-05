@@ -137,7 +137,7 @@ async function runTestUpload() {
     chrome.runtime.sendMessage({ type: "TIKTOK_SEND_DRAFT", payload })
       .then((response) => {
         if (response?.ok) {
-          setTestStatus(response.posted ? "โพสต์สำเร็จ ✅" : "บันทึกร่างสำเร็จ ✅", "success");
+          setTestStatus("เริ่มทำงานบนหน้า TikTok แล้ว — ดูผลที่ Notification / log แท็บ TikTok", "info");
         } else if (response) {
           setTestStatus("ล้มเหลว: " + (response.error || "ไม่ทราบสาเหตุ"), "error");
         }
