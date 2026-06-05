@@ -1,6 +1,6 @@
 # TikTok Video Creator Extension - Project Handoff
 
-*อัพเดตล่าสุด: 30 พฤษภาคม 2026*
+*อัพเดตล่าสุด: 5 มิถุนายน 2026*
 
 ## ภาพรวมโปรเจกต์
 
@@ -130,6 +130,29 @@ Flow:
    - คลิก `เพิ่ม`
 9. บันทึกแบบร่างหรือโพสต์ตาม settings
 
+### 8.2 Resilient Automation (อัปเดต 0.4.0)
+
+`content/tiktok-studio-automation.js` ถูกเขียนใหม่ให้ทนเน็ตช้า/หลุด แต่ละขั้นมี retry loop ของตัวเอง:
+
+- **`retryUntil(label, fn, totalMs, intervalMs, diagnose)`** — วน fn จนสำเร็จ มี countdown ทุกวินาที + diagnose บอกว่าหาปุ่ม/อะไรเจอ-clickable-disabled ไหม (ไม่ข้าม step เงียบ ๆ)
+- **อัปโหลดไฟล์** — DataTransfer drop ก่อน แล้ว fallback ยัด base64 `File` ผ่าน native setter; `findUploadInput` มองใน iframe ด้วย; `waitForUploadFinished` ดูจากปุ่ม Post/Save พร้อม + video preview (ไม่ผูกภาษา)
+- **Product link** — 9 step (STEP1–9) ตรงตาม DOM จริง: Add link → modal Link type=Products → Next → product-selector modal → แท็บ Showcase → ค้นหา `productId` (Enter + ไอคอนแว่น, loop จนเจอแถวที่ ID ตรง ไม่เลือกตัวแรกมั่ว) → เลือก radio (คลิกเดียว) → `productSelectorNext()` รอ Next enable เฉพาะใน `.product-selector-modal` แล้วคลิก → หน้า rename `findProductNameInput` กรอกชื่อ clean ≤25 → คลิก Add จน modal ปิด
+- **ปุ่มสำคัญคลิกครั้งเดียว** (Add link / Next / Add) re-click เฉพาะถ้าค้างจริง
+- **AI-generated content** — `setAigcSwitch` อ่าน `data-state`/`aria-checked` คลิกตัว switch จริง verify+retry 4 รอบ และย้ำอีกครั้งก่อนกด Post **และ** Save Draft
+- **Fallback เป็น draft** ถ้า post mode แล้วเพิ่มสินค้า/AIGC/กด Post ไม่สำเร็จ (มี log บอกเหตุผล)
+- **Log** — เลขลำดับ `#NN` ต่อเนื่อง ส่งเข้า console + side panel
+
+### 8.3 Decoupled messaging (อัปเดต 0.4.0)
+
+- `TIKTOK_UPLOAD_VIDEO` ตอบ `{ started: true }` ทันที แล้วรัน pipeline เบื้องหลัง → แก้ error `message channel closed` ตอนอัปโหลดนาน
+- ผลจริงแจ้งผ่าน `TIKTOK_DONE` → notification (โพสต์ / draft fallback / ล้มเหลว)
+- `prepareVideoBase64ForTikTok` decode `data:` URL ตรง ไม่ fallback Google Flow ผิด
+- บังคับ metadata (caption/hashtags/productUrl) เฉพาะตอนโพสต์จริง
+
+### 8.4 Manual test panel (อัปเดต 0.4.0)
+
+แท็บ Post มีแผง "ทดสอบอัพโหลด & โพสต์": เลือกไฟล์วิดีโอ + caption + **ID สินค้า** + ลิงก์สินค้า + โหมด (draft/now) → ยิงเข้า pipeline จริง (อ่านไฟล์เป็น base64, ไม่ block รอ)
+
 ### 9. Options Page
 (คงเดิม)
 
@@ -155,8 +178,11 @@ TIKTOK_UPLOAD_VIDEO
 - `OPEN_GOOGLE_FLOW`: เปิด Google Flow และ inject prompt
 - `DOWNLOAD_VIDEO`: download URL ด้วย `chrome.downloads.download`
 - `POST_TO_TIKTOK`: legacy placeholder
-- `TIKTOK_SEND_DRAFT`: เปิด/โฟกัส TikTok Studio upload page, เตรียมวิดีโอ, ส่ง payload ไป content script
-- `TIKTOK_UPLOAD_VIDEO`: content script อัปโหลดวิดีโอ กรอกข้อมูล ตั้งค่าโพสต์ เพิ่ม product link และ save draft/post
+- `TIKTOK_SEND_DRAFT`: เปิด/โฟกัส TikTok Studio upload page, เตรียมวิดีโอ, ส่ง payload ไป content script (คืนทันทีหลัง content ตอบ `started`)
+- `TIKTOK_UPLOAD_VIDEO`: content script ตอบ `{ started: true }` ทันที แล้วรัน pipeline อัปโหลด/กรอก/ตั้งค่า/เพิ่ม product link/save draft|post เบื้องหลัง
+- `TIKTOK_DONE`: content แจ้งผลสุดท้าย (success/posted/drafted/fallback/error) → background ขึ้น notification
+- `TIKTOK_STUDIO_LOG` / `PIPELINE_LOG`: log ละเอียดทีละ step → side panel แสดงใน activity log
+- `CHUNK_INIT` / `CHUNK_PUSH` / `CHUNK_DONE`: ส่งวิดีโอ data URL เป็น chunk จาก background → content
 
 ## Storage ที่ใช้
 
@@ -364,14 +390,17 @@ file assets/icon16.png assets/icon48.png assets/icon128.png
 - ทดลอง workflow Phase 1/Phase 2 กับ Google Flow แบบ Fully Automatic E2E
 - บันทึก settings/token
 - ตั้งค่า TikTok posting ใน Tab 3
-- ดาวน์โหลดวิดีโอแล้วอัปโหลดต่อไป TikTok Studio ผ่าน UI automation
+- ดาวน์โหลดวิดีโอแล้วอัปโหลดต่อไป TikTok Studio ผ่าน UI automation (resilient retry ทุก step + log ละเอียด)
 - ตั้งชื่อไฟล์ด้วย `productId`
 - สร้าง caption จาก product details และจำกัด hashtags สูงสุด 5
-- บังคับเปิด AI-generated disclosure
+- บังคับเปิด AI-generated disclosure (verify ก่อน Post และ Save Draft)
+- เพิ่ม product link ด้วย ID (loop หาจนเจอ, ไม่เลือกมั่ว) + ตั้งชื่อ clean ≤25
+- Fallback เป็น draft อัตโนมัติเมื่อโพสต์ไม่ครบเงื่อนไข
+- แผงทดสอบอัปโหลด/โพสต์ด้วยไฟล์ในเครื่อง (Tab Post)
 
 ยังไม่พร้อม production:
 
 - TikTok OAuth/token exchange จริง
 - TikTok Showcase API production validation
 - TikTok Content Posting API official endpoint จริง
-- TikTok Studio UI automation ยังต้องทดสอบ live หลังอัปโหลดจริงทุกขั้นตอน
+- TikTok Studio UI automation ยังต้องทดสอบ live ต่อเนื่อง (selector TikTok เปลี่ยนบ่อย — ถ้า DOM เปลี่ยนต้องอัปเดต selector/STEP ใน `content/tiktok-studio-automation.js`)

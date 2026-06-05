@@ -2,6 +2,50 @@
 
 ---
 
+## [0.4.0] — 2026-06-05
+
+### Resilient TikTok Studio Automation (`content/tiktok-studio-automation.js`)
+
+#### File upload
+- DataTransfer drop attempted first, then base64 `File` fallback via native `input.files` setter / `defineProperty`.
+- `findUploadInput` searches same-origin iframes too, retries with countdown, clicks the upload entry point each loop (60s window).
+- `verifyFileAccepted` no longer throws if the file is already in the input — proceeds and lets `waitForUploadFinished` decide.
+- `waitForUploadFinished` is language-agnostic: waits for Post/Save button ready + video preview (not the English word "uploaded"), 300s window with countdown.
+
+#### Product link flow (rewritten, matches real DOM, 9 retry-with-countdown steps)
+- STEP1 click **Add link** (once) → STEP2 **Add link** modal `Link type = Products` → click **Next** (once).
+- STEP3 wait product-selector modal → STEP4 select **Showcase products** tab + search box.
+- STEP5 type product **ID** into `input[placeholder="Search products"]`, trigger search (Enter + magnifier icon), loop until the matching ID row appears (no fallback to first row).
+- STEP6 select product radio (single click) → wait Next enable (scoped to `.product-selector-modal` via `productSelectorNext`, avoids stale modals) → click Next.
+- STEP7–9 rename page: `findProductNameInput` (label-based), set cleaned name via React setter, click **Add** until modal closes.
+- Product title cleaning: strips `(Live)`/brackets and weird symbols/emoji, max 25 chars.
+
+#### Each step is self-healing
+- `retryUntil(label, fn, totalMs, intervalMs, diagnose)` loops until success with per-second countdown logs and diagnostics (button found? clickable? disabled?), so a stuck step is visible instead of a silent skip.
+- Human pacing: warm-up delay before first check, larger intervals, settle delays before clicking Next / Post / Save Draft.
+
+#### Post / draft safety
+- Post mode falls back to **Save Draft** if the product link can't be added, AI-generated can't be set, or the Post click fails — with a loud log of the reason.
+- `setAigcSwitch` reads `data-state`/`aria-checked`, clicks the real switch (not the `aria-hidden` input), verifies + retries up to 4 rounds.
+- **AI-generated content** re-verified right before both Post and Save Draft.
+
+#### Logging
+- Sequential `#NN` numbered log lines, reset per run; emitted to console and the side panel.
+
+### Decoupled messaging (`background.js`, `content/tiktok-studio-automation.js`)
+- `TIKTOK_UPLOAD_VIDEO` acks `{ started: true }` immediately and runs the pipeline detached → fixes "message channel closed" on long uploads.
+- `sendTikTokDraft` returns immediately; final result is surfaced via `TIKTOK_DONE` → notification (posted / draft fallback / failure).
+- `prepareVideoBase64ForTikTok` decodes `data:` URLs directly (no bogus Google Flow fallback).
+- Post metadata (`caption`, `hashtags`, `productUrl`) enforced only when actually posting, not for drafts.
+
+### Side panel (`sidepanel.js`)
+- Listens for `TIKTOK_STUDIO_LOG` / `PIPELINE_LOG` and renders detailed step status in the activity log (cap raised 30 → 100).
+
+### Manual test panel (`tabs/tab-post.html`, `tabs/tab-post.js`)
+- "ทดสอบอัพโหลด & โพสต์" panel: pick a local video, caption, **product ID**, product URL, mode (draft/now) → fires the real pipeline (non-blocking, file read as base64).
+
+---
+
 ## [0.3.0] — 2026-05-30
 
 ### Features
