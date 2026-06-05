@@ -230,7 +230,7 @@ function normalizePostSettings(value = {}) {
   return {
     ...post,
     captionTemplate: post.captionTemplate || DEFAULT_POST_SETTINGS.captionTemplate,
-    hashtags: normalizeHashtags(hashtags),
+    hashtags: normalizeHashtags(hashtags, 4),
     afterCreateAction: post.afterCreateAction === "both"
       ? "draft"
       : (["download", "draft", "post"].includes(post.afterCreateAction) ? post.afterCreateAction : "post"),

@@ -54,9 +54,13 @@ function bindProductEvents() {
 
   document.querySelector("#create-batch-videos")?.addEventListener("click", async () => {
     if (selectedIds.size === 0) return;
-    const selectedArray = products.filter(p => selectedIds.has(p.productId));
-    await chrome.storage.local.set({ productQueue: selectedArray });
-    await selectProduct(selectedArray[0]);
+    const selectedArray = products
+      .filter(p => selectedIds.has(p.productId))
+      .map(buildSelectedProductPayload);
+    await chrome.storage.local.set({ selectedProduct: selectedArray[0], productQueue: selectedArray, activeTab: "video" });
+    helpers.logActivity?.(`เลือกสินค้าเพื่อสร้างวิดีโอ ${selectedArray.length} รายการ`, "success");
+    helpers.showStatus("ส่งสินค้าไปหน้า สร้างวิดีโอ แล้ว", "success");
+    await helpers.switchTab("video");
   });
 }
 
@@ -148,7 +152,6 @@ function renderProducts() {
   list.querySelectorAll("[data-create-video]").forEach((button) => {
     button.addEventListener("click", async () => {
       const product = products.find((item) => item.productId === button.dataset.createVideo);
-      await chrome.storage.local.set({ productQueue: [product] });
       await selectProduct(product);
     });
   });
@@ -229,10 +232,25 @@ function sortProducts(a, b, sortBy) {
 
 async function selectProduct(product) {
   if (!product) return;
+  const selectedProduct = buildSelectedProductPayload(product);
+
+  await chrome.storage.local.set({ selectedProduct, productQueue: [selectedProduct], activeTab: "video" });
+  helpers.logActivity?.(`เลือกสินค้าเพื่อสร้างวิดีโอ: ${selectedProduct.originalName || selectedProduct.name}`, "success");
+  helpers.showStatus("ส่งสินค้าไปหน้า สร้างวิดีโอ แล้ว", "success");
+  await helpers.switchTab("video");
+}
+
+function buildSelectedProductPayload(product) {
   const productUrl = resolveProductUrl(product);
-  const selectedProduct = {
-    productId: product.productId,
-    name: product.name,
+  const productId = product.productId || product.product_id || product.id || "";
+  const originalName = product.originalName || product.productLinkTitle || product.rawProduct?.title || product.rawProduct?.product_name || product.rawProduct?.name || product.name || "";
+  return {
+    ...product,
+    productId,
+    product_id: productId,
+    name: product.name || originalName,
+    originalName,
+    productLinkTitle: product.productLinkTitle || originalName,
     price: product.price,
     currency: product.currency,
     highlights: product.highlights || product.details || product.category || "",
@@ -242,13 +260,9 @@ async function selectProduct(product) {
     productUrl,
     shopName: product.shopName || "",
     category: product.category || "",
-    details: product.details || ""
+    details: product.details || "",
+    rawProduct: product.rawProduct || product
   };
-
-  await chrome.storage.local.set({ selectedProduct, productQueue: [selectedProduct], activeTab: "video" });
-  helpers.logActivity?.(`เลือกสินค้าเพื่อสร้างวิดีโอ: ${product.name}`, "success");
-  helpers.showStatus("ส่งสินค้าไปหน้า สร้างวิดีโอ แล้ว", "success");
-  await helpers.switchTab("video");
 }
 
 function productMarkup(product) {

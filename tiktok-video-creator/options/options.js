@@ -50,7 +50,7 @@ async function loadOptions() {
   // Post defaults
   const post = settings.postDefaults || {};
   setValue("caption-template", post.captionTemplate || "{product_name}\n{product_details}\n{cta}");
-  setValue("default-hashtags", (post.hashtags || ["#TikTokShop", "#ของดีบอกต่อ"]).join(", "));
+  setValue("default-hashtags", normalizeHashtags(post.hashtags || ["#TikTokShop", "#ของดีบอกต่อ"], 4).join(", "));
   setChecked("auto-add-product-link", post.autoAddProductLink !== false);
 
   // Sync model card UI
@@ -61,6 +61,7 @@ async function loadOptions() {
 async function saveSettings() {
   const btn = document.querySelector("#save-settings");
   btn.disabled = true;
+  const { settings: existingSettings = {} } = await chrome.storage.sync.get("settings");
 
   const provider = getSelectValue("ai-provider") || "gemini";
   const geminiKey = getValue("gemini-api-key");
@@ -110,12 +111,12 @@ async function saveSettings() {
     defaultVoiceTone: getSelectValue("default-voice-tone"),
 
     postDefaults: {
-      ...(settings.postDefaults || {}),
+      ...(existingSettings.postDefaults || {}),
       captionTemplate: getValue("caption-template"),
-      hashtags: normalizeHashtags(getValue("default-hashtags")),
+      hashtags: normalizeHashtags(getValue("default-hashtags"), 4),
       autoAddProductLink: getChecked("auto-add-product-link"),
-      afterCreateAction: settings.postDefaults?.afterCreateAction || "post",
-      defaultMode: settings.postDefaults?.defaultMode || "now"
+      afterCreateAction: existingSettings.postDefaults?.afterCreateAction || "post",
+      defaultMode: existingSettings.postDefaults?.defaultMode || "now"
     }
   };
 

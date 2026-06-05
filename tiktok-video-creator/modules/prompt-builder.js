@@ -88,7 +88,17 @@ const PRESENTERS = {
   living_product: "The product itself becomes a living character with cute 3D eyes and personality"
 };
 
-const THAI_PERSON_DIRECTION = "Human direction: if any real person appears, make them clearly Thai, with authentic Thai local styling, facial features, gestures, and everyday Thai-market presentation energy.";
+const THAI_PERSON_DIRECTION = [
+  "Human direction: if any real person appears, make them clearly Thai, realistic, natural, and physically believable, with authentic Thai local styling, facial features, gestures, and everyday Thai-market presentation energy.",
+  "Human anatomy must be correct: one person has exactly two arms and two hands; each hand has exactly five natural fingers with realistic joints, thumbs, fingernails, and grip.",
+  "Avoid extra hands, missing fingers, fused fingers, duplicated fingers, distorted palms, rubbery arms, unnatural poses, plastic skin, doll-like faces, or overly perfect AI-looking people."
+].join(" ");
+const PRODUCT_FIDELITY_DIRECTION = [
+  "Product fidelity: match the provided reference product as closely as possible.",
+  "Preserve the original product shape, material, surface texture, color palette, label placement, brand marks, icons, and any printed letters/numbers visible on the actual product or packaging.",
+  "Original printed product/packaging text is not a headline or overlay; keep it clear and accurate from the reference, but do not invent new words, fake logos, badges, promo stickers, or extra labels.",
+  "Keep realistic physical proportions and true-to-life scale relative to hands, props, shelves, rooms, and the environment; do not make the product abnormally huge, tiny, stretched, widened, or simplified."
+].join(" ");
 
 const VOICE_TONES = {
   Auto: "Let AI choose the most suitable voice tone for the product and audience",
@@ -178,6 +188,7 @@ export function buildImagePrompt(productInfo, settings) {
 
   const promptParts = [
     `High quality product photography of ${sanitizeText(productInfo.name) || "the product"}.`,
+    PRODUCT_FIDELITY_DIRECTION,
     `Location: ${sanitizeText(locationStr)}.`,
     `Mood/Atmosphere: ${sanitizeText(moodStr)}.`,
     "Composition: Product centered, sharp focus, high-end commercial lighting, clear texture.",
@@ -190,7 +201,7 @@ export function buildImagePrompt(productInfo, settings) {
 
   // Explicitly handle "No Text" or "Include Text"
   if (settings.showName === "false" || settings.showName === false) {
-    promptParts.push("Negative prompt: ABSOLUTELY NO visible text, NO letters, NO numbers, NO typography, NO words, NO subtitles, NO labels, NO signs, NO logos, NO watermarks, NO readable packaging text, NO UI text.");
+    promptParts.push("Negative prompt: ABSOLUTELY NO added headline text, NO extra overlay text, NO subtitles, NO captions, NO CTA text, NO stickers, NO signs, NO watermarks, NO UI text. Exception: preserve only the original printed text, logo, label, and markings already visible on the real product or packaging reference.");
   } else {
     const textContext = [
       settings.promotionText ? `Include text: "${sanitizeText(settings.promotionText)}"` : "",
@@ -226,6 +237,7 @@ export function buildVideoPrompt(productInfo, settings) {
   const durationSeconds = Number.parseInt(settings.videoDuration, 10) || 8;
   const midpointSeconds = Math.max(1, Math.floor(durationSeconds / 2));
   const voiceWordLimit = Math.max(6, Math.min(16, Math.floor(durationSeconds * 1.5)));
+  const isOmniModel = /^omni/i.test(String(settings.videoModel || ""));
   const textEnabled = settings.showName === true || settings.showName === "true";
   const textItems = [
     textEnabled ? sanitizeText(productInfo.name) : "",
@@ -240,14 +252,28 @@ export function buildVideoPrompt(productInfo, settings) {
         "Thai spelling must be accurate and readable. Do not generate broken Thai characters, random Thai words, mixed-language text, English text, romanized Thai, placeholder words, random captions, misspelled text, watermarks, UI labels, logos, or extra text beyond the configured Thai overlays."
       ].join(" ")
     : [
-        "Visible text is disabled. ABSOLUTELY NO visible text anywhere in the video.",
-        "Do not show letters, words, numbers, subtitles, captions, CTA text, stickers, labels, signs, packaging callouts, logos, watermarks, UI text, or typography in any language.",
-        "If a surface would normally contain text, keep it blank, cropped out, blurred beyond readability, or replaced with plain non-text graphics."
+        "Visible text is disabled. ABSOLUTELY NO added headline text, extra overlay text, subtitles, captions, CTA text, stickers, signs, watermarks, UI text, or typography in any language.",
+        "Exception: preserve only the original printed text, logo, label, and markings already visible on the real product or packaging reference.",
+        "Do not invent new packaging callouts, logos, words, numbers, labels, or promotional badges outside the original product reference."
       ].join(" ");
+
+  const scenePlan = isOmniModel
+    ? [
+        `Scene 1 (0-${midpointSeconds}s): Product center frame at ${sanitizeText(locationStr)}.`,
+        `Scene 2 (${midpointSeconds}-${durationSeconds}s): Bold CTA moment with product full frame, upbeat energy.`,
+        `Transition: ${sanitizeText(auto.transition)}.`
+      ]
+    : [
+        `Single continuous scene (0-${durationSeconds}s): Use the provided still product image as one coherent scene at ${sanitizeText(locationStr)}.`,
+        "Do NOT split the video into multiple scenes, panels, frames, collage layouts, before/after grids, storyboards, or side-by-side compositions.",
+        "Do NOT place multiple moments inside one image. Keep one product hero setup only, with subtle motion from the still image.",
+        `Use one smooth camera move only: ${sanitizeText(auto.cameraMovement)}. No scene transition.`
+      ];
 
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
     "Use the provided product image as the main visual reference and keep product appearance accurate.",
+    PRODUCT_FIDELITY_DIRECTION,
     "Do NOT include any pricing or cost information in the video.",
     "",
     `Auto-selected creative plan: style=${style.id}, presenter=${auto.presenter}, voiceTone=${auto.voiceTone}, mood=${auto.mood}, location=${auto.location}, camera=${auto.cameraMovement}, transition=${auto.transition}.`,
@@ -257,9 +283,7 @@ export function buildVideoPrompt(productInfo, settings) {
     `Voice Tone: ${VOICE_TONES[auto.voiceTone] || VOICE_TONES.kind}.`,
     `Voiceover timing: use one short complete ${sanitizeText(settings.language)} sentence only, maximum ${voiceWordLimit} words, and finish the spoken sentence by ${Math.max(1, durationSeconds - 1)}s. Do not start a sentence that cannot finish before the video ends. No cut-off speech.`,
     `Camera Movement: ${sanitizeText(auto.cameraMovement)}.`,
-    `Scene 1 (0-${midpointSeconds}s): Product center frame at ${sanitizeText(locationStr)}.`,
-    `Scene 2 (${midpointSeconds}-${durationSeconds}s): Bold CTA moment with product full frame, upbeat energy.`,
-    `Transition: ${sanitizeText(auto.transition)}.`,
+    ...scenePlan,
     "",
     `Video style: ${style.name}. ${style.fragment}.`,
     textRule,
@@ -334,10 +358,10 @@ function promptAutoOptions(videoStyle, presenter, voiceTone, mood, location, cam
  */
 export function buildCaption(productInfo, defaults = {}) {
   const template = defaults.captionTemplate || "{product_name}\n{product_details}\n{cta}";
-  const hashtags = normalizeHashtags(defaults.hashtags);
   const productUrl = resolveProductUrl(productInfo);
+  const productName = resolveCaptionProductName(productInfo);
   const caption = template
-    .replaceAll("{product_name}", sanitizeText(productInfo.name))
+    .replaceAll("{product_name}", sanitizeText(productName))
     .replaceAll("{product_id}", sanitizeText(productInfo.productId))
     .replaceAll("{product_url}", sanitizeText(productUrl))
     .replaceAll("{price}", formatPrice(productInfo))
@@ -352,7 +376,19 @@ export function buildCaption(productInfo, defaults = {}) {
     ? `\n${sanitizeText(productUrl)}`
     : "";
 
-  return `${caption}${linkLine} ${hashtags.join(" ")}`.trim();
+  return `${caption}${linkLine}`.trim();
+}
+
+export function resolveCaptionProductName(productInfo = {}) {
+  return String(
+    productInfo.originalName ||
+    productInfo.productLinkTitle ||
+    productInfo.rawProduct?.title ||
+    productInfo.rawProduct?.product_name ||
+    productInfo.rawProduct?.name ||
+    productInfo.name ||
+    ""
+  ).trim();
 }
 
 export function resolveProductUrl(productInfo = {}) {
@@ -401,10 +437,11 @@ function findNestedProductUrl(value, seen = new Set()) {
   return "";
 }
 
-export function normalizeHashtags(value) {
+export function normalizeHashtags(value, maxTags = 5) {
   const rawTags = Array.isArray(value) ? value : String(value || "").split(",");
   const seen = new Set();
   const tags = [];
+  const limit = Math.max(1, Number.parseInt(maxTags, 10) || 5);
 
   for (const rawTag of rawTags) {
     const cleaned = String(rawTag || "")
@@ -419,10 +456,41 @@ export function normalizeHashtags(value) {
 
     seen.add(key);
     tags.push(tag);
-    if (tags.length >= 5) break;
+    if (tags.length >= limit) break;
   }
 
-  return tags.length ? tags : ["#TikTokShop", "#ของดีบอกต่อ"];
+  return tags.length ? tags : ["#TikTokShop", "#ของดีบอกต่อ"].slice(0, limit);
+}
+
+export function buildPostHashtags(productInfo = {}, defaults = {}) {
+  const baseTags = normalizeHashtags(defaults.hashtags, 4);
+  const productTag = buildProductNameHashtag(productInfo);
+  return normalizeHashtags(productTag ? [...baseTags, productTag] : baseTags, 5);
+}
+
+export function buildProductNameHashtag(productInfo = {}) {
+  const rawName = [
+    productInfo.productLinkTitle,
+    productInfo.originalName,
+    productInfo.rawProduct?.title,
+    productInfo.rawProduct?.product_name,
+    productInfo.rawProduct?.name,
+    productInfo.name
+  ].find((value) => String(value || "").trim());
+
+  const cleaned = String(rawName || "")
+    .replace(/[（(][^）)]*[）)]/g, " ")
+    .replace(/\[[^\]]*]/g, " ")
+    .replace(/【[^】]*】/g, " ")
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) return "";
+
+  const chars = Array.from(cleaned);
+  const shortName = chars.length > 30 ? chars.slice(0, 30).join("").trim() : cleaned;
+  return `#${shortName.replace(/\s+/g, "")}`;
 }
 
 function buildProductDetails(productInfo) {

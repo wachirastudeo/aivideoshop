@@ -1,4 +1,4 @@
-import { buildCaption, normalizeHashtags, resolveProductUrl } from "./prompt-builder.js";
+import { buildCaption, buildPostHashtags, normalizeHashtags, resolveProductUrl } from "./prompt-builder.js";
 
 /**
  * @description ดาวน์โหลดวิดีโอผ่าน background service worker
@@ -7,8 +7,8 @@ import { buildCaption, normalizeHashtags, resolveProductUrl } from "./prompt-bui
  * @returns {Promise<object>} ผลลัพธ์ download
  */
 export async function downloadVideo(url, productInfo) {
-  if (!url || !/^https:\/\//.test(url)) {
-    throw new Error("กรุณาใส่ URL วิดีโอแบบ HTTPS");
+  if (!url || !/^(https:|blob:|data:)/.test(url)) {
+    throw new Error("กรุณาใส่ URL วิดีโอแบบ HTTPS, blob หรือ data");
   }
 
   const filename = buildTikTokVideoFilename(productInfo);
@@ -18,6 +18,10 @@ export async function downloadVideo(url, productInfo) {
   });
 
   if (!response?.ok) throw new Error(response?.error || "ดาวน์โหลดวิดีโอไม่สำเร็จ");
+  if (response.videoUrl) {
+    productInfo.preparedVideoUrl = response.videoUrl;
+    productInfo.preparedVideoMimeType = response.mimeType || "";
+  }
   return response;
 }
 
@@ -28,14 +32,23 @@ export async function downloadVideo(url, productInfo) {
  * @returns {Promise<object>} ผลลัพธ์การโพสต์
  */
 export async function publishVideo(videoUrl, productInfo) {
+  return sendVideoToTikTokStudio(videoUrl, productInfo, "post");
+}
+
+export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "post") {
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const postDefaults = settings.postDefaults || {};
-  const postType = postDefaults.defaultMode === "schedule" ? "schedule" : "now";
+  const postMode = mode === "draft" ? "draft" : "post";
+  const postType = postMode === "draft"
+    ? "draft"
+    : (postDefaults.defaultMode === "schedule" ? "schedule" : "now");
   const productUrl = resolveProductUrl(productInfo);
   productInfo.productUrl = productUrl;
-  const caption = buildCaption(productInfo, postDefaults);
-  const hashtags = normalizeHashtags(postDefaults.hashtags);
-  assertPostMetadata({ productInfo, caption, hashtags });
+  const caption = productInfo.caption || buildCaption(productInfo, postDefaults);
+  const hashtags = buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags });
+  if (postMode === "post") {
+    assertPostMetadata({ productInfo, caption, hashtags });
+  }
 
   const response = await chrome.runtime.sendMessage({
     type: "TIKTOK_SEND_DRAFT",
@@ -43,11 +56,11 @@ export async function publishVideo(videoUrl, productInfo) {
       videoUrl,
       productId: productInfo.productId,
       productUrl,
-      productName: productInfo.name,
+      productName: resolveProductLinkTitle(productInfo),
       filename: buildTikTokVideoFilename(productInfo),
       caption,
       hashtags,
-      mode: "post",
+      mode: postMode,
       postType,
       scheduleTime: postDefaults.scheduleTime || "",
       location: postDefaults.location || "",
@@ -58,7 +71,7 @@ export async function publishVideo(videoUrl, productInfo) {
     }
   });
 
-  if (!response?.ok) throw new Error(response?.error || "โพสต์ลง TikTok ไม่สำเร็จ");
+  if (!response?.ok) throw new Error(response?.error || "ส่งไป TikTok Studio ไม่สำเร็จ");
   return response;
 }
 
@@ -67,6 +80,18 @@ export function buildTikTokVideoFilename(productInfo = {}) {
   const safeId = String(rawId).replace(/[^\w-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) || "product";
   const date = new Date().toISOString().slice(0, 10);
   return `${safeId}_${date}_tiktok.mp4`;
+}
+
+export function resolveProductLinkTitle(productInfo = {}) {
+  return String(
+    productInfo.productLinkTitle ||
+    productInfo.originalName ||
+    productInfo.rawProduct?.title ||
+    productInfo.rawProduct?.product_name ||
+    productInfo.rawProduct?.name ||
+    productInfo.name ||
+    ""
+  ).trim();
 }
 
 export function assertPostMetadata({ productInfo = {}, caption = "", hashtags = [] } = {}) {

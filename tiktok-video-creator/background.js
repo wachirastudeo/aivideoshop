@@ -35,6 +35,7 @@ async function routeMessage(message, sender) {
     case "FLOW_PING":                return { pong: true };
     case "FLOW_CONTENT_READY":       return { ok: true };
     case "FLOW_STOP":                return stopFlowPipeline();
+    case "TIKTOK_STOP":              return stopTikTokStudioPipeline();
     case "TIKTOK_SEND_DRAFT":        return sendTikTokDraft(message.payload);
     case "TIKTOK_STUDIO_LOG":        console.log("TikTok Studio:", message.message); return { ok: true };
     case "TIKTOK_DONE":              return handleTikTokDone(message.payload);
@@ -212,7 +213,11 @@ async function openGoogleFlow(payload) {
 
   tab = await chrome.tabs.get(tab.id);
   if (tab.url?.includes("accounts.google.com")) {
-    throw new Error("Google Flow ต้อง login Google ก่อน แล้วค่อยกดสร้างใหม่");
+    return {
+      ok: false,
+      code: "FLOW_LOGIN_REQUIRED",
+      error: "Google Flow ต้อง login Google ก่อน แล้วระบบจะทำงานต่ออัตโนมัติ"
+    };
   }
 
   // รอ content script พร้อม หรือ inject เองถ้า tab เปิดอยู่ก่อน reload extension
@@ -272,6 +277,17 @@ async function stopFlowPipeline() {
   const tabs = await queryFlowTabs();
   for (const tab of tabs) {
     chrome.tabs.sendMessage(tab.id, { type: "FLOW_STOP" }).catch(() => { });
+  }
+  return { ok: true };
+}
+
+async function stopTikTokStudioPipeline() {
+  const tabs = [
+    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/*" })),
+    ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktok-studio/*" })),
+  ];
+  for (const tab of tabs) {
+    chrome.tabs.sendMessage(tab.id, { type: "TIKTOK_STOP" }).catch(() => {});
   }
   return { ok: true };
 }
@@ -340,8 +356,16 @@ function waitForTabComplete(tabId) {
 }
 
 async function downloadVideo(payload) {
-  const id = await chrome.downloads.download({ url: payload.url, filename: payload.filename, saveAs: false });
-  return { downloadId: id };
+  const preparedVideo = await prepareVideoBase64ForTikTok(payload.url);
+  const mimeType = preparedVideo.mimeType || "video/mp4";
+  const dataUrl = `data:${mimeType};base64,${preparedVideo.base64}`;
+  const downloadUrl = /^https:|^data:/i.test(payload.url || "") ? payload.url : dataUrl;
+  try {
+    const id = await chrome.downloads.download({ url: downloadUrl, filename: payload.filename, saveAs: false });
+    return { downloadId: id, videoUrl: dataUrl, mimeType };
+  } catch (error) {
+    return { downloadId: null, downloadError: error.message, videoUrl: dataUrl, mimeType };
+  }
 }
 
 async function postToTikTok(payload) {
@@ -629,6 +653,10 @@ async function openTikTokStudioUploadTab() {
 
 async function handleTikTokDone(payload = {}) {
   console.log("TikTok Done:", payload);
+  if (payload.stopped) {
+    await notify("TikTok Automation", "หยุดการอัปโหลด TikTok แล้ว");
+    return { ok: true };
+  }
   if (payload.success) {
     const msg = payload.posted
       ? "โพสต์ TikTok สำเร็จแล้ว ✅"

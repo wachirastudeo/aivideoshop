@@ -1,6 +1,5 @@
 import {
   VIDEO_STYLES,
-  buildCaption,
   buildImagePrompt,
   buildVideoPrompt,
   getDefaultSettings,
@@ -8,12 +7,13 @@ import {
 } from "../modules/prompt-builder.js";
 import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
-import { assertPostMetadata, buildTikTokVideoFilename, downloadVideo, publishVideo } from "../modules/video-output.js";
+import { downloadVideo, publishVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
 
 const MOODS = ["Auto", "สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"];
 const RUNNING_STATUSES = new Set(["image_generating", "video_generating", "flow1", "flow2"]);
 const POST_RETRY_ATTEMPTS = 2;
 const POST_RETRY_DELAY_MS = 60000;
+const FLOW_LOGIN_RETRY_MS = 5000;
 
 let helpers = {};
 let settings = getDefaultSettings();
@@ -76,8 +76,7 @@ function bindGlobalEvents() {
 
   document.querySelector("#btn-batch-create")?.addEventListener("click", () => processQueue());
   document.querySelector("#btn-batch-stop")?.addEventListener("click", () => {
-    stopRequested = true;
-    helpers.showStatus("กำลังหยุด...", "info");
+    requestStop().catch(() => {});
   });
 }
 
@@ -143,8 +142,11 @@ function normalizeProductQueue(value) {
       flowVideoTileId: item.flowVideoTileId || "",
       approvedImage: item.approvedImage || "",
       videoUrl: item.videoUrl || "",
-      productId: item.productId || item.id || "",
+      productId: item.productId || item.product_id || item.id || "",
+      product_id: item.productId || item.product_id || item.id || "",
       productUrl: resolveProductUrl(item),
+      originalName: item.originalName || item.productLinkTitle || item.rawProduct?.title || item.rawProduct?.product_name || item.rawProduct?.name || item.name || "",
+      productLinkTitle: item.productLinkTitle || item.originalName || item.rawProduct?.title || item.rawProduct?.product_name || item.rawProduct?.name || item.name || "",
       shopName: item.shopName || "",
       category: item.category || "",
       details: item.details || "",
@@ -468,10 +470,12 @@ async function processQueue() {
     const product = productQueue[i];
 
     try {
+      assertNotStopped();
       if (product.status === "idle" || !product.highlights || !product.autoOptions) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังวิเคราะห์จุดเด่นสินค้าด้วย AI...`, "info");
         try {
           const analysis = await analyzeProductImages(product.imageUrls || [], product);
+          assertNotStopped();
           product.highlights = analysis.highlights || product.highlights;
           product.name = analysis.name || product.name;
           product.targetGroup = analysis.targetGroup || product.targetGroup;
@@ -492,7 +496,9 @@ async function processQueue() {
       helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพ แล้วต่อวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)`, "info");
       const imgPrompt = buildImagePrompt(product, settings);
       const vidPrompt = buildVideoPrompt(product, settings);
-      const result = await openGoogleFlow("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, product.imageUrls?.[0], options);
+      assertNotStopped();
+      const result = await openGoogleFlowWithLoginResume("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, product.imageUrls?.[0], options, product, i);
+      assertNotStopped();
 
       product.approvedImage = result?.imgUrl || product.approvedImage || product.imageUrls?.[0] || "";
       product.flowImageTileId = result?.imgTileId || product.flowImageTileId || "";
@@ -507,38 +513,30 @@ async function processQueue() {
         await persistState();
         const action = await getPostAction();
         if (["download", "draft", "post"].includes(action)) {
+          assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังดาวน์โหลดวิดีโออัตโนมัติ...`, "info");
-          await downloadVideo(product.videoUrl, product);
+          const downloaded = await downloadVideo(product.videoUrl, product);
+          assertNotStopped();
+          product.preparedVideoUrl = downloaded.videoUrl || product.preparedVideoUrl || "";
+          product.preparedVideoMimeType = downloaded.mimeType || product.preparedVideoMimeType || "";
+          await persistState();
         }
         if (action === "draft") {
+          assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังส่ง Draft TikTok อัตโนมัติ...`, "info");
-          const { settings: syncSettings = {} } = await chrome.storage.sync.get("settings");
-          const postDefaults = syncSettings.postDefaults || {};
-          const caption = product.caption || buildCaption(product, postDefaults);
-          const hashtags = product.hashtags || postDefaults.hashtags || [];
-          assertPostMetadata({ productInfo: product, caption, hashtags });
           await retryPostStep(`ส่ง Draft TikTok สินค้า ${i + 1}`, async () => {
-            const res = await chrome.runtime.sendMessage({
-              type: "TIKTOK_SEND_DRAFT",
-              payload: {
-                videoUrl: product.videoUrl,
-                productId: product.productId,
-                productUrl: resolveProductUrl(product),
-                productName: product.name,
-                filename: buildTikTokVideoFilename(product),
-                caption,
-                hashtags,
-                mode: "draft",
-                postType: "draft"
-              },
-            });
+            assertNotStopped();
+            const res = await sendVideoToTikTokStudio(product.preparedVideoUrl || product.videoUrl, product, "draft");
+            assertNotStopped();
             if (!res?.ok) throw new Error(res?.error || "ส่ง Draft ล้มเหลว");
             helpers.logActivity?.(`ส่ง Draft TikTok สินค้า ${i + 1} สำเร็จ!`, "success");
           });
         }
         if (action === "post") {
+          assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังอัปโหลดและโพสต์ TikTok อัตโนมัติ...`, "info");
-          await retryPostStep(`โพสต์ TikTok สินค้า ${i + 1}`, () => publishVideo(product.videoUrl, product));
+          await retryPostStep(`โพสต์ TikTok สินค้า ${i + 1}`, () => publishVideo(product.preparedVideoUrl || product.videoUrl, product));
+          assertNotStopped();
         }
         product.status = "done";
         product.errorMessage = "";
@@ -546,14 +544,20 @@ async function processQueue() {
         renderQueue();
       }
     } catch (err) {
+      if (stopRequested) {
+        product.status = product.videoUrl ? "done" : "image_done";
+        product.errorMessage = "";
+        await persistState();
+        renderQueue();
+        break;
+      }
       errorCount += 1;
       product.status = "post_blocked";
       product.errorMessage = err.message;
       await persistState();
       renderQueue();
       helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
-      helpers.logActivity?.(`หยุดคิวไว้ที่สินค้า ${i + 1}: ต้องกดหยุดเองก่อนจบงาน`, "error");
-      await waitUntilStopped();
+      helpers.logActivity?.(`หยุดคิวที่สินค้า ${i + 1}: ${err.message}`, "error");
       break;
     }
   }
@@ -565,7 +569,7 @@ async function processQueue() {
   const finalMessage = wasStopped
     ? "หยุดทำงานแล้ว"
     : errorCount > 0
-      ? `หยุดค้างเพราะ Error ${errorCount} รายการ`
+      ? `จบโปรเซสเพราะ Error ${errorCount} รายการ`
       : "สร้างเสร็จสมบูรณ์ทุกรายการ";
   helpers.showStatus(finalMessage, wasStopped ? "info" : errorCount > 0 ? "error" : "success");
 }
@@ -574,29 +578,74 @@ async function retryPostStep(label, task) {
   let lastError = null;
   for (let attempt = 1; attempt <= POST_RETRY_ATTEMPTS; attempt += 1) {
     try {
+      assertNotStopped();
       if (attempt > 1) {
         helpers.logActivity?.(`${label}: retry ${attempt}/${POST_RETRY_ATTEMPTS}`, "warning");
       }
       return await task();
     } catch (error) {
+      if (stopRequested || error?.code === "STOP_REQUESTED") throw error;
       lastError = error;
       if (attempt >= POST_RETRY_ATTEMPTS) break;
       helpers.logActivity?.(`${label}: ${error.message} — รอ 60 วินาทีแล้วลองใหม่`, "warning");
-      await delay(POST_RETRY_DELAY_MS);
+      await interruptibleDelay(POST_RETRY_DELAY_MS);
     }
   }
   throw lastError;
 }
 
-async function waitUntilStopped() {
-  helpers.showStatus("เกิด Error: คิวหยุดค้างไว้ ต้องกดหยุดเอง", "error");
+async function openGoogleFlowWithLoginResume(phase, prompt, imageUrl, options, product, index) {
   while (!stopRequested) {
-    await delay(1000);
+    try {
+      return await openGoogleFlow(phase, prompt, imageUrl, options);
+    } catch (error) {
+      if (!isFlowLoginError(error)) throw error;
+
+      product.status = "post_blocked";
+      product.errorMessage = "รอ login Google Flow แล้วระบบจะทำงานต่ออัตโนมัติ";
+      await persistState();
+      renderQueue();
+      helpers.showStatus(`สินค้า ${index + 1}: กรุณา login Google Flow ในแท็บที่เปิดอยู่`, "warning");
+      helpers.logActivity?.(`สินค้า ${index + 1}: รอ login Google Flow แล้วจะลองต่ออัตโนมัติ`, "warning");
+      await interruptibleDelay(FLOW_LOGIN_RETRY_MS);
+    }
   }
+
+  throw new Error("หยุดทำงานแล้ว");
+}
+
+function isFlowLoginError(error) {
+  const message = String(error?.message || "");
+  return error?.code === "FLOW_LOGIN_REQUIRED" ||
+    /Google Flow ต้อง login Google|login Google|accounts\.google/i.test(message);
 }
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function interruptibleDelay(ms, interval = 500) {
+  const deadline = Date.now() + ms;
+  while (!stopRequested && Date.now() < deadline) {
+    await delay(Math.min(interval, deadline - Date.now()));
+  }
+  assertNotStopped();
+}
+
+function assertNotStopped() {
+  if (!stopRequested) return;
+  const error = new Error("หยุดทำงานแล้ว");
+  error.code = "STOP_REQUESTED";
+  throw error;
+}
+
+async function requestStop() {
+  stopRequested = true;
+  helpers.showStatus("กำลังหยุด...", "info");
+  await Promise.allSettled([
+    chrome.runtime.sendMessage({ type: "FLOW_STOP" }),
+    chrome.runtime.sendMessage({ type: "TIKTOK_STOP" })
+  ]);
 }
 
 function setBatchButtons(running) {
@@ -618,9 +667,8 @@ function buildFlowOptions() {
 }
 
 async function handleStop(product) {
-  stopRequested = true;
+  await requestStop();
   product.status = product.videoUrl ? "done" : "image_done";
-  await chrome.runtime.sendMessage({ type: "FLOW_STOP" }).catch(() => {});
   await persistState();
   renderQueue();
   helpers.showStatus("หยุดทำงานแล้ว", "info");
@@ -652,11 +700,15 @@ async function handlePost(product) {
   try {
     if (!product.videoUrl) throw new Error("กรุณาวาง URL วิดีโอ");
     helpers.showStatus("กำลังดาวน์โหลดก่อนอัปโหลด TikTok...", "info");
-    await downloadVideo(product.videoUrl, product).catch((err) => {
+    const downloaded = await downloadVideo(product.videoUrl, product).catch((err) => {
       helpers.logActivity?.(`ดาวน์โหลดก่อนโพสต์ล้มเหลว: ${err.message}`, "error");
+      return null;
     });
+    product.preparedVideoUrl = downloaded?.videoUrl || product.preparedVideoUrl || "";
+    product.preparedVideoMimeType = downloaded?.mimeType || product.preparedVideoMimeType || "";
+    await persistState();
     helpers.showStatus("กำลังส่งไป TikTok...", "info");
-    await retryPostStep("โพสต์ TikTok", () => publishVideo(product.videoUrl, product));
+    await retryPostStep("โพสต์ TikTok", () => publishVideo(product.preparedVideoUrl || product.videoUrl, product));
     product.status = "done";
     await persistState();
     renderQueue();
@@ -681,25 +733,14 @@ async function handleSendDraft(product) {
   try {
     if (!product.videoUrl) throw new Error("ไม่มี videoUrl");
     helpers.showStatus("ส่ง Draft TikTok...", "info");
-    const { settings: syncSettings = {} } = await chrome.storage.sync.get("settings");
-    const postDefaults = syncSettings.postDefaults || {};
-    const caption = product.caption || buildCaption(product, postDefaults);
-    const hashtags = product.hashtags || postDefaults.hashtags || [];
-    assertPostMetadata({ productInfo: product, caption, hashtags });
-    const result = await retryPostStep("ส่ง Draft TikTok", () => chrome.runtime.sendMessage({
-      type: "TIKTOK_SEND_DRAFT",
-      payload: {
-        videoUrl: product.videoUrl,
-        productId: product.productId,
-        productUrl: resolveProductUrl(product),
-        productName: product.name,
-        filename: buildTikTokVideoFilename(product),
-        caption,
-        hashtags,
-        mode: "draft",
-        postType: "draft"
-      },
-    }));
+    const downloaded = await downloadVideo(product.videoUrl, product).catch((err) => {
+      helpers.logActivity?.(`ดาวน์โหลดก่อนส่ง Draft ล้มเหลว: ${err.message}`, "error");
+      return null;
+    });
+    product.preparedVideoUrl = downloaded?.videoUrl || product.preparedVideoUrl || "";
+    product.preparedVideoMimeType = downloaded?.mimeType || product.preparedVideoMimeType || "";
+    await persistState();
+    const result = await retryPostStep("ส่ง Draft TikTok", () => sendVideoToTikTokStudio(product.preparedVideoUrl || product.videoUrl, product, "draft"));
     if (!result?.ok) throw new Error(result?.error || "ส่ง Draft ล้มเหลว");
     product.status = "done";
     await persistState();
@@ -722,7 +763,8 @@ async function persistState() {
     settings,
     productInfo: {}
   };
-  await chrome.storage.local.set({ creatorState, productQueue });
+  const storableQueue = productQueue.map(({ preparedVideoUrl, preparedVideoMimeType, ...product }) => product);
+  await chrome.storage.local.set({ creatorState, productQueue: storableQueue });
 }
 
 function escapeHtml(value) {

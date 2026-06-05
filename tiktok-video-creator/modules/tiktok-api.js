@@ -71,9 +71,12 @@ export function normalizeProduct(item) {
   const commissionRate = (commissionRateNum / 1000).toFixed(1);
   const commission = item.affiliate_info?.est_commission_expense ?? "";
 
+  const productName = item.title || item.product_name || item.name || "Untitled product";
   const normalized = {
     productId: item.product_id || item.id || "",
-    name: item.title || item.product_name || item.name || "Untitled product",
+    name: productName,
+    originalName: productName,
+    productLinkTitle: productName,
     imageUrls: imageUrls.length > 0 ? imageUrls : ["assets/icon.svg"],
     price: priceStr,
     currency: item.currency || item.price?.currency || "THB",

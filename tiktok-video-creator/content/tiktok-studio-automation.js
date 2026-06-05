@@ -5,6 +5,8 @@
  */
 
 let isRunning = false;
+let finalSubmitInProgress = false;
+let stopRequested = false;
 
 const CHUNKS = new Map();
 const COMPLETED_CHUNKS = new Map();
@@ -91,6 +93,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     handleVideoUpload(message.payload)
       .then((result) => sendDone({ success: true, ...result }))
       .catch((err) => {
+        if (err?.code === "STOP_REQUESTED") {
+          sendDone({ success: true, stopped: true });
+          return;
+        }
         const error = err instanceof Error ? err.message : String(err);
         sendDone({ success: false, error });
       });
@@ -103,6 +109,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   if (message.type === "TIKTOK_STOP") {
+    stopRequested = true;
     isRunning = false;
     sendResponse({ ok: true });
     return true;
@@ -116,9 +123,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 async function handleVideoUpload(payload = {}) {
   if (isRunning) throw new Error("กำลังอัปโหลดอยู่แล้ว");
   isRunning = true;
+  stopRequested = false;
   logSeq = 0;
 
   try {
+    assertNotStopped();
     sendPipelineLog("info", "เริ่มโพสต์ TikTok...");
     const normalizedPayload = normalizeVideoUploadPayload(payload);
     const {
@@ -141,63 +150,56 @@ async function handleVideoUpload(payload = {}) {
 
     if (!videoUrl) throw new Error("missing videoUrl");
 
+    assertNotStopped();
     await discardRecoveryDraftIfNeeded();
+    assertNotStopped();
     sendPipelineLog("info", "กำลังอัปโหลดวิดีโอ...");
     await uploadVideoFromUrl(videoUrl, filename || buildVideoFilename({ productId }));
+    assertNotStopped();
     sendPipelineLog("info", "รอ TikTok ประมวลผลวิดีโอ...");
     await waitForUploadFinished();
+    assertNotStopped();
     await fillCaptionAndHashtags(caption, hashtags);
+    assertNotStopped();
     const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, aiGenerated, allowComment, allowReuse });
+    assertNotStopped();
 
     if (mode === "post") {
-      // ถ้าอะไรไม่ครบ/ไม่สำเร็จ → ตกลงมาเป็น draft เสมอ
       const blockers = [];
       if (settingsResult.productRequired && !settingsResult.productAdded) blockers.push("เพิ่มลิงก์สินค้าไม่สำเร็จ");
       if (!settingsResult.aigcOk) blockers.push("ตั้ง AI-generated ไม่สำเร็จ");
 
       if (blockers.length) {
-        log(`⛔ ไม่กด Post เพราะ: ${blockers.join(", ")} → จะบันทึกเป็น draft แทน`);
-        sendPipelineLog("warn", `โพสต์ไม่ได้ (${blockers.join(", ")}) → บันทึกเป็น draft แทน`);
-        await clickSaveDraftV2();
-        log("Fallback: คลิก Save Draft สำเร็จ");
-        sendPipelineLog("info", "เสร็จสิ้น (draft)");
-        return { drafted: true, mode: "draft", postType, fallback: true, reason: blockers.join(", ") };
+        throw new Error(`โพสต์ไม่ได้: ${blockers.join(", ")}`);
       }
 
       // ย้ำติ๊ก AI-generated content อีกครั้งก่อนกด Post ทุกครั้ง (กันถูกรีเซ็ตหลังเพิ่มสินค้า)
       log("ตรวจ AI-generated content ก่อนโพสต์...");
       const aigcBeforePost = await setAigcSwitch(aiGenerated ?? true);
+      assertNotStopped();
       if (!aigcBeforePost) {
-        sendPipelineLog("warn", "AI-generated content ไม่ติดก่อนโพสต์ → บันทึกเป็น draft แทน");
-        await clickSaveDraftV2();
-        log("Fallback: คลิก Save Draft สำเร็จ");
-        sendPipelineLog("info", "เสร็จสิ้น (draft)");
-        return { drafted: true, mode: "draft", postType, fallback: true, reason: "AI-generated ไม่ติดก่อนโพสต์" };
+        throw new Error("ตั้ง AI-generated ไม่สำเร็จก่อนโพสต์");
       }
 
-      try {
-        await clickPost();
-        log("คลิก Post สำเร็จ");
-        sendPipelineLog("info", "เสร็จสิ้น");
-        return { posted: true, mode, postType, scheduleTime };
-      } catch (postError) {
-        sendPipelineLog("warn", `กด Post ล้มเหลว (${postError.message}) → บันทึกเป็น draft แทน`);
-        await clickSaveDraftV2();
-        log("Fallback: คลิก Save Draft สำเร็จ");
-        sendPipelineLog("info", "เสร็จสิ้น (draft)");
-        return { drafted: true, mode: "draft", postType, fallback: true, reason: postError.message };
-      }
+      assertNotStopped();
+      await clickPost();
+      log("คลิก Post สำเร็จ");
+      sendPipelineLog("info", "เสร็จสิ้น");
+      return { posted: true, mode, postType, scheduleTime };
     }
 
     // โหมด draft: ย้ำ AI-generated content ก่อนบันทึกเช่นกัน
     log("ตรวจ AI-generated content ก่อนบันทึก draft...");
-    await setAigcSwitch(aiGenerated ?? true);
+    const aigcBeforeDraft = await setAigcSwitch(aiGenerated ?? true);
+    assertNotStopped();
+    if (!aigcBeforeDraft) throw new Error("ตั้ง AI-generated ไม่สำเร็จก่อนบันทึก draft");
     await clickSaveDraftV2();
     log("คลิก Save Draft สำเร็จ");
     sendPipelineLog("info", "เสร็จสิ้น");
     return { drafted: true, mode: "draft", postType };
   } finally {
     isRunning = false;
+    finalSubmitInProgress = false;
   }
 }
 
@@ -267,18 +269,23 @@ async function handleDraftUpload(payload) {
     return { drafted: true };
   } finally {
     isRunning = false;
+    finalSubmitInProgress = false;
   }
 }
 
 async function uploadVideoFromUrl(videoUrl, filename = "video.mp4") {
+  assertNotStopped();
   const file = await videoUrlToFile(videoUrl, filename);
+  assertNotStopped();
   log(`สร้างไฟล์วิดีโอแล้ว: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB, ${file.type})`);
   const input = await findUploadInput(45000);
+  assertNotStopped();
   log("พบช่อง upload แล้ว กำลังยัดไฟล์ (DataTransfer)...");
   setInputFiles(input, file);
 
   // fallback: ถ้า drop แล้ว input ยังว่าง → re-decode base64 ยัดผ่าน input.files ตรง ๆ
   await sleep(400);
+  assertNotStopped();
   if (!input.files || input.files.length === 0) {
     log("DataTransfer ไม่ติด — fallback ยัด base64 File ผ่าน input.files");
     forceSetInputFile(input, file);
@@ -287,6 +294,7 @@ async function uploadVideoFromUrl(videoUrl, filename = "video.mp4") {
   }
 
   await verifyFileAccepted(input, file);
+  assertNotStopped();
   log(`เลือกไฟล์วิดีโอแล้ว: ${file.name}`);
 }
 
@@ -470,6 +478,7 @@ async function waitForUploadFinished(timeoutMs = 300000) {
   let lastLog = 0;
 
   while (Date.now() < deadline) {
+    assertNotStopped();
     const statusText = normalizeText(document.body.innerText);
     const postButton = document.querySelector(TIKTOK_SELECTORS.postButton);
     const saveDraftButton = document.querySelector(TIKTOK_SELECTORS.saveDraftButton) || findButtonByText(TIKTOK_TEXT.saveDraft);
@@ -512,10 +521,11 @@ function hasVideoPreview() {
 }
 
 async function fillCaptionAndHashtags(caption, hashtags) {
+  assertNotStopped();
   const editor = await retryUntil("รอช่อง Caption", () => document.querySelector(TIKTOK_SELECTORS.captionEditor), 30000);
+  assertNotStopped();
   if (!editor) {
-    log("⚠️ ไม่พบช่อง Caption หลังหมดเวลา — ข้ามการกรอก caption");
-    return;
+    throw new Error("ไม่พบช่อง Caption หลังหมดเวลา");
   }
   editor.focus();
   editor.click();
@@ -527,6 +537,7 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   }
 
   for (const rawTag of normalizeHashtags(hashtags)) {
+    assertNotStopped();
     const tag = String(rawTag || "").replace(/^#/, "").trim();
     if (!tag) continue;
     document.execCommand("insertText", false, ` #${tag}`);
@@ -542,9 +553,15 @@ async function fillCaptionAndHashtags(caption, hashtags) {
 }
 
 async function applyUploadSettings(settings) {
+  assertNotStopped();
   await applyScheduleSettings(settings.postType, settings.scheduleTime);
+  assertNotStopped();
   const productRequired = Boolean(String(settings.productId || settings.productUrl || "").trim());
   const productAdded = await applyProductLink(settings.productId, settings.productUrl, settings.productName);
+  assertNotStopped();
+  if (productRequired && !productAdded) {
+    throw new Error("เพิ่มลิงก์สินค้าไม่สำเร็จ");
+  }
 
   if (settings.location) {
     const locationInput = document.querySelector(TIKTOK_SELECTORS.locationSearch);
@@ -571,6 +588,10 @@ async function applyUploadSettings(settings) {
   }
 
   const aigcOk = await setAigcSwitch(settings.aiGenerated);
+  assertNotStopped();
+  if (!aigcOk) {
+    throw new Error("ตั้ง AI-generated ไม่สำเร็จ");
+  }
 
   const permissionChecks = [...document.querySelectorAll(TIKTOK_SELECTORS.userPermChecks)];
   await setCheckboxState(permissionChecks[0], settings.allowComment);
@@ -651,6 +672,7 @@ async function applyProductLink(productId, productUrl, productName) {
     log(`❌ ไม่พบสินค้า: ${productKey}`);
     return false;
   }
+  const selectedRowTitle = extractProductRowTitle(row, productKey);
 
   // STEP 6a: เลือกสินค้า (ครั้งเดียว) แล้วรอปุ่ม Next enable — re-select เฉพาะถ้ายังไม่ enable
   await selectProductRadio(findProductRow(productKey) || row);
@@ -705,7 +727,7 @@ async function applyProductLink(productId, productUrl, productName) {
   // STEP 8: แก้ชื่อ (clean) — กรอกผ่าน React setter ให้ word count อัปเดต
   if (titleInput) {
     const existingTitle = titleInput.value;
-    const finalTitle = buildProductLinkTitle(productName, existingTitle);
+    const finalTitle = await buildProductLinkTitle(selectedRowTitle || productName, existingTitle);
     titleInput.focus();
     try { titleInput.select(); } catch (_) {}
     typeIntoInput(titleInput, finalTitle);
@@ -774,6 +796,49 @@ function findProductRow(key) {
   if (exact) return exact;
   // 2) เผื่อ key เป็นชื่อ/URL — แถวที่ข้อความมี key
   return rows.find((row) => normalizeText(row.textContent).includes(nkey)) || null;
+}
+
+function extractProductRowTitle(row, productKey) {
+  if (!row) return "";
+  const radio = row.querySelector('input[type="radio"], input.TUXRadioStandalone-input');
+  const directCandidates = [
+    row.querySelector(".product-name")?.textContent,
+    radio?.getAttribute("name"),
+    radio?.value,
+    row.querySelector(".product-image")?.getAttribute("alt"),
+    row.querySelector("img[alt]")?.getAttribute("alt")
+  ];
+  for (const candidate of directCandidates) {
+    const text = cleanProductTitle(candidate);
+    if (text) return text;
+  }
+
+  const preferred = [
+    ".product-title",
+    ".product-info-name",
+    ".product-info-cell [class*='name']",
+    ".product-info-cell [class*='title']",
+    "[class*='product-name']",
+    "[class*='product-title']",
+    "[class*='productName']",
+    "[class*='productTitle']"
+  ];
+  for (const selector of preferred) {
+    const el = row.querySelector(selector);
+    const text = cleanProductTitle(el?.textContent);
+    if (text) return text;
+  }
+
+  const nkey = normalizeText(productKey);
+  const cellTexts = [...row.querySelectorAll(".product-tb-cell, td")]
+    .map((cell) => cleanProductTitle(cell.textContent))
+    .filter(Boolean)
+    .filter((text) => normalizeText(text) !== nkey)
+    .filter((text) => !/^https?:\/\//i.test(text))
+    .filter((text) => !/^[฿$]?\s*\d[\d,.]*$/.test(text));
+
+  return cellTexts
+    .sort((a, b) => b.length - a.length)[0] || "";
 }
 
 // เลือกสินค้า "คลิกครั้งเดียว" ที่ radio (set checked + realClick เดียว ให้ React รับรู้)
@@ -1009,26 +1074,32 @@ async function setCheckboxState(input, desired) {
 }
 
 async function clickSaveDraftV2() {
+  assertNotStopped();
+  if (finalSubmitInProgress) throw new Error("กำลัง submit TikTok อยู่แล้ว");
   const button = await retryUntil("กดปุ่ม Save Draft", () => {
     const b = document.querySelector(TIKTOK_SELECTORS.saveDraftButton) || findButtonByText(TIKTOK_TEXT.saveDraft);
     return isClickable(b) ? b : null;
   }, 60000);
   if (!button) throw new Error("ไม่พบปุ่ม Save Draft ที่กดได้ (หมดเวลา 60s)");
   await sleep(800);
+  assertNotStopped();
+  finalSubmitInProgress = true;
   realClick(button);
-  try { button.click(); } catch (_) {}
   await clickConfirmIfNeeded();
 }
 
 async function clickPost() {
+  assertNotStopped();
+  if (finalSubmitInProgress) throw new Error("กำลัง submit TikTok อยู่แล้ว");
   const button = await retryUntil("กดปุ่ม Post", () => {
     const b = document.querySelector(TIKTOK_SELECTORS.postButton) || findButtonByText(TIKTOK_TEXT.post);
     return isClickable(b) ? b : null;
   }, 60000);
   if (!button) throw new Error("ไม่พบปุ่ม Post ที่กดได้ (หมดเวลา 60s)");
   await sleep(800);
+  assertNotStopped();
+  finalSubmitInProgress = true;
   realClick(button);
-  try { button.click(); } catch (_) {}
   await clickConfirmIfNeeded();
 }
 
@@ -1171,6 +1242,13 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function assertNotStopped() {
+  if (!stopRequested) return;
+  const error = new Error("หยุดทำงานแล้ว");
+  error.code = "STOP_REQUESTED";
+  throw error;
+}
+
 // poll predicate จนได้ค่า truthy หรือหมดเวลา
 async function waitFor(predicate, timeoutMs = 10000, intervalMs = 300) {
   const deadline = Date.now() + timeoutMs;
@@ -1196,6 +1274,7 @@ async function retryUntil(label, fn, totalMs = 30000, intervalMs = 1500, diagnos
   log(`▶ ${label} — เริ่ม (สูงสุด ${Math.round(totalMs / 1000)}s)`);
   await sleep(700); // รอหน้าโหลด/ปุ่มแสดงก่อนเช็คครั้งแรก
   while (Date.now() < deadline) {
+    assertNotStopped();
     try {
       const result = await fn();
       if (result) {
@@ -1277,21 +1356,25 @@ function findSelectableProduct(productId, productUrl) {
   return null;
 }
 
-// TikTok จำกัดชื่อ 30 ตัวอักษร — เผื่อไว้ใช้แค่ 25
-const PRODUCT_TITLE_MAX = 25;
+// TikTok จำกัดชื่อสินค้า 30 ตัวอักษร
+const PRODUCT_TITLE_MAX = 30;
 
-function buildProductLinkTitle(productName, fallbackTitle) {
+async function buildProductLinkTitle(productName, fallbackTitle) {
   const userName = String(productName || "").trim();
-  // ถ้า user กำหนดชื่อมา ใช้ตามนั้น; ถ้าไม่ เอาชื่อที่ TikTok เติมไว้มา clean
-  const base = userName || cleanProductTitle(fallbackTitle);
+  // ถ้า user กำหนดชื่อมา ใช้ชื่อนั้นหลัง clean; ถ้าไม่ เอาชื่อที่ TikTok เติมไว้มา clean
+  const base = cleanProductTitle(userName) || cleanProductTitle(fallbackTitle);
   const safe = stripWeirdChars(base) || "สินค้า";
-  return Array.from(safe).slice(0, PRODUCT_TITLE_MAX).join("").trim();
+  const fallback = truncateProductTitle(safe, PRODUCT_TITLE_MAX);
+  const aiTitle = await generateProductLinkTitleWithAi(base, fallback);
+  return truncateProductTitle(stripWeirdChars(cleanProductTitle(aiTitle)) || fallback, PRODUCT_TITLE_MAX);
 }
 
 function cleanProductTitle(raw) {
   return String(raw || "")
-    // ตัดวงเล็บ/ก้ามปูที่มีคำว่า live เช่น (Live) [Live] 【Live】
-    .replace(/[（(\[【]\s*live\s*[）)\]】]/gi, " ")
+    // ตัด badge/ข้อความในวงเล็บจาก TikTok เช่น [New Arrival], (Live), 【...】
+    .replace(/[（(][^）)]*[）)]/g, " ")
+    .replace(/\[[^\]]*]/g, " ")
+    .replace(/【[^】]*】/g, " ")
     // ตัดคำว่า live ที่ห้อยหน้า-หลังพร้อมตัวคั่น
     .replace(/^\s*live\b[\s:|/\-–·]*/i, "")
     .replace(/[\s:|/\-–·]*\blive\s*$/i, "")
@@ -1299,12 +1382,144 @@ function cleanProductTitle(raw) {
     .trim();
 }
 
-// เก็บเฉพาะตัวอักษร(ไทย/อังกฤษ/ภาษาอื่น) ตัวเลข และเว้นวรรค — ตัด emoji/สัญลักษณ์แปลก ๆ ออก
+// เก็บเฉพาะตัวอักษร(ไทย/อังกฤษ/ภาษาอื่น) วรรณยุกต์ ตัวเลข และเว้นวรรค — ตัด emoji/สัญลักษณ์แปลก ๆ ออก
 function stripWeirdChars(raw) {
   return String(raw || "")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function truncateProductTitle(title, maxLength) {
+  const chars = Array.from(String(title || "").trim());
+  if (chars.length <= maxLength) return chars.join("").trim();
+
+  const sliced = chars.slice(0, maxLength).join("").trim();
+  const lastSpace = sliced.lastIndexOf(" ");
+  if (lastSpace > 0) {
+    const wordBoundary = sliced.slice(0, lastSpace).trim();
+    if (Array.from(wordBoundary).length >= Math.floor(maxLength * 0.55)) {
+      return wordBoundary;
+    }
+  }
+
+  return sliced;
+}
+
+async function generateProductLinkTitleWithAi(rawTitle, fallbackTitle) {
+  const settings = await getStoredSettings();
+  const provider = settings.aiProvider || "gemini";
+  const hasGemini = provider === "gemini" && settings.geminiApiKey;
+  const hasOpenAI = provider === "openai" && settings.openaiApiKey;
+  if (!hasGemini && !hasOpenAI) return "";
+
+  try {
+    return provider === "openai"
+      ? await generateProductLinkTitleWithOpenAI(rawTitle, fallbackTitle, settings)
+      : await generateProductLinkTitleWithGemini(rawTitle, fallbackTitle, settings);
+  } catch (err) {
+    log(`AI ตั้งชื่อสินค้าไม่สำเร็จ — ใช้ชื่อที่ clean แล้วแทน: ${err.message}`);
+    return "";
+  }
+}
+
+async function getStoredSettings() {
+  try {
+    const result = await chrome.storage.sync.get("settings");
+    return result.settings || {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function buildProductTitlePrompt(rawTitle, fallbackTitle) {
+  return [
+    "Create a concise TikTok Shop product link title.",
+    `Original product title: ${String(rawTitle || "").trim()}`,
+    `Clean fallback title: ${String(fallbackTitle || "").trim()}`,
+    "Rules:",
+    `- Return one natural product name, maximum ${PRODUCT_TITLE_MAX} characters.`,
+    "- Preserve useful brand/model/type words when possible.",
+    "- Remove badges, promotions, bracket text, emoji, punctuation, price, quantity claims, and filler words.",
+    "- Thai or English is OK. Use the same main language as the original title.",
+    "- If the title is long, cut at a natural word boundary.",
+    'Return compact JSON only: {"title":"..."}'
+  ].join("\n");
+}
+
+async function generateProductLinkTitleWithGemini(rawTitle, fallbackTitle, settings) {
+  const apiKey = settings.geminiApiKey;
+  const model = encodeURIComponent(settings.geminiModel || "gemini-2.5-flash");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: buildProductTitlePrompt(rawTitle, fallbackTitle) }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: "application/json"
+        }
+      })
+    });
+    if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text || "{}";
+    return parseAiProductTitle(text);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function generateProductLinkTitleWithOpenAI(rawTitle, fallbackTitle, settings) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${settings.openaiApiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.openaiModel || "gpt-4o-mini",
+        messages: [
+          {
+            role: "user",
+            content: buildProductTitlePrompt(rawTitle, fallbackTitle)
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2
+      })
+    });
+    if (!response.ok) throw new Error(`OpenAI HTTP ${response.status}`);
+    const data = await response.json();
+    return parseAiProductTitle(data.choices?.[0]?.message?.content || "{}");
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function parseAiProductTitle(text) {
+  try {
+    const jsonText = String(text || "").match(/\{[\s\S]*\}/)?.[0] || "{}";
+    const parsed = JSON.parse(jsonText);
+    return String(parsed.title || "").trim();
+  } catch (_) {
+    return "";
+  }
 }
 
 function setNativeValue(element, value) {

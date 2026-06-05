@@ -278,6 +278,11 @@ export async function testGeminiConnection(apiKey, modelName = DEFAULT_GEMINI_MO
       model: cleanModel,
       message: sanitizeText(text) || "Gemini API ready"
     };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("Gemini API ทดสอบไม่สำเร็จ: timeout เกิน 15 วินาที");
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
@@ -393,11 +398,27 @@ function buildGeminiUrl(encodedModel, apiKey) {
  * @returns {Promise<string>} error message
  */
 async function getGeminiErrorMessage(response, fallbackMessage) {
+  const statusHelp = getGeminiStatusHelp(response.status);
   try {
     const data = await response.json();
-    const apiMessage = data.error?.message ? `: ${data.error.message}` : "";
-    return `${fallbackMessage}${apiMessage}`;
+    const apiMessage = sanitizeApiErrorMessage(data.error?.message);
+    return [fallbackMessage, `HTTP ${response.status}`, statusHelp, apiMessage].filter(Boolean).join(": ");
   } catch {
-    return fallbackMessage;
+    return [fallbackMessage, `HTTP ${response.status}`, statusHelp].filter(Boolean).join(": ");
   }
+}
+
+function getGeminiStatusHelp(status) {
+  if (status === 400) return "request หรือ model ไม่ถูกต้อง";
+  if (status === 401 || status === 403) return "API key ไม่ถูกต้อง, ยังไม่ได้เปิดสิทธิ์ Gemini API, หรือ key ไม่มี permission";
+  if (status === 404) return "ไม่พบ model นี้ กรุณาเลือก model อื่น";
+  if (status === 429) return "quota หรือ rate limit เต็ม กรุณารอสักครู่แล้วลองใหม่";
+  if (status >= 500) return "Gemini server มีปัญหาชั่วคราว";
+  return "";
+}
+
+function sanitizeApiErrorMessage(message) {
+  return sanitizeText(message)
+    .replace(/key=AIza[0-9A-Za-z_-]+/g, "key=***")
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, "***");
 }

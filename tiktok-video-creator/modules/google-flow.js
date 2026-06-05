@@ -16,7 +16,9 @@ export async function openGoogleFlow(phase, prompt, imageUrl = "", options = {})
   });
 
   if (!response?.ok) {
-    throw new Error(response?.error || "เปิด Google Flow ไม่สำเร็จ");
+    const error = new Error(response?.error || "เปิด Google Flow ไม่สำเร็จ");
+    error.code = response?.code || "";
+    throw error;
   }
 
   return response; // Return full response { ok, resultUrl, tileId, imgUrl }
