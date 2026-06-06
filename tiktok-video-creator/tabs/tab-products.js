@@ -244,6 +244,12 @@ function buildSelectedProductPayload(product) {
   const productUrl = resolveProductUrl(product);
   const productId = product.productId || product.product_id || product.id || "";
   const originalName = product.originalName || product.productLinkTitle || product.rawProduct?.title || product.rawProduct?.product_name || product.rawProduct?.name || product.name || "";
+  let displayImageUrl = product.displayImageUrl || product.imageUrls?.[0] || "";
+  let flowImageUrl = product.flowImageUrl || product.imageUrls?.[0] || "";
+  if (displayImageUrl.startsWith("//")) displayImageUrl = "https:" + displayImageUrl;
+  if (flowImageUrl.startsWith("//")) flowImageUrl = "https:" + flowImageUrl;
+  const imageUrls = (product.imageUrls || []).map(url => url.startsWith("//") ? "https:" + url : url);
+
   return {
     ...product,
     productId,
@@ -251,14 +257,14 @@ function buildSelectedProductPayload(product) {
     name: product.name || originalName,
     originalName,
     productLinkTitle: product.productLinkTitle || originalName,
-    displayImageUrl: product.displayImageUrl || product.imageUrls?.[0] || "",
-    flowImageUrl: product.flowImageUrl || product.imageUrls?.[0] || "",
+    displayImageUrl,
+    flowImageUrl,
     price: product.price,
     currency: product.currency,
     highlights: "",
     targetGroup: "ทั่วไป",
     cta: "สั่งได้เลย",
-    imageUrls: product.imageUrls,
+    imageUrls,
     productUrl,
     shopName: product.shopName || "",
     category: product.category || "",

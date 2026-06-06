@@ -111,7 +111,11 @@ function resolveLargestProductImageUrls(item = {}) {
 }
 
 function resolveDisplayProductImageUrl(item = {}, imageUrls = []) {
-  return item.cover?.url_list?.[0] || item.images?.[0]?.url_list?.[0] || imageUrls[0] || "";
+  let url = item.cover?.url_list?.[0] || item.images?.[0]?.url_list?.[0] || imageUrls[0] || "";
+  if (url.startsWith("//")) {
+    url = "https:" + url;
+  }
+  return url;
 }
 
 function extractImageCandidates(image = {}) {
@@ -124,12 +128,18 @@ function extractImageCandidates(image = {}) {
     ...(Array.isArray(image.url_list) ? image.url_list : [])
   ].filter(Boolean);
 
-  return urls.map((url, index) => ({
-    url,
-    index,
-    width: Number(image.width || image.w || image.origin_width || image.original_width || 0),
-    height: Number(image.height || image.h || image.origin_height || image.original_height || 0)
-  }));
+  return urls.map((url, index) => {
+    let formattedUrl = String(url || "").trim();
+    if (formattedUrl.startsWith("//")) {
+      formattedUrl = "https:" + formattedUrl;
+    }
+    return {
+      url: formattedUrl,
+      index,
+      width: Number(image.width || image.w || image.origin_width || image.original_width || 0),
+      height: Number(image.height || image.h || image.origin_height || image.original_height || 0)
+    };
+  });
 }
 
 function scoreImageCandidate(candidate) {

@@ -1481,12 +1481,23 @@ async function runPipeline(payload) {
         // 3. อัปโหลดรูป
         let uploadedTiles = [];
         if (imageUrl) {
-            const dataUrls = imageUrl.startsWith("data:") || imageUrl.startsWith("http")
-                ? [imageUrl] : [];
+            let formattedUrl = String(imageUrl).trim();
+            if (formattedUrl.startsWith("//")) {
+                formattedUrl = "https:" + formattedUrl;
+            }
+            const dataUrls = formattedUrl.startsWith("data:") || formattedUrl.startsWith("http")
+                ? [formattedUrl] : [];
             if (dataUrls.length > 0) {
                 await closeOpenAgentToggle({ waitMs: 3000, required: true });
                 uploadedTiles = await uploadImages(dataUrls, cfg.uploadWaitSec * 1000);
+                if (uploadedTiles.length === 0) {
+                    throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
+                }
+            } else {
+                throw new Error(`รูปแบบ URL ของภาพไม่ถูกต้องสำหรับการอัปโหลด: ${imageUrl}`);
             }
+        } else {
+            throw new Error("ไม่มี URL รูปภาพสินค้าสำหรับอัปโหลด (imageUrl ว่างเปล่า) ห้ามสร้างภาพโดยไม่มีรูปภาพตั้งต้น");
         }
 
         const initialPrompt = typeof prompt === "object" ? prompt.imagePrompt : prompt;

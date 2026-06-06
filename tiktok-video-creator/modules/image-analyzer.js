@@ -1,6 +1,6 @@
 import { buildCaption, buildPostHashtags, normalizeHashtags, sanitizeText } from "./prompt-builder.js";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 const POST_CAPTION_MAX_LENGTH = 3000;
 

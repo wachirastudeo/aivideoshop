@@ -92,12 +92,7 @@ const THAI_PERSON_DIRECTION = "If a person appears, make them clearly Thai, real
 
 const PRODUCT_FIDELITY_DIRECTION = "Match the reference product closely: keep its real shape, material, texture, colors, labels, brand marks, and printed text accurate. Do not invent new logos, badges, or labels. Keep realistic proportions and true scale.";
 
-const VIDEO_REALISM_DIRECTION = [
-  "Realism guardrail: keep the whole video realistic, natural, grounded, and physically plausible for a real short product clip generated from a single still image.",
-  "Use only subtle, smooth, believable motion — a gentle camera move plus minor product or ambient motion. Keep the product still and stable.",
-  "Do NOT exaggerate: no impossible or over-dramatic action, no flying or teleporting products, no morphing, no explosions, no liquid bursts, no extreme speed ramps, no unrealistic transformations, no objects appearing or multiplying, no physically impossible movement.",
-  "Favor a calm, clean, simple, true-to-life presentation over hype so the video generates reliably and does not fail."
-].join(" ");
+const VIDEO_REALISM_DIRECTION = "Keep it realistic and physically plausible: subtle smooth camera move with minor motion only. No exaggerated or impossible action — no flying, morphing, explosions, speed ramps, or objects multiplying. Calm, clean, true-to-life so it generates reliably.";
 
 const VOICE_TONES = {
   Auto: "Let AI choose the most suitable voice tone for the product and audience",

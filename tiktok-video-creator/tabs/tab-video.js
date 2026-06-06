@@ -134,27 +134,35 @@ function normalizeProductQueue(value) {
   if (!Array.isArray(value)) return [];
   return value
     .filter((item) => item && typeof item === "object")
-    .map((item) => ({
-      ...item,
-      status: normalizeStatus(item.status),
-      errorMessage: item.errorMessage || "",
-      flowImageTileId: item.flowImageTileId || "",
-      flowVideoTileId: item.flowVideoTileId || "",
-      approvedImage: item.approvedImage || "",
-      videoUrl: item.videoUrl || "",
-      productId: item.productId || item.product_id || item.id || "",
-      product_id: item.productId || item.product_id || item.id || "",
-      productUrl: resolveProductUrl(item),
-      displayImageUrl: item.displayImageUrl || item.imageUrls?.[0] || "",
-      flowImageUrl: item.flowImageUrl || item.imageUrls?.[0] || "",
-      originalName: item.originalName || item.productLinkTitle || item.rawProduct?.title || item.rawProduct?.product_name || item.rawProduct?.name || item.name || "",
-      productLinkTitle: item.productLinkTitle || item.originalName || item.rawProduct?.title || item.rawProduct?.product_name || item.rawProduct?.name || item.name || "",
-      shopName: item.shopName || "",
-      category: item.category || "",
-      details: item.details || "",
-      promptAdvice: item.promptAdvice || "",
-      autoOptions: item.autoOptions && typeof item.autoOptions === "object" ? item.autoOptions : null
-    }));
+    .map((item) => {
+      let displayImageUrl = item.displayImageUrl || item.imageUrls?.[0] || "";
+      let flowImageUrl = item.flowImageUrl || item.imageUrls?.[0] || "";
+      if (displayImageUrl.startsWith("//")) displayImageUrl = "https:" + displayImageUrl;
+      if (flowImageUrl.startsWith("//")) flowImageUrl = "https:" + flowImageUrl;
+      const imageUrls = (item.imageUrls || []).map(url => url.startsWith("//") ? "https:" + url : url);
+      return {
+        ...item,
+        status: normalizeStatus(item.status),
+        errorMessage: item.errorMessage || "",
+        flowImageTileId: item.flowImageTileId || "",
+        flowVideoTileId: item.flowVideoTileId || "",
+        approvedImage: item.approvedImage || "",
+        videoUrl: item.videoUrl || "",
+        productId: item.productId || item.product_id || item.id || "",
+        product_id: item.productId || item.product_id || item.id || "",
+        productUrl: resolveProductUrl(item),
+        displayImageUrl,
+        flowImageUrl,
+        imageUrls: imageUrls.length > 0 ? imageUrls : ["assets/icon.svg"],
+        originalName: item.originalName || item.productLinkTitle || item.rawProduct?.title || item.rawProduct?.product_name || item.rawProduct?.name || item.name || "",
+        productLinkTitle: item.productLinkTitle || item.originalName || item.rawProduct?.title || item.rawProduct?.product_name || item.rawProduct?.name || item.name || "",
+        shopName: item.shopName || "",
+        category: item.category || "",
+        details: item.details || "",
+        promptAdvice: item.promptAdvice || "",
+        autoOptions: item.autoOptions && typeof item.autoOptions === "object" ? item.autoOptions : null
+      };
+    });
 }
 
 function normalizeStatus(status) {
@@ -800,15 +808,25 @@ function setValue(id, value) {
 }
 
 function getDisplayProductImage(product = {}) {
-  return product.displayImageUrl || product.imageUrls?.[0] || "assets/icon.svg";
+  let url = product.displayImageUrl || product.imageUrls?.[0] || "assets/icon.svg";
+  if (url.startsWith("//")) {
+    url = "https:" + url;
+  }
+  return url;
 }
 
 function getFlowProductImage(product = {}) {
-  return product.flowImageUrl || product.imageUrls?.[0] || product.displayImageUrl || "";
+  let url = product.flowImageUrl || product.imageUrls?.[0] || product.displayImageUrl || "";
+  if (url.startsWith("//")) {
+    url = "https:" + url;
+  }
+  return url;
 }
 
 function getAnalysisProductImages(product = {}) {
-  return [getFlowProductImage(product), ...(product.imageUrls || [])].filter(Boolean);
+  return [getFlowProductImage(product), ...(product.imageUrls || [])]
+    .map(url => url.startsWith("//") ? "https:" + url : url)
+    .filter(Boolean);
 }
 
 function xIcon() {

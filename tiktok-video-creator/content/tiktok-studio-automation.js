@@ -1457,7 +1457,7 @@ function buildProductTitlePrompt(rawTitle, fallbackTitle) {
 
 async function generateProductLinkTitleWithGemini(rawTitle, fallbackTitle, settings) {
   const apiKey = settings.geminiApiKey;
-  const model = encodeURIComponent(settings.geminiModel || "gemini-2.5-flash");
+  const model = encodeURIComponent(settings.geminiModel || "gemini-3.5-flash");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
 
