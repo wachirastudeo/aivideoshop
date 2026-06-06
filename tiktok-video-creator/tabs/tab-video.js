@@ -145,6 +145,8 @@ function normalizeProductQueue(value) {
       productId: item.productId || item.product_id || item.id || "",
       product_id: item.productId || item.product_id || item.id || "",
       productUrl: resolveProductUrl(item),
+      displayImageUrl: item.displayImageUrl || item.imageUrls?.[0] || "",
+      flowImageUrl: item.flowImageUrl || item.imageUrls?.[0] || "",
       originalName: item.originalName || item.productLinkTitle || item.rawProduct?.title || item.rawProduct?.product_name || item.rawProduct?.name || item.name || "",
       productLinkTitle: item.productLinkTitle || item.originalName || item.rawProduct?.title || item.rawProduct?.product_name || item.rawProduct?.name || item.name || "",
       shopName: item.shopName || "",
@@ -232,7 +234,7 @@ function renderQueue() {
 }
 
 function productMarkup(p, index) {
-  const sourceImage = p.imageUrls?.[0] || "assets/icon.svg";
+  const sourceImage = getDisplayProductImage(p);
   const approvedImage = p.approvedImage || "";
   const imagePrompt = buildImagePrompt(p, settings);
   const videoPrompt = buildVideoPrompt(p, settings);
@@ -385,7 +387,7 @@ function getStatusMeta(status) {
 async function handleAnalyze(product) {
   try {
     helpers.showStatus("กำลังวิเคราะห์ด้วย AI...", "info");
-    const analysis = await analyzeProductImages(product.imageUrls || [], product);
+    const analysis = await analyzeProductImages(getAnalysisProductImages(product), product);
     // ไม่เขียน highlights ทับ — ให้ผู้ใช้กรอกเอง
     product.name = analysis.name || product.name;
     product.targetGroup = analysis.targetGroup || product.targetGroup;
@@ -419,7 +421,7 @@ async function handleUploadApproved(event, product) {
 async function launchFlow(phase, product) {
   try {
     const prompt = phase === "image" ? buildImagePrompt(product, settings) : buildVideoPrompt(product, settings);
-    const image = phase === "image" ? product.imageUrls?.[0] : (product.approvedImage || product.imageUrls?.[0]);
+    const image = phase === "image" ? getFlowProductImage(product) : (product.approvedImage || getFlowProductImage(product));
     product.status = phase === "image" ? "image_generating" : "video_generating";
     product.errorMessage = "";
     await persistState();
@@ -482,7 +484,7 @@ async function processQueue() {
       if (product.status === "idle" || !product.autoOptions) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังวิเคราะห์ออปชันวิดีโอด้วย AI...`, "info");
         try {
-          const analysis = await analyzeProductImages(product.imageUrls || [], product);
+          const analysis = await analyzeProductImages(getAnalysisProductImages(product), product);
           assertNotStopped();
           // ไม่เขียน highlights ทับ — ให้ผู้ใช้กรอกเอง
           product.name = analysis.name || product.name;
@@ -505,10 +507,10 @@ async function processQueue() {
       const imgPrompt = buildImagePrompt(product, settings);
       const vidPrompt = buildVideoPrompt(product, settings);
       assertNotStopped();
-      const result = await openGoogleFlowWithLoginResume("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, product.imageUrls?.[0], options, product, i);
+      const result = await openGoogleFlowWithLoginResume("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, getFlowProductImage(product), options, product, i);
       assertNotStopped();
 
-      product.approvedImage = result?.imgUrl || product.approvedImage || product.imageUrls?.[0] || "";
+      product.approvedImage = result?.imgUrl || product.approvedImage || getFlowProductImage(product) || "";
       product.flowImageTileId = result?.imgTileId || product.flowImageTileId || "";
       product.videoUrl = result?.resultUrl || product.videoUrl || "";
       product.flowVideoTileId = result?.tileId || product.flowVideoTileId || "";
@@ -795,6 +797,18 @@ function getValue(id) {
 function setValue(id, value) {
   const el = document.querySelector(`#${id}`);
   if (el) el.value = value ?? "";
+}
+
+function getDisplayProductImage(product = {}) {
+  return product.displayImageUrl || product.imageUrls?.[0] || "assets/icon.svg";
+}
+
+function getFlowProductImage(product = {}) {
+  return product.flowImageUrl || product.imageUrls?.[0] || product.displayImageUrl || "";
+}
+
+function getAnalysisProductImages(product = {}) {
+  return [getFlowProductImage(product), ...(product.imageUrls || [])].filter(Boolean);
 }
 
 function xIcon() {

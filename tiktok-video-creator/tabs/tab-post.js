@@ -101,16 +101,15 @@ async function runTestUpload() {
     return;
   }
 
-  const mode = getValue("post-test-mode") || "draft";
-  const postType = mode === "now" ? "now" : "draft";
   const productName = getValue("post-test-product-name").trim();
   const manualCaption = getValue("post-test-caption").trim();
   const productId = getValue("post-test-product-id").trim();
   const productUrl = getValue("post-test-product-url").trim();
-  const hashtags = getValue("post-hashtags")
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+  const { settings = {} } = await chrome.storage.sync.get("settings");
+  const postSettings = readForm(settings.postDefaults);
+  const postType = postSettings.defaultMode || "draft";
+  const uploadMode = postType === "now" || postType === "schedule" ? "post" : "draft";
+  const hashtags = normalizeHashtags(postSettings.hashtags, 5);
   const productInfo = {
     productId,
     productUrl,
@@ -118,16 +117,18 @@ async function runTestUpload() {
     originalName: productName,
     cta: "สั่งได้เลย"
   };
-  const postSettings = readForm();
   const postCopy = manualCaption
     ? { caption: manualCaption, hashtags }
     : await generatePostCopy(productInfo, postSettings);
   const caption = postCopy.caption || buildCaption(productInfo, postSettings);
   const finalHashtags = normalizeHashtags(postCopy.hashtags?.length ? postCopy.hashtags : hashtags, 5);
 
-  if (postType === "now") {
+  if (uploadMode === "post") {
     if (!caption) { setTestStatus("โพสต์จริงต้องมี caption", "error"); return; }
-    if (!productUrl) { setTestStatus("โพสต์จริงต้องมีลิงก์สินค้า", "error"); return; }
+  }
+  if (postType === "schedule" && !postSettings.scheduleTime) {
+    setTestStatus("กรุณาเลือกเวลาโพสต์ก่อนตั้งเวลา", "error");
+    return;
   }
 
   try {
@@ -135,17 +136,22 @@ async function runTestUpload() {
     setTestStatus("กำลังอ่านไฟล์...", "info");
     const dataUrl = await fileToDataUrl(file);
 
-    setTestStatus("ส่งเข้า TikTok Studio... ดู log ที่แท็บ TikTok (console [TikTokPost])", "info");
+    setTestStatus("ส่งเข้า TikTok Studio...", "info");
     const payload = {
       videoUrl: dataUrl,
       filename: file.name,
-      caption: caption || "ทดสอบโพสต์",
+      caption: caption || "โพสต์คลิปเอง",
       hashtags: finalHashtags,
       productId,
       productUrl,
       productName,
-      mode: postType === "now" ? "post" : "draft",
-      postType
+      mode: uploadMode,
+      postType,
+      scheduleTime: postSettings.scheduleTime || "",
+      location: postSettings.location || "",
+      privacy: postSettings.privacy || "",
+      allowComment: postSettings.allowComment !== false,
+      allowReuse: postSettings.allowReuse !== false
     };
 
     // pipeline ใช้เวลานาน (อัพโหลด+รอประมวลผล) channel อาจปิดก่อนได้ response
@@ -153,7 +159,7 @@ async function runTestUpload() {
     chrome.runtime.sendMessage({ type: "TIKTOK_SEND_DRAFT", payload })
       .then((response) => {
         if (response?.ok) {
-          setTestStatus("เริ่มทำงานบนหน้า TikTok แล้ว — ดูผลที่ Notification / log แท็บ TikTok", "info");
+          setTestStatus("เริ่มทำงานบนหน้า TikTok แล้ว — ดูผลที่ Notification / แท็บ TikTok Studio", "info");
         } else if (response) {
           setTestStatus("ล้มเหลว: " + (response.error || "ไม่ทราบสาเหตุ"), "error");
         }
@@ -161,7 +167,7 @@ async function runTestUpload() {
       .catch((error) => {
         const msg = error?.message || String(error);
         if (msg.includes("message channel closed")) {
-          setTestStatus("กำลังอัพโหลดเบื้องหลัง — ดู log แท็บ TikTok / Notification", "info");
+          setTestStatus("กำลังอัพโหลดเบื้องหลัง — ดูผลที่แท็บ TikTok Studio / Notification", "info");
         } else {
           setTestStatus("error: " + msg, "error");
         }
@@ -179,7 +185,7 @@ async function runTestUpload() {
 async function savePostSettings() {
   if (isHydrating) return;
   const { settings = {} } = await chrome.storage.sync.get("settings");
-  const postDefaults = readForm();
+  const postDefaults = readForm(settings.postDefaults);
   await chrome.storage.sync.set({
     settings: {
       ...settings,
@@ -218,14 +224,17 @@ function scheduleAutoSave() {
   }, 450);
 }
 
-function readForm() {
+function readForm(existingPostDefaults = {}) {
+  const existing = normalizePostSettings(existingPostDefaults);
   return normalizePostSettings({
-    captionTemplate: getValue("post-caption-template"),
-    hashtags: getValue("post-hashtags")
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean),
-    autoAddProductLink: getChecked("post-auto-product-link"),
+    captionTemplate: hasField("post-caption-template") ? getValue("post-caption-template") : existing.captionTemplate,
+    hashtags: hasField("post-hashtags")
+      ? getValue("post-hashtags")
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+      : existing.hashtags,
+    autoAddProductLink: hasField("post-auto-product-link") ? getChecked("post-auto-product-link") : existing.autoAddProductLink,
     afterCreateAction: getValue("post-after-create-action"),
     defaultMode: getValue("post-default-mode"),
     privacy: getValue("post-privacy"),
@@ -235,6 +244,10 @@ function readForm() {
     allowComment: getChecked("post-allow-comment"),
     allowReuse: getChecked("post-allow-reuse")
   });
+}
+
+function hasField(id) {
+  return Boolean(document.querySelector(`#${id}`));
 }
 
 function normalizePostSettings(value = {}) {
@@ -265,17 +278,8 @@ function syncScheduleState() {
 }
 
 function syncPublishModeState() {
-  const action = getValue("post-after-create-action");
   const modeSelect = document.querySelector("#post-default-mode");
   if (!modeSelect) return;
-
-  modeSelect.disabled = action !== "post";
-  if (action === "draft") {
-    modeSelect.value = "draft";
-  }
-  if (action === "post" && modeSelect.value === "draft") {
-    modeSelect.value = "now";
-  }
   syncScheduleState();
 }
 

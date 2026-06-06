@@ -251,6 +251,8 @@ function buildSelectedProductPayload(product) {
     name: product.name || originalName,
     originalName,
     productLinkTitle: product.productLinkTitle || originalName,
+    displayImageUrl: product.displayImageUrl || product.imageUrls?.[0] || "",
+    flowImageUrl: product.flowImageUrl || product.imageUrls?.[0] || "",
     price: product.price,
     currency: product.currency,
     highlights: "",
@@ -266,7 +268,7 @@ function buildSelectedProductPayload(product) {
 }
 
 function productMarkup(product) {
-  const imageUrl = product.imageUrls?.[0] || "assets/icon.svg";
+  const imageUrl = product.displayImageUrl || product.imageUrls?.[0] || "assets/icon.svg";
   
   let commissionBadge = '';
   if (Number(product.commissionRate) > 0 || product.commission) {

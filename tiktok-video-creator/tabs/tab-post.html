@@ -3,32 +3,43 @@
     <div>
       <p class="eyebrow">TikTok Posting</p>
       <h2 id="post-settings-title">ตั้งค่าการโพสต์ TikTok</h2>
-      <p class="flow-hero__copy">กำหนด caption, hashtag, privacy, schedule และ permission ก่อนส่ง Draft หรือโพสต์จริง</p>
+      <p class="flow-hero__copy">อัปโหลดคลิปเอง ส่งเข้า TikTok Studio และตั้งค่าการโพสต์ก่อนบันทึกร่างหรือโพสต์จริง</p>
     </div>
   </header>
 
   <div class="post-settings-layout">
-    <section class="flow-panel" aria-labelledby="post-caption-title" data-collapsible data-collapse-key="post.caption">
+    <section class="flow-panel" aria-labelledby="post-test-title" data-collapsible data-collapse-key="post.test">
       <div class="flow-panel__header">
         <div>
-          <p class="eyebrow">Caption Defaults</p>
-          <h3 id="post-caption-title">ข้อความโพสต์</h3>
+          <p class="eyebrow">Manual Upload</p>
+          <h3 id="post-test-title">โพสต์คลิปเอง</h3>
         </div>
       </div>
       <div class="settings-stack">
-        <label class="field" for="post-caption-template">
-          <span class="field__label">Caption Template</span>
-          <textarea id="post-caption-template" class="textarea" rows="4" aria-describedby="caption-template-help"></textarea>
-          <span id="caption-template-help" class="field__hint">ใช้ {product_name}, {product_id}, {price}, {product_details}, {highlights}, {shop_name}, {cta}</span>
+        <label class="field" for="post-test-file">
+          <span class="field__label">เลือกไฟล์วิดีโอ</span>
+          <input id="post-test-file" class="input" type="file" accept="video/*">
+          <span class="field__hint" id="post-test-file-info">ยังไม่ได้เลือกไฟล์</span>
         </label>
-        <label class="field" for="post-hashtags">
-          <span class="field__label">Hashtags สูงสุด 4 อัน</span>
-          <input id="post-hashtags" class="input" type="text" placeholder="#TikTokShop, #ของดีบอกต่อ">
+        <label class="field" for="post-test-product-name">
+          <span class="field__label">ชื่อสินค้า / Hook</span>
+          <input id="post-test-product-name" class="input" type="text" placeholder="ชื่อสินค้าหรือ hook สั้น ๆ">
         </label>
-        <label class="checkbox-row post-checkbox" for="post-auto-product-link">
-          <input id="post-auto-product-link" type="checkbox">
-          <span>แนบลิงก์สินค้าเมื่อระบบรองรับ</span>
+        <label class="field" for="post-test-caption">
+          <span class="field__label">Caption</span>
+          <textarea id="post-test-caption" class="textarea" rows="3" placeholder="เว้นว่างเพื่อให้ AI ช่วยคิด caption"></textarea>
         </label>
+        <label class="field" for="post-test-product-id">
+          <span class="field__label">ID สินค้า (ใช้กรอกช่องค้นหาตอน Add link)</span>
+          <input id="post-test-product-id" class="input" type="text" placeholder="เช่น 1729400000000000000">
+        </label>
+        <label class="field" for="post-test-product-url">
+          <span class="field__label">ลิงก์สินค้า (ไม่บังคับ)</span>
+          <input id="post-test-product-url" class="input" type="text" placeholder="ใส่เฉพาะถ้าต้องการปักสินค้า">
+        </label>
+        <button class="button button--primary button--full" id="post-test-run" type="button">ส่งเข้า TikTok Studio</button>
+        <p class="field__hint">ใช้ค่าใน Publish Settings &gt; ค่าเริ่มต้น สำหรับบันทึกร่าง โพสต์ทันที หรือตั้งเวลาโพสต์</p>
+        <p class="field__hint" id="post-test-status" role="status"></p>
       </div>
     </section>
 
@@ -77,47 +88,6 @@
             <input id="post-location" class="input" type="text" placeholder="Bangkok">
           </label>
         </div>
-      </div>
-    </section>
-
-    <section class="flow-panel" aria-labelledby="post-test-title" data-collapsible data-collapse-key="post.test">
-      <div class="flow-panel__header">
-        <div>
-          <p class="eyebrow">Manual Test</p>
-          <h3 id="post-test-title">ทดสอบอัพโหลด & โพสต์</h3>
-        </div>
-      </div>
-      <div class="settings-stack">
-        <label class="field" for="post-test-file">
-          <span class="field__label">เลือกไฟล์วิดีโอ</span>
-          <input id="post-test-file" class="input" type="file" accept="video/*">
-          <span class="field__hint" id="post-test-file-info">ยังไม่ได้เลือกไฟล์</span>
-        </label>
-        <label class="field" for="post-test-product-name">
-          <span class="field__label">ชื่อสินค้า / Hook</span>
-          <input id="post-test-product-name" class="input" type="text" placeholder="ชื่อสินค้าหรือ hook สั้น ๆ">
-        </label>
-        <label class="field" for="post-test-caption">
-          <span class="field__label">Caption</span>
-          <textarea id="post-test-caption" class="textarea" rows="3" placeholder="ทดสอบโพสต์จาก extension"></textarea>
-        </label>
-        <label class="field" for="post-test-product-id">
-          <span class="field__label">ID สินค้า (ใช้กรอกช่องค้นหาตอน Add link)</span>
-          <input id="post-test-product-id" class="input" type="text" placeholder="เช่น 1729400000000000000">
-        </label>
-        <label class="field" for="post-test-product-url">
-          <span class="field__label">ลิงก์สินค้า (จำเป็นเมื่อโพสต์จริง)</span>
-          <input id="post-test-product-url" class="input" type="text" placeholder="https://shop.tiktok.com/...">
-        </label>
-        <label class="field" for="post-test-mode">
-          <span class="field__label">วิธีส่ง</span>
-          <select id="post-test-mode" class="select select--accent">
-            <option value="draft">บันทึกร่าง (ทดสอบ ไม่ต้องมีลิงก์)</option>
-            <option value="now">โพสต์ทันที</option>
-          </select>
-        </label>
-        <button class="button button--primary button--full" id="post-test-run" type="button">ยิงทดสอบเข้า TikTok Studio</button>
-        <p class="field__hint" id="post-test-status" role="status"></p>
       </div>
     </section>
 

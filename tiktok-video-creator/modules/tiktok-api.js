@@ -61,9 +61,8 @@ export async function fetchShowcaseProducts(options = {}) {
  */
 export function normalizeProduct(item) {
   // รองรับทั้งโครงสร้างเก่าและโครงสร้างใหม่ของ Affiliate API
-  const coverUrl = item.cover?.url_list?.[0] || item.images?.[0]?.url_list?.[0];
-  const allImageUrls = (item.images || []).map(img => img.url_list?.[0]).filter(Boolean);
-  const imageUrls = allImageUrls.length > 0 ? allImageUrls : (coverUrl ? [coverUrl] : []);
+  const imageUrls = resolveLargestProductImageUrls(item);
+  const displayImageUrl = resolveDisplayProductImageUrl(item, imageUrls);
 
   const priceStr = (item.format_available_price || item.price?.sale_price || item.price || "").replace(/[฿$\s]/g, "");
 
@@ -77,6 +76,8 @@ export function normalizeProduct(item) {
     name: productName,
     originalName: productName,
     productLinkTitle: productName,
+    displayImageUrl,
+    flowImageUrl: imageUrls[0] || displayImageUrl || "",
     imageUrls: imageUrls.length > 0 ? imageUrls : ["assets/icon.svg"],
     price: priceStr,
     currency: item.currency || item.price?.currency || "THB",
@@ -91,6 +92,57 @@ export function normalizeProduct(item) {
   };
   normalized.productUrl = resolveProductUrl(normalized);
   return normalized;
+}
+
+function resolveLargestProductImageUrls(item = {}) {
+  const candidates = [item.cover, ...(Array.isArray(item.images) ? item.images : [])]
+    .flatMap(extractImageCandidates)
+    .filter((candidate) => candidate.url);
+
+  const seen = new Set();
+  return candidates
+    .sort((a, b) => scoreImageCandidate(b) - scoreImageCandidate(a))
+    .map((candidate) => candidate.url)
+    .filter((url) => {
+      if (seen.has(url)) return false;
+      seen.add(url);
+      return true;
+    });
+}
+
+function resolveDisplayProductImageUrl(item = {}, imageUrls = []) {
+  return item.cover?.url_list?.[0] || item.images?.[0]?.url_list?.[0] || imageUrls[0] || "";
+}
+
+function extractImageCandidates(image = {}) {
+  const urls = [
+    image.origin_url,
+    image.original_url,
+    image.original,
+    image.url,
+    image.uri,
+    ...(Array.isArray(image.url_list) ? image.url_list : [])
+  ].filter(Boolean);
+
+  return urls.map((url, index) => ({
+    url,
+    index,
+    width: Number(image.width || image.w || image.origin_width || image.original_width || 0),
+    height: Number(image.height || image.h || image.origin_height || image.original_height || 0)
+  }));
+}
+
+function scoreImageCandidate(candidate) {
+  const pixels = candidate.width * candidate.height;
+  const url = String(candidate.url || "").toLowerCase();
+  let score = pixels || 0;
+
+  if (/origin|original|tos-maliva|obj\/tos/i.test(url)) score += 10_000_000;
+  const sizeMatch = url.match(/(?:^|[^\d])(\d{3,5})[x_*](\d{3,5})(?:[^\d]|$)/);
+  if (sizeMatch) score += Number(sizeMatch[1]) * Number(sizeMatch[2]);
+  score -= candidate.index;
+
+  return score;
 }
 
 /**
