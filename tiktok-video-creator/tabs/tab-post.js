@@ -1,4 +1,5 @@
-import { normalizeHashtags } from "../modules/prompt-builder.js";
+import { buildCaption, normalizeHashtags } from "../modules/prompt-builder.js";
+import { generatePostCopy } from "../modules/image-analyzer.js";
 
 const DEFAULT_POST_SETTINGS = {
   captionTemplate: "{product_name}\n{product_details}\n{cta}",
@@ -102,13 +103,27 @@ async function runTestUpload() {
 
   const mode = getValue("post-test-mode") || "draft";
   const postType = mode === "now" ? "now" : "draft";
-  const caption = getValue("post-test-caption").trim();
+  const productName = getValue("post-test-product-name").trim();
+  const manualCaption = getValue("post-test-caption").trim();
   const productId = getValue("post-test-product-id").trim();
   const productUrl = getValue("post-test-product-url").trim();
   const hashtags = getValue("post-hashtags")
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
+  const productInfo = {
+    productId,
+    productUrl,
+    name: productName,
+    originalName: productName,
+    cta: "สั่งได้เลย"
+  };
+  const postSettings = readForm();
+  const postCopy = manualCaption
+    ? { caption: manualCaption, hashtags }
+    : await generatePostCopy(productInfo, postSettings);
+  const caption = postCopy.caption || buildCaption(productInfo, postSettings);
+  const finalHashtags = normalizeHashtags(postCopy.hashtags?.length ? postCopy.hashtags : hashtags, 5);
 
   if (postType === "now") {
     if (!caption) { setTestStatus("โพสต์จริงต้องมี caption", "error"); return; }
@@ -125,9 +140,10 @@ async function runTestUpload() {
       videoUrl: dataUrl,
       filename: file.name,
       caption: caption || "ทดสอบโพสต์",
-      hashtags,
+      hashtags: finalHashtags,
       productId,
       productUrl,
+      productName,
       mode: postType === "now" ? "post" : "draft",
       postType
     };

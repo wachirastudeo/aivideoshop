@@ -253,7 +253,7 @@ function buildSelectedProductPayload(product) {
     productLinkTitle: product.productLinkTitle || originalName,
     price: product.price,
     currency: product.currency,
-    highlights: product.highlights || product.details || product.category || "",
+    highlights: "",
     targetGroup: "ทั่วไป",
     cta: "สั่งได้เลย",
     imageUrls: product.imageUrls,

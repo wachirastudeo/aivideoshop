@@ -1,4 +1,5 @@
 import { buildCaption, buildPostHashtags, normalizeHashtags, resolveProductUrl } from "./prompt-builder.js";
+import { generatePostCopy } from "./image-analyzer.js";
 
 /**
  * @description ดาวน์โหลดวิดีโอผ่าน background service worker
@@ -44,8 +45,14 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     : (postDefaults.defaultMode === "schedule" ? "schedule" : "now");
   const productUrl = resolveProductUrl(productInfo);
   productInfo.productUrl = productUrl;
-  const caption = productInfo.caption || buildCaption(productInfo, postDefaults);
-  const hashtags = buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags });
+  const postCopy = productInfo.caption
+    ? {
+        caption: productInfo.caption,
+        hashtags: buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags })
+      }
+    : await generatePostCopy(productInfo, postDefaults);
+  const caption = postCopy.caption || buildCaption(productInfo, postDefaults);
+  const hashtags = normalizeHashtags(postCopy.hashtags || buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags }), 5);
   if (postMode === "post") {
     assertPostMetadata({ productInfo, caption, hashtags });
   }

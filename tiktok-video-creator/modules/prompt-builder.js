@@ -88,16 +88,15 @@ const PRESENTERS = {
   living_product: "The product itself becomes a living character with cute 3D eyes and personality"
 };
 
-const THAI_PERSON_DIRECTION = [
-  "Human direction: if any real person appears, make them clearly Thai, realistic, natural, and physically believable, with authentic Thai local styling, facial features, gestures, and everyday Thai-market presentation energy.",
-  "Human anatomy must be correct: one person has exactly two arms and two hands; each hand has exactly five natural fingers with realistic joints, thumbs, fingernails, and grip.",
-  "Avoid extra hands, missing fingers, fused fingers, duplicated fingers, distorted palms, rubbery arms, unnatural poses, plastic skin, doll-like faces, or overly perfect AI-looking people."
-].join(" ");
-const PRODUCT_FIDELITY_DIRECTION = [
-  "Product fidelity: match the provided reference product as closely as possible.",
-  "Preserve the original product shape, material, surface texture, color palette, label placement, brand marks, icons, and any printed letters/numbers visible on the actual product or packaging.",
-  "Original printed product/packaging text is not a headline or overlay; keep it clear and accurate from the reference, but do not invent new words, fake logos, badges, promo stickers, or extra labels.",
-  "Keep realistic physical proportions and true-to-life scale relative to hands, props, shelves, rooms, and the environment; do not make the product abnormally huge, tiny, stretched, widened, or simplified."
+const THAI_PERSON_DIRECTION = "If a person appears, make them clearly Thai, realistic and natural, with correct anatomy (two hands, five natural fingers each). Avoid extra/missing/fused fingers, distorted hands, plastic skin, or doll-like AI faces.";
+
+const PRODUCT_FIDELITY_DIRECTION = "Match the reference product closely: keep its real shape, material, texture, colors, labels, brand marks, and printed text accurate. Do not invent new logos, badges, or labels. Keep realistic proportions and true scale.";
+
+const VIDEO_REALISM_DIRECTION = [
+  "Realism guardrail: keep the whole video realistic, natural, grounded, and physically plausible for a real short product clip generated from a single still image.",
+  "Use only subtle, smooth, believable motion — a gentle camera move plus minor product or ambient motion. Keep the product still and stable.",
+  "Do NOT exaggerate: no impossible or over-dramatic action, no flying or teleporting products, no morphing, no explosions, no liquid bursts, no extreme speed ramps, no unrealistic transformations, no objects appearing or multiplying, no physically impossible movement.",
+  "Favor a calm, clean, simple, true-to-life presentation over hype so the video generates reliably and does not fail."
 ].join(" ");
 
 const VOICE_TONES = {
@@ -274,6 +273,7 @@ export function buildVideoPrompt(productInfo, settings) {
     `Create a ${durationSeconds}-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
     "Use the provided product image as the main visual reference and keep product appearance accurate.",
     PRODUCT_FIDELITY_DIRECTION,
+    VIDEO_REALISM_DIRECTION,
     "Do NOT include any pricing or cost information in the video.",
     "",
     `Auto-selected creative plan: style=${style.id}, presenter=${auto.presenter}, voiceTone=${auto.voiceTone}, mood=${auto.mood}, location=${auto.location}, camera=${auto.cameraMovement}, transition=${auto.transition}.`,
@@ -360,27 +360,48 @@ export function buildCaption(productInfo, defaults = {}) {
   const template = defaults.captionTemplate || "{product_name}\n{product_details}\n{cta}";
   const productUrl = resolveProductUrl(productInfo);
   const productName = resolveCaptionProductName(productInfo);
-  const caption = template
-    .replaceAll("{product_name}", sanitizeText(productName))
-    .replaceAll("{product_id}", sanitizeText(productInfo.productId))
-    .replaceAll("{product_url}", sanitizeText(productUrl))
-    .replaceAll("{price}", formatPrice(productInfo))
-    .replaceAll("{shop_name}", sanitizeText(productInfo.shopName))
-    .replaceAll("{category}", sanitizeText(productInfo.category))
-    .replaceAll("{product_details}", buildProductDetails(productInfo))
-    .replaceAll("{highlights}", sanitizeText(productInfo.highlights))
-    .replaceAll("{cta}", sanitizeText(productInfo.cta || "สั่งได้เลย"))
-    .trim();
+  const caption = renderCaptionTemplate(template, {
+    product_name: cleanCaptionText(productName),
+    product_id: sanitizeText(productInfo.productId),
+    product_url: sanitizeText(productUrl),
+    price: formatPrice(productInfo),
+    shop_name: cleanCaptionText(productInfo.shopName),
+    category: cleanCaptionText(productInfo.category),
+    product_details: buildProductDetails(productInfo),
+    highlights: cleanCaptionText(productInfo.highlights),
+    cta: cleanCaptionText(productInfo.cta || "สั่งได้เลย")
+  });
 
-  const linkLine = defaults.autoAddProductLink !== false && productUrl
-    ? `\n${sanitizeText(productUrl)}`
+  const productNameLine = defaults.autoAddProductLink !== false && productName && !caption.includes(productName)
+    ? `\n${cleanCaptionText(productName)}`
     : "";
 
-  return `${caption}${linkLine}`.trim();
+  return `${caption}${productNameLine}`.trim();
+}
+
+function renderCaptionTemplate(template, variables) {
+  return String(template || "")
+    .split("\n")
+    .map((line) => renderCaptionLine(line, variables))
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
+function renderCaptionLine(line, variables) {
+  const placeholders = [...String(line || "").matchAll(/{([a-z_]+)}/g)].map((match) => match[1]);
+  if (placeholders.some((key) => variables[key] !== undefined && !String(variables[key] || "").trim())) {
+    return "";
+  }
+
+  return Object.entries(variables).reduce(
+    (text, [key, value]) => text.replaceAll(`{${key}}`, String(value || "")),
+    line
+  ).replace(/[ \t]+/g, " ").trim();
 }
 
 export function resolveCaptionProductName(productInfo = {}) {
-  return String(
+  return cleanCaptionText(
     productInfo.originalName ||
     productInfo.productLinkTitle ||
     productInfo.rawProduct?.title ||
@@ -388,7 +409,27 @@ export function resolveCaptionProductName(productInfo = {}) {
     productInfo.rawProduct?.name ||
     productInfo.name ||
     ""
-  ).trim();
+  );
+}
+
+function cleanCaptionText(value) {
+  return stripWeirdCaptionChars(removeCaptionBracketText(value));
+}
+
+function removeCaptionBracketText(value) {
+  return String(value || "")
+    .replace(/[（(][^）)]*[）)]/g, " ")
+    .replace(/\[[^\]]*]/g, " ")
+    .replace(/【[^】]*】/g, " ")
+    .replace(/\{[^}]*}/g, " ");
+}
+
+function stripWeirdCaptionChars(value) {
+  return String(value || "")
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 1200);
 }
 
 export function resolveProductUrl(productInfo = {}) {
@@ -497,9 +538,9 @@ function buildProductDetails(productInfo) {
   const details = [
     productInfo.productId ? `รหัสสินค้า: ${sanitizeText(productInfo.productId)}` : "",
     formatPrice(productInfo) ? `ราคา: ${formatPrice(productInfo)}` : "",
-    productInfo.highlights ? `จุดเด่น: ${sanitizeText(productInfo.highlights)}` : "",
-    productInfo.category ? `หมวดหมู่: ${sanitizeText(productInfo.category)}` : "",
-    productInfo.shopName ? `ร้าน: ${sanitizeText(productInfo.shopName)}` : "",
+    productInfo.highlights ? `จุดเด่น: ${cleanCaptionText(productInfo.highlights)}` : "",
+    productInfo.category ? `หมวดหมู่: ${cleanCaptionText(productInfo.category)}` : "",
+    productInfo.shopName ? `ร้าน: ${cleanCaptionText(productInfo.shopName)}` : "",
   ].filter(Boolean);
 
   return details.join("\n");

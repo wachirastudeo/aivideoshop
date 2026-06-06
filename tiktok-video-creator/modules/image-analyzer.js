@@ -1,7 +1,8 @@
-import { sanitizeText } from "./prompt-builder.js";
+import { buildCaption, buildPostHashtags, normalizeHashtags, sanitizeText } from "./prompt-builder.js";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
+const POST_CAPTION_MAX_LENGTH = 3000;
 
 /**
  * @description แปลงไฟล์รูปเป็น data URL
@@ -41,6 +42,191 @@ export async function analyzeProductImages(imageDataUrls, productInfo = {}) {
     console.warn("AI Image Analysis API failed (falling back to title context):", err);
     return buildTitleBasedFallback(productInfo);
   }
+}
+
+export async function generatePostCopy(productInfo = {}, defaults = {}) {
+  const fallback = buildFallbackPostCopy(productInfo, defaults);
+  const { settings = {} } = await chrome.storage.sync.get("settings");
+  const provider = settings.aiProvider || "gemini";
+
+  try {
+    if (provider === "openai") {
+      if (!settings.openaiApiKey) return fallback;
+      return await generatePostCopyWithOpenAI(productInfo, defaults, settings, fallback);
+    }
+
+    if (!settings.geminiApiKey) return fallback;
+    return await generatePostCopyWithGemini(productInfo, defaults, settings, fallback);
+  } catch (error) {
+    console.warn("AI post copy failed; falling back to template copy:", sanitizeApiErrorMessage(error?.message || error));
+    return fallback;
+  }
+}
+
+function buildFallbackPostCopy(productInfo, defaults) {
+  return {
+    caption: truncatePostCaption(buildCaption(productInfo, defaults)),
+    hashtags: normalizeHashtags(buildPostHashtags(productInfo, { ...defaults, hashtags: productInfo.hashtags || defaults.hashtags }), 5),
+    source: "fallback"
+  };
+}
+
+async function generatePostCopyWithGemini(productInfo, defaults, settings, fallback) {
+  const apiKey = settings.geminiApiKey;
+  const model = encodeURIComponent(settings.geminiModel || DEFAULT_GEMINI_MODEL);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(buildGeminiUrl(model, apiKey), {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: buildPostCopyPrompt(productInfo, defaults) }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.35,
+          maxOutputTokens: 4096,
+          responseMimeType: "application/json"
+        }
+      })
+    });
+
+    if (!response.ok) throw new Error(await getGeminiErrorMessage(response, "Gemini สร้าง caption/hashtag ไม่สำเร็จ"));
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text || "{}";
+    return normalizeGeneratedPostCopy(JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}"), fallback);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function generatePostCopyWithOpenAI(productInfo, defaults, settings, fallback) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${settings.openaiApiKey}`
+      },
+      body: JSON.stringify({
+        model: settings.openaiModel || DEFAULT_OPENAI_MODEL,
+        messages: [
+          {
+            role: "user",
+            content: buildPostCopyPrompt(productInfo, defaults)
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 1600,
+        temperature: 0.35
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || "OpenAI สร้าง caption/hashtag ไม่สำเร็จ");
+    }
+
+    const data = await response.json();
+    return normalizeGeneratedPostCopy(JSON.parse(data.choices?.[0]?.message?.content || "{}"), fallback);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function buildPostCopyPrompt(productInfo = {}, defaults = {}) {
+  const baseHashtags = normalizeHashtags(productInfo.hashtags || defaults.hashtags || [], 4).join(" ");
+  const fullProductName = resolveFullProductNameForAi(productInfo);
+  return [
+    "Create TikTok Shop post copy in Thai for this product.",
+    `Full product title from source: ${sanitizeLongText(fullProductName)}`,
+    `Edited product name / hook: ${sanitizeLongText(productInfo.name || "")}`,
+    `Product ID: ${sanitizeText(productInfo.productId || productInfo.product_id || "")}`,
+    `Category: ${sanitizeText(productInfo.category || "")}`,
+    `Shop: ${sanitizeText(productInfo.shopName || "")}`,
+    `Price: ${productInfo.price ? sanitizeText(productInfo.price) : ""}`,
+    `Highlights: ${sanitizeText(productInfo.highlights || productInfo.details || "")}`,
+    `CTA: ${sanitizeText(productInfo.cta || "สั่งได้เลย")}`,
+    `Default hashtags: ${baseHashtags}`,
+    "Rules:",
+    `- Caption must be natural Thai TikTok Shop sales copy, maximum ${POST_CAPTION_MAX_LENGTH} characters.`,
+    "- Use the full product title as the main source for product-specific details.",
+    "- Do not include product URLs or raw links.",
+    "- Do not include hashtags inside caption; return hashtags separately.",
+    "- Do not invent medical, guaranteed, or unsupported claims.",
+    "- Remove bracket/badge text, emoji, odd punctuation, and filler words.",
+    "- Return at most 5 hashtags, all directly relevant to the product/category/use case, each starting with #.",
+    'Return compact JSON only: {"caption":"...","hashtags":["#tag1","#tag2","#tag3"]}'
+  ].join("\n");
+}
+
+function resolveFullProductNameForAi(productInfo = {}) {
+  return [
+    productInfo.originalName,
+    productInfo.productLinkTitle,
+    productInfo.rawProduct?.title,
+    productInfo.rawProduct?.product_name,
+    productInfo.rawProduct?.name,
+    productInfo.name
+  ].find((value) => String(value || "").trim()) || "";
+}
+
+function sanitizeLongText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, POST_CAPTION_MAX_LENGTH);
+}
+
+function normalizeGeneratedPostCopy(value, fallback) {
+  const caption = truncatePostCaption(cleanGeneratedCaption(value?.caption) || fallback.caption);
+  const hashtags = normalizeHashtags(cleanGeneratedHashtags(value?.hashtags?.length ? value.hashtags : fallback.hashtags), 5);
+  return {
+    caption,
+    hashtags,
+    source: "ai"
+  };
+}
+
+function cleanGeneratedHashtags(value) {
+  const rawTags = Array.isArray(value) ? value : String(value || "").split(",");
+  return rawTags
+    .map((tag) => String(tag || "")
+      .replace(/^#+/, "")
+      .replace(/[^\p{L}\p{M}\p{N}\s_]/gu, " ")
+      .replace(/\s+/g, "")
+      .trim())
+    .filter(Boolean)
+    .map((tag) => `#${tag}`);
+}
+
+function cleanGeneratedCaption(value) {
+  return String(value || "")
+    .replace(/https?:\/\/\S+/gi, " ")
+    .replace(/#[\p{L}\p{M}\p{N}_]+/gu, " ")
+    .replace(/[（(][^）)]*[）)]/g, " ")
+    .replace(/\[[^\]]*]/g, " ")
+    .replace(/【[^】]*】/g, " ")
+    .replace(/\{[^}]*}/g, " ")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, POST_CAPTION_MAX_LENGTH)
+    .trim();
+}
+
+function truncatePostCaption(value) {
+  return String(value || "").trim().slice(0, POST_CAPTION_MAX_LENGTH).trim();
 }
 
 async function analyzeWithGemini(imageDataUrls, productInfo, settings) {

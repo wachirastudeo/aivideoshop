@@ -386,7 +386,7 @@ async function handleAnalyze(product) {
   try {
     helpers.showStatus("กำลังวิเคราะห์ด้วย AI...", "info");
     const analysis = await analyzeProductImages(product.imageUrls || [], product);
-    product.highlights = analysis.highlights || product.highlights;
+    // ไม่เขียน highlights ทับ — ให้ผู้ใช้กรอกเอง
     product.name = analysis.name || product.name;
     product.targetGroup = analysis.targetGroup || product.targetGroup;
     product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
@@ -479,12 +479,12 @@ async function processQueue() {
 
     try {
       assertNotStopped();
-      if (product.status === "idle" || !product.highlights || !product.autoOptions) {
-        helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังวิเคราะห์จุดเด่นสินค้าด้วย AI...`, "info");
+      if (product.status === "idle" || !product.autoOptions) {
+        helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังวิเคราะห์ออปชันวิดีโอด้วย AI...`, "info");
         try {
           const analysis = await analyzeProductImages(product.imageUrls || [], product);
           assertNotStopped();
-          product.highlights = analysis.highlights || product.highlights;
+          // ไม่เขียน highlights ทับ — ให้ผู้ใช้กรอกเอง
           product.name = analysis.name || product.name;
           product.targetGroup = analysis.targetGroup || product.targetGroup;
           product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";

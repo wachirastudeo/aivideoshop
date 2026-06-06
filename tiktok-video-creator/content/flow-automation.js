@@ -370,10 +370,17 @@ function mediaCardStatus(cardInfo) {
     const el = findMediaCard(cardInfo);
     if (!el) return { ready: false, failed: false, progress: true, rendered: false, text: "" };
     const text = mediaCardDeepText(el).toLowerCase();
-    
-    // Check if any progress percentage is still visible (even 100% needs to disappear first)
-    const progress = /\b\d{1,3}\s*%/.test(text) || text.includes("uploading") || text.includes("processing");
-    
+
+    // มี indicator กำลังโหลดจริงไหม (progress bar / spinner) — กัน % ค้างใน text ทำให้รอเก้อ
+    const hasLoadingIndicator = Boolean(
+        el.querySelector?.("[role='progressbar'], progress, [class*='progress'], [class*='spinner'], [class*='loading']")
+    );
+    const wordProgress = text.includes("uploading") || text.includes("processing") ||
+        text.includes("generating") || text.includes("rendering") || text.includes("creating");
+    // นับ % เป็น progress เฉพาะตอนมี loading indicator จริงเท่านั้น
+    const percentProgress = hasLoadingIndicator && /\b\d{1,3}\s*%/.test(text);
+    const progress = wordProgress || percentProgress;
+
     const failed = !progress && (text.includes("failed") || text.includes("warning") || text.includes("ล้มเหลว"));
     const rendered = hasRenderableMedia(el);
     return { ready: rendered && !progress, failed, progress, rendered, text };
@@ -419,7 +426,8 @@ function hasRenderableMedia(el) {
     if (img && (img.complete || img.naturalWidth > 0) && (img.naturalWidth || img.clientWidth) > 0) return true;
 
     const vid = el.matches?.("video") ? el : el.querySelector?.("video");
-    if (vid && (vid.readyState >= 2 || vid.currentSrc || vid.src)) return true;
+    // นับ <source> child ด้วย (วิดีโอเสร็จแล้วแต่ยังไม่ load → readyState 0, src ว่าง)
+    if (vid && (vid.readyState >= 1 || vid.currentSrc || vid.src || vid.querySelector("source")?.src || vid.poster)) return true;
 
     const bg = [...el.querySelectorAll?.("[style*='background-image']") || []]
         .some(node => /url\(["']?[^"')]+["']?\)/.test(node.style.backgroundImage || ""));
