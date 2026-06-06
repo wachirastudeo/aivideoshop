@@ -118,6 +118,21 @@ function resolveDisplayProductImageUrl(item = {}, imageUrls = []) {
   return url;
 }
 
+function normalizeProductImageUrl(raw) {
+  let u = String(raw || "").trim();
+  if (!u) return "";
+  if (u.startsWith("//")) return "https:" + u;
+  if (/^https?:\/\//i.test(u) || u.startsWith("data:")) return u;
+  // tos key เปล่าจาก TikTok (image.uri) → สร้าง full CDN URL (token อยู่ในคีย์)
+  const key = u.replace(/^\/+/, "");
+  if (/^(tos-|obj\/tos)/i.test(key)) {
+    const token = key.match(/-i-([a-z0-9]+)-/i)?.[1] || "";
+    const suffix = token ? `~tplv-${token}-resize-jpeg:800:800.jpeg` : "";
+    return `https://p16-oec-va.ibyteimg.com/${key}${suffix}`;
+  }
+  return u;
+}
+
 function extractImageCandidates(image = {}) {
   const urls = [
     image.origin_url,
@@ -129,10 +144,7 @@ function extractImageCandidates(image = {}) {
   ].filter(Boolean);
 
   return urls.map((url, index) => {
-    let formattedUrl = String(url || "").trim();
-    if (formattedUrl.startsWith("//")) {
-      formattedUrl = "https:" + formattedUrl;
-    }
+    const formattedUrl = normalizeProductImageUrl(url);
     return {
       url: formattedUrl,
       index,

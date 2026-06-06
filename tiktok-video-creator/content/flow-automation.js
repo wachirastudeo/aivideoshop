@@ -1481,10 +1481,7 @@ async function runPipeline(payload) {
         // 3. อัปโหลดรูป
         let uploadedTiles = [];
         if (imageUrl) {
-            let formattedUrl = String(imageUrl).trim();
-            if (formattedUrl.startsWith("//")) {
-                formattedUrl = "https:" + formattedUrl;
-            }
+            const formattedUrl = normalizeImageUrlForUpload(imageUrl);
             const dataUrls = formattedUrl.startsWith("data:") || formattedUrl.startsWith("http")
                 ? [formattedUrl] : [];
             if (dataUrls.length > 0) {
@@ -1632,6 +1629,22 @@ async function recordVideoBase64(videoUrl = "") {
         base64: dataUrl.split(",")[1],
         mimeType: blob.type || "video/webm"
     };
+}
+
+// แปลง URL/URI ภาพให้เป็น full URL สำหรับอัปโหลด (รองรับ tos key เปล่าจาก TikTok)
+function normalizeImageUrlForUpload(raw) {
+    let u = String(raw || "").trim();
+    if (!u) return "";
+    if (u.startsWith("//")) return "https:" + u;
+    if (/^https?:\/\//i.test(u) || u.startsWith("data:")) return u;
+    // tos key เปล่า เช่น tos-alisg-i-aphluv4xwc-sg/abc... → สร้าง full CDN URL
+    const key = u.replace(/^\/+/, "");
+    if (/^(tos-|obj\/tos)/i.test(key)) {
+        const token = key.match(/-i-([a-z0-9]+)-/i)?.[1] || "";
+        const suffix = token ? `~tplv-${token}-resize-jpeg:800:800.jpeg` : "";
+        return `https://p16-oec-va.ibyteimg.com/${key}${suffix}`;
+    }
+    return u;
 }
 
 function hasVideoSource(video) {
