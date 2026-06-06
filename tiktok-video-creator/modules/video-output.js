@@ -50,6 +50,9 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     assertPostMetadata({ productInfo, caption, hashtags });
   }
 
+  // เริ่มรอผลจริง (TIKTOK_DONE) ก่อนส่ง เพื่อไม่พลาด event
+  const donePromise = waitForTikTokDone(360000);
+
   const response = await chrome.runtime.sendMessage({
     type: "TIKTOK_SEND_DRAFT",
     payload: {
@@ -71,8 +74,46 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     }
   });
 
-  if (!response?.ok) throw new Error(response?.error || "ส่งไป TikTok Studio ไม่สำเร็จ");
-  return response;
+  if (!response?.ok) {
+    donePromise.cancel?.();
+    throw new Error(response?.error || "ส่งไป TikTok Studio ไม่สำเร็จ");
+  }
+
+  // content รัน pipeline เบื้องหลัง — รอผลจริงจาก TIKTOK_DONE (ไม่ใช่แค่ started)
+  const done = await donePromise;
+  if (!done?.success) {
+    throw new Error(done?.error || "อัปโหลด/โพสต์ TikTok ไม่สำเร็จ");
+  }
+  return { ok: true, ...done };
+}
+
+/**
+ * รอ event TIKTOK_DONE จาก content pipeline (ผ่าน listener แยก ไม่ค้าง message channel)
+ * @param {number} timeoutMs
+ * @returns {Promise<{success:boolean,error?:string,posted?:boolean,drafted?:boolean}> & {cancel:Function}}
+ */
+function waitForTikTokDone(timeoutMs = 360000) {
+  let timer = null;
+  let handler = null;
+  const cleanup = () => {
+    if (timer) clearTimeout(timer);
+    if (handler) chrome.runtime.onMessage.removeListener(handler);
+  };
+  const promise = new Promise((resolve) => {
+    handler = (msg) => {
+      if (msg?.type === "TIKTOK_DONE") {
+        cleanup();
+        resolve(msg.payload || { success: false, error: "ไม่ทราบผลอัปโหลด" });
+      }
+    };
+    chrome.runtime.onMessage.addListener(handler);
+    timer = setTimeout(() => {
+      cleanup();
+      resolve({ success: false, error: "หมดเวลารอผลอัปโหลด TikTok (6 นาที)" });
+    }, timeoutMs);
+  });
+  promise.cancel = cleanup;
+  return promise;
 }
 
 export function buildTikTokVideoFilename(productInfo = {}) {
