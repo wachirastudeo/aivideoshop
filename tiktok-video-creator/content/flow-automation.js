@@ -1551,11 +1551,28 @@ async function recordVideoBase64(videoUrl = "") {
     video.muted = true;
     video.playsInline = true;
 
+    // ถ้ายังไม่โหลด (lazy <source>) สั่ง load แล้วรอ metadata ก่อน
+    if (video.readyState < 2) {
+        try { video.load(); } catch { }
+        await Promise.race([
+            once(video, "loadeddata"),
+            once(video, "canplay"),
+            sleep(8000)
+        ]);
+    }
+
     if (Number.isFinite(video.duration) && video.duration > 0) {
         try { video.currentTime = 0; } catch { }
     }
 
-    await video.play();
+    try {
+        await video.play();
+    } catch (playError) {
+        // บางครั้งต้องคลิก tile ก่อนถึงเล่นได้ — ลองคลิกแล้วเล่นใหม่
+        try { video.click(); } catch { }
+        await sleep(500);
+        await video.play();
+    }
     const stream = video.captureStream();
     const mimeType = [
         "video/mp4;codecs=avc1.42E01E",
@@ -1598,9 +1615,23 @@ async function recordVideoBase64(videoUrl = "") {
     };
 }
 
+function hasVideoSource(video) {
+    return Boolean(
+        video.currentSrc ||
+        video.src ||
+        video.querySelector("source")?.src ||
+        video.readyState >= 1
+    );
+}
+
 function findRecordableVideo(videoUrl = "") {
-    const videos = [...document.querySelectorAll("video")]
-        .filter(video => isVisible(video) && (video.readyState >= 1 || video.currentSrc || video.src));
+    const all = [...document.querySelectorAll("video")];
+    // รวม video ที่มี <source> child ด้วย (src/currentSrc อาจว่างจนกว่าจะ load)
+    let videos = all.filter(video => isVisible(video) && hasVideoSource(video));
+    // ผ่อนเงื่อนไข: ถ้าไม่เจอ ลองทุก video ที่มี source ใด ๆ (ไม่สน visible)
+    if (!videos.length) videos = all.filter(hasVideoSource);
+    // ผ่อนสุด: เอา video ใด ๆ ที่มีในหน้า (เดี๋ยว play() จะ trigger load เอง)
+    if (!videos.length) videos = all;
     if (!videos.length) return null;
 
     const target = String(videoUrl || "").split("?")[0].split("#")[0];
