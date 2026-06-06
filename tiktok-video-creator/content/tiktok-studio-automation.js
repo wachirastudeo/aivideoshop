@@ -34,6 +34,12 @@ const TIKTOK_TEXT = {
   confirm: ["save anyway", "confirm", "continue", "post now", "ยืนยัน", "บันทึกต่อไป", "โพสต์เลย", "โพสต์ทันที"],
 };
 
+// ป้องกัน register listener ซ้ำ (โหลดทั้งจาก auto content-script และ background inject)
+if (globalThis.__tiktokStudioListenerAdded) {
+  console.log("[TikTokPost] listener already registered — skip duplicate");
+} else {
+  globalThis.__tiktokStudioListenerAdded = true;
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "TIKTOK_STUDIO_PING") {
     sendResponse({ pong: true });
@@ -115,6 +121,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 });
+
+} // end guard __tiktokStudioListenerAdded
 
 // ──────────────────────────────────────────────
 // MAIN PIPELINE
