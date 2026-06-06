@@ -436,11 +436,19 @@ async function launchFlow(phase, product) {
       product.videoUrl = result?.resultUrl || product.videoUrl;
       product.flowVideoTileId = result?.tileId || product.flowVideoTileId || "";
       product.status = "done";
+      product.productUrl = resolveProductUrl(product);
     }
 
     await persistState();
     renderQueue();
     helpers.showStatus(phase === "image" ? "สร้างภาพสำเร็จ" : "สร้างวิดีโอสำเร็จ", "success");
+
+    // วิดีโอเสร็จ → ทำ action ต่อตาม setting (download / draft / post) อัตโนมัติ
+    if (phase !== "image" && product.videoUrl) {
+      const action = await getPostAction();
+      helpers.logActivity?.(`วิดีโอเสร็จ → ดำเนินการต่ออัตโนมัติ (${action})`, "info");
+      await handlePost(product);
+    }
   } catch (err) {
     product.status = "error";
     product.errorMessage = err.message;
