@@ -239,8 +239,10 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
   const prompt = [
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
+    "Identify the product's exact visible silhouette, package shape, dominant colors, color placement, material/texture, label layout, brand marks, numbers, icons, and readable printed text.",
+    "For promptAdvice, write concise English reference-fidelity guidance that tells image/video generation to preserve those exact visual details and not redesign, recolor, translate, or invent labels/text.",
     "Recommend creative options for an 8-second vertical TikTok product video.",
-    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English video prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
+    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
   const parts = [{ text: prompt }];
 
@@ -304,8 +306,10 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
   const prompt = [
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
+    "Identify the product's exact visible silhouette, package shape, dominant colors, color placement, material/texture, label layout, brand marks, numbers, icons, and readable printed text.",
+    "For promptAdvice, write concise English reference-fidelity guidance that tells image/video generation to preserve those exact visual details and not redesign, recolor, translate, or invent labels/text.",
     "Recommend creative options for an 8-second vertical TikTok product video.",
-    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English video prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
+    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
 
   const content = [{ type: "text", text: prompt }];
@@ -496,7 +500,7 @@ function buildTitleBasedFallback(productInfo) {
       "• ใช้ภาพสินค้า close-up พร้อมแสงสะอาดเพื่อเพิ่มความน่าเชื่อถือ"
     ].join("\n"),
     targetGroup,
-    promptAdvice: `Create a clean TikTok product video for "${name}". Use the product title as the main context, show a clear hero shot, emphasize benefits and CTA, and keep the visual simple because no vision API key was provided.`,
+    promptAdvice: `Create a clean TikTok product video for "${name}". Use the attached reference image as the source of truth for product shape, colors, packaging, labels, and printed text; do not redesign, recolor, translate, or invent product details. Keep the visual simple because no vision API key was provided.`,
     autoOptions: inferAutoOptionsFromProduct(productInfo)
   };
 }

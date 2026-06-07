@@ -63,7 +63,7 @@ export async function syncSelectedProductToVideoTab() {
 
 function bindGlobalEvents() {
   [
-    "video-style", "presenter", "voice-tone", "location",
+    "video-style", "presenter", "voice-tone", "location", "custom-location",
     "show-name", "promotion-text", "text-position", "camera-movement",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action",
     "image-model", "video-model"
@@ -85,6 +85,7 @@ function fillGlobalFormFromState() {
   setValue("presenter", settings.presenter);
   setValue("voice-tone", settings.voiceTone);
   setValue("location", settings.location);
+  setValue("custom-location", settings.customLocation);
   setValue("show-name", settings.showName);
   setValue("promotion-text", settings.promotionText);
   setValue("text-position", settings.textPosition);
@@ -97,6 +98,7 @@ function fillGlobalFormFromState() {
   setValue("aspect-ratio", settings.aspectRatio);
   setValue("post-action", settings.postAction);
   syncVideoTextSettingsVisibility();
+  syncCustomLocationVisibility();
 }
 
 function syncSettingsForm() {
@@ -106,6 +108,7 @@ function syncSettingsForm() {
     presenter: getValue("presenter"),
     voiceTone: getValue("voice-tone"),
     location: getValue("location"),
+    customLocation: getValue("custom-location"),
     showName: getValue("show-name"),
     promotionText: getValue("promotion-text"),
     textPosition: getValue("text-position"),
@@ -121,6 +124,7 @@ function syncSettingsForm() {
 
   renderQueue();
   syncVideoTextSettingsVisibility();
+  syncCustomLocationVisibility();
   persistState();
 }
 
@@ -179,6 +183,7 @@ function normalizeSettings(value) {
     cta: "กดสั่งซื้อที่ตะกร้าด้านล่าง",
     customCta: "",
     location: value.location || "Auto",
+    customLocation: value.customLocation || "",
     pacing: value.pacing || 2,
     transition: value.transition || "Auto",
     imageModel: value.imageModel || "nano-banana-pro",
@@ -195,6 +200,13 @@ function syncVideoTextSettingsVisibility() {
   const enabled = getValue("show-name") === "true";
   document.querySelectorAll(".video-text-setting").forEach((field) => {
     field.hidden = !enabled;
+  });
+}
+
+function syncCustomLocationVisibility() {
+  const customEnabled = getValue("location") === "กรอกเอง";
+  document.querySelectorAll(".custom-location-setting").forEach((field) => {
+    field.hidden = !customEnabled;
   });
 }
 

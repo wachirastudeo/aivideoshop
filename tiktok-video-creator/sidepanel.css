@@ -1460,10 +1460,10 @@ html[data-mode="tab"] .activity-log {
 
 .flow-job__grid {
   display: grid;
-  grid-template-columns: minmax(0, min(360px, 100%));
+  grid-template-columns: minmax(0, min(120px, 100%));
   justify-content: start;
-  gap: 10px;
-  padding: 12px;
+  gap: 6px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1471,7 +1471,7 @@ html[data-mode="tab"] .activity-log {
   margin: 0;
   border: 1px solid var(--line);
   background: #18181c;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
 }
 
@@ -1483,10 +1483,10 @@ html[data-mode="tab"] .activity-log {
 }
 
 .media-tile figcaption {
-  padding: 5px 7px;
+  padding: 4px 6px;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1.2;
 }
 
@@ -1592,7 +1592,7 @@ html[data-mode="tab"] .activity-log {
   }
 
   .flow-job__grid {
-    grid-template-columns: minmax(0, 140px);
+    grid-template-columns: minmax(0, 110px);
   }
 
   .flow-job__title h3 {

@@ -90,7 +90,7 @@ const PRESENTERS = {
 
 const THAI_PERSON_DIRECTION = "If a person appears, make them clearly Thai, realistic and natural, with correct anatomy (two hands, five natural fingers each). Avoid extra/missing/fused fingers, distorted hands, plastic skin, or doll-like AI faces.";
 
-const PRODUCT_FIDELITY_DIRECTION = "Match the reference product closely: keep its real shape, material, texture, colors, labels, brand marks, and printed text accurate. Do not invent new logos, badges, or labels. Keep realistic proportions and true scale.";
+const PRODUCT_FIDELITY_DIRECTION = "Reference product identity lock: copy the attached product image as closely as possible. Preserve the exact silhouette, proportions, package shape, cap/lid/nozzle details, material, texture, color palette, color placement, labels, brand marks, icons, numbers, and all printed text visible on the product or packaging. Do not redesign, recolor, simplify, translate, correct, replace, blur, or invent logos, badges, labels, text, decorations, variants, extra products, or different packaging. Keep realistic proportions and true scale.";
 
 const VIDEO_REALISM_DIRECTION = "Keep it realistic and physically plausible: subtle smooth camera move with minor motion only. No exaggerated or impossible action — no flying, morphing, explosions, speed ramps, or objects multiplying. Calm, clean, true-to-life so it generates reliably.";
 
@@ -114,6 +114,7 @@ export function getDefaultSettings() {
     voiceTone: "Auto",
     mood: "Auto",
     location: "Auto",
+    customLocation: "",
     language: "ไทย",
     showName: "false",
     promotionText: "",
@@ -178,14 +179,15 @@ export function buildImagePrompt(productInfo, settings) {
   const target = productInfo.targetGroup === "กรอกเอง" ? productInfo.customTargetGroup : productInfo.targetGroup;
   
   const moodStr = auto.mood;
-  const locationStr = auto.location;
+  const locationStr = resolvePromptLocation(auto);
 
   const promptParts = [
     `High quality product photography of ${sanitizeText(productInfo.name) || "the product"}.`,
+    "Use the attached product image as the source of truth. Product fidelity is more important than creative style.",
     PRODUCT_FIDELITY_DIRECTION,
     `Location: ${sanitizeText(locationStr)}.`,
     `Mood/Atmosphere: ${sanitizeText(moodStr)}.`,
-    "Composition: Product centered, sharp focus, high-end commercial lighting, clear texture.",
+    "Composition: Product centered, sharp focus, high-end commercial lighting, clear texture, front label readable when visible in the reference.",
     `Style reference: ${style.fragment}.`,
     THAI_PERSON_DIRECTION,
     `Target audience: ${sanitizeText(target) || "TikTok users"}.`,
@@ -195,13 +197,15 @@ export function buildImagePrompt(productInfo, settings) {
 
   // Explicitly handle "No Text" or "Include Text"
   if (settings.showName === "false" || settings.showName === false) {
-    promptParts.push("Negative prompt: ABSOLUTELY NO added headline text, NO extra overlay text, NO subtitles, NO captions, NO CTA text, NO stickers, NO signs, NO watermarks, NO UI text. Exception: preserve only the original printed text, logo, label, and markings already visible on the real product or packaging reference.");
+    promptParts.push("Negative prompt: ABSOLUTELY NO added headline text, NO extra overlay text, NO subtitles, NO captions, NO CTA text, NO stickers, NO signs, NO watermarks, NO UI text. Exception: preserve only the original printed text, logo, label, barcode, numbers, and markings already visible on the real product or packaging reference exactly as shown.");
   } else {
     const textContext = [
       settings.promotionText ? `Include text: "${sanitizeText(settings.promotionText)}"` : "",
       "Professional typography integrated into the scene.",
-      "All visible text must be clear, correct, natural Thai language only, with accurate spelling, readable typography, and no broken or garbled Thai characters.",
-      "Do not add English text, romanized Thai, placeholder words, random labels, logos, watermarks, or extra unconfigured text."
+      "Keep promotional overlay text separate from the package label so it does not cover or alter the original product text.",
+      "Added overlay text must be clear, correct, natural Thai language only, with accurate spelling, readable typography, and no broken or garbled Thai characters.",
+      "Exception: preserve the original printed product text exactly as shown, even if it is not Thai.",
+      "Do not add English text, romanized Thai, placeholder words, random labels, logos, watermarks, or extra unconfigured text. Never modify the product's original printed text."
     ].filter(Boolean).join(". ");
     promptParts.push(textContext);
   }
@@ -226,7 +230,7 @@ export function buildImagePrompt(productInfo, settings) {
 export function buildVideoPrompt(productInfo, settings) {
   const auto = resolveAutoSettings(productInfo, settings);
   const style = VIDEO_STYLES.find((item) => item.id === auto.videoStyle) || VIDEO_STYLES[0];
-  const locationStr = auto.location;
+  const locationStr = resolvePromptLocation(auto);
   const ctaText = settings.cta === "กรอกเอง" ? settings.customCta : settings.cta;
   const durationSeconds = Number.parseInt(settings.videoDuration, 10) || 8;
   const midpointSeconds = Math.max(1, Math.floor(durationSeconds / 2));
@@ -242,13 +246,14 @@ export function buildVideoPrompt(productInfo, settings) {
   const textRule = textEnabled
     ? [
         `Visible text is enabled. Use ONLY these exact Thai-language text overlays: ${textItems.join(" | ") || sanitizeText(productInfo.name) || "ข้อความภาษาไทย"}.`,
-        "All visible text, subtitles, labels, CTA text, stickers, signs, packaging callouts, and on-screen typography must be clear, correct, natural Thai only.",
+        "Added overlay text, subtitles, CTA text, stickers, signs, and on-screen typography must be clear, correct, natural Thai only.",
+        "Exception: preserve the original printed product text, logo, label, barcode, numbers, and markings exactly as shown, even if they are not Thai.",
         "Thai spelling must be accurate and readable. Do not generate broken Thai characters, random Thai words, mixed-language text, English text, romanized Thai, placeholder words, random captions, misspelled text, watermarks, UI labels, logos, or extra text beyond the configured Thai overlays."
       ].join(" ")
     : [
         "Visible text is disabled. ABSOLUTELY NO added headline text, extra overlay text, subtitles, captions, CTA text, stickers, signs, watermarks, UI text, or typography in any language.",
-        "Exception: preserve only the original printed text, logo, label, and markings already visible on the real product or packaging reference.",
-        "Do not invent new packaging callouts, logos, words, numbers, labels, or promotional badges outside the original product reference."
+        "Exception: preserve only the original printed text, logo, label, barcode, numbers, and markings already visible on the real product or packaging reference exactly as shown.",
+        "Do not invent new packaging callouts, logos, words, numbers, labels, colors, shapes, or promotional badges outside the original product reference."
       ].join(" ");
 
   const scenePlan = isOmniModel
@@ -258,7 +263,7 @@ export function buildVideoPrompt(productInfo, settings) {
         `Transition: ${sanitizeText(auto.transition)}.`
       ]
     : [
-        `Single continuous scene (0-${durationSeconds}s): Use the provided still product image as one coherent scene at ${sanitizeText(locationStr)}.`,
+        `Single continuous scene (0-${durationSeconds}s): Use the provided still product image as one coherent scene at ${sanitizeText(locationStr)} while keeping the exact product shape, colors, label layout, and printed text stable across every frame.`,
         "Do NOT split the video into multiple scenes, panels, frames, collage layouts, before/after grids, storyboards, or side-by-side compositions.",
         "Do NOT place multiple moments inside one image. Keep one product hero setup only, with subtle motion from the still image.",
         `Use one smooth camera move only: ${sanitizeText(auto.cameraMovement)}. No scene transition.`
@@ -266,12 +271,12 @@ export function buildVideoPrompt(productInfo, settings) {
 
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
-    "Use the provided product image as the main visual reference and keep product appearance accurate.",
+    "Use the provided product image as the source of truth. Product fidelity is more important than creative style or scene variation.",
     PRODUCT_FIDELITY_DIRECTION,
     VIDEO_REALISM_DIRECTION,
     "Do NOT include any pricing or cost information in the video.",
     "",
-    `Auto-selected creative plan: style=${style.id}, presenter=${auto.presenter}, voiceTone=${auto.voiceTone}, mood=${auto.mood}, location=${auto.location}, camera=${auto.cameraMovement}, transition=${auto.transition}.`,
+    `Auto-selected creative plan: style=${style.id}, presenter=${auto.presenter}, voiceTone=${auto.voiceTone}, mood=${auto.mood}, location=${locationStr}, camera=${auto.cameraMovement}, transition=${auto.transition}.`,
     auto.reason ? `Selection rationale: ${sanitizeText(auto.reason)}.` : "",
     `Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}.`,
     THAI_PERSON_DIRECTION,
@@ -284,7 +289,7 @@ export function buildVideoPrompt(productInfo, settings) {
     textRule,
     `Video text mode: ${textEnabled ? "configured Thai text only" : "no visible text at all"}. Position text in ${textEnabled ? sanitizeText(settings.textPosition) : "not applicable because text is disabled"}.`,
     `Text language: ${sanitizeText(settings.language)}. Pacing: ${PACING[settings.pacing] || PACING[2]}.`,
-    "Avoid clutter, avoid wrong logos, avoid misspelled text, keep the product as the hero."
+    "Avoid clutter, avoid wrong logos, avoid misspelled text, avoid label drift, color drift, shape changes, warped packaging, and text changing between frames. Keep the product as the hero."
   ];
 
   if (productInfo.promptAdvice) {
@@ -306,6 +311,7 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
     location: isAuto(settings.location) ? (recommended.location || inferred.location) : settings.location,
+    customLocation: sanitizeText(settings.customLocation),
     cameraMovement: isAuto(settings.cameraMovement) ? (recommended.cameraMovement || inferred.cameraMovement) : settings.cameraMovement,
     transition: isAuto(settings.transition) ? (recommended.transition || inferred.transition) : settings.transition,
     reason: recommended.reason || inferred.reason || ""
@@ -314,6 +320,13 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
 
 function isAuto(value) {
   return value === undefined || value === null || value === "" || value === "Auto";
+}
+
+function resolvePromptLocation(auto = {}) {
+  if (auto.location === "กรอกเอง") {
+    return sanitizeText(auto.customLocation) || "custom user-defined product scene";
+  }
+  return auto.location;
 }
 
 function inferPromptAutoOptions(productInfo = {}) {
