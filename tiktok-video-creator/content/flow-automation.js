@@ -805,6 +805,13 @@ async function ensureConfig(phase, options = {}) {
     if (!menu) { log("⚠️ เมนู config ไม่เปิด"); return; }
     
     await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO"); await sleep(800);
+    // เลือก sub-tab วิดีโอ: Ingredients (VIDEO_REFERENCES) หรือ Frames (VIDEO_FRAMES)
+    if (phase !== "image") {
+        const refMode = (options.videoRefMode || "ingredients") === "frames" ? "VIDEO_FRAMES" : "VIDEO_REFERENCES";
+        const picked = await clickMenuTab(refMode);
+        if (picked) log(`เลือกแท็บวิดีโอ: ${refMode === "VIDEO_FRAMES" ? "Frames" : "Ingredients"}`);
+        await sleep(600);
+    }
     await selectAspectRatio(aspectRatio); await sleep(800);
     await selectBatchCount(count); await sleep(800);
     await selectModel(modelKey); await sleep(800);
@@ -1483,23 +1490,24 @@ async function runPipeline(payload) {
         await switchToUploadedTab();
         await closeOpenAgentToggle({ waitMs: 2000, required: true });
 
-        // 3. อัปโหลดรูป
+        // 3. อัปโหลดรูป (รองรับหลายรูปจาก options.imageUrls สำหรับ Ingredients)
         let uploadedTiles = [];
-        if (imageUrl) {
-            const formattedUrl = normalizeImageUrlForUpload(imageUrl);
-            const dataUrls = formattedUrl.startsWith("data:") || formattedUrl.startsWith("http")
-                ? [formattedUrl] : [];
-            if (dataUrls.length > 0) {
-                await closeOpenAgentToggle({ waitMs: 3000, required: true });
-                uploadedTiles = await uploadImages(dataUrls, cfg.uploadWaitSec * 1000);
-                if (uploadedTiles.length === 0) {
-                    throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
-                }
-            } else {
-                throw new Error(`รูปแบบ URL ของภาพไม่ถูกต้องสำหรับการอัปโหลด: ${imageUrl}`);
-            }
-        } else {
-            throw new Error("ไม่มี URL รูปภาพสินค้าสำหรับอัปโหลด (imageUrl ว่างเปล่า) ห้ามสร้างภาพโดยไม่มีรูปภาพตั้งต้น");
+        const rawList = (Array.isArray(options.imageUrls) && options.imageUrls.length)
+            ? options.imageUrls
+            : (imageUrl ? [imageUrl] : []);
+        const dataUrls = rawList
+            .map(normalizeImageUrlForUpload)
+            .filter((u) => u && (u.startsWith("data:") || u.startsWith("http")));
+        // ตัดซ้ำ + จำกัดสูงสุด 6 รูป
+        const uniqueUrls = [...new Set(dataUrls)].slice(0, 6);
+        if (uniqueUrls.length === 0) {
+            throw new Error(`ไม่มี URL รูปภาพสินค้าที่ใช้ได้สำหรับอัปโหลด (imageUrl=${imageUrl || "ว่าง"})`);
+        }
+        await closeOpenAgentToggle({ waitMs: 3000, required: true });
+        log(`เตรียมอัปโหลด ${uniqueUrls.length} รูป`);
+        uploadedTiles = await uploadImages(uniqueUrls, cfg.uploadWaitSec * 1000);
+        if (uploadedTiles.length === 0) {
+            throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
         }
 
         const initialPrompt = typeof prompt === "object" ? prompt.imagePrompt : prompt;
@@ -1532,9 +1540,21 @@ async function runPipeline(payload) {
             // 4b. เปลี่ยน config เป็น VIDEO mode + portrait
             if (cfg.autoPortrait) await ensureConfig("video", options);
 
-            // 5b. แนบรูปที่เพิ่งสร้างเสร็จเข้า prompt ใหม่! (หน้า Images)
-            const attachedGenerated = await attachUploadsToPrompt([result], "image");
-            if (attachedGenerated.length !== 1) throw new Error("แนบภาพที่สร้างเสร็จเข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate");
+            // 5b. แนบรูปเป็น Ingredients: ภาพที่เจน + รูปสินค้าจริงหลายรูป (ตาม videoRefMode)
+            const useIngredients = (options.videoRefMode || "ingredients") !== "frames";
+            const videoRefTiles = useIngredients
+                ? [result, ...uploadedTiles].filter(Boolean)
+                : [result];
+            // ตัด tile ซ้ำตาม key/tileId
+            const seenTiles = new Set();
+            const uniqueTiles = videoRefTiles.filter((t) => {
+                const k = t?.tileId || t?.key || t?.mediaUrl;
+                if (!k || seenTiles.has(k)) return false;
+                seenTiles.add(k); return true;
+            });
+            const attachedGenerated = await attachUploadsToPrompt(uniqueTiles, "image");
+            if (attachedGenerated.length === 0) throw new Error("แนบภาพเข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate");
+            log(`แนบ Ingredients ${attachedGenerated.length}/${uniqueTiles.length} รูป`);
 
             // 6b. กรอก prompt สำหรับวิดีโอ
             log("กรอก Prompt วิดีโอ...");

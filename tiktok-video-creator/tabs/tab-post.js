@@ -2,7 +2,7 @@ import { buildCaption, normalizeHashtags } from "../modules/prompt-builder.js";
 import { generatePostCopy } from "../modules/image-analyzer.js";
 
 const DEFAULT_POST_SETTINGS = {
-  captionTemplate: "{product_name}\n{product_details}\n{cta}",
+  captionTemplate: "{product_name}",
   hashtags: ["#TikTokShop", "#ของดีบอกต่อ"],
   autoAddProductLink: true,
   afterCreateAction: "post",

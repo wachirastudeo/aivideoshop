@@ -36,6 +36,7 @@ export async function initVideoTab(injectedHelpers) {
     imageCount: savedOptions.flow?.imageCount || 1,
     videoCount: savedOptions.flow?.videoCount || 1,
     postAction: savedOptions.postDefaults?.afterCreateAction || "post",
+    videoRefMode: "ingredients",
     ...(savedOptions.mediaSettings || {})
   };
 
@@ -66,7 +67,7 @@ function bindGlobalEvents() {
     "video-style", "presenter", "voice-tone", "location", "custom-location",
     "show-name", "promotion-text", "text-position", "camera-movement",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action",
-    "image-model", "video-model"
+    "image-model", "video-model", "video-ref-mode"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
     if (!el) return;
@@ -96,6 +97,7 @@ function fillGlobalFormFromState() {
   setValue("video-count", settings.videoCount);
   setValue("video-duration", settings.videoDuration);
   setValue("aspect-ratio", settings.aspectRatio);
+  setValue("video-ref-mode", settings.videoRefMode);
   setValue("post-action", settings.postAction);
   syncVideoTextSettingsVisibility();
   syncCustomLocationVisibility();
@@ -119,6 +121,7 @@ function syncSettingsForm() {
     videoCount: parseInt(getValue("video-count"), 10) || 1,
     videoDuration: parseInt(getValue("video-duration"), 10) || 8,
     aspectRatio: getValue("aspect-ratio") || "9:16",
+    videoRefMode: getValue("video-ref-mode") || "ingredients",
     postAction: getValue("post-action")
   });
 
@@ -192,6 +195,7 @@ function normalizeSettings(value) {
     videoCount: value.videoCount || 1,
     videoDuration: value.videoDuration || 8,
     aspectRatio: value.aspectRatio || "9:16",
+    videoRefMode: value.videoRefMode === "frames" ? "frames" : "ingredients",
     postAction: value.postAction === "both" ? "draft" : (value.postAction || "post")
   };
 }
@@ -448,7 +452,7 @@ async function launchFlow(phase, product) {
     renderQueue();
 
     helpers.showStatus(phase === "image" ? "เปิด Google Flow เพื่อสร้างภาพ..." : "เปิด Google Flow เพื่อสร้างวิดีโอ...", "info");
-    const result = await openGoogleFlow(phase, prompt, image, buildFlowOptions());
+    const result = await openGoogleFlow(phase, prompt, image, buildFlowOptions(product));
 
     if (phase === "image") {
       product.approvedImage = result?.resultUrl || product.approvedImage;
@@ -527,7 +531,7 @@ async function processQueue() {
       const imgPrompt = buildImagePrompt(product, settings);
       const vidPrompt = buildVideoPrompt(product, settings);
       assertNotStopped();
-      const result = await openGoogleFlowWithLoginResume("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, getFlowProductImage(product), options, product, i);
+      const result = await openGoogleFlowWithLoginResume("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, getFlowProductImage(product), buildFlowOptions(product), product, i);
       assertNotStopped();
 
       product.approvedImage = result?.imgUrl || product.approvedImage || getFlowProductImage(product) || "";
@@ -685,15 +689,18 @@ function setBatchButtons(running) {
   if (stopButton) stopButton.hidden = !running;
 }
 
-function buildFlowOptions() {
-  return {
+function buildFlowOptions(product = null) {
+  const opts = {
     imageModel: settings.imageModel,
     videoModel: settings.videoModel,
     imageCount: settings.imageCount,
     videoCount: settings.videoCount,
     videoDuration: settings.videoDuration,
-    aspectRatio: settings.aspectRatio
+    aspectRatio: settings.aspectRatio,
+    videoRefMode: settings.videoRefMode || "ingredients"
   };
+  if (product) opts.imageUrls = getFlowProductImages(product);
+  return opts;
 }
 
 async function handleStop(product) {
@@ -842,6 +849,24 @@ function getFlowProductImage(product = {}) {
   }
   // ไม่มี full URL — คืนตัวแรก ให้ normalizeImageUrlForUpload ฝั่ง Flow แปลงต่อ
   return product.flowImageUrl || product.imageUrls?.[0] || product.displayImageUrl || "";
+}
+
+// คืนรูปสินค้าหลายรูป (full URL ที่ใช้ได้) สำหรับ Ingredients — ดึงจาก display + imageUrls
+function getFlowProductImages(product = {}) {
+  const out = [];
+  const seen = new Set();
+  const push = (raw) => {
+    let url = String(raw || "").trim();
+    if (!url) return;
+    if (url.startsWith("//")) url = "https:" + url;
+    if (!/^https?:\/\//i.test(url) && !url.startsWith("data:")) return;
+    if (seen.has(url)) return;
+    seen.add(url); out.push(url);
+  };
+  push(product.displayImageUrl);
+  push(product.flowImageUrl);
+  (product.imageUrls || []).forEach(push);
+  return out.slice(0, 6);
 }
 
 function getAnalysisProductImages(product = {}) {

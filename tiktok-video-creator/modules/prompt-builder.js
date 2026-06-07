@@ -365,7 +365,7 @@ function promptAutoOptions(videoStyle, presenter, voiceTone, mood, location, cam
  * @returns {string} caption
  */
 export function buildCaption(productInfo, defaults = {}) {
-  const template = defaults.captionTemplate || "{product_name}\n{product_details}\n{cta}";
+  const template = defaults.captionTemplate || "{product_name}";
   const productUrl = resolveProductUrl(productInfo);
   const productName = resolveCaptionProductName(productInfo);
   const caption = renderCaptionTemplate(template, {
@@ -513,33 +513,50 @@ export function normalizeHashtags(value, maxTags = 5) {
 
 export function buildPostHashtags(productInfo = {}, defaults = {}) {
   const baseTags = normalizeHashtags(defaults.hashtags, 4);
-  const productTag = buildProductNameHashtag(productInfo);
-  return normalizeHashtags(productTag ? [...baseTags, productTag] : baseTags, 5);
+  const nameTags = buildProductNameHashtags(productInfo);
+  return normalizeHashtags([...baseTags, ...nameTags], 5);
 }
 
-export function buildProductNameHashtag(productInfo = {}) {
-  const rawName = [
+function resolveRawProductName(productInfo = {}) {
+  return [
     productInfo.productLinkTitle,
     productInfo.originalName,
     productInfo.rawProduct?.title,
     productInfo.rawProduct?.product_name,
     productInfo.rawProduct?.name,
     productInfo.name
-  ].find((value) => String(value || "").trim());
+  ].find((value) => String(value || "").trim()) || "";
+}
 
-  const cleaned = String(rawName || "")
+function segmentToHashtag(segment) {
+  const cleaned = String(segment || "")
     .replace(/[（(][^）)]*[）)]/g, " ")
     .replace(/\[[^\]]*]/g, " ")
     .replace(/【[^】]*】/g, " ")
     .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-
   if (!cleaned) return "";
-
   const chars = Array.from(cleaned);
-  const shortName = chars.length > 30 ? chars.slice(0, 30).join("").trim() : cleaned;
-  return `#${shortName.replace(/\s+/g, "")}`;
+  const shortName = chars.length > 25 ? chars.slice(0, 25).join("").trim() : cleaned;
+  const tag = `#${shortName.replace(/\s+/g, "")}`;
+  return tag.length > 1 ? tag : "";
+}
+
+// แตกชื่อสินค้าตาม comma/ขีดคั่น เป็นหลาย hashtag (เช่น "Arzopa A1, จอภาพแบบพกพา," → #ArzopaA1 #จอภาพแบบพกพา)
+export function buildProductNameHashtags(productInfo = {}) {
+  const rawName = resolveRawProductName(productInfo);
+  const tags = [];
+  for (const segment of String(rawName).split(/[,，、|/\n]+/)) {
+    const tag = segmentToHashtag(segment);
+    if (tag) tags.push(tag);
+  }
+  return tags;
+}
+
+// คงไว้เพื่อ backward compat — คืน hashtag แรกจากชื่อ
+export function buildProductNameHashtag(productInfo = {}) {
+  return buildProductNameHashtags(productInfo)[0] || "";
 }
 
 function buildProductDetails(productInfo) {
