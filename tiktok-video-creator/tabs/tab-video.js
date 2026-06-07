@@ -267,6 +267,13 @@ function productMarkup(p, index) {
 
   const postButtonText = getActionButtonText(settings.postAction || "download");
 
+  const galleryImages = (Array.isArray(p.imageUrls) && p.imageUrls.length ? p.imageUrls : [sourceImage]).filter(Boolean);
+  const galleryMarkup = galleryImages.map((url, i) => `
+        <figure class="media-tile">
+          <img src="${escapeAttr(url)}" alt="" width="180" height="240">
+          <figcaption>ภาพ ${i + 1}/${galleryImages.length}</figcaption>
+        </figure>`).join("");
+
   return `
     <article class="flow-job" data-index="${index}" data-status="${escapeHtml(p.status)}">
       <header class="flow-job__header">
@@ -282,11 +289,7 @@ function productMarkup(p, index) {
         ${stepMarkup("1", "ภาพ", imageDone, p.status === "image_generating")}
       </div>
 
-      <div class="flow-job__grid">
-        <figure class="media-tile">
-          <img src="${escapeAttr(sourceImage)}" alt="" width="180" height="240">
-          <figcaption>ภาพ TikTok</figcaption>
-        </figure>
+      <div class="flow-job__grid">${galleryMarkup}
       </div>
 
       <div class="flow-job__body">

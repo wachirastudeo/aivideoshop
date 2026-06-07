@@ -258,7 +258,7 @@ function buildSelectedProductPayload(product) {
   if (flowImageUrl.startsWith("//")) flowImageUrl = "https:" + flowImageUrl;
   const baseImages = Array.isArray(product.selectedImageUrls) && product.selectedImageUrls.length
     ? product.selectedImageUrls
-    : (product.imageUrls || []);
+    : (product.imageUrls || []).slice(0, 1);
   const imageUrls = baseImages.map(url => url.startsWith("//") ? "https:" + url : url);
 
   return {
@@ -292,7 +292,7 @@ function openImagePicker(product) {
   const preset = new Set(
     Array.isArray(product.selectedImageUrls) && product.selectedImageUrls.length
       ? product.selectedImageUrls
-      : images
+      : [images[0]]
   );
 
   document.querySelector("#image-picker-overlay")?.remove();
@@ -375,7 +375,7 @@ function productMarkup(product) {
   const totalImages = allImages.length;
   const selectedImages = Array.isArray(product.selectedImageUrls) && product.selectedImageUrls.length
     ? product.selectedImageUrls
-    : allImages;
+    : allImages.slice(0, 1);
   const imgBadge = totalImages > 1
     ? `<span class="image-count-badge" style="position:absolute;top:6px;left:6px;background:#000;color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:0;z-index:2;">${selectedImages.length}/${totalImages} รูป</span>`
     : "";
