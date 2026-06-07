@@ -572,7 +572,12 @@ async function uploadImages(dataUrls, waitMs = 300000) {
 
         const blob = dataUrls[i].startsWith("data:") ? toBlob(dataUrls[i])
             : await fetch(dataUrls[i]).then(r => r.blob());
-        const file = new File([blob], `product-${Date.now()}.png`, { type: blob.type || "image/png" });
+        let mime = blob.type || "image/jpeg";
+        if (!/^image\//i.test(mime)) {
+            throw new Error(`ดาวน์โหลดรูปแล้วไม่ใช่ไฟล์ภาพ (type=${mime || "unknown"}) — URL อาจถูกบล็อก/หมดอายุ`);
+        }
+        const ext = mimeToImageExt(mime);
+        const file = new File([blob], `product-${Date.now()}.${ext}`, { type: mime });
         const dt = new DataTransfer(); dt.items.add(file);
         inp.files = dt.files;
         inp.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1631,6 +1636,17 @@ async function recordVideoBase64(videoUrl = "") {
     };
 }
 
+// map MIME → นามสกุลภาพที่ Flow รองรับ (.png .jpg .webp .gif .heic .heif)
+function mimeToImageExt(mime) {
+    const m = String(mime || "").toLowerCase();
+    if (m.includes("png")) return "png";
+    if (m.includes("webp")) return "webp";
+    if (m.includes("gif")) return "gif";
+    if (m.includes("heic")) return "heic";
+    if (m.includes("heif")) return "heif";
+    return "jpg"; // jpeg/อื่น ๆ
+}
+
 // แปลง URL/URI ภาพให้เป็น full URL สำหรับอัปโหลด (รองรับ tos key เปล่าจาก TikTok)
 function normalizeImageUrlForUpload(raw) {
     let u = String(raw || "").trim();
@@ -1642,7 +1658,7 @@ function normalizeImageUrlForUpload(raw) {
     if (/^(tos-|obj\/tos)/i.test(key)) {
         const token = key.match(/-i-([a-z0-9]+)-/i)?.[1] || "";
         const suffix = token ? `~tplv-${token}-resize-jpeg:800:800.jpeg` : "";
-        return `https://p16-oec-va.ibyteimg.com/${key}${suffix}`;
+        return `https://p16-oec-general.tiktokcdn.com/${key}${suffix}`;
     }
     return u;
 }

@@ -816,11 +816,20 @@ function getDisplayProductImage(product = {}) {
 }
 
 function getFlowProductImage(product = {}) {
-  let url = product.flowImageUrl || product.imageUrls?.[0] || product.displayImageUrl || "";
-  if (url.startsWith("//")) {
-    url = "https:" + url;
+  // เลือก full URL (http/https/data) ที่ใช้ได้จริงก่อน — กัน bare tos uri ที่อัพไม่ได้
+  const candidates = [
+    product.displayImageUrl,
+    product.flowImageUrl,
+    ...(product.imageUrls || [])
+  ];
+  for (let url of candidates) {
+    url = String(url || "").trim();
+    if (!url) continue;
+    if (url.startsWith("//")) url = "https:" + url;
+    if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return url;
   }
-  return url;
+  // ไม่มี full URL — คืนตัวแรก ให้ normalizeImageUrlForUpload ฝั่ง Flow แปลงต่อ
+  return product.flowImageUrl || product.imageUrls?.[0] || product.displayImageUrl || "";
 }
 
 function getAnalysisProductImages(product = {}) {

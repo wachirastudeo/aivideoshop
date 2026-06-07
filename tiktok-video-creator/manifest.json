@@ -23,6 +23,8 @@
     "https://labs.google.com/*",
     "https://flow-content.google/*",
     "https://*.flow-content.google/*",
+    "https://*.tiktokcdn.com/*",
+    "https://*.ibyteimg.com/*",
     "https://generativelanguage.googleapis.com/*",
     "https://api.openai.com/*"
   ],
