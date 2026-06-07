@@ -149,6 +149,14 @@ function renderProducts() {
     });
   });
 
+  list.querySelectorAll("[data-pick-images]").forEach((img) => {
+    img.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const product = products.find((item) => item.productId === img.dataset.pickImages);
+      if (product) openImagePicker(product);
+    });
+  });
+
   list.querySelectorAll("[data-create-video]").forEach((button) => {
     button.addEventListener("click", async () => {
       const product = products.find((item) => item.productId === button.dataset.createVideo);
@@ -248,7 +256,10 @@ function buildSelectedProductPayload(product) {
   let flowImageUrl = product.flowImageUrl || product.imageUrls?.[0] || "";
   if (displayImageUrl.startsWith("//")) displayImageUrl = "https:" + displayImageUrl;
   if (flowImageUrl.startsWith("//")) flowImageUrl = "https:" + flowImageUrl;
-  const imageUrls = (product.imageUrls || []).map(url => url.startsWith("//") ? "https:" + url : url);
+  const baseImages = Array.isArray(product.selectedImageUrls) && product.selectedImageUrls.length
+    ? product.selectedImageUrls
+    : (product.imageUrls || []);
+  const imageUrls = baseImages.map(url => url.startsWith("//") ? "https:" + url : url);
 
   return {
     ...product,
@@ -273,6 +284,78 @@ function buildSelectedProductPayload(product) {
   };
 }
 
+function openImagePicker(product) {
+  const images = (product.imageUrls || []).filter(Boolean);
+  if (images.length <= 1) {
+    return; // มีรูปเดียว ไม่ต้องเลือก
+  }
+  const preset = new Set(
+    Array.isArray(product.selectedImageUrls) && product.selectedImageUrls.length
+      ? product.selectedImageUrls
+      : images
+  );
+
+  document.querySelector("#image-picker-overlay")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "image-picker-overlay";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;";
+
+  const box = document.createElement("div");
+  box.style.cssText = "background:#fff;color:#111;max-width:520px;width:100%;max-height:80vh;overflow:auto;border-radius:0;border:2px solid #111;";
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #ddd;">
+      <strong style="font-size:15px;">เลือกรูปสินค้า (Ingredients)</strong>
+      <button type="button" data-act="close" style="border:0;background:none;font-size:20px;cursor:pointer;">×</button>
+    </div>
+    <div style="padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;" data-grid></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;padding:12px 14px;border-top:1px solid #ddd;">
+      <div style="display:flex;gap:8px;">
+        <button type="button" data-act="all" style="border:1px solid #111;background:#fff;padding:6px 10px;border-radius:0;cursor:pointer;">เลือกทั้งหมด</button>
+        <button type="button" data-act="none" style="border:1px solid #111;background:#fff;padding:6px 10px;border-radius:0;cursor:pointer;">ล้าง</button>
+      </div>
+      <button type="button" data-act="confirm" style="border:0;background:#111;color:#fff;padding:6px 14px;border-radius:0;cursor:pointer;font-weight:700;">ยืนยัน (${preset.size})</button>
+    </div>`;
+
+  const grid = box.querySelector("[data-grid]");
+  const renderGrid = () => {
+    grid.innerHTML = images.map((url, i) => {
+      const sel = preset.has(url);
+      return `<div data-img="${i}" style="position:relative;cursor:pointer;border:3px solid ${sel ? "#111" : "transparent"};aspect-ratio:1;overflow:hidden;background:#f0f0f0;">
+        <img src="${escapeHtml(url)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;${sel ? "" : "opacity:.45;"}">
+        ${sel ? `<span style="position:absolute;top:2px;right:2px;background:#111;color:#fff;font-size:11px;padding:1px 5px;">✓</span>` : ""}
+      </div>`;
+    }).join("");
+    box.querySelector('[data-act="confirm"]').textContent = `ยืนยัน (${preset.size})`;
+  };
+  renderGrid();
+
+  const close = () => overlay.remove();
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+  box.addEventListener("click", (e) => {
+    const cell = e.target.closest("[data-img]");
+    if (cell) {
+      const url = images[Number(cell.dataset.img)];
+      if (preset.has(url)) preset.delete(url); else preset.add(url);
+      renderGrid();
+      return;
+    }
+    const act = e.target.closest("[data-act]")?.dataset.act;
+    if (act === "close") close();
+    if (act === "all") { images.forEach((u) => preset.add(u)); renderGrid(); }
+    if (act === "none") { preset.clear(); renderGrid(); }
+    if (act === "confirm") {
+      const chosen = images.filter((u) => preset.has(u));
+      product.selectedImageUrls = chosen.length ? chosen : [images[0]];
+      close();
+      renderProducts();
+    }
+  });
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
 function productMarkup(product) {
   const imageUrl = product.displayImageUrl || product.imageUrls?.[0] || "assets/icon.svg";
   
@@ -288,11 +371,20 @@ function productMarkup(product) {
     : '';
 
   const isSelected = selectedIds.has(product.productId);
+  const allImages = (product.imageUrls || []).filter(Boolean);
+  const totalImages = allImages.length;
+  const selectedImages = Array.isArray(product.selectedImageUrls) && product.selectedImageUrls.length
+    ? product.selectedImageUrls
+    : allImages;
+  const imgBadge = totalImages > 1
+    ? `<span class="image-count-badge" style="position:absolute;top:6px;left:6px;background:#000;color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:0;z-index:2;">${selectedImages.length}/${totalImages} รูป</span>`
+    : "";
 
   return `
-    <article class="product-card ${isSelected ? "product-card--selected" : ""}">
+    <article class="product-card ${isSelected ? "product-card--selected" : ""}" style="position:relative;">
       <input type="checkbox" class="product-checkbox" data-id="${escapeHtml(product.productId)}" ${isSelected ? 'checked' : ''}>
-      <img class="product-card__image" src="${imageUrl}" alt="">
+      ${imgBadge}
+      <img class="product-card__image" src="${imageUrl}" alt="" data-pick-images="${escapeHtml(product.productId)}" title="คลิกเพื่อเลือกหลายรูป" style="cursor:pointer;">
       <div class="product-card__content">
         <h3 class="product-card__name" title="${escapeHtml(product.name)}">${escapeHtml(product.name)}</h3>
         <p class="product-card__meta">
