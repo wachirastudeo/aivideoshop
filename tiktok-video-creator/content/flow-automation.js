@@ -870,27 +870,18 @@ async function ensureEditAspectRatio(options = {}) {
 // ── 5. attachUploadsToPrompt ─────────────────────────────────
 async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
     if (!tiles || tiles.length === 0) return [];
-    log("แนบรูปเข้า prompt...");
-    if (promptHasMediaAttachment()) {
-        log("✅ รูปอยู่ใน prompt แล้ว");
-        return tiles.map(tile => tile.key || tile.tileId || tile.href || tile.mediaUrl).filter(Boolean);
-    }
+    const target = tiles.length;
+    log(`แนบรูปเข้า prompt (${target} รูป)...`);
 
     // สลับไป tab ที่ถูกต้อง (Uploaded หรือ Images)
     await switchMediaTab(tabIcon);
-    if (promptHasMediaAttachment()) {
-        log("✅ รูปอยู่ใน prompt แล้ว");
-        return tiles.map(tile => tile.key || tile.tileId || tile.href || tile.mediaUrl).filter(Boolean);
-    }
 
     const done = new Set();
     for (const tile of tiles) {
-        if (!tile?.key && !tile?.tileId && !tile?.href && !tile?.mediaUrl) continue;
-        if (promptHasMediaAttachment()) {
-            done.add(tile.key || tile.tileId || tile.href || tile.mediaUrl);
-            continue;
-        }
-        const tileLabel = (tile.tileId || tile.key || tile.href || tile.mediaUrl || "?").slice(0, 12);
+        const id = tile?.key || tile?.tileId || tile?.href || tile?.mediaUrl;
+        if (!id) continue;
+        const tileLabel = String(id).slice(0, 12);
+        const beforeCount = promptAttachmentCount();
         const result = await waitForMediaCard(tile, {
             tabIcon,
             phase: tabIcon === "image" ? "image" : "",
@@ -905,16 +896,14 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
         await sleep(400);
         const media = el.querySelector("img,video,[role='img']") || el;
 
+        // แนบทีละรูป — ยืนยันด้วยจำนวนแนบที่เพิ่มขึ้น (ไม่ใช่แค่ "มีรูปแล้ว")
         const attached = await addTileToPrompt(media);
-        if (!attached && promptHasMediaAttachment()) {
-            log("✅ รูปอยู่ใน prompt แล้ว");
-            done.add(tile.key || tile.tileId || tile.href || tile.mediaUrl);
-            continue;
+        if (!attached && promptAttachmentCount() <= beforeCount) {
+            throw new Error(`เลือกภาพแล้ว แต่กด Add to prompt ไม่สำเร็จ (media=${tileLabel})`);
         }
-        if (!attached) throw new Error(`เลือกภาพแล้ว แต่กด Add to prompt ไม่สำเร็จ (media=${tileLabel})`);
 
-        log(`✅ แนบรูป media ${tileLabel} สำเร็จ`);
-        done.add(tile.key || tile.tileId || tile.href || tile.mediaUrl);
+        done.add(id);
+        log(`✅ แนบรูป media ${tileLabel} สำเร็จ (${done.size}/${target})`);
         await jitter(800, 1500);
         if (document.querySelector('[role="menu"][data-state="open"]')) {
             document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
