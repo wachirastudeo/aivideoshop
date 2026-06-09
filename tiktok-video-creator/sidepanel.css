@@ -1459,9 +1459,9 @@ html[data-mode="tab"] .activity-log {
 }
 
 .flow-job__grid {
-  display: grid;
-  grid-template-columns: minmax(0, min(120px, 100%));
-  justify-content: start;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 6px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--line);
@@ -1469,17 +1469,19 @@ html[data-mode="tab"] .activity-log {
 
 .media-tile {
   margin: 0;
+  width: 64px;
+  flex: 0 0 auto;
   border: 1px solid var(--line);
   background: #18181c;
-  border-radius: 6px;
+  border-radius: 0;
   overflow: hidden;
 }
 
 .media-tile img {
   width: 100%;
   height: auto;
-  aspect-ratio: 4 / 3;
-  object-fit: contain;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
 }
 
 .media-tile figcaption {
@@ -1584,15 +1586,10 @@ html[data-mode="tab"] .activity-log {
     align-items: stretch;
   }
 
-  .flow-job__grid,
   .prompt-grid,
   .flow-result-grid,
   .settings-grid {
     grid-template-columns: 1fr;
-  }
-
-  .flow-job__grid {
-    grid-template-columns: minmax(0, 110px);
   }
 
   .flow-job__title h3 {

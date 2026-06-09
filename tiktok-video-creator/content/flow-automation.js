@@ -1540,10 +1540,11 @@ async function runPipeline(payload) {
             // 4b. เปลี่ยน config เป็น VIDEO mode + portrait
             if (cfg.autoPortrait) await ensureConfig("video", options);
 
-            // 5b. แนบรูปเป็น Ingredients: ภาพที่เจน + รูปสินค้าจริงหลายรูป (ตาม videoRefMode)
+            // 5b. แนบรูปเป็น Ingredients: ใช้เฉพาะรูปสินค้าที่ผู้ใช้เลือก (ไม่รวมภาพที่เจน กันอัพซ้ำ)
+            //     Frames: ใช้ภาพที่เจนเป็นเฟรมเดียว
             const useIngredients = (options.videoRefMode || "ingredients") !== "frames";
             const videoRefTiles = useIngredients
-                ? [result, ...uploadedTiles].filter(Boolean)
+                ? (uploadedTiles.length ? uploadedTiles.filter(Boolean) : [result])
                 : [result];
             // ตัด tile ซ้ำตาม key/tileId
             const seenTiles = new Set();

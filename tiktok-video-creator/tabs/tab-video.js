@@ -858,17 +858,35 @@ function getFlowProductImage(product = {}) {
 function getFlowProductImages(product = {}) {
   const out = [];
   const seen = new Set();
+
+  const getCleanKey = (urlStr) => {
+    let u = urlStr.split("?")[0].split("#")[0];
+    u = u.replace(/~tplv-.*$/, ""); // ตัด resize template suffix ของ TikTok CDN ออกเพื่อเช็คซ้ำ
+    return u;
+  };
+
   const push = (raw) => {
     let url = String(raw || "").trim();
     if (!url) return;
     if (url.startsWith("//")) url = "https:" + url;
     if (!/^https?:\/\//i.test(url) && !url.startsWith("data:")) return;
-    if (seen.has(url)) return;
-    seen.add(url); out.push(url);
+    const cleanKey = getCleanKey(url);
+    if (seen.has(cleanKey)) return;
+    seen.add(cleanKey);
+    out.push(url);
   };
-  push(product.displayImageUrl);
-  push(product.flowImageUrl);
-  (product.imageUrls || []).forEach(push);
+
+  // ดึงจากกลุ่มรูปภาพสินค้าที่เลือกด้านล่าง (imageUrls) ก่อน
+  if (product.imageUrls && product.imageUrls.length > 0) {
+    product.imageUrls.forEach(push);
+  }
+
+  // หากไม่มีรูปภาพใน imageUrls เลย ค่อย fallback ไปยังรูปภาพแสดงผลหลัก
+  if (out.length === 0) {
+    push(product.displayImageUrl);
+    push(product.flowImageUrl);
+  }
+
   return out.slice(0, 6);
 }
 
