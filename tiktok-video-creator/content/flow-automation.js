@@ -577,7 +577,7 @@ async function uploadImages(dataUrls, waitMs = 300000) {
             throw new Error(`ดาวน์โหลดรูปแล้วไม่ใช่ไฟล์ภาพ (type=${mime || "unknown"}) — URL อาจถูกบล็อก/หมดอายุ`);
         }
         const ext = mimeToImageExt(mime);
-        const file = new File([blob], `product-${Date.now()}.${ext}`, { type: mime });
+        const file = new File([blob], `${i + 1}.${ext}`, { type: mime });
         const dt = new DataTransfer(); dt.items.add(file);
         inp.files = dt.files;
         inp.dispatchEvent(new Event("change", { bubbles: true }));
