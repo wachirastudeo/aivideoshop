@@ -1542,7 +1542,12 @@ async function runPipeline(payload) {
 
             // 5b. แนบรูปเป็น Ingredients: ใช้เฉพาะรูปสินค้าที่ผู้ใช้เลือก (ไม่รวมภาพที่เจน กันอัพซ้ำ)
             //     Frames: ใช้ภาพที่เจนเป็นเฟรมเดียว
-            const useIngredients = (options.videoRefMode || "ingredients") !== "frames";
+            //     อัพหลายรูป (>1) → บังคับ Ingredients เสมอ จะได้ใช้รูปครบ
+            let useIngredients = (options.videoRefMode || "ingredients") !== "frames";
+            if (uploadedTiles.length > 1 && !useIngredients) {
+                useIngredients = true;
+                log("เลือกหลายรูป → สลับวิดีโอเป็น Ingredients อัตโนมัติ");
+            }
             const videoRefTiles = useIngredients
                 ? (uploadedTiles.length ? uploadedTiles.filter(Boolean) : [result])
                 : [result];
