@@ -267,17 +267,21 @@ function productMarkup(p, index) {
 
   const postButtonText = getActionButtonText(settings.postAction || "download");
 
-  const galleryImages = (Array.isArray(p.imageUrls) && p.imageUrls.length ? p.imageUrls : [sourceImage]).filter(Boolean);
+  // แสดงเฉพาะ URL ที่ <img> โหลดได้จริง (http/https/data) — กัน bare tos key ที่ขึ้นรูปแตก
+  const loadable = (Array.isArray(p.imageUrls) ? p.imageUrls : [])
+    .map((u) => (typeof u === "string" && u.startsWith("//")) ? "https:" + u : u)
+    .filter((u) => typeof u === "string" && (/^https?:\/\//i.test(u) || u.startsWith("data:")));
+  const galleryImages = (loadable.length ? loadable : [sourceImage]).filter(Boolean);
   const galleryMarkup = galleryImages.map((url, i) => `
         <figure class="media-tile">
-          <img src="${escapeAttr(url)}" alt="" width="180" height="240">
+          <img src="${escapeAttr(url)}" data-fallback="${escapeAttr(sourceImage)}" alt="" width="180" height="240">
           <figcaption>ภาพ ${i + 1}/${galleryImages.length}</figcaption>
         </figure>`).join("");
 
   return `
     <article class="flow-job" data-index="${index}" data-status="${escapeHtml(p.status)}">
       <header class="flow-job__header">
-        <img class="flow-job__thumb" src="${escapeAttr(sourceImage)}" alt="" width="64" height="64">
+        <img class="flow-job__thumb" src="${escapeAttr(sourceImage)}" data-fallback="assets/icon.svg" alt="" width="64" height="64">
         <div class="flow-job__title">
           <h3>${escapeHtml(p.name || "ไม่มีชื่อสินค้า")}</h3>
           <span class="badge ${status.className}">${status.label}</span>
@@ -349,6 +353,15 @@ function stepMarkup(number, label, done, running) {
 function bindBatchEvents() {
   const list = document.querySelector("#batch-product-list");
   if (!list) return;
+
+  // รูปโหลดไม่ได้ → สลับไป fallback (MV3 บล็อก inline onerror จึงผูกที่นี่)
+  list.querySelectorAll("img[data-fallback]").forEach((img) => {
+    img.addEventListener("error", () => {
+      const fb = img.dataset.fallback;
+      if (fb && img.getAttribute("src") !== fb) { img.src = fb; }
+      else { img.src = "assets/icon.svg"; }
+    });
+  });
 
   list.querySelectorAll(".flow-job").forEach((item) => {
     const idx = parseInt(item.dataset.index, 10);
