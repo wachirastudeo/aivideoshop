@@ -272,6 +272,7 @@ export function buildVideoPrompt(productInfo, settings) {
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
     "Use the provided product image as the source of truth. Product fidelity is more important than creative style or scene variation.",
+    "Keep the product razor-sharp, well-lit, and clearly visible in every frame, matching the clarity, framing, detail, colors, and label of the attached hero image exactly. No blur, no distortion, no soft focus on the product.",
     PRODUCT_FIDELITY_DIRECTION,
     VIDEO_REALISM_DIRECTION,
     "Do NOT include any pricing or cost information in the video.",
