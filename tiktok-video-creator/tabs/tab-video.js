@@ -889,8 +889,13 @@ function getFlowProductImages(product = {}) {
     out.push(url);
   };
 
-  // ดึงจากกลุ่มรูปภาพสินค้าที่เลือกด้านล่าง (imageUrls) ก่อน
-  if (product.imageUrls && product.imageUrls.length > 0) {
+  // คิวเก่าที่มีรูปเดียวอาจเก็บ origin URL ที่คืน JSON; ใช้รูปแสดงผลที่โหลดได้แทน
+  if (product.imageUrls?.length === 1) {
+    push(product.displayImageUrl);
+  }
+
+  // ดึงจากกลุ่มรูปภาพสินค้าที่เลือกด้านล่าง (imageUrls)
+  if (out.length === 0 && product.imageUrls && product.imageUrls.length > 0) {
     product.imageUrls.forEach(push);
   }
 

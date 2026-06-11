@@ -385,6 +385,68 @@ function mediaCardStatus(cardInfo) {
     const rendered = hasRenderableMedia(el);
     return { ready: rendered && !progress, failed, progress, rendered, text };
 }
+function mediaCardFailureMessage(cardInfo, status) {
+    const el = findMediaCard(cardInfo);
+    const rawText = elementText(el) || status?.text || cardInfo?.label || "";
+    const message = rawText
+        .replace(/\bwarning\b/gi, " ")
+        .replace(/\bfailed\b/gi, " ")
+        .replace(/\brefresh\b/gi, " ")
+        .replace(/\bretry\b/gi, " ")
+        .replace(/\bundo\b/gi, " ")
+        .replace(/\breuse prompt\b/gi, " ")
+        .replace(/\bdelete_forever\b/gi, " ")
+        .replace(/\bdelete\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    if (/prominent people/i.test(message)) {
+        return `Google Flow ปฏิเสธ prompt เพราะอาจเกี่ยวข้องกับบุคคลสาธารณะ: ${message}`;
+    }
+    return message
+        ? `Google Flow สร้าง${cardInfo?.mediaUrl ? "สื่อ" : "ผลลัพธ์"}ไม่สำเร็จ: ${message}`
+        : "Google Flow แสดงสถานะ Failed โดยไม่ระบุสาเหตุ";
+}
+function findMediaCardRetryButton(cardInfo) {
+    const el = findMediaCard(cardInfo);
+    if (!el) return null;
+
+    return [...el.querySelectorAll("button,[role='button']")].find(button => {
+        if (!isVisible(button) || button.disabled || button.getAttribute("aria-disabled") === "true") return false;
+        const text = elementText(button).toLowerCase();
+        const icon = [...button.querySelectorAll("i,.google-symbols,.material-icons")]
+            .some(node => node.textContent?.trim().toLowerCase() === "refresh");
+        return text.includes("retry") || icon;
+    }) || null;
+}
+async function retryFailedMediaCard(cardInfo, attempt, maxAttempts) {
+    const button = findMediaCardRetryButton(cardInfo);
+    if (!button) return false;
+
+    const beforeKeys = snapMediaKeys();
+    log(`Flow แสดง Failed → กด Retry อัตโนมัติ (${attempt}/${maxAttempts})...`);
+    button.scrollIntoView({ block: "center", inline: "center" });
+    await clickElementCenterWithDebugger(button, "Retry");
+
+    for (let fallback = 0; fallback < 2; fallback++) {
+        const end = Date.now() + 5000;
+        while (Date.now() < end) {
+            const status = mediaCardStatus(cardInfo);
+            const hasNewCard = getMediaCards().some(card => card.key && !beforeKeys.has(card.key));
+            if (hasNewCard || status.progress || !status.failed) {
+                log("✅ Flow เริ่ม Retry แล้ว");
+                return true;
+            }
+            await sleep(350);
+        }
+
+        const currentButton = findMediaCardRetryButton(cardInfo);
+        if (!currentButton) break;
+        await humanClick(currentButton);
+    }
+
+    return false;
+}
 function mediaCardDeepText(el) {
     const parts = [elementText(el)];
     const tileId = el.getAttribute?.("data-tile-id") || el.closest?.("[data-tile-id]")?.getAttribute("data-tile-id");
@@ -492,6 +554,16 @@ async function ensureProjectPage() {
         return false;
     }
 
+    if (isProjectUrl(location.href)) {
+        const end = Date.now() + 30000;
+        while (Date.now() < end) {
+            if (hasPromptEditor()) return true;
+            await sleep(POLL);
+        }
+        log("❌ หน้า project เปิดแล้ว แต่ prompt editor ยังไม่พร้อม");
+        return false;
+    }
+
     const createLabels = [
         "Create with Google Flow",
         "Create with Flow",
@@ -508,7 +580,7 @@ async function ensureProjectPage() {
 
     // Every run must start from a fresh Flow project. If we are already in
     // Flow, avoid reloading the site; use the visible app controls instead.
-    if (isProjectUrl(location.href) || hasPromptEditor()) {
+    if (hasPromptEditor()) {
         const back = findAction(["Go Back", "arrow_back"]);
         if (back) {
             log("กลับไปหน้า Flow เพื่อกด New project...");
@@ -529,7 +601,7 @@ async function ensureProjectPage() {
             action.scrollIntoView({ block: "center", inline: "center" });
             click(action);
             await sleep(2500);
-            if (isProjectUrl(location.href) || hasPromptEditor()) return true;
+            if (isProjectUrl(location.href)) return true;
             continue;
         }
         await sleep(POLL);
@@ -545,6 +617,40 @@ async function ensureProjectPage() {
     return false;
 }
 
+async function prepareFreshProject() {
+    if (location.hostname.includes("accounts.google")) {
+        throw new Error("Google Flow ต้อง login Google ก่อน");
+    }
+    if (isProjectUrl(location.href)) return true;
+
+    const createLabels = [
+        "Create with Google Flow",
+        "Create with Flow",
+        "Try in Google Flow",
+        "New project",
+        "Create project",
+        "Start a new project",
+        "Create",
+        "New",
+        "โปรเจ็กต์ใหม่",
+        "สร้างโปรเจ็กต์",
+        "สร้าง"
+    ];
+
+    for (let i = 0; i < 40; i++) {
+        const action = findAction(createLabels);
+        if (action) {
+            log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
+            action.scrollIntoView({ block: "center", inline: "center" });
+            click(action);
+            return true;
+        }
+        await sleep(POLL);
+    }
+
+    throw new Error("ไม่เจอปุ่ม Create/New project ในหน้า Google Flow");
+}
+
 // ── 2. switchToUploadedTab ───────────────────────────────────
 async function switchToUploadedTab() {
     const btn = byIcon("drive_folder_upload") || byText(["Uploaded", "Uploads", "อัปโหลด"]);
@@ -552,7 +658,7 @@ async function switchToUploadedTab() {
 }
 
 // ── 3. uploadImages ──────────────────────────────────────────
-async function uploadImages(dataUrls, waitMs = 300000) {
+async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
     await closeOpenAgentToggle({ waitMs: 8000, required: true });
     patchFileInput();
     const tiles = [];
@@ -570,12 +676,32 @@ async function uploadImages(dataUrls, waitMs = 300000) {
         }
         if (!inp) throw new Error("หา file input สำหรับอัปโหลดรูปใน Google Flow ไม่เจอ");
 
-        const blob = dataUrls[i].startsWith("data:") ? toBlob(dataUrls[i])
-            : await fetch(dataUrls[i]).then(r => r.blob());
-        let mime = blob.type || "image/jpeg";
-        if (!/^image\//i.test(mime)) {
-            throw new Error(`ดาวน์โหลดรูปแล้วไม่ใช่ไฟล์ภาพ (type=${mime || "unknown"}) — URL อาจถูกบล็อก/หมดอายุ`);
+        const candidates = [dataUrls[i], ...(fallbackUrls[i] || [])].filter(Boolean);
+        let blob = null;
+        let lastDownloadError = null;
+        for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex++) {
+            try {
+                const candidate = candidates[candidateIndex];
+                blob = candidate.startsWith("data:")
+                    ? toBlob(candidate)
+                    : await fetch(candidate).then(async response => {
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return response.blob();
+                    });
+                if (!/^image\//i.test(blob.type || "")) {
+                    throw new Error(`type=${blob.type || "unknown"}`);
+                }
+                if (candidateIndex > 0) log(`⚠️ URL รูปหลักใช้ไม่ได้ ใช้รูปแสดงผลสำรองแทน`);
+                break;
+            } catch (error) {
+                blob = null;
+                lastDownloadError = error;
+            }
         }
+        if (!blob) {
+            throw new Error(`ดาวน์โหลดรูปแล้วไม่ใช่ไฟล์ภาพ (${lastDownloadError?.message || "unknown"}) — URL อาจถูกบล็อก/หมดอายุ`);
+        }
+        let mime = blob.type || "image/jpeg";
         const ext = mimeToImageExt(mime);
         const file = new File([blob], `${i + 1}.${ext}`, { type: mime });
         const dt = new DataTransfer(); dt.items.add(file);
@@ -1396,27 +1522,47 @@ async function waitGenerationStarted(button, timeoutMs = 7000) {
 
 // ── 8. waitForResult ─────────────────────────────────────────
 async function waitForResult(phase) {
+    const maxRetryAttempts = 1;
     const maxMs = phase === "image" ? 180000 : 300000;
     const progressGraceMs = 25000;
-    const startedAt = Date.now();
-    const end = Date.now() + maxMs;
+    let retryAttempts = 0;
+    let startedAt = Date.now();
+    let end = Date.now() + maxMs;
     log("รอผลลัพธ์จาก Flow...");
     while (Date.now() < end) {
         if (stopRequested) return { tileId: null, mediaUrl: "" };
-        for (const card of getMediaCards()) {
-            if (!card.key || preGenMediaKeys.has(card.key)) continue;
-            const status = mediaCardStatus(card);
+        const newCards = getMediaCards()
+            .filter(card => card.key && !preGenMediaKeys.has(card.key))
+            .map(card => ({ card, status: mediaCardStatus(card) }));
+        let failedResult = null;
+        let failedCard = null;
+        let hasActiveGeneration = false;
+
+        for (const { card, status } of newCards) {
+            if (status.progress) hasActiveGeneration = true;
+            if (status.failed && !failedResult) {
+                failedResult = mediaCardFailureMessage(card, status);
+                failedCard = card;
+            }
             if (!status.progress && !status.ready && Date.now() - startedAt < progressGraceMs) {
                 log("รอ Flow เริ่มแสดงเปอร์เซ็น...");
-                continue;
-            }
-            if (status.failed) {
-                log("Flow tile แสดง Failed แต่ยังรอต่อจนกว่าจะมีผลลัพธ์หรือหมดเวลา...");
                 continue;
             }
             if (!isGeneratedResultCard(card, status, phase)) continue;
             log("✅ พบผลลัพธ์ที่สร้างเสร็จแล้ว!");
             return { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key };
+        }
+        if (failedResult && !hasActiveGeneration) {
+            if (retryAttempts < maxRetryAttempts) {
+                retryAttempts++;
+                const retryStarted = await retryFailedMediaCard(failedCard, retryAttempts, maxRetryAttempts);
+                if (retryStarted) {
+                    startedAt = Date.now();
+                    end = Date.now() + maxMs;
+                    continue;
+                }
+            }
+            throw new Error(failedResult);
         }
         const rem = Math.round((end - Date.now()) / 1000);
         log(`รอผลลัพธ์ที่สร้างเสร็จ... (~${rem}s)`);
@@ -1494,7 +1640,11 @@ async function runPipeline(payload) {
         }
         await closeOpenAgentToggle({ waitMs: 3000, required: true });
         log(`เตรียมอัปโหลด ${uniqueUrls.length} รูป`);
-        uploadedTiles = await uploadImages(uniqueUrls, cfg.uploadWaitSec * 1000);
+        const normalizedFallback = normalizeImageUrlForUpload(imageUrl);
+        const fallbackUrls = uniqueUrls.map((url, index) =>
+            index === 0 && normalizedFallback && normalizedFallback !== url ? [normalizedFallback] : []
+        );
+        uploadedTiles = await uploadImages(uniqueUrls, cfg.uploadWaitSec * 1000, fallbackUrls);
         if (uploadedTiles.length === 0) {
             throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
         }
@@ -1730,6 +1880,11 @@ function blobToDataUrl(blob) {
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "FLOW_PING") { reply({ pong: true }); return false; }
     if (msg?.type === "FLOW_STOP") { stopRequested = true; reply({ ok: true }); return false; }
+    if (msg?.type === "FLOW_PREPARE_PROJECT") {
+        reply({ accepted: true });
+        prepareFreshProject().catch(err => log("❌ " + err.message));
+        return false;
+    }
     if (msg?.type === "FLOW_RUN_PIPELINE") { runPipeline(msg.payload).then(reply); return true; }
     if (msg?.type === "FLOW_FETCH_BLOB_BASE64") {
         fetch(msg.url, { credentials: "include" })

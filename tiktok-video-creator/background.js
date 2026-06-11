@@ -222,6 +222,8 @@ async function openGoogleFlow(payload) {
 
   // รอ content script พร้อม หรือ inject เองถ้า tab เปิดอยู่ก่อน reload extension
   await ensureFlowContentScript(tab.id);
+  await prepareFlowProject(tab.id);
+  await ensureFlowContentScript(tab.id);
 
   // ส่ง message ไปหา content script พร้อมการตั้งค่า
   let result;
@@ -254,6 +256,34 @@ async function openGoogleFlow(payload) {
     imgTileId: result?.imgTileId || "",
     imgUrl: result?.imgUrl || ""
   };
+}
+
+async function prepareFlowProject(tabId) {
+  const current = await chrome.tabs.get(tabId);
+  if (isFlowProjectUrl(current.url || "")) return;
+
+  const response = await chrome.tabs.sendMessage(tabId, { type: "FLOW_PREPARE_PROJECT" });
+  if (!response?.accepted) {
+    throw new Error(response?.error || "สั่งเปิดโปรเจกต์ Google Flow ไม่สำเร็จ");
+  }
+
+  const deadline = Date.now() + 60000;
+  while (Date.now() < deadline) {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.url?.includes("accounts.google.com")) {
+      const error = new Error("Google Flow ต้อง login Google ก่อน แล้วระบบจะทำงานต่ออัตโนมัติ");
+      error.code = "FLOW_LOGIN_REQUIRED";
+      throw error;
+    }
+    if (isFlowProjectUrl(tab.url || "") && tab.status === "complete") return;
+    await delay(500);
+  }
+
+  throw new Error("รอหน้า project ของ Google Flow หมดเวลา");
+}
+
+function isFlowProjectUrl(url = "") {
+  return /\/fx(?:\/[a-z]{2})?\/tools\/flow\/project/i.test(url);
 }
 
 async function getFlowSettings() {
@@ -353,6 +383,10 @@ function waitForTabComplete(tabId) {
     }
     chrome.tabs.onUpdated.addListener(listener);
   });
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function downloadVideo(payload) {

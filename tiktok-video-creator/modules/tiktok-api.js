@@ -95,16 +95,17 @@ export function normalizeProduct(item) {
 }
 
 function resolveLargestProductImageUrls(item = {}) {
-  const candidates = [item.cover, ...(Array.isArray(item.images) ? item.images : [])]
-    .flatMap(extractImageCandidates)
-    .filter((candidate) => candidate.url);
+  const productImages = Array.isArray(item.images) && item.images.length
+    ? item.images
+    : [item.cover].filter(Boolean);
 
   const seen = new Set();
-  return candidates
-    .sort((a, b) => scoreImageCandidate(b) - scoreImageCandidate(a))
-    .map((candidate) => candidate.url)
+  return productImages
+    .map((image) => extractImageCandidates(image)
+      .filter((candidate) => candidate.url)
+      .sort((a, b) => scoreImageCandidate(b) - scoreImageCandidate(a))[0]?.url || "")
     .filter((url) => {
-      if (seen.has(url)) return false;
+      if (!url || seen.has(url)) return false;
       seen.add(url);
       return true;
     });
@@ -135,18 +136,21 @@ function normalizeProductImageUrl(raw) {
 
 function extractImageCandidates(image = {}) {
   const urls = [
-    image.origin_url,
-    image.original_url,
-    image.original,
-    image.url,
-    image.uri,
-    ...(Array.isArray(image.url_list) ? image.url_list : [])
-  ].filter(Boolean);
+    ...(Array.isArray(image.url_list)
+      ? image.url_list.map((url) => ({ url, source: "url_list" }))
+      : []),
+    { url: image.url, source: "url" },
+    { url: image.origin_url, source: "origin" },
+    { url: image.original_url, source: "origin" },
+    { url: image.original, source: "origin" },
+    { url: image.uri, source: "uri" }
+  ].filter((candidate) => candidate.url);
 
-  return urls.map((url, index) => {
-    const formattedUrl = normalizeProductImageUrl(url);
+  return urls.map((candidate, index) => {
+    const formattedUrl = normalizeProductImageUrl(candidate.url);
     return {
       url: formattedUrl,
+      source: candidate.source,
       index,
       width: Number(image.width || image.w || image.origin_width || image.original_width || 0),
       height: Number(image.height || image.h || image.origin_height || image.original_height || 0)
@@ -157,9 +161,14 @@ function extractImageCandidates(image = {}) {
 function scoreImageCandidate(candidate) {
   const pixels = candidate.width * candidate.height;
   const url = String(candidate.url || "").toLowerCase();
-  let score = pixels || 0;
+  const sourcePriority = {
+    url_list: 4,
+    url: 3,
+    origin: 2,
+    uri: 1
+  }[candidate.source] || 0;
+  let score = sourcePriority * 1_000_000_000_000 + (pixels || 0);
 
-  if (/origin|original|tos-maliva|obj\/tos/i.test(url)) score += 10_000_000;
   const sizeMatch = url.match(/(?:^|[^\d])(\d{3,5})[x_*](\d{3,5})(?:[^\d]|$)/);
   if (sizeMatch) score += Number(sizeMatch[1]) * Number(sizeMatch[2]);
   score -= candidate.index;
