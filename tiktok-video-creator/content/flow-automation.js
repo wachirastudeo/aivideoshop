@@ -387,14 +387,17 @@ async function waitForMediaCard(tile, options = {}) {
     const phase = options.phase || "";
     const tabIcon = options.tabIcon || "";
     const excludedKeys = options.excludedKeys || new Set();
+    const allowFallback = options.allowFallback !== false;
     const end = Date.now() + timeoutMs;
 
     while (Date.now() < end) {
         const exact = findMediaCard(tile);
         if (exact) return { el: exact, card: describeMediaCard(exact), fallback: false };
 
-        const fallback = findFallbackMediaCard(tile, phase, tabIcon, excludedKeys);
-        if (fallback) return { el: fallback.el, card: fallback.card, fallback: true };
+        if (allowFallback) {
+            const fallback = findFallbackMediaCard(tile, phase, tabIcon, excludedKeys);
+            if (fallback) return { el: fallback.el, card: fallback.card, fallback: true };
+        }
 
         await sleep(500);
     }
@@ -1123,7 +1126,7 @@ async function ensureEditAspectRatio(options = {}) {
 }
 
 // ── 5. attachUploadsToPrompt ─────────────────────────────────
-async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
+async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload", options = {}) {
     if (!tiles || tiles.length === 0) return [];
     const target = tiles.length;
     log(`แนบรูปเข้า prompt (${target} รูป)...`);
@@ -1142,7 +1145,8 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
             tabIcon,
             phase: tabIcon === "image" ? "image" : "",
             timeoutMs: tabIcon === "image" ? 15000 : 20000,
-            excludedKeys: usedResolvedKeys
+            excludedKeys: usedResolvedKeys,
+            allowFallback: options.allowFallback !== false
         });
         const el = result.el;
         if (!el) throw new Error(`ไม่เจอรูป media ${tileLabel} ใน Google Flow`);
@@ -1879,28 +1883,17 @@ async function runPipeline(payload) {
             // 4b. เปลี่ยน config เป็น VIDEO mode + portrait
             if (cfg.autoPortrait) await ensureConfig("video", options);
 
-            // 5b. แนบรูปเป็น Ingredients: ใช้เฉพาะรูปสินค้าที่ผู้ใช้เลือก (ไม่รวมภาพที่เจน กันอัพซ้ำ)
-            //     Frames: ใช้ภาพที่เจนเป็นเฟรมเดียว
-            //     อัพหลายรูป (>1) → บังคับ Ingredients เสมอ จะได้ใช้รูปครบ
-            let useIngredients = (options.videoRefMode || "ingredients") !== "frames";
-            if (uploadedTiles.length > 1 && !useIngredients) {
-                useIngredients = true;
-                log("เลือกหลายรูป → สลับวิดีโอเป็น Ingredients อัตโนมัติ");
-            }
-            const videoRefTiles = useIngredients
-                ? (uploadedTiles.length ? uploadedTiles.filter(Boolean) : [result])
-                : [result];
-            // ตัด tile ซ้ำตาม key/tileId
-            const seenTiles = new Set();
-            const uniqueTiles = videoRefTiles.filter((t) => {
-                const k = t?.tileId || t?.key || t?.mediaUrl;
-                if (!k || seenTiles.has(k)) return false;
-                seenTiles.add(k); return true;
+            // 5b. Combined mode must animate the Phase 1 output, regardless
+            //     of whether Flow is configured for Ingredients or Frames.
+            const videoRefTiles = [result];
+            const videoReferenceTab = "image";
+            const attachedGenerated = await attachUploadsToPrompt(videoRefTiles, videoReferenceTab, {
+                allowFallback: false
             });
-            const videoReferenceTab = useIngredients ? "drive_folder_upload" : "image";
-            const attachedGenerated = await attachUploadsToPrompt(uniqueTiles, videoReferenceTab);
-            if (attachedGenerated.length === 0) throw new Error("แนบภาพเข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate");
-            log(`แนบ Ingredients ${attachedGenerated.length}/${uniqueTiles.length} รูป`);
+            if (attachedGenerated.length !== 1) {
+                throw new Error("แนบภาพที่สร้างใหม่เข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate");
+            }
+            log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
 
             // 6b. กรอก prompt สำหรับวิดีโอ
             log("กรอก Prompt วิดีโอ...");
@@ -1912,9 +1905,11 @@ async function runPipeline(payload) {
             // 8b. รอผลลัพธ์วิดีโอ
             const restartVideoGeneration = async () => {
                 if (cfg.autoPortrait) await ensureConfig("video", options);
-                const retryAttached = await attachUploadsToPrompt(uniqueTiles, videoReferenceTab);
-                if (retryAttached.length !== uniqueTiles.length) {
-                    throw new Error("แนบภาพอ้างอิงวิดีโอไม่ครบระหว่าง Retry");
+                const retryAttached = await attachUploadsToPrompt(videoRefTiles, videoReferenceTab, {
+                    allowFallback: false
+                });
+                if (retryAttached.length !== 1) {
+                    throw new Error("แนบภาพที่สร้างใหม่เป็น reference วิดีโอไม่สำเร็จระหว่าง Retry");
                 }
                 await setPrompt(prompt.videoPrompt);
                 await clickGenerate();

@@ -88,11 +88,17 @@ const PRESENTERS = {
   living_product: "The product itself becomes a living character with cute 3D eyes and personality"
 };
 
-const THAI_PERSON_DIRECTION = "If a person appears, make them clearly Thai, realistic and natural, with correct anatomy (two hands, five natural fingers each). Avoid extra/missing/fused fingers, distorted hands, plastic skin, or doll-like AI faces.";
+const THAI_PERSON_DIRECTION = "Make the reviewer clearly Thai and natural. Keep the product fully visible and unchanged; do not wear, cover, bend, or deform it.";
 
-const PRODUCT_FIDELITY_DIRECTION = "Reference product identity lock: copy the attached product image as closely as possible. Preserve the exact silhouette, proportions, package shape, cap/lid/nozzle details, material, texture, color palette, color placement, labels, brand marks, icons, numbers, and all printed text visible on the product or packaging. Do not redesign, recolor, simplify, translate, correct, replace, blur, or invent logos, badges, labels, text, decorations, variants, extra products, or different packaging. Keep realistic proportions and true scale.";
+const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the single product. Preserve only its exact shape, proportions, structure/count, materials, colors, hardware, labels, and printed details; the visible product overrides conflicting title variants. Do not redesign it.";
 
-const VIDEO_REALISM_DIRECTION = "Keep it realistic and physically plausible: subtle smooth camera move with minor motion only. No exaggerated or impossible action — no flying, morphing, explosions, speed ramps, or objects multiplying. Calm, clean, true-to-life so it generates reliably.";
+const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
+
+const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangement of drawers, shelves, doors, compartments, handles, legs, and other product parts. Never add, remove, merge, or rearrange them.";
+
+const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
+
+const VIDEO_REALISM_DIRECTION = "Keep motion subtle and realistic; no morphing, duplication, or impossible action.";
 
 const VOICE_TONES = {
   Auto: "Let AI choose the most suitable voice tone for the product and audience",
@@ -109,7 +115,7 @@ const VOICE_TONES = {
  */
 export function getDefaultSettings() {
   return {
-    videoStyle: "sales",
+    videoStyle: "review",
     presenter: "Auto",
     voiceTone: "Auto",
     mood: "Auto",
@@ -174,17 +180,19 @@ export function sanitizeText(value) {
  * @returns {string} prompt ภาษาอังกฤษ
  */
 export function buildImagePrompt(productInfo, settings) {
-  const productName = compactPromptText(productInfo.name, 220) || "the attached product";
-  const details = compactPromptText(productInfo.highlights, 180);
+  const productName = generationProductName(productInfo.name, 220) || "the attached product";
+  const details = compactPromptText(productInfo.highlights, 100);
+  const analysisDirection = buildAnalysisDirection(productInfo);
+  const categoryDirection = buildCategoryFidelityDirection(productInfo);
 
   const promptParts = [
     `Create one vertical 9:16 commercial product photo of ${productName}.`,
-    "Use the attached image as the exact product reference. Preserve the package shape, proportions, colors, cap, label layout, logo, numbers, and printed text. Do not redesign or invent packaging details.",
-    "First analyze the product image, product name, category, packaging, purpose, and likely real-world use. Then choose the most suitable location and background scene for this specific product.",
-    "Flow must decide the location, environment, props, surface, lighting, color atmosphere, and supporting details so they naturally match the product and help communicate its use.",
-    "Keep the chosen scene commercially appealing, realistic, believable, and uncluttered. Do not default to a generic studio, bedroom, kitchen, or living room unless that setting genuinely fits this product.",
-    "Composition: one centered product, realistic scale, sharp focus, readable front label, clean premium lighting, uncluttered background.",
-    details ? `Emphasize: ${details}.` : ""
+    PRODUCT_FIDELITY_DIRECTION,
+    PRODUCT_ISOLATION_DIRECTION,
+    categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
+    analysisDirection,
+    "Choose a clean, realistic, commercially appealing background that fits this product category.",
+    `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Emphasize: ${details}.` : ""}`
   ];
 
   if (settings.showName === "false" || settings.showName === false) {
@@ -210,7 +218,9 @@ export function buildVideoPrompt(productInfo, settings) {
   const locationStr = resolvePromptLocation(auto);
   const durationSeconds = Number.parseInt(settings.videoDuration, 10) || 8;
   const textEnabled = settings.showName === true || settings.showName === "true";
-  const productName = compactPromptText(productInfo.name, 220) || "the attached product";
+  const productName = generationProductName(productInfo.name, 220) || "the attached product";
+  const analysisDirection = buildAnalysisDirection(productInfo);
+  const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const overlayText = [
     textEnabled ? productName : "",
     compactPromptText(settings.promotionText, 80),
@@ -219,17 +229,21 @@ export function buildVideoPrompt(productInfo, settings) {
 
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 product video for ${productName}.`,
-    "Use the attached image as the exact product reference. Keep the package shape, colors, cap, logo, label layout, numbers, and printed text unchanged in every frame.",
-    `Use one continuous product-hero scene at ${compactPromptText(locationStr, 100)} with ${compactPromptText(auto.mood, 60)} lighting.`,
-    `Use one subtle camera move: ${compactPromptText(auto.cameraMovement, 80)}. Keep the product sharp, stable, realistic, and centered.`,
-    "No scene split, collage, duplicated product, morphing, warped packaging, label drift, price, or impossible motion.",
+    PRODUCT_FIDELITY_DIRECTION,
+    PRODUCT_ISOLATION_DIRECTION,
+    categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
+    analysisDirection,
+    `New suitable scene: ${compactPromptText(locationStr, 100)}, ${compactPromptText(auto.mood, 60)} lighting. Do not recreate the original scene.`,
+    auto.videoStyle === "review" ? "Product-review format: clearly present the product, key details, and realistic use." : "",
+    `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep the whole product sharp, clearly visible, stable, centered, and unchanged.`,
+    VIDEO_REALISM_DIRECTION,
     textEnabled && overlayText.length
       ? `Use only these Thai overlays: ${overlayText.join(" | ")}. Do not cover the package label.`
       : "No added text, captions, subtitles, CTA, stickers, badges, watermarks, or UI. Preserve only text printed on the real package."
   ];
 
   if (auto.presenter && auto.presenter !== "none") {
-    promptParts.push(`${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION}`);
+    promptParts.push(`Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION}`);
   }
 
   return promptParts.filter(Boolean).join("\n");
@@ -239,20 +253,50 @@ function compactPromptText(value, maxLength) {
   return sanitizeText(value).slice(0, maxLength).replace(/[.;,:-]\s*$/, "");
 }
 
+function buildAnalysisDirection(productInfo = {}) {
+  const structureAdvice = compactPromptText(productInfo.structureAdvice, 220);
+  const promptAdvice = stripStructuralVariantCounts(compactPromptText(productInfo.promptAdvice, 140));
+  const advice = [structureAdvice, promptAdvice].filter(Boolean).join(" ");
+  return advice ? `Product analysis: ${advice}` : "";
+}
+
+function buildCategoryFidelityDirection(productInfo = {}) {
+  const text = `${productInfo.name || ""} ${productInfo.category || ""}`.toLowerCase();
+  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
+    return SHOE_FIDELITY_DIRECTION;
+  }
+  return "";
+}
+
+function generationProductName(value, maxLength) {
+  return stripStructuralVariantCounts(compactPromptText(value, maxLength));
+}
+
+function stripStructuralVariantCounts(value) {
+  return String(value || "")
+    .replace(/\b\d+(?:\s*[/|,]\s*\d+)+\s*(?:drawer|drawers|shelf|shelves|tier|tiers|door|doors|compartment|compartments)\b/gi, " ")
+    .replace(/\b\d+\s*(?:drawer|drawers|shelf|shelves|tier|tiers|door|doors|compartment|compartments)\b/gi, " ")
+    .replace(/\d+(?:\s*[/|,]\s*\d+)+\s*(?:ชั้น|ลิ้นชัก|ช่อง|บาน)/g, " ")
+    .replace(/\d+\s*(?:ชั้น|ลิ้นชัก|ช่อง|บาน)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function resolveAutoSettings(productInfo = {}, settings = {}) {
   const inferred = inferPromptAutoOptions(productInfo);
   const recommended = productInfo.autoOptions && typeof productInfo.autoOptions === "object"
     ? productInfo.autoOptions
     : {};
-
+  const requiredLocation = inferRequiredProductLocation(productInfo);
+  const footwear = isFootwearProduct(productInfo);
   return {
     videoStyle: isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle,
-    presenter: isAuto(settings.presenter) ? (recommended.presenter || inferred.presenter) : settings.presenter,
+    presenter: isAuto(settings.presenter) ? pickAutoReviewer(productInfo) : settings.presenter,
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
-    location: isAuto(settings.location) ? (recommended.location || inferred.location) : settings.location,
+    location: isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location,
     customLocation: sanitizeText(settings.customLocation),
-    cameraMovement: isAuto(settings.cameraMovement) ? (recommended.cameraMovement || inferred.cameraMovement) : settings.cameraMovement,
+    cameraMovement: isAuto(settings.cameraMovement) ? (footwear ? "Slow Zoom In" : (recommended.cameraMovement || inferred.cameraMovement)) : settings.cameraMovement,
     transition: isAuto(settings.transition) ? (recommended.transition || inferred.transition) : settings.transition,
     reason: recommended.reason || inferred.reason || ""
   };
@@ -272,13 +316,19 @@ function resolvePromptLocation(auto = {}) {
 function inferPromptAutoOptions(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
 
+  if (/(ตู้|ลิ้นชัก|ชั้นวาง|เฟอร์นิเจอร์|ห้องนั่งเล่น|ห้องนอน|cabinet|drawer|shelf|furniture|wardrobe|dresser)/i.test(text)) {
+    return promptAutoOptions("review", "none", "professional", "Professional", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "Furniture product, shown alone in a clean realistic interior suited to its use");
+  }
+  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
+    return promptAutoOptions("review", "none", "professional", "Trendy", "Urban Street", "Slow Zoom In", "Cut ตรง", "Footwear product, shown clearly without a presenter to preserve its exact model");
+  }
   if (/(ลด|sale|โปร|flash|discount|ถูก|ส่งฟรี)/i.test(text)) {
     return promptAutoOptions("flash-sale", "none", "hype", "Trendy", "Studio Minimal", "Push In Fast", "Whip Pan", "Promotion-led product, optimized for urgency and fast conversion");
   }
   if (/(ครีม|เซรั่ม|สกินแคร์|makeup|beauty|เครื่องสำอาง|น้ำหอม|jewelry|เครื่องประดับ)/i.test(text)) {
     return promptAutoOptions("cinematic", "woman", "kind", "หรูหรา", "Luxury Showroom", "Slow Zoom In", "Fade", "Beauty or premium product, optimized for trust and texture detail");
   }
-  if (/(เสื้อ|กางเกง|รองเท้า|กระเป๋า|แฟชั่น|wear|shirt|dress|bag|shoe)/i.test(text)) {
+  if (/(เสื้อ|กางเกง|กระเป๋า|แฟชั่น|wear|shirt|dress|bag)/i.test(text)) {
     return promptAutoOptions("lifestyle", "woman", "fun", "Trendy", "Urban Street", "Handheld Shake", "Swipe", "Fashion product, optimized for in-use lifestyle context");
   }
   if (/(ของเล่น|เด็ก|น่ารัก|cute|toy|kid|pet|สัตว์เลี้ยง)/i.test(text)) {
@@ -291,7 +341,35 @@ function inferPromptAutoOptions(productInfo = {}) {
     return promptAutoOptions("unboxing", "none", "kind", "มินิมัล", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "Bundle or packaged product, optimized for reveal and detail shots");
   }
 
-  return promptAutoOptions("sales", "none", "professional", "Professional", "Studio Minimal", "Orbit / 360°", "Cut ตรง", "General product, optimized for product sales conversion");
+  return promptAutoOptions("review", "woman", "professional", "Professional", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "General product review focused on clear details and realistic use");
+}
+
+function inferRequiredProductLocation(productInfo = {}) {
+  const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
+  if (/(ตู้|ลิ้นชัก|ชั้นวาง|เฟอร์นิเจอร์|ห้องนั่งเล่น|ห้องนอน|cabinet|drawer|shelf|furniture|wardrobe|dresser)/i.test(text)) {
+    return "Modern Living Room";
+  }
+  return "";
+}
+
+function isFootwearProduct(productInfo = {}) {
+  const text = `${productInfo.name || ""} ${productInfo.category || ""}`.toLowerCase();
+  return /(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text);
+}
+
+function pickAutoReviewer(productInfo = {}) {
+  const identity = String(
+    productInfo.productId ||
+    productInfo.product_id ||
+    productInfo.name ||
+    productInfo.originalName ||
+    "product"
+  );
+  let hash = 0;
+  for (let i = 0; i < identity.length; i += 1) {
+    hash = ((hash << 5) - hash + identity.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % 2 === 0 ? "woman" : "man";
 }
 
 function promptAutoOptions(videoStyle, presenter, voiceTone, mood, location, cameraMovement, transition, reason) {

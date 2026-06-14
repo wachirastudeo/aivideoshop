@@ -27,7 +27,7 @@ export async function initVideoTab(injectedHelpers) {
   const { settings: savedOptions = {} } = await chrome.storage.sync.get("settings");
 
   const optionDefaults = {
-    videoStyle: savedOptions.defaultVideoStyle || "sales",
+    videoStyle: savedOptions.defaultVideoStyle || "review",
     presenter: savedOptions.defaultPresenter || "Auto",
     voiceTone: savedOptions.defaultVoiceTone || "Auto",
     language: savedOptions.defaultLanguage || "ไทย",
@@ -169,6 +169,7 @@ function normalizeProductQueue(value) {
         shopName: item.shopName || "",
         category: item.category || "",
         details: item.details || "",
+        structureAdvice: item.structureAdvice || "",
         promptAdvice: item.promptAdvice || "",
         autoOptions: item.autoOptions && typeof item.autoOptions === "object" ? item.autoOptions : null
       };
@@ -447,6 +448,7 @@ async function handleAnalyze(product) {
     // ไม่เขียน highlights ทับ — ให้ผู้ใช้กรอกเอง
     product.name = analysis.name || product.name;
     product.targetGroup = analysis.targetGroup || product.targetGroup;
+    product.structureAdvice = analysis.structureAdvice || product.structureAdvice || "";
     product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
     product.autoOptions = analysis.autoOptions || product.autoOptions || null;
     product.status = "analyzed";
@@ -537,7 +539,7 @@ async function processQueue() {
 
     try {
       assertNotStopped();
-      if (product.status === "idle" || !product.autoOptions) {
+      if (product.status === "idle" || !product.autoOptions || !product.structureAdvice) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังวิเคราะห์ออปชันวิดีโอด้วย AI...`, "info");
         try {
           const analysis = await analyzeProductImages(getAnalysisProductImages(product), product);
@@ -545,6 +547,7 @@ async function processQueue() {
           // ไม่เขียน highlights ทับ — ให้ผู้ใช้กรอกเอง
           product.name = analysis.name || product.name;
           product.targetGroup = analysis.targetGroup || product.targetGroup;
+          product.structureAdvice = analysis.structureAdvice || product.structureAdvice || "";
           product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
           product.autoOptions = analysis.autoOptions || product.autoOptions || null;
           await persistState();
