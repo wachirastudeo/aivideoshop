@@ -252,10 +252,9 @@ async function closeOpenSessionPanel(options = {}) {
     button.scrollIntoView({ block: "center", inline: "center" });
 
     for (let attempt = 1; attempt <= 3; attempt++) {
-        click(button);
-        await sleep(300);
-        button = findOpenSessionPanelCloseButton();
-        if (button) click(button);
+        // ใช้ native click เท่านั้น — ห้ามใช้ helper click() ที่ยิง synthetic event ตามพิกัด
+        // เพราะหลัง panel ปิด พิกัดเดิมจะกลายเป็นปุ่มเปิด agent ทำให้ panel เด้งกลับ
+        try { button.click(); } catch { }
 
         const verifyEnd = Date.now() + 2000;
         while (Date.now() < verifyEnd) {
