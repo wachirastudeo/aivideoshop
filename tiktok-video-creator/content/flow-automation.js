@@ -1924,20 +1924,28 @@ async function runPipeline(payload) {
             });
 
             await sleep(1500);
+            await detachFlowDebugger();
             removeOverlay();
             return { ok: true, resultUrl: vidResult.mediaUrl, tileId: vidResult.tileId, imgUrl: result.mediaUrl, imgTileId: result.tileId };
         }
 
         await sleep(1500);
+        await detachFlowDebugger();
         removeOverlay();
         return { ok: true, resultUrl: result.mediaUrl, tileId: result.tileId };
 
     } catch (err) {
         log("❌ " + err.message);
+        await detachFlowDebugger();
         await sleep(5000);
         removeOverlay();
         return { ok: false, error: err.message };
     }
+}
+
+// ปลด debugger (infobar) ที่ค้างไว้ตอนจบ pipeline
+async function detachFlowDebugger() {
+    try { await chrome.runtime.sendMessage({ type: "FLOW_DEBUGGER_DETACH" }); } catch { }
 }
 
 async function recordVideoBase64(videoUrl = "") {

@@ -31,6 +31,7 @@ async function routeMessage(message, sender) {
     case "GET_FLOW_SETTINGS":        return getFlowSettings();
     case "FLOW_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
     case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender);
+    case "FLOW_DEBUGGER_DETACH":     return detachDebuggerTab(sender?.tab?.id);
     case "FLOW_PING":                return { pong: true };
     case "FLOW_CONTENT_READY":       return { ok: true };
     case "FLOW_PIPELINE_DONE":       return handleFlowPipelineDone(message.payload);
@@ -44,6 +45,34 @@ async function routeMessage(message, sender) {
   }
 }
 
+// เก็บ tab ที่ debugger attach ค้างไว้ — ไม่ detach ทันทีหลังแต่ละ action
+// เพราะ infobar "extension started debugging" ดันหน้าลง ถ้า detach แล้ว attach ใหม่
+// พิกัดที่วัดไว้ก่อนหน้าจะเพี้ยน ทำให้คลิก Generate พลาดตำแหน่ง
+const attachedDebuggerTabs = new Set();
+
+async function ensureDebuggerAttached(tabId) {
+  if (attachedDebuggerTabs.has(tabId)) return;
+  try {
+    await chrome.debugger.attach({ tabId }, "1.3");
+  } catch (error) {
+    // SW อาจ restart แล้ว Set หาย แต่ debugger ยัง attach อยู่จริง — ถือว่าพร้อมใช้งาน
+    if (!/already attached/i.test(error?.message || "")) throw error;
+  }
+  attachedDebuggerTabs.add(tabId);
+}
+
+async function detachDebuggerTab(tabId) {
+  if (tabId == null || !attachedDebuggerTabs.has(tabId)) return { detached: false };
+  attachedDebuggerTabs.delete(tabId);
+  await chrome.debugger.detach({ tabId }).catch(() => { });
+  return { detached: true };
+}
+
+// detach อัตโนมัติถ้า tab ปิด หรือ debugger หลุด
+chrome.debugger.onDetach?.addListener((source) => {
+  if (source?.tabId != null) attachedDebuggerTabs.delete(source.tabId);
+});
+
 async function clickPointWithDebugger(payload, sender) {
   const tabId = sender?.tab?.id;
   const x = Number(payload?.x);
@@ -54,38 +83,30 @@ async function clickPointWithDebugger(payload, sender) {
   }
 
   const target = { tabId };
-  let attached = false;
-  try {
-    await chrome.debugger.attach(target, "1.3");
-    attached = true;
-    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
-      type: "mouseMoved",
-      x,
-      y,
-      button: "none"
-    });
-    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
-      type: "mousePressed",
-      x,
-      y,
-      button: "left",
-      buttons: 1,
-      clickCount: 1
-    });
-    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
-      type: "mouseReleased",
-      x,
-      y,
-      button: "left",
-      buttons: 0,
-      clickCount: 1
-    });
-    return { clicked: true };
-  } finally {
-    if (attached) {
-      await chrome.debugger.detach(target).catch(() => { });
-    }
-  }
+  await ensureDebuggerAttached(tabId);
+  await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x,
+    y,
+    button: "none"
+  });
+  await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x,
+    y,
+    button: "left",
+    buttons: 1,
+    clickCount: 1
+  });
+  await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x,
+    y,
+    button: "left",
+    buttons: 0,
+    clickCount: 1
+  });
+  return { clicked: true };
 }
 
 async function insertTextWithDebugger(payload, sender) {
@@ -95,10 +116,8 @@ async function insertTextWithDebugger(payload, sender) {
   if (!text) return { inserted: false };
 
   const target = { tabId };
-  let attached = false;
   try {
-    await chrome.debugger.attach(target, "1.3");
-    attached = true;
+    await ensureDebuggerAttached(tabId);
 
     if (payload?.clear !== false) {
       await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
@@ -135,10 +154,9 @@ async function insertTextWithDebugger(payload, sender) {
 
     await chrome.debugger.sendCommand(target, "Input.insertText", { text });
     return { inserted: true, method: "Input.insertText" };
-  } finally {
-    if (attached) {
-      await chrome.debugger.detach(target).catch(() => { });
-    }
+  } catch (error) {
+    await detachDebuggerTab(tabId);
+    throw error;
   }
 }
 
