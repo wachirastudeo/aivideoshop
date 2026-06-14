@@ -87,6 +87,13 @@ function click(el) {
     try { el.click?.(); } catch { }
     fireAt(el, r.left + px + Math.random() * (r.width - px * 2), r.top + py + Math.random() * (r.height - py * 2));
 }
+
+// คลิกแบบ "ครั้งเดียว" ด้วย pointer sequence จริง โดยไม่เรียก el.click()
+// ใช้กับปุ่ม toggle/one-shot ที่ click() ปกติยิงซ้ำ 2 ครั้ง (el.click + fireAt) แล้ว toggle กลับ/เด้งเปิดใหม่
+function pointerClick(el) {
+    const r = el.getBoundingClientRect();
+    fireAt(el, r.left + r.width / 2, r.top + r.height / 2);
+}
 async function trail(tx, ty) {
     const sx = tx + (Math.random() - .5) * 100, sy = ty + (Math.random() - .5) * 70;
     const n = 3 + Math.floor(Math.random() * 3);
@@ -196,7 +203,8 @@ async function closeOpenAgentToggle(options = {}) {
     button.scrollIntoView({ block: "center", inline: "center" });
 
     for (let attempt = 1; attempt <= 3; attempt++) {
-        click(button);
+        // ปุ่ม Agent เป็น toggle — ต้องยิง pointer sequence ครั้งเดียว (ไม่ใช่ click() ที่ยิงซ้ำแล้ว toggle กลับ)
+        pointerClick(button);
 
         const verifyEnd = Date.now() + 2000;
         while (Date.now() < verifyEnd) {
