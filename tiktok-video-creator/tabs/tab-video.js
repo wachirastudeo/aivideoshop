@@ -45,7 +45,7 @@ export async function initVideoTab(injectedHelpers) {
     ...optionDefaults,
     ...(stored.creatorState?.settings || {})
   });
-  productQueue = normalizeProductQueue(stored.productQueue);
+  productQueue = resetStaleStatuses(normalizeProductQueue(stored.productQueue));
 
   populateStyleDropdown();
   renderPills("mood-pills", MOODS, settings.mood, (value) => updateSettings({ mood: value }));
@@ -56,7 +56,7 @@ export async function initVideoTab(injectedHelpers) {
 
 export async function syncSelectedProductToVideoTab() {
   const stored = await chrome.storage.local.get(["productQueue"]);
-  productQueue = normalizeProductQueue(stored.productQueue);
+  productQueue = resetStaleStatuses(normalizeProductQueue(stored.productQueue));
   renderQueue();
   await persistState();
   helpers.logActivity?.(`โหลดคิวสินค้าใหม่: ${productQueue.length} รายการ`, "success");
@@ -76,6 +76,9 @@ function bindGlobalEvents() {
   });
 
   document.querySelector("#btn-batch-create")?.addEventListener("click", () => processQueue());
+  document.querySelector("#btn-batch-clear")?.addEventListener("click", () => {
+    clearVideoQueue().catch((error) => helpers.showStatus(error.message, "error"));
+  });
   document.querySelector("#btn-batch-stop")?.addEventListener("click", () => {
     requestStop().catch(() => {});
   });
@@ -178,6 +181,18 @@ function normalizeStatus(status) {
   return status || "idle";
 }
 
+// เมื่อ panel โหลดใหม่ ไม่มีงานไหนรันค้างข้าม reload — สถานะ in-progress ที่ค้างให้ปรับลงเป็นสถานะพัก
+// (ไม่งั้นการ์ดจะค้าง "กำลังทำภาพ/วิดีโอ" ตลอดทั้งที่ไม่มีอะไรทำงาน)
+function resetStaleStatuses(queue) {
+  return queue.map((p) => {
+    if (!RUNNING_STATUSES.has(p.status)) return p;
+    let status = "prompt_ready";
+    if (p.videoUrl) status = "done";
+    else if (p.approvedImage || p.flowImageTileId) status = "image_done";
+    return { ...p, status, errorMessage: "" };
+  });
+}
+
 function normalizeSettings(value) {
   return {
     ...value,
@@ -244,6 +259,7 @@ function renderQueue() {
   const readyCount = document.querySelector("#ready-count");
   if (queueCount) queueCount.textContent = productQueue.length;
   if (readyCount) readyCount.textContent = productQueue.filter((p) => p.status !== "done" && p.status !== "error").length;
+  syncClearButtonState();
 
   const list = document.querySelector("#batch-product-list");
   if (!list) return;
@@ -703,6 +719,25 @@ function setBatchButtons(running) {
   const stopButton = document.querySelector("#btn-batch-stop");
   if (createButton) createButton.hidden = running;
   if (stopButton) stopButton.hidden = !running;
+  syncClearButtonState();
+}
+
+function syncClearButtonState() {
+  const clearButton = document.querySelector("#btn-batch-clear");
+  if (clearButton) clearButton.disabled = isProcessing || productQueue.length === 0;
+}
+
+async function clearVideoQueue() {
+  if (isProcessing) {
+    helpers.showStatus("กรุณาหยุดการทำงานก่อนล้างคิว", "error");
+    return;
+  }
+
+  productQueue = [];
+  await persistState();
+  await chrome.storage.local.remove("selectedProduct");
+  renderQueue();
+  helpers.showStatus("ล้างคิววิดีโอแล้ว", "success");
 }
 
 function buildFlowOptions(product = null) {
@@ -809,6 +844,7 @@ function renderCountersOnly() {
   const readyCount = document.querySelector("#ready-count");
   if (queueCount) queueCount.textContent = productQueue.length;
   if (readyCount) readyCount.textContent = productQueue.filter((p) => p.status !== "done" && p.status !== "error").length;
+  syncClearButtonState();
 }
 
 async function persistState() {

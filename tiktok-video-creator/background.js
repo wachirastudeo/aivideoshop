@@ -31,9 +31,9 @@ async function routeMessage(message, sender) {
     case "GET_FLOW_SETTINGS":        return getFlowSettings();
     case "FLOW_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
     case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender);
-    case "FLOW_PRESS_KEY":           return pressKeyWithDebugger(message.payload, sender);
     case "FLOW_PING":                return { pong: true };
     case "FLOW_CONTENT_READY":       return { ok: true };
+    case "FLOW_PIPELINE_DONE":       return handleFlowPipelineDone(message.payload);
     case "FLOW_STOP":                return stopFlowPipeline();
     case "TIKTOK_STOP":              return stopTikTokStudioPipeline();
     case "TIKTOK_SEND_DRAFT":        return sendTikTokDraft(message.payload);
@@ -44,46 +44,14 @@ async function routeMessage(message, sender) {
   }
 }
 
-async function pressKeyWithDebugger(payload, sender) {
-  const tabId = sender?.tab?.id;
-  const key = String(payload?.key || "Enter");
-  const code = key === " " ? "Space" : key;
-  const windowsVirtualKeyCode = key === " " ? 32 : key === "Enter" ? 13 : 0;
-  if (!tabId) throw new Error("ไม่พบ tab สำหรับกดปุ่ม");
-
-  const target = { tabId };
-  let attached = false;
-  try {
-    await chrome.debugger.attach(target, "1.3");
-    attached = true;
-    await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
-      type: "keyDown",
-      key,
-      code,
-      windowsVirtualKeyCode,
-      nativeVirtualKeyCode: windowsVirtualKeyCode
-    });
-    await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
-      type: "keyUp",
-      key,
-      code,
-      windowsVirtualKeyCode,
-      nativeVirtualKeyCode: windowsVirtualKeyCode
-    });
-    return { pressed: true };
-  } finally {
-    if (attached) {
-      await chrome.debugger.detach(target).catch(() => { });
-    }
-  }
-}
-
 async function clickPointWithDebugger(payload, sender) {
   const tabId = sender?.tab?.id;
   const x = Number(payload?.x);
   const y = Number(payload?.y);
   if (!tabId) throw new Error("ไม่พบ tab สำหรับกดปุ่ม");
-  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("ตำแหน่งปุ่ม Generate ไม่ถูกต้อง");
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    throw new Error("ตำแหน่งปุ่ม Generate ไม่ถูกต้อง");
+  }
 
   const target = { tabId };
   let attached = false;
@@ -101,6 +69,7 @@ async function clickPointWithDebugger(payload, sender) {
       x,
       y,
       button: "left",
+      buttons: 1,
       clickCount: 1
     });
     await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
@@ -108,6 +77,7 @@ async function clickPointWithDebugger(payload, sender) {
       x,
       y,
       button: "left",
+      buttons: 0,
       clickCount: 1
     });
     return { clicked: true };
@@ -164,7 +134,7 @@ async function insertTextWithDebugger(payload, sender) {
     }
 
     await chrome.debugger.sendCommand(target, "Input.insertText", { text });
-    return { inserted: true };
+    return { inserted: true, method: "Input.insertText" };
   } finally {
     if (attached) {
       await chrome.debugger.detach(target).catch(() => { });
@@ -225,11 +195,17 @@ async function openGoogleFlow(payload) {
   await prepareFlowProject(tab.id);
   await ensureFlowContentScript(tab.id);
 
-  // ส่ง message ไปหา content script พร้อมการตั้งค่า
-  let result;
+  const jobId = String(payload.jobId || "");
+  if (!jobId) throw new Error("ไม่พบ Flow job ID");
+
+  // Start the long-running work in the content script and acknowledge it
+  // immediately. Keeping this message channel open across generation causes
+  // Chrome to close it after several minutes.
+  let started;
   try {
-    result = await chrome.tabs.sendMessage(tab.id, {
+    started = await chrome.tabs.sendMessage(tab.id, {
       type: "FLOW_RUN_PIPELINE",
+      jobId,
       payload: {
         phase: payload.phase,
         prompt: payload.prompt,
@@ -241,21 +217,20 @@ async function openGoogleFlow(payload) {
     throw new Error("ส่งคำสั่งไปยัง Flow ไม่สำเร็จ: " + err.message);
   }
 
-  if (!result?.ok) {
-    await notify("TikTok Video Creator", result?.error || "Automation ล้มเหลว");
-  } else {
-    await notify("TikTok Video Creator", "Flow สำเร็จ!");
+  if (!started?.accepted) {
+    throw new Error(started?.error || "Google Flow ไม่รับคำสั่งเริ่มงาน");
   }
 
-  return { 
-    tabId: tab.id, 
-    ok: result?.ok, 
-    error: result?.error, 
-    resultUrl: result?.resultUrl || "",
-    tileId: result?.tileId || "",
-    imgTileId: result?.imgTileId || "",
-    imgUrl: result?.imgUrl || ""
-  };
+  return { tabId: tab.id, jobId, started: true };
+}
+
+async function handleFlowPipelineDone(payload = {}) {
+  if (payload.result?.ok) {
+    await notify("TikTok Video Creator", "Flow สำเร็จ!");
+  } else {
+    await notify("TikTok Video Creator", payload.result?.error || "Automation ล้มเหลว");
+  }
+  return { received: true };
 }
 
 async function prepareFlowProject(tabId) {

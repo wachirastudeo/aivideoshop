@@ -174,51 +174,29 @@ export function sanitizeText(value) {
  * @returns {string} prompt ภาษาอังกฤษ
  */
 export function buildImagePrompt(productInfo, settings) {
-  const auto = resolveAutoSettings(productInfo, settings);
-  const style = VIDEO_STYLES.find((item) => item.id === auto.videoStyle) || VIDEO_STYLES[0];
-  const target = productInfo.targetGroup === "กรอกเอง" ? productInfo.customTargetGroup : productInfo.targetGroup;
-  
-  const moodStr = auto.mood;
-  const locationStr = resolvePromptLocation(auto);
+  const productName = compactPromptText(productInfo.name, 220) || "the attached product";
+  const details = compactPromptText(productInfo.highlights, 180);
 
   const promptParts = [
-    `High quality product photography of ${sanitizeText(productInfo.name) || "the product"}.`,
-    "Use the attached product image as the source of truth. Product fidelity is more important than creative style.",
-    PRODUCT_FIDELITY_DIRECTION,
-    `Location: ${sanitizeText(locationStr)}.`,
-    `Mood/Atmosphere: ${sanitizeText(moodStr)}.`,
-    "Composition: Product centered, sharp focus, high-end commercial lighting, clear texture, front label readable when visible in the reference.",
-    `Style reference: ${style.fragment}.`,
-    THAI_PERSON_DIRECTION,
-    `Target audience: ${sanitizeText(target) || "TikTok users"}.`,
-    `Visual Details: ${sanitizeText(productInfo.highlights) || "showcase product's unique design and quality"}.`,
-    "Orientation: Vertical 9:16 aspect ratio, portrait mode."
+    `Create one vertical 9:16 commercial product photo of ${productName}.`,
+    "Use the attached image as the exact product reference. Preserve the package shape, proportions, colors, cap, label layout, logo, numbers, and printed text. Do not redesign or invent packaging details.",
+    "First analyze the product image, product name, category, packaging, purpose, and likely real-world use. Then choose the most suitable location and background scene for this specific product.",
+    "Flow must decide the location, environment, props, surface, lighting, color atmosphere, and supporting details so they naturally match the product and help communicate its use.",
+    "Keep the chosen scene commercially appealing, realistic, believable, and uncluttered. Do not default to a generic studio, bedroom, kitchen, or living room unless that setting genuinely fits this product.",
+    "Composition: one centered product, realistic scale, sharp focus, readable front label, clean premium lighting, uncluttered background.",
+    details ? `Emphasize: ${details}.` : ""
   ];
 
-  // Explicitly handle "No Text" or "Include Text"
   if (settings.showName === "false" || settings.showName === false) {
-    promptParts.push("Negative prompt: ABSOLUTELY NO added headline text, NO extra overlay text, NO subtitles, NO captions, NO CTA text, NO stickers, NO signs, NO watermarks, NO UI text. Exception: preserve only the original printed text, logo, label, barcode, numbers, and markings already visible on the real product or packaging reference exactly as shown.");
+    promptParts.push("No added text, captions, stickers, badges, watermarks, extra products, or people. Keep only text already printed on the real package.");
   } else {
-    const textContext = [
-      settings.promotionText ? `Include text: "${sanitizeText(settings.promotionText)}"` : "",
-      "Professional typography integrated into the scene.",
-      "Keep promotional overlay text separate from the package label so it does not cover or alter the original product text.",
-      "Added overlay text must be clear, correct, natural Thai language only, with accurate spelling, readable typography, and no broken or garbled Thai characters.",
-      "Exception: preserve the original printed product text exactly as shown, even if it is not Thai.",
-      "Do not add English text, romanized Thai, placeholder words, random labels, logos, watermarks, or extra unconfigured text. Never modify the product's original printed text."
-    ].filter(Boolean).join(". ");
-    promptParts.push(textContext);
+    const promotionText = compactPromptText(settings.promotionText, 100);
+    promptParts.push(promotionText
+      ? `Add only this Thai overlay text: "${promotionText}". Keep it separate from the package label.`
+      : "Do not add overlay text. Preserve only the original package text.");
   }
 
-  if (productInfo.promptAdvice) {
-    promptParts.push(`AI Visual Direction: ${sanitizeText(productInfo.promptAdvice)}`);
-  }
-
-  if (auto.reason) {
-    promptParts.push(`Auto option rationale: ${sanitizeText(auto.reason)}`);
-  }
-
-  return promptParts.join("\n");
+  return promptParts.filter(Boolean).join("\n");
 }
 
 /**
@@ -229,75 +207,36 @@ export function buildImagePrompt(productInfo, settings) {
  */
 export function buildVideoPrompt(productInfo, settings) {
   const auto = resolveAutoSettings(productInfo, settings);
-  const style = VIDEO_STYLES.find((item) => item.id === auto.videoStyle) || VIDEO_STYLES[0];
   const locationStr = resolvePromptLocation(auto);
-  const ctaText = settings.cta === "กรอกเอง" ? settings.customCta : settings.cta;
   const durationSeconds = Number.parseInt(settings.videoDuration, 10) || 8;
-  const midpointSeconds = Math.max(1, Math.floor(durationSeconds / 2));
-  const voiceWordLimit = Math.max(6, Math.min(16, Math.floor(durationSeconds * 1.5)));
-  const isOmniModel = /^omni/i.test(String(settings.videoModel || ""));
   const textEnabled = settings.showName === true || settings.showName === "true";
-  const textItems = [
-    textEnabled ? sanitizeText(productInfo.name) : "",
-    textEnabled ? sanitizeText(settings.promotionText) : "",
-    textEnabled ? sanitizeText(ctaText || productInfo.cta) : ""
+  const productName = compactPromptText(productInfo.name, 220) || "the attached product";
+  const overlayText = [
+    textEnabled ? productName : "",
+    compactPromptText(settings.promotionText, 80),
+    compactPromptText(settings.cta === "กรอกเอง" ? settings.customCta : settings.cta, 80)
   ].filter(Boolean);
 
-  const textRule = textEnabled
-    ? [
-        `Visible text is enabled. Use ONLY these exact Thai-language text overlays: ${textItems.join(" | ") || sanitizeText(productInfo.name) || "ข้อความภาษาไทย"}.`,
-        "Added overlay text, subtitles, CTA text, stickers, signs, and on-screen typography must be clear, correct, natural Thai only.",
-        "Exception: preserve the original printed product text, logo, label, barcode, numbers, and markings exactly as shown, even if they are not Thai.",
-        "Thai spelling must be accurate and readable. Do not generate broken Thai characters, random Thai words, mixed-language text, English text, romanized Thai, placeholder words, random captions, misspelled text, watermarks, UI labels, logos, or extra text beyond the configured Thai overlays."
-      ].join(" ")
-    : [
-        "Visible text is disabled. ABSOLUTELY NO added headline text, extra overlay text, subtitles, captions, CTA text, stickers, signs, watermarks, UI text, or typography in any language.",
-        "Exception: preserve only the original printed text, logo, label, barcode, numbers, and markings already visible on the real product or packaging reference exactly as shown.",
-        "Do not invent new packaging callouts, logos, words, numbers, labels, colors, shapes, or promotional badges outside the original product reference."
-      ].join(" ");
-
-  const scenePlan = isOmniModel
-    ? [
-        `Scene 1 (0-${midpointSeconds}s): Product center frame at ${sanitizeText(locationStr)}.`,
-        `Scene 2 (${midpointSeconds}-${durationSeconds}s): Bold CTA moment with product full frame, upbeat energy.`,
-        `Transition: ${sanitizeText(auto.transition)}.`
-      ]
-    : [
-        `Single continuous scene (0-${durationSeconds}s): Use the provided still product image as one coherent scene at ${sanitizeText(locationStr)} while keeping the exact product shape, colors, label layout, and printed text stable across every frame.`,
-        "Do NOT split the video into multiple scenes, panels, frames, collage layouts, before/after grids, storyboards, or side-by-side compositions.",
-        "Do NOT place multiple moments inside one image. Keep one product hero setup only, with subtle motion from the still image.",
-        `Use one smooth camera move only: ${sanitizeText(auto.cameraMovement)}. No scene transition.`
-      ];
-
   const promptParts = [
-    `Create a ${durationSeconds}-second vertical 9:16 TikTok product video for ${sanitizeText(productInfo.name) || "this product"}.`,
-    "Use the provided product image as the source of truth. Product fidelity is more important than creative style or scene variation.",
-    "Keep the product razor-sharp, well-lit, and clearly visible in every frame, matching the clarity, framing, detail, colors, and label of the attached hero image exactly. No blur, no distortion, no soft focus on the product.",
-    PRODUCT_FIDELITY_DIRECTION,
-    VIDEO_REALISM_DIRECTION,
-    "Do NOT include any pricing or cost information in the video.",
-    "",
-    `Auto-selected creative plan: style=${style.id}, presenter=${auto.presenter}, voiceTone=${auto.voiceTone}, mood=${auto.mood}, location=${locationStr}, camera=${auto.cameraMovement}, transition=${auto.transition}.`,
-    auto.reason ? `Selection rationale: ${sanitizeText(auto.reason)}.` : "",
-    `Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}.`,
-    THAI_PERSON_DIRECTION,
-    `Voice Tone: ${VOICE_TONES[auto.voiceTone] || VOICE_TONES.kind}.`,
-    `Voiceover timing: use one short complete ${sanitizeText(settings.language)} sentence only, maximum ${voiceWordLimit} words, and finish the spoken sentence by ${Math.max(1, durationSeconds - 1)}s. Do not start a sentence that cannot finish before the video ends. No cut-off speech.`,
-    `Camera Movement: ${sanitizeText(auto.cameraMovement)}.`,
-    ...scenePlan,
-    "",
-    `Video style: ${style.name}. ${style.fragment}.`,
-    textRule,
-    `Video text mode: ${textEnabled ? "configured Thai text only" : "no visible text at all"}. Position text in ${textEnabled ? sanitizeText(settings.textPosition) : "not applicable because text is disabled"}.`,
-    `Text language: ${sanitizeText(settings.language)}. Pacing: ${PACING[settings.pacing] || PACING[2]}.`,
-    "Avoid clutter, avoid wrong logos, avoid misspelled text, avoid label drift, color drift, shape changes, warped packaging, and text changing between frames. Keep the product as the hero."
+    `Create a ${durationSeconds}-second vertical 9:16 product video for ${productName}.`,
+    "Use the attached image as the exact product reference. Keep the package shape, colors, cap, logo, label layout, numbers, and printed text unchanged in every frame.",
+    `Use one continuous product-hero scene at ${compactPromptText(locationStr, 100)} with ${compactPromptText(auto.mood, 60)} lighting.`,
+    `Use one subtle camera move: ${compactPromptText(auto.cameraMovement, 80)}. Keep the product sharp, stable, realistic, and centered.`,
+    "No scene split, collage, duplicated product, morphing, warped packaging, label drift, price, or impossible motion.",
+    textEnabled && overlayText.length
+      ? `Use only these Thai overlays: ${overlayText.join(" | ")}. Do not cover the package label.`
+      : "No added text, captions, subtitles, CTA, stickers, badges, watermarks, or UI. Preserve only text printed on the real package."
   ];
 
-  if (productInfo.promptAdvice) {
-    promptParts.push(`AI Creative Direction: ${sanitizeText(productInfo.promptAdvice)}`);
+  if (auto.presenter && auto.presenter !== "none") {
+    promptParts.push(`${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION}`);
   }
 
-  return promptParts.join("\n");
+  return promptParts.filter(Boolean).join("\n");
+}
+
+function compactPromptText(value, maxLength) {
+  return sanitizeText(value).slice(0, maxLength).replace(/[.;,:-]\s*$/, "");
 }
 
 function resolveAutoSettings(productInfo = {}, settings = {}) {

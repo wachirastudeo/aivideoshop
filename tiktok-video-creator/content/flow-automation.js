@@ -188,46 +188,96 @@ function findOpenAgentToggle() {
     return null;
 }
 async function closeOpenAgentToggle(options = {}) {
-    const waitMs = options.waitMs ?? 0;
     const required = options.required === true;
-    const end = Date.now() + waitMs;
+    let button = findOpenAgentToggle();
+    if (!button) return false;
 
-    do {
-        const button = findOpenAgentToggle();
-        if (!button) {
-            if (Date.now() >= end) return false;
+    log("ปิด Agent ที่เปิดอยู่ก่อนอัปโหลด...");
+    button.scrollIntoView({ block: "center", inline: "center" });
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        click(button);
+
+        const verifyEnd = Date.now() + 2000;
+        while (Date.now() < verifyEnd) {
             await sleep(250);
-            continue;
-        }
-
-        log("ปิด Agent ที่เปิดอยู่ก่อนอัปโหลด...");
-        button.scrollIntoView({ block: "center", inline: "center" });
-
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            await clickElementCenterWithDebugger(button, "Agent");
-            click(button);
-
-            const verifyEnd = Date.now() + 2000;
-            while (Date.now() < verifyEnd) {
-                await sleep(250);
-                if (!findOpenAgentToggle()) {
-                    log("✅ ปิด Agent แล้ว");
-                    return true;
-                }
+            button = findOpenAgentToggle();
+            if (!button) {
+                log("✅ ปิด Agent แล้ว");
+                return true;
             }
-            log(`ลองปิด Agent ซ้ำ ${attempt}/3...`);
         }
-
-        if (required) throw new Error("Agent ยังเปิดอยู่ จึงไม่อัปโหลดรูป");
-        log("⚠️ กดปิด Agent แล้ว แต่สถานะ aria-pressed ยังเป็น true");
-        return false;
-    } while (Date.now() < end);
-
-    if (required && findOpenAgentToggle()) {
-        throw new Error("Agent ยังเปิดอยู่ จึงไม่อัปโหลดรูป");
+        log(`ลองปิด Agent ซ้ำ ${attempt}/3...`);
     }
 
+    if (required) throw new Error("Agent ยังเปิดอยู่ จึงไม่อัปโหลดรูป");
+    log("⚠️ กดปิด Agent แล้ว แต่สถานะ aria-pressed ยังเป็น true");
     return false;
+}
+function findOpenSessionPanelCloseButton() {
+    const headings = [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")]
+        .filter(isVisible)
+        .filter(heading => /^untitled session$/i.test((heading.textContent || "").trim()));
+
+    const isCloseButton = (button) => {
+        if (!button || !isVisible(button) || button.disabled || button.getAttribute("aria-disabled") === "true") {
+            return false;
+        }
+        const hasCloseIcon = [...button.querySelectorAll("i,.google-symbols,.material-icons")]
+            .some(node => (node.textContent || "").trim().toLowerCase() === "close");
+        const hasCloseLabel = [...button.querySelectorAll("span")]
+            .some(node => (node.textContent || "").trim().toLowerCase() === "close");
+        return hasCloseIcon || hasCloseLabel;
+    };
+
+    for (const heading of headings) {
+        // ปุ่มปิดของ session panel อยู่บน header ซึ่งสูงกว่า heading หลายชั้น
+        // ปีน ancestor ขึ้นไปเรื่อยๆ แล้วหาปุ่มปิดในแต่ละชั้น (scope อยู่ใน panel กัน match ปุ่มอื่น)
+        let panel = heading.parentElement;
+        for (let depth = 0; depth < 7 && panel; depth++, panel = panel.parentElement) {
+            if (!isVisible(panel)) continue;
+            const closeButton = [...panel.querySelectorAll("button,[role='button']")].find(isCloseButton);
+            if (closeButton) return closeButton;
+        }
+    }
+
+    return null;
+}
+async function closeOpenSessionPanel(options = {}) {
+    const required = options.required === true;
+    let button = findOpenSessionPanelCloseButton();
+    if (!button) return false;
+
+    log("ปิดหน้าต่าง Untitled session...");
+    button.scrollIntoView({ block: "center", inline: "center" });
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        click(button);
+        await sleep(300);
+        button = findOpenSessionPanelCloseButton();
+        if (button) click(button);
+
+        const verifyEnd = Date.now() + 2000;
+        while (Date.now() < verifyEnd) {
+            await sleep(250);
+            button = findOpenSessionPanelCloseButton();
+            if (!button) {
+                log("✅ ปิดหน้าต่าง Untitled session แล้ว");
+                return true;
+            }
+        }
+        log(`ลองปิดหน้าต่าง Untitled session ซ้ำ ${attempt}/3...`);
+    }
+
+    if (required) {
+        throw new Error("หน้าต่าง Untitled session ยังเปิดอยู่ จึงไม่อัปโหลดรูป");
+    }
+    log("⚠️ กดปิดหน้าต่าง Untitled session แล้ว แต่หน้าต่างยังเปิดอยู่");
+    return false;
+}
+async function closeFlowPanels(options = {}) {
+    await closeOpenSessionPanel(options);
+    await closeOpenAgentToggle(options);
 }
 function hasPromptEditor() {
     const el = findPromptEditor();
@@ -329,38 +379,70 @@ async function waitForMediaCard(tile, options = {}) {
     const timeoutMs = options.timeoutMs ?? 12000;
     const phase = options.phase || "";
     const tabIcon = options.tabIcon || "";
+    const excludedKeys = options.excludedKeys || new Set();
     const end = Date.now() + timeoutMs;
 
     while (Date.now() < end) {
         const exact = findMediaCard(tile);
-        if (exact) return { el: exact, fallback: false };
+        if (exact) return { el: exact, card: describeMediaCard(exact), fallback: false };
 
-        const fallback = findFallbackMediaCard(tile, phase, tabIcon);
-        if (fallback) return { el: fallback, fallback: true };
+        const fallback = findFallbackMediaCard(tile, phase, tabIcon, excludedKeys);
+        if (fallback) return { el: fallback.el, card: fallback.card, fallback: true };
 
         await sleep(500);
     }
-    return { el: null, fallback: false };
+    return { el: null, card: null, fallback: false };
 }
-function findFallbackMediaCard(tile, phase = "", tabIcon = "") {
-    if (phase !== "image" && tabIcon !== "image") return null;
-
+function findFallbackMediaCard(tile, phase = "", tabIcon = "", excludedKeys = new Set()) {
     const cards = getMediaCards()
         .map(card => ({ card, status: mediaCardStatus(card), el: findMediaCard(card) }))
-        .filter(item => item.el && isGeneratedResultCard(item.card, item.status, "image"));
+        .filter(item => item.el && !excludedKeys.has(item.card.key));
 
-    if (!cards.length) return null;
+    const candidates = tabIcon === "drive_folder_upload"
+        ? cards.filter(item => isReadyUploadedImageCard(item.card, item.status, item.el))
+        : cards.filter(item => isGeneratedResultCard(item.card, item.status, "image"));
+    if (!candidates.length) return null;
 
     if (tile?.mediaUrl) {
-        const byMediaUrl = cards.find(item => item.card.mediaUrl && sameMediaUrl(item.card.mediaUrl, tile.mediaUrl));
-        if (byMediaUrl) return byMediaUrl.el;
+        const byMediaUrl = candidates.find(item => item.card.mediaUrl && sameMediaUrl(item.card.mediaUrl, tile.mediaUrl));
+        if (byMediaUrl) return byMediaUrl;
     }
     if (tile?.href) {
-        const byHref = cards.find(item => item.card.href && item.card.href === tile.href);
-        if (byHref) return byHref.el;
+        const byHref = candidates.find(item => item.card.href && item.card.href === tile.href);
+        if (byHref) return byHref;
+    }
+    const wantedLabel = normalizeMediaLabel(tile?.label);
+    if (wantedLabel) {
+        const byLabel = candidates.find(item => normalizeMediaLabel(item.card.label) === wantedLabel);
+        if (byLabel) return byLabel;
     }
 
-    return cards[0].el;
+    return candidates[0];
+}
+function describeMediaCard(el) {
+    const root = el?.closest?.("[data-tile-id], [draggable='true'], a[href*='/edit/'], article") || el;
+    if (!root) return null;
+    const tileId = root.getAttribute?.("data-tile-id") || "";
+    const link = root.matches?.('a[href*="/edit/"]') ? root : root.querySelector?.('a[href*="/edit/"]');
+    const href = link?.href || "";
+    const mediaUrl = getTileMediaUrl(root);
+    const label = elementText(root).slice(0, 160);
+    return { key: tileId || href || mediaUrl || label, tileId, href, mediaUrl, label };
+}
+function isReadyUploadedImageCard(card, status, el) {
+    if (!card?.tileId || !status.ready || status.failed || status.progress) return false;
+    const video = el.matches?.("video") ? el : el.querySelector?.("video");
+    const image = el.matches?.("img") ? el : el.querySelector?.("img,[style*='background-image']");
+    if (!image || video) return false;
+    const text = `${card.label || ""} ${status.text || ""}`.toLowerCase();
+    return !text.includes("start creating") && !text.includes("drop media");
+}
+function normalizeMediaLabel(value = "") {
+    return String(value)
+        .toLowerCase()
+        .replace(/\b(generated|uploaded|image|video|play_circle|warning)\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 }
 function sameMediaUrl(a = "", b = "") {
     const clean = (value) => String(value || "").split("?")[0].split("#")[0];
@@ -376,29 +458,30 @@ function mediaCardStatus(cardInfo) {
         el.querySelector?.("[role='progressbar'], progress, [class*='progress'], [class*='spinner'], [class*='loading']")
     );
     const wordProgress = text.includes("uploading") || text.includes("processing") ||
-        text.includes("generating") || text.includes("rendering") || text.includes("creating");
+        text.includes("generating") || text.includes("rendering") || text.includes("creating") ||
+        text.includes("queued") || text.includes("pending") || text.includes("waiting");
     // นับ % เป็น progress เฉพาะตอนมี loading indicator จริงเท่านั้น
     const percentProgress = hasLoadingIndicator && /\b\d{1,3}\s*%/.test(text);
-    const progress = wordProgress || percentProgress;
+    const video = el.matches?.("video") ? el : el.querySelector?.("video");
+    const hasPlayableVideo = Boolean(
+        video && (video.currentSrc || video.src || video.querySelector("source")?.src)
+    );
+    const pendingVideoProgress = Boolean(el.querySelector?.("[role='slider']")) && !hasPlayableVideo;
+    const progress = wordProgress || percentProgress || pendingVideoProgress;
 
-    const failed = !progress && (text.includes("failed") || text.includes("warning") || text.includes("ล้มเหลว"));
+    const hasFailureLabel = [...el.querySelectorAll("div,span,p")]
+        .some(node => node.children.length === 0 && /^(failed|failure|ล้มเหลว)$/i.test(node.textContent?.trim() || ""));
+    const hasFailureMessage = /\b(generation|creation|rendering)\s+failed\b/i.test(text)
+        || text.includes("couldn't generate")
+        || text.includes("could not generate")
+        || text.includes("สร้างไม่สำเร็จ");
+    const failed = !progress && (hasFailureLabel || hasFailureMessage);
     const rendered = hasRenderableMedia(el);
     return { ready: rendered && !progress, failed, progress, rendered, text };
 }
 function mediaCardFailureMessage(cardInfo, status) {
     const el = findMediaCard(cardInfo);
-    const rawText = elementText(el) || status?.text || cardInfo?.label || "";
-    const message = rawText
-        .replace(/\bwarning\b/gi, " ")
-        .replace(/\bfailed\b/gi, " ")
-        .replace(/\brefresh\b/gi, " ")
-        .replace(/\bretry\b/gi, " ")
-        .replace(/\bundo\b/gi, " ")
-        .replace(/\breuse prompt\b/gi, " ")
-        .replace(/\bdelete_forever\b/gi, " ")
-        .replace(/\bdelete\b/gi, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+    const message = extractFlowFailureReason(el);
 
     if (/prominent people/i.test(message)) {
         return `Google Flow ปฏิเสธ prompt เพราะอาจเกี่ยวข้องกับบุคคลสาธารณะ: ${message}`;
@@ -406,6 +489,30 @@ function mediaCardFailureMessage(cardInfo, status) {
     return message
         ? `Google Flow สร้าง${cardInfo?.mediaUrl ? "สื่อ" : "ผลลัพธ์"}ไม่สำเร็จ: ${message}`
         : "Google Flow แสดงสถานะ Failed โดยไม่ระบุสาเหตุ";
+}
+function extractFlowFailureReason(el) {
+    if (!el) return "";
+    const failedLabel = [...el.querySelectorAll("div,span,p")]
+        .find(node => node.children.length === 0 && /^(failed|failure|ล้มเหลว)$/i.test(node.textContent?.trim() || ""));
+    if (!failedLabel) return "";
+
+    const ignored = /^(warning|failed|failure|refresh|retry|undo|redo|reuse prompt|delete_forever|delete)$/i;
+    const candidates = [];
+    let container = failedLabel.parentElement;
+    for (let depth = 0; container && depth < 4; depth += 1, container = container.parentElement) {
+        for (const node of container.children) {
+            if (node === failedLabel) continue;
+            const text = node.textContent?.replace(/\s+/g, " ").trim() || "";
+            const controlsOnly = text.replace(/warning|failed|failure|refresh|retry|undo|redo|reuse\s*prompt|delete_forever|delete/gi, "").trim();
+            if (text && controlsOnly && text.length <= 600 && !ignored.test(text)) candidates.push(text);
+        }
+        if (container === el) break;
+    }
+
+    const unique = [...new Set(candidates)];
+    return unique.find(text => /(prompt|policy|people|unable|couldn'?t|could not|try again|not allowed|violate|error)/i.test(text))
+        || unique[0]
+        || "";
 }
 function findMediaCardRetryButton(cardInfo) {
     const el = findMediaCard(cardInfo);
@@ -419,14 +526,14 @@ function findMediaCardRetryButton(cardInfo) {
         return text.includes("retry") || icon;
     }) || null;
 }
-async function retryFailedMediaCard(cardInfo, attempt, maxAttempts) {
+async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGeneration) {
     const button = findMediaCardRetryButton(cardInfo);
-    if (!button) return false;
+    if (!button) return restartFailedGeneration(attempt, maxAttempts, restartGeneration);
 
     const beforeKeys = snapMediaKeys();
     log(`Flow แสดง Failed → กด Retry อัตโนมัติ (${attempt}/${maxAttempts})...`);
     button.scrollIntoView({ block: "center", inline: "center" });
-    await clickElementCenterWithDebugger(button, "Retry");
+    await humanClick(button);
 
     for (let fallback = 0; fallback < 2; fallback++) {
         const end = Date.now() + 5000;
@@ -435,7 +542,7 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts) {
             const hasNewCard = getMediaCards().some(card => card.key && !beforeKeys.has(card.key));
             if (hasNewCard || status.progress || !status.failed) {
                 log("✅ Flow เริ่ม Retry แล้ว");
-                return true;
+                return { started: true, error: "" };
             }
             await sleep(350);
         }
@@ -445,7 +552,22 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts) {
         await humanClick(currentButton);
     }
 
-    return false;
+    return { started: false, error: "กด Retry แล้ว แต่ Google Flow ไม่เริ่มสร้างใหม่" };
+}
+async function restartFailedGeneration(attempt, maxAttempts, restartGeneration) {
+    if (typeof restartGeneration !== "function") {
+        return { started: false, error: "ไม่พบปุ่ม Retry และไม่มีข้อมูลสำหรับสร้างคำขอเดิมใหม่" };
+    }
+    log(`Flow ไม่มีปุ่ม Retry → สร้างคำขอเดิมใหม่อัตโนมัติ (${attempt}/${maxAttempts})...`);
+    try {
+        await restartGeneration();
+        log("✅ Flow เริ่มสร้างคำขอเดิมใหม่แล้ว");
+        return { started: true, error: "" };
+    } catch (error) {
+        const reason = error?.message || "ไม่ทราบสาเหตุ";
+        log(`⚠️ สร้างคำขอเดิมใหม่ไม่สำเร็จ: ${reason}`);
+        return { started: false, error: reason };
+    }
 }
 function mediaCardDeepText(el) {
     const parts = [elementText(el)];
@@ -659,11 +781,11 @@ async function switchToUploadedTab() {
 
 // ── 3. uploadImages ──────────────────────────────────────────
 async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
-    await closeOpenAgentToggle({ waitMs: 8000, required: true });
+    await closeFlowPanels({ required: true });
     patchFileInput();
     const tiles = [];
     for (let i = 0; i < dataUrls.length; i++) {
-        await closeOpenAgentToggle({ waitMs: 1000, required: true });
+        await closeFlowPanels({ required: true });
         log(`อัปโหลดรูป ${i + 1}/${dataUrls.length}...`);
         const before = snapMediaKeys();
 
@@ -1003,6 +1125,7 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
     await switchMediaTab(tabIcon);
 
     const done = new Set();
+    const usedResolvedKeys = new Set();
     for (const tile of tiles) {
         const id = tile?.key || tile?.tileId || tile?.href || tile?.mediaUrl;
         if (!id) continue;
@@ -1011,13 +1134,15 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload") {
         const result = await waitForMediaCard(tile, {
             tabIcon,
             phase: tabIcon === "image" ? "image" : "",
-            timeoutMs: tabIcon === "image" ? 15000 : 8000
+            timeoutMs: tabIcon === "image" ? 15000 : 20000,
+            excludedKeys: usedResolvedKeys
         });
         const el = result.el;
         if (!el) throw new Error(`ไม่เจอรูป media ${tileLabel} ใน Google Flow`);
         if (result.fallback) {
-            log(`⚠️ ไม่เจอ media ${tileLabel} แบบ exact ใช้รูปภาพล่าสุดที่สร้างเสร็จแทน`);
+            log(`⚠️ Flow เปลี่ยน media ID ${tileLabel} ใช้รูปที่พร้อมล่าสุดในแท็บแทน`);
         }
+        if (result.card?.key) usedResolvedKeys.add(result.card.key);
         el.scrollIntoView({ block: "center", behavior: "instant" });
         await sleep(400);
         const media = el.querySelector("img,video,[role='img']") || el;
@@ -1306,66 +1431,77 @@ async function typeContentEditable(editor, prompt) {
 }
 
 async function typeSlate(editor, prompt) {
-    editor.focus(); await sleep(100);
-    const sel = window.getSelection(), r = document.createRange();
-    r.selectNodeContents(editor);
-    sel?.removeAllRanges();
-    sel?.addRange(r);
-    await sleep(50);
-
+    selectEditableContents(editor);
     try {
         const response = await chrome.runtime.sendMessage({
             type: "FLOW_INSERT_TEXT",
             payload: { text: prompt, clear: true }
         });
-        await sleep(700);
-        const inserted = (editor.textContent || "").replace(/\s+/g, "");
-        const needle = prompt.replace(/\s+/g, "").slice(0, Math.min(30, prompt.length));
-        if (response?.ok && response.inserted && inserted.includes(needle)) {
-            await sleepStop(1500);
+        if (response?.ok && response.inserted && await waitForPromptCommit(editor, prompt, 3000)) {
+            log("✅ กรอก Prompt เข้า Slate สำเร็จ");
             return;
         }
-    } catch (e) {
-        console.warn("[FlowAuto] debugger text insert failed:", e);
+    } catch (error) {
+        console.warn("[FlowAuto] trusted prompt insert failed:", error);
     }
 
+    selectEditableContents(editor);
     document.execCommand("delete", false, null);
     editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
     await sleep(100);
 
-    // Flow uses Slate. Native editing commands update the contenteditable DOM
-    // and give Slate a real input path, unlike synthetic input events alone.
     document.execCommand("insertText", false, prompt);
     editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
-    await sleep(500);
-    const inserted = (editor.textContent || "").replace(/\s+/g, "");
-    const needle = prompt.replace(/\s+/g, "").slice(0, Math.min(30, prompt.length));
-    if (inserted.includes(needle)) {
-        await sleepStop(1500);
-        return;
-    }
+    editor.dispatchEvent(new Event("change", { bubbles: true }));
+    editor.blur();
+    await sleep(100);
+    editor.focus();
+    if (await waitForPromptCommit(editor, prompt, 2000)) return;
 
-    // Primary: ClipboardEvent paste
     try {
+        selectEditableContents(editor);
+        document.execCommand("delete", false, null);
         const dt = new DataTransfer(); dt.setData("text/plain", prompt);
         editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
-        await sleep(400);
-        const got = (editor.textContent || "").trim();
-        const needle = prompt.replace(/\s+/g, "").slice(0, Math.min(30, prompt.length));
-        if (got.replace(/\s+/g, "").includes(needle)) {
-            await sleepStop(2000); return;
-        }
+        if (await waitForPromptCommit(editor, prompt, 1500)) return;
     } catch (e) { console.warn("[FlowAuto] paste failed:", e); }
-    // Fallback: char-by-char
-    editor.focus(); await sleep(50);
+
+    selectEditableContents(editor);
+    document.execCommand("delete", false, null);
+    await sleep(50);
     for (const ch of prompt) {
         if (stopRequested) return;
-        const type = ch === "\n" ? "insertLineBreak" : "insertText";
-        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: type, data: ch === "\n" ? null : ch }));
-        editor.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: type, data: ch === "\n" ? null : ch }));
-        await sleep(12);
+        document.execCommand(ch === "\n" ? "insertLineBreak" : "insertText", false, ch === "\n" ? null : ch);
+        await sleep(4);
     }
-    await sleepStop(3000);
+    editor.dispatchEvent(new Event("change", { bubbles: true }));
+    if (!await waitForPromptCommit(editor, prompt, 2500)) {
+        throw new Error("กรอก prompt ใน Slate ไม่สำเร็จ");
+    }
+}
+
+function selectEditableContents(editor) {
+    editor.focus();
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+}
+
+async function waitForPromptCommit(editor, prompt, timeoutMs) {
+    const needle = prompt.replace(/\s+/g, "").slice(0, Math.min(30, prompt.length));
+    const end = Date.now() + timeoutMs;
+    while (Date.now() < end) {
+        const inserted = (editor.textContent || "").replace(/\s+/g, "");
+        const submitReady = !promptHasMediaAttachment() || Boolean(findGenerateButton());
+        if (inserted.includes(needle) && submitReady) {
+            await sleepStop(250);
+            return true;
+        }
+        await sleep(100);
+    }
+    return false;
 }
 
 async function typeDraft(editor, prompt) {
@@ -1402,27 +1538,23 @@ async function clickGenerate() {
     log("🚀 กด Generate!");
     btn.scrollIntoView({ block: "center", inline: "center" });
     await sleep(400);
-    await clickButtonCenterWithDebugger(btn);
-    if (await waitGenerationStarted(btn)) return true;
+    if (await clickButtonCenterWithDebugger(btn) && await waitGenerationStarted(btn, 5000)) {
+        return true;
+    }
 
+    log("Trusted click ยังไม่เริ่มสร้าง → ลอง human click...");
     await humanClick(btn);
-    if (await waitGenerationStarted(btn)) return true;
+    if (await waitGenerationStarted(btn, 3500)) return true;
 
-    btn.click();
-    if (await waitGenerationStarted(btn)) return true;
+    log("Human click ยังไม่เริ่มสร้าง → ลอง DOM click...");
+    click(btn);
+    if (await waitGenerationStarted(btn, 2000)) return true;
 
+    log("DOM click ยังไม่เริ่มสร้าง → ลองกด Enter...");
     btn.focus();
-    await pressFocusedButtonWithDebugger(" ");
-    if (await waitGenerationStarted(btn)) return true;
-
-    btn.focus();
-    await pressFocusedButtonWithDebugger("Enter");
-    if (await waitGenerationStarted(btn)) return true;
-
-    btn.focus();
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-    document.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true, cancelable: true }));
-    if (await waitGenerationStarted(btn)) return true;
+    btn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+    btn.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+    if (await waitGenerationStarted(btn, 2000)) return true;
 
     throw new Error("กด Generate แล้ว แต่ Flow ไม่เริ่มสร้าง จึงไม่รอผลลัพธ์");
 }
@@ -1431,87 +1563,91 @@ async function clickButtonCenterWithDebugger(button) {
     const rect = button.getBoundingClientRect();
     const x = Math.round(rect.left + rect.width / 2);
     const y = Math.round(rect.top + rect.height / 2);
-    log(`กดปุ่ม Generate ที่ตำแหน่ง ${x},${y}...`);
     try {
         const response = await chrome.runtime.sendMessage({
             type: "FLOW_CLICK_POINT",
             payload: { x, y }
         });
-        if (!response?.ok || !response.clicked) {
-            console.warn("[FlowAuto] debugger click failed response:", response);
-        }
-    } catch (e) {
-        console.warn("[FlowAuto] debugger click failed:", e);
+        if (response?.ok && response.clicked) return true;
+        console.warn("[FlowAuto] trusted click failed response:", response);
+    } catch (error) {
+        console.warn("[FlowAuto] trusted click failed:", error);
     }
+    return false;
 }
 
-async function clickElementCenterWithDebugger(el, label = "element") {
-    const rect = el.getBoundingClientRect();
-    const x = Math.round(rect.left + rect.width / 2);
-    const y = Math.round(rect.top + rect.height / 2);
-    log(`กด ${label} ที่ตำแหน่ง ${x},${y}...`);
-    try {
-        const response = await chrome.runtime.sendMessage({
-            type: "FLOW_CLICK_POINT",
-            payload: { x, y }
-        });
-        if (!response?.ok || !response.clicked) {
-            console.warn("[FlowAuto] debugger click failed response:", response);
-        }
-    } catch (e) {
-        console.warn("[FlowAuto] debugger click failed:", e);
-    }
-}
+function findPromptSubmitButtons() {
+    const editor = findPromptEditor();
+    const editorRect = editor?.getBoundingClientRect();
+    const candidates = [];
 
-async function pressFocusedButtonWithDebugger(key) {
-    try {
-        const response = await chrome.runtime.sendMessage({
-            type: "FLOW_PRESS_KEY",
-            payload: { key }
-        });
-        if (!response?.ok || !response.pressed) {
-            console.warn("[FlowAuto] debugger key press failed response:", response);
+    for (const button of document.querySelectorAll("button,[role='button']")) {
+        if (!isVisible(button) || button.getAttribute("aria-haspopup")) continue;
+
+        const iconNames = [...button.querySelectorAll("i,.google-symbols,.material-icons")]
+            .map(node => (node.textContent || "").trim().toLowerCase());
+        const labelParts = [
+            button.getAttribute("aria-label"),
+            button.getAttribute("title"),
+            ...[...button.querySelectorAll("span")].map(node => node.textContent)
+        ].filter(Boolean).map(value => value.replace(/\s+/g, " ").trim().toLowerCase());
+        const hasSubmitIcon = iconNames.some(name => name === "arrow_forward" || name === "send");
+        const hasSubmitLabel = labelParts.some(label =>
+            label === "create" || label === "generate" || label === "สร้าง"
+        );
+        if (!hasSubmitIcon && !hasSubmitLabel) continue;
+
+        let insideComposer = !editor;
+        for (let node = editor, depth = 0; node && depth < 10; node = node.parentElement, depth++) {
+            if (node.contains(button)) {
+                insideComposer = true;
+                break;
+            }
         }
-    } catch (e) {
-        console.warn("[FlowAuto] debugger key press failed:", e);
+
+        const rect = button.getBoundingClientRect();
+        const nearEditor = Boolean(
+            editorRect
+            && Math.abs((rect.top + rect.height / 2) - (editorRect.top + editorRect.height / 2)) < 180
+        );
+        if (!insideComposer && !nearEditor) continue;
+
+        candidates.push({
+            button,
+            score: (hasSubmitIcon ? 100 : 0) + (hasSubmitLabel ? 50 : 0) + (insideComposer ? 25 : 0)
+        });
     }
+
+    candidates.sort((a, b) => b.score - a.score);
+    return candidates.map(candidate => candidate.button);
 }
 
 function findGenerateButton() {
-    for (const icon of document.querySelectorAll("i,.google-symbols,.material-icons")) {
-        if (icon.textContent?.trim() !== "arrow_forward") continue;
-        const b = icon.closest("button");
-        if (!b || !isVisible(b)) continue;
-        const label = `${b.textContent || ""} ${b.getAttribute("aria-label") || ""}`.toLowerCase();
-        const disabled = b.disabled || b.getAttribute("aria-disabled") === "true";
-        if (disabled) continue;
-        if (b.getAttribute("aria-haspopup")) continue;
-        if (label.includes("create") || label.includes("arrow_forward")) return b;
-    }
-    return null;
+    return findPromptSubmitButtons().find(button =>
+        !button.disabled && button.getAttribute("aria-disabled") !== "true"
+    ) || null;
 }
 
 function findDisabledGenerateButton() {
-    for (const icon of document.querySelectorAll("i,.google-symbols,.material-icons")) {
-        if (icon.textContent?.trim() !== "arrow_forward") continue;
-        const b = icon.closest("button");
-        if (!b || !isVisible(b)) continue;
-        const label = `${b.textContent || ""} ${b.getAttribute("aria-label") || ""}`.toLowerCase();
-        const disabled = b.disabled || b.getAttribute("aria-disabled") === "true";
-        if (disabled && !b.getAttribute("aria-haspopup") && label.includes("create")) return b;
-    }
-    return null;
+    return findPromptSubmitButtons().find(button =>
+        button.disabled || button.getAttribute("aria-disabled") === "true"
+    ) || null;
 }
 
 async function waitGenerationStarted(button, timeoutMs = 7000) {
     const end = Date.now() + timeoutMs;
+    let disabledSince = 0;
     while (Date.now() < end) {
         if (stopRequested) return false;
         const disabled = button.disabled || button.getAttribute("aria-disabled") === "true";
-        const bodyText = elementText(document.body).toLowerCase();
-        const hasBusyText = bodyText.includes("generating") || bodyText.includes("creating") || bodyText.includes("กำลังสร้าง");
-        const hasNewMedia = getMediaCards().some(card => card.key && !preGenMediaKeys.has(card.key));
-        if (disabled || hasBusyText || hasNewMedia) {
+        const newCards = getMediaCards().filter(card => card.key && !preGenMediaKeys.has(card.key));
+        const hasNewProgress = newCards.some(card => mediaCardStatus(card).progress);
+        if (disabled) {
+            if (!disabledSince) disabledSince = Date.now();
+        } else {
+            disabledSince = 0;
+        }
+        if (hasNewProgress || (disabledSince && Date.now() - disabledSince >= 500)) {
             log("✅ Flow เริ่มสร้างแล้ว");
             return true;
         }
@@ -1521,13 +1657,19 @@ async function waitGenerationStarted(button, timeoutMs = 7000) {
 }
 
 // ── 8. waitForResult ─────────────────────────────────────────
-async function waitForResult(phase) {
+async function waitForResult(phase, options = {}) {
     const maxRetryAttempts = 1;
     const maxMs = phase === "image" ? 180000 : 300000;
     const progressGraceMs = 25000;
+    // Flow can briefly mark queued Veo jobs as Failed, then replace the same
+    // cards with playable videos. Keep waiting long enough for that late result.
+    const failureGraceMs = phase === "video" ? 90000 : 30000;
     let retryAttempts = 0;
     let startedAt = Date.now();
     let end = Date.now() + maxMs;
+    let pendingFailure = "";
+    let pendingFailedCard = null;
+    let failureSeenAt = 0;
     log("รอผลลัพธ์จาก Flow...");
     while (Date.now() < end) {
         if (stopRequested) return { tileId: null, mediaUrl: "" };
@@ -1536,7 +1678,7 @@ async function waitForResult(phase) {
             .map(card => ({ card, status: mediaCardStatus(card) }));
         let failedResult = null;
         let failedCard = null;
-        let hasActiveGeneration = false;
+        let hasActiveGeneration = hasVisibleGenerationIndicator();
 
         for (const { card, status } of newCards) {
             if (status.progress) hasActiveGeneration = true;
@@ -1552,17 +1694,48 @@ async function waitForResult(phase) {
             log("✅ พบผลลัพธ์ที่สร้างเสร็จแล้ว!");
             return { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key };
         }
-        if (failedResult && !hasActiveGeneration) {
+        if (failedResult) {
+            pendingFailure = failedResult;
+            pendingFailedCard = failedCard;
+        }
+        if (hasActiveGeneration) {
+            // A failed sibling tile can appear while another requested video
+            // is still rendering. Do not age or act on that failure yet.
+            failureSeenAt = 0;
+            const rem = Math.round((end - Date.now()) / 1000);
+            log(`วิดีโอยังกำลังสร้างอยู่ รอต่อ... (~${rem}s)`);
+            await sleep(1000);
+            continue;
+        }
+        if (pendingFailure) {
+            if (!failureSeenAt) failureSeenAt = Date.now();
+            const failureAge = Date.now() - failureSeenAt;
+            if (failureAge < failureGraceMs) {
+                log(`Flow แสดง Failed ชั่วคราว รอผลลัพธ์สำเร็จอีก ${Math.ceil((failureGraceMs - failureAge) / 1000)}s...`);
+                await sleep(1000);
+                continue;
+            }
             if (retryAttempts < maxRetryAttempts) {
                 retryAttempts++;
-                const retryStarted = await retryFailedMediaCard(failedCard, retryAttempts, maxRetryAttempts);
-                if (retryStarted) {
+                const retryResult = await retryFailedMediaCard(
+                    pendingFailedCard,
+                    retryAttempts,
+                    maxRetryAttempts,
+                    options.restartGeneration
+                );
+                if (retryResult.started) {
                     startedAt = Date.now();
                     end = Date.now() + maxMs;
+                    pendingFailure = "";
+                    pendingFailedCard = null;
+                    failureSeenAt = 0;
                     continue;
                 }
+                if (retryResult.error) {
+                    pendingFailure = `${pendingFailure}; Retry ไม่สำเร็จ: ${retryResult.error}`;
+                }
             }
-            throw new Error(failedResult);
+            throw new Error(pendingFailure);
         }
         const rem = Math.round((end - Date.now()) / 1000);
         log(`รอผลลัพธ์ที่สร้างเสร็จ... (~${rem}s)`);
@@ -1571,6 +1744,11 @@ async function waitForResult(phase) {
     throw new Error(phase === "image"
         ? "รอผลลัพธ์ภาพจาก Google Flow หมดเวลา หรือไม่พบ media tile ใหม่"
         : "รอผลลัพธ์วิดีโอจาก Google Flow หมดเวลา หรือไม่พบ media tile ใหม่");
+}
+
+function hasVisibleGenerationIndicator() {
+    return [...document.querySelectorAll("[role='progressbar'],progress,[aria-busy='true']")]
+        .some(isVisible);
 }
 
 function isGeneratedResultCard(card, status, phase) {
@@ -1611,19 +1789,22 @@ async function runPipeline(payload) {
     try {
         log("เริ่ม Auto Flow...");
         watchNotice();
-        await closeOpenAgentToggle();
+        await closeFlowPanels();
         const cfg = await loadSettings();
 
         // 1. ไปหน้า project
+        log("ตรวจหน้าโปรเจกต์ Google Flow...");
         const ok = await ensureProjectPage();
         if (!ok) throw new Error("ไม่สามารถเปิดหน้า project ได้ (ตรวจสอบว่า login Google แล้ว)");
-        await sleep(1500);
+        await sleep(300);
         dismissIAgree();
-        await closeOpenAgentToggle({ waitMs: 10000, required: true });
+        log("ตรวจหน้าต่างที่บังพื้นที่อัปโหลด...");
+        await closeFlowPanels({ required: true });
 
         // 2. สลับไป Uploaded tab
+        log("เปิดคลัง Uploaded...");
         await switchToUploadedTab();
-        await closeOpenAgentToggle({ waitMs: 2000, required: true });
+        await closeFlowPanels({ required: true });
 
         // 3. อัปโหลดรูป (รองรับหลายรูปจาก options.imageUrls สำหรับ Ingredients)
         let uploadedTiles = [];
@@ -1638,7 +1819,7 @@ async function runPipeline(payload) {
         if (uniqueUrls.length === 0) {
             throw new Error(`ไม่มี URL รูปภาพสินค้าที่ใช้ได้สำหรับอัปโหลด (imageUrl=${imageUrl || "ว่าง"})`);
         }
-        await closeOpenAgentToggle({ waitMs: 3000, required: true });
+        await closeFlowPanels({ required: true });
         log(`เตรียมอัปโหลด ${uniqueUrls.length} รูป`);
         const normalizedFallback = normalizeImageUrlForUpload(imageUrl);
         const fallbackUrls = uniqueUrls.map((url, index) =>
@@ -1669,7 +1850,19 @@ async function runPipeline(payload) {
         await clickGenerate();
 
         // 8. รอผลลัพธ์
-        const result = await waitForResult(phase === "combined" ? "image" : phase);
+        const resultPhase = phase === "combined" ? "image" : phase;
+        const restartInitialGeneration = async () => {
+            if (cfg.autoPortrait) await ensureConfig(resultPhase, options);
+            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload");
+            if (attached.length !== uploadedTiles.length) {
+                throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบระหว่าง Retry");
+            }
+            await setPrompt(initialPrompt);
+            await clickGenerate();
+        };
+        const result = await waitForResult(resultPhase, {
+            restartGeneration: restartInitialGeneration
+        });
 
         if (phase === "combined" && result.tileId) {
             if (!prompt?.videoPrompt) throw new Error("ไม่มี prompt สำหรับสร้างวิดีโอ Phase 2");
@@ -1697,7 +1890,8 @@ async function runPipeline(payload) {
                 if (!k || seenTiles.has(k)) return false;
                 seenTiles.add(k); return true;
             });
-            const attachedGenerated = await attachUploadsToPrompt(uniqueTiles, "image");
+            const videoReferenceTab = useIngredients ? "drive_folder_upload" : "image";
+            const attachedGenerated = await attachUploadsToPrompt(uniqueTiles, videoReferenceTab);
             if (attachedGenerated.length === 0) throw new Error("แนบภาพเข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate");
             log(`แนบ Ingredients ${attachedGenerated.length}/${uniqueTiles.length} รูป`);
 
@@ -1709,7 +1903,18 @@ async function runPipeline(payload) {
             await clickGenerate();
 
             // 8b. รอผลลัพธ์วิดีโอ
-            const vidResult = await waitForResult("video");
+            const restartVideoGeneration = async () => {
+                if (cfg.autoPortrait) await ensureConfig("video", options);
+                const retryAttached = await attachUploadsToPrompt(uniqueTiles, videoReferenceTab);
+                if (retryAttached.length !== uniqueTiles.length) {
+                    throw new Error("แนบภาพอ้างอิงวิดีโอไม่ครบระหว่าง Retry");
+                }
+                await setPrompt(prompt.videoPrompt);
+                await clickGenerate();
+            };
+            const vidResult = await waitForResult("video", {
+                restartGeneration: restartVideoGeneration
+            });
 
             await sleep(1500);
             removeOverlay();
@@ -1877,6 +2082,17 @@ function blobToDataUrl(blob) {
 }
 
 // ── Message listener ──────────────────────────────────────────
+async function finishFlowJob(jobId, result) {
+    if (!jobId) return;
+    const payload = {
+        jobId,
+        result,
+        completedAt: new Date().toISOString()
+    };
+    await chrome.storage.local.set({ [`flowJob:${jobId}`]: payload });
+    await chrome.runtime.sendMessage({ type: "FLOW_PIPELINE_DONE", payload }).catch(() => { });
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "FLOW_PING") { reply({ pong: true }); return false; }
     if (msg?.type === "FLOW_STOP") { stopRequested = true; reply({ ok: true }); return false; }
@@ -1885,7 +2101,18 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         prepareFreshProject().catch(err => log("❌ " + err.message));
         return false;
     }
-    if (msg?.type === "FLOW_RUN_PIPELINE") { runPipeline(msg.payload).then(reply); return true; }
+    if (msg?.type === "FLOW_RUN_PIPELINE") {
+        const jobId = String(msg.jobId || "");
+        if (!jobId) {
+            reply({ accepted: false, error: "ไม่พบ Flow job ID" });
+            return false;
+        }
+        reply({ accepted: true, jobId });
+        runPipeline(msg.payload)
+            .then(result => finishFlowJob(jobId, result))
+            .catch(error => finishFlowJob(jobId, { ok: false, error: error.message || "Flow automation ล้มเหลว" }));
+        return false;
+    }
     if (msg?.type === "FLOW_FETCH_BLOB_BASE64") {
         fetch(msg.url, { credentials: "include" })
             .then(res => {
