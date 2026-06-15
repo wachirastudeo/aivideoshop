@@ -50,7 +50,7 @@ export const VIDEO_STYLES = [
   {
     id: "testimonial",
     emoji: "👩",
-    name: "Testimonial / UGC Style",
+    name: "UGC / Testimonial",
     description: "เหมือนคนจริงรีวิว น่าเชื่อถือ",
     shotPattern: "[คนพูดถึงสินค้า] → [หยิบสินค้าขึ้นมาโชว์] → [แนะนำให้ลอง]",
     fragment: "user generated content style, talking head, handheld camera feel, natural lighting, genuine review vibe, person holding product, casual authentic presentation"
@@ -100,6 +100,10 @@ const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pa
 
 const VIDEO_REALISM_DIRECTION = "Keep motion subtle and realistic; no morphing, duplication, or impossible action.";
 
+const TEXT_FREE_DIRECTION = "Text-free output. No words, letters, numbers, logos, brand names, labels, packaging copy, captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI. Omit reference text without changing product shape or colors; this overrides label fidelity.";
+
+const NO_PEOPLE_DIRECTION = "Product-only scene. No people, faces, presenters, reviewers, characters, celebrities, or public figures.";
+
 const VOICE_TONES = {
   Auto: "Let AI choose the most suitable voice tone for the product and audience",
   kind: "Kind, friendly, and gentle tone",
@@ -115,7 +119,7 @@ const VOICE_TONES = {
  */
 export function getDefaultSettings() {
   return {
-    videoStyle: "review",
+    videoStyle: "testimonial",
     presenter: "Auto",
     voiceTone: "Auto",
     mood: "Auto",
@@ -192,17 +196,10 @@ export function buildImagePrompt(productInfo, settings) {
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
     "Choose a clean, realistic, commercially appealing background that fits this product category.",
-    `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Emphasize: ${details}.` : ""}`
+    `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Emphasize: ${details}.` : ""}`,
+    NO_PEOPLE_DIRECTION,
+    TEXT_FREE_DIRECTION
   ];
-
-  if (settings.showName === "false" || settings.showName === false) {
-    promptParts.push("No added text, captions, stickers, badges, watermarks, extra products, or people. Keep only text already printed on the real package.");
-  } else {
-    const promotionText = compactPromptText(settings.promotionText, 100);
-    promptParts.push(promotionText
-      ? `Add only this Thai overlay text: "${promotionText}". Keep it separate from the package label.`
-      : "Do not add overlay text. Preserve only the original package text.");
-  }
 
   return promptParts.filter(Boolean).join("\n");
 }
@@ -223,8 +220,7 @@ export function buildVideoPrompt(productInfo, settings) {
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const overlayText = [
     textEnabled ? productName : "",
-    compactPromptText(settings.promotionText, 80),
-    compactPromptText(settings.cta === "กรอกเอง" ? settings.customCta : settings.cta, 80)
+    textEnabled ? compactPromptText(settings.promotionText, 80) : ""
   ].filter(Boolean);
 
   const promptParts = [
@@ -234,16 +230,23 @@ export function buildVideoPrompt(productInfo, settings) {
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
     `New suitable scene: ${compactPromptText(locationStr, 100)}, ${compactPromptText(auto.mood, 60)} lighting. Do not recreate the original scene.`,
-    auto.videoStyle === "review" ? "Product-review format: clearly present the product, key details, and realistic use." : "",
+    auto.videoStyle === "review"
+      ? "Product-review format: clearly present the product, key details, and realistic use."
+      : "",
+    auto.videoStyle === "testimonial"
+      ? "UGC testimonial format: natural handheld framing, authentic review vibe, and casual realistic presentation."
+      : "",
     `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep the whole product sharp, clearly visible, stable, centered, and unchanged.`,
     VIDEO_REALISM_DIRECTION,
     textEnabled && overlayText.length
-      ? `Use only these Thai overlays: ${overlayText.join(" | ")}. Do not cover the package label.`
-      : "No added text, captions, subtitles, CTA, stickers, badges, watermarks, or UI. Preserve only text printed on the real package."
+      ? `Use only these Thai overlays at ${compactPromptText(settings.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. Do not add any other readable text.`
+      : TEXT_FREE_DIRECTION
   ];
 
   if (auto.presenter && auto.presenter !== "none") {
     promptParts.push(`Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION}`);
+  } else {
+    promptParts.push(NO_PEOPLE_DIRECTION);
   }
 
   return promptParts.filter(Boolean).join("\n");
@@ -291,7 +294,9 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
   const footwear = isFootwearProduct(productInfo);
   return {
     videoStyle: isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle,
-    presenter: isAuto(settings.presenter) ? pickAutoReviewer(productInfo) : settings.presenter,
+    presenter: isAuto(settings.presenter)
+      ? (footwear ? "none" : (recommended.presenter ?? inferred.presenter ?? pickAutoReviewer(productInfo)))
+      : settings.presenter,
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
     location: isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location,
@@ -546,7 +551,7 @@ function resolveRawProductName(productInfo = {}) {
   ].find((value) => String(value || "").trim()) || "";
 }
 
-function segmentToHashtag(segment) {
+function segmentToHashtags(segment) {
   const cleaned = String(segment || "")
     .replace(/[（(][^）)]*[）)]/g, " ")
     .replace(/\[[^\]]*]/g, " ")
@@ -554,20 +559,27 @@ function segmentToHashtag(segment) {
     .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-  if (!cleaned) return "";
-  const chars = Array.from(cleaned);
-  const shortName = chars.length > 25 ? chars.slice(0, 25).join("").trim() : cleaned;
-  const tag = `#${shortName.replace(/\s+/g, "")}`;
-  return tag.length > 1 ? tag : "";
+  if (!cleaned) return [];
+
+  return cleaned.split(/\s+/).map((word) => {
+    const chars = Array.from(word);
+    const shortWord = chars.length > 25 ? chars.slice(0, 25).join("") : word;
+    return shortWord ? `#${shortWord}` : "";
+  }).filter(Boolean);
 }
 
-// แตกชื่อสินค้าตาม comma/ขีดคั่น เป็นหลาย hashtag (เช่น "Arzopa A1, จอภาพแบบพกพา," → #ArzopaA1 #จอภาพแบบพกพา)
+// แตกชื่อสินค้าตามคำและเครื่องหมายคั่น เช่น "POSE รองเท้านวด" → #POSE #รองเท้านวด
 export function buildProductNameHashtags(productInfo = {}) {
   const rawName = resolveRawProductName(productInfo);
   const tags = [];
+  const seen = new Set();
   for (const segment of String(rawName).split(/[,，、|/\n]+/)) {
-    const tag = segmentToHashtag(segment);
-    if (tag) tags.push(tag);
+    for (const tag of segmentToHashtags(segment)) {
+      const key = tag.toLocaleLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tags.push(tag);
+    }
   }
   return tags;
 }

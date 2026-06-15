@@ -500,6 +500,21 @@ function mediaCardFailureMessage(cardInfo, status) {
         ? `Google Flow สร้าง${cardInfo?.mediaUrl ? "สื่อ" : "ผลลัพธ์"}ไม่สำเร็จ: ${message}`
         : "Google Flow แสดงสถานะ Failed โดยไม่ระบุสาเหตุ";
 }
+function isProminentPeoplePolicyFailure(message) {
+    return /prominent people|generating prominent people/i.test(String(message || ""));
+}
+function buildPeopleSafePrompt(prompt) {
+    const cleaned = String(prompt || "")
+        .split(/\n+/)
+        .filter(line => !/^\s*Presenter:/i.test(line))
+        .map(line => line
+            .replace(/\b(?:a|an)\s+(?:trendy|stylish|young|adult|Thai|natural|professional|friendly|casual|cute|3D|stylized|\s)*(?:woman|man|person|presenter|reviewer|character)\b[^.;]*[.;]?/gi, " ")
+            .replace(/\s+/g, " ")
+            .trim())
+        .filter(Boolean)
+        .join("\n");
+    return `${cleaned}\nProduct-only scene. No people, faces, presenters, reviewers, characters, celebrities, or public figures.`;
+}
 function extractFlowFailureReason(el) {
     if (!el) return "";
     const failedLabel = [...el.querySelectorAll("div,span,p")]
@@ -537,6 +552,15 @@ function findMediaCardRetryButton(cardInfo) {
     }) || null;
 }
 async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGeneration) {
+    const failureReason = extractFlowFailureReason(findMediaCard(cardInfo));
+    if (isProminentPeoplePolicyFailure(failureReason)) {
+        log(`Flow ปฏิเสธบุคคลเด่น → สร้างใหม่แบบไม่มีคน (${attempt}/${maxAttempts})...`);
+        return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
+            policyFallback: "no-people",
+            failureReason
+        });
+    }
+
     const button = findMediaCardRetryButton(cardInfo);
     if (!button) return restartFailedGeneration(attempt, maxAttempts, restartGeneration);
 
@@ -564,13 +588,13 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
 
     return { started: false, error: "กด Retry แล้ว แต่ Google Flow ไม่เริ่มสร้างใหม่" };
 }
-async function restartFailedGeneration(attempt, maxAttempts, restartGeneration) {
+async function restartFailedGeneration(attempt, maxAttempts, restartGeneration, context = {}) {
     if (typeof restartGeneration !== "function") {
         return { started: false, error: "ไม่พบปุ่ม Retry และไม่มีข้อมูลสำหรับสร้างคำขอเดิมใหม่" };
     }
     log(`Flow ไม่มีปุ่ม Retry → สร้างคำขอเดิมใหม่อัตโนมัติ (${attempt}/${maxAttempts})...`);
     try {
-        await restartGeneration();
+        await restartGeneration(context);
         log("✅ Flow เริ่มสร้างคำขอเดิมใหม่แล้ว");
         return { started: true, error: "" };
     } catch (error) {
@@ -1721,7 +1745,8 @@ async function waitForResult(phase, options = {}) {
         if (pendingFailure) {
             if (!failureSeenAt) failureSeenAt = Date.now();
             const failureAge = Date.now() - failureSeenAt;
-            if (failureAge < failureGraceMs) {
+            const policyFailure = isProminentPeoplePolicyFailure(pendingFailure);
+            if (!policyFailure && failureAge < failureGraceMs) {
                 log(`Flow แสดง Failed ชั่วคราว รอผลลัพธ์สำเร็จอีก ${Math.ceil((failureGraceMs - failureAge) / 1000)}s...`);
                 await sleep(1000);
                 continue;
@@ -1862,13 +1887,16 @@ async function runPipeline(payload) {
 
         // 8. รอผลลัพธ์
         const resultPhase = phase === "combined" ? "image" : phase;
-        const restartInitialGeneration = async () => {
+        const restartInitialGeneration = async (context = {}) => {
             if (cfg.autoPortrait) await ensureConfig(resultPhase, options);
             const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload");
             if (attached.length !== uploadedTiles.length) {
                 throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบระหว่าง Retry");
             }
-            await setPrompt(initialPrompt);
+            const retryPrompt = context.policyFallback === "no-people"
+                ? buildPeopleSafePrompt(initialPrompt)
+                : initialPrompt;
+            await setPrompt(retryPrompt);
             await clickGenerate();
         };
         const result = await waitForResult(resultPhase, {
@@ -1903,7 +1931,7 @@ async function runPipeline(payload) {
             await clickGenerate();
 
             // 8b. รอผลลัพธ์วิดีโอ
-            const restartVideoGeneration = async () => {
+            const restartVideoGeneration = async (context = {}) => {
                 if (cfg.autoPortrait) await ensureConfig("video", options);
                 const retryAttached = await attachUploadsToPrompt(videoRefTiles, videoReferenceTab, {
                     allowFallback: false
@@ -1911,7 +1939,10 @@ async function runPipeline(payload) {
                 if (retryAttached.length !== 1) {
                     throw new Error("แนบภาพที่สร้างใหม่เป็น reference วิดีโอไม่สำเร็จระหว่าง Retry");
                 }
-                await setPrompt(prompt.videoPrompt);
+                const retryPrompt = context.policyFallback === "no-people"
+                    ? buildPeopleSafePrompt(prompt.videoPrompt)
+                    : prompt.videoPrompt;
+                await setPrompt(retryPrompt);
                 await clickGenerate();
             };
             const vidResult = await waitForResult("video", {

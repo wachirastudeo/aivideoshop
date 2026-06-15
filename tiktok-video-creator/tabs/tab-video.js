@@ -20,6 +20,7 @@ let settings = getDefaultSettings();
 let productQueue = [];
 let isProcessing = false;
 let stopRequested = false;
+const stopWaiters = new Set();
 
 export async function initVideoTab(injectedHelpers) {
   helpers = injectedHelpers;
@@ -27,7 +28,7 @@ export async function initVideoTab(injectedHelpers) {
   const { settings: savedOptions = {} } = await chrome.storage.sync.get("settings");
 
   const optionDefaults = {
-    videoStyle: savedOptions.defaultVideoStyle || "review",
+    videoStyle: savedOptions.defaultVideoStyle || "testimonial",
     presenter: savedOptions.defaultPresenter || "Auto",
     voiceTone: savedOptions.defaultVoiceTone || "Auto",
     language: savedOptions.defaultLanguage || "ไทย",
@@ -486,7 +487,7 @@ async function launchFlow(phase, product) {
     renderQueue();
 
     helpers.showStatus(phase === "image" ? "เปิด Google Flow เพื่อสร้างภาพ..." : "เปิด Google Flow เพื่อสร้างวิดีโอ...", "info");
-    const result = await openGoogleFlow(phase, prompt, image, buildFlowOptions(product));
+    const result = await runInterruptibly(() => openGoogleFlow(phase, prompt, image, buildFlowOptions(product)));
 
     if (phase === "image") {
       product.approvedImage = result?.resultUrl || product.approvedImage;
@@ -532,8 +533,11 @@ async function processQueue() {
 
   const options = buildFlowOptions();
   let errorCount = 0;
+  let finalMessage = "";
+  let finalLevel = "success";
 
-  for (let i = 0; i < productQueue.length; i += 1) {
+  try {
+    for (let i = 0; i < productQueue.length; i += 1) {
     if (stopRequested) break;
     const product = productQueue[i];
 
@@ -542,7 +546,7 @@ async function processQueue() {
       if (product.status === "idle" || !product.autoOptions || !product.structureAdvice) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังวิเคราะห์ออปชันวิดีโอด้วย AI...`, "info");
         try {
-          const analysis = await analyzeProductImages(getAnalysisProductImages(product), product);
+          const analysis = await runInterruptibly(() => analyzeProductImages(getAnalysisProductImages(product), product));
           assertNotStopped();
           // ไม่เขียน highlights ทับ — ให้ผู้ใช้กรอกเอง
           product.name = analysis.name || product.name;
@@ -566,6 +570,7 @@ async function processQueue() {
       const imgPrompt = buildImagePrompt(product, settings);
       const vidPrompt = buildVideoPrompt(product, settings);
       assertNotStopped();
+      helpers.logActivity?.(`สินค้า ${i + 1}: เปิด New Project ใหม่ใน Google Flow`, "info");
       const result = await openGoogleFlowWithLoginResume("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, getFlowProductImage(product), buildFlowOptions(product), product, i);
       assertNotStopped();
 
@@ -584,7 +589,7 @@ async function processQueue() {
         if (["download", "draft", "post"].includes(action)) {
           assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังดาวน์โหลดวิดีโออัตโนมัติ...`, "info");
-          const downloaded = await downloadVideo(product.videoUrl, product);
+          const downloaded = await runInterruptibly(() => downloadVideo(product.videoUrl, product));
           assertNotStopped();
           product.preparedVideoUrl = downloaded.videoUrl || product.preparedVideoUrl || "";
           product.preparedVideoMimeType = downloaded.mimeType || product.preparedVideoMimeType || "";
@@ -629,18 +634,24 @@ async function processQueue() {
       helpers.logActivity?.(`หยุดคิวที่สินค้า ${i + 1}: ${err.message}`, "error");
       break;
     }
-  }
+    }
 
-  const wasStopped = stopRequested;
-  isProcessing = false;
-  stopRequested = false;
-  setBatchButtons(false);
-  const finalMessage = wasStopped
-    ? "หยุดทำงานแล้ว"
-    : errorCount > 0
-      ? `จบโปรเซสเพราะ Error ${errorCount} รายการ`
-      : "สร้างเสร็จสมบูรณ์ทุกรายการ";
-  helpers.showStatus(finalMessage, wasStopped ? "info" : errorCount > 0 ? "error" : "success");
+    const wasStopped = stopRequested;
+    finalMessage = wasStopped
+      ? "หยุดทำงานแล้ว"
+      : errorCount > 0
+        ? `จบโปรเซสเพราะ Error ${errorCount} รายการ`
+        : "สร้างเสร็จสมบูรณ์ทุกรายการ";
+    finalLevel = wasStopped ? "info" : errorCount > 0 ? "error" : "success";
+  } catch (error) {
+    finalMessage = error?.message || "โปรเซสหยุดจากข้อผิดพลาด";
+    finalLevel = error?.code === "STOP_REQUESTED" ? "info" : "error";
+  } finally {
+    isProcessing = false;
+    stopRequested = false;
+    setBatchButtons(false);
+    helpers.showStatus(finalMessage || "จบการทำงานแล้ว", finalLevel);
+  }
 }
 
 async function retryPostStep(label, task) {
@@ -651,7 +662,7 @@ async function retryPostStep(label, task) {
       if (attempt > 1) {
         helpers.logActivity?.(`${label}: retry ${attempt}/${POST_RETRY_ATTEMPTS}`, "warning");
       }
-      return await task();
+      return await runInterruptibly(task);
     } catch (error) {
       if (stopRequested || error?.code === "STOP_REQUESTED") throw error;
       lastError = error;
@@ -666,7 +677,7 @@ async function retryPostStep(label, task) {
 async function openGoogleFlowWithLoginResume(phase, prompt, imageUrl, options, product, index) {
   while (!stopRequested) {
     try {
-      return await openGoogleFlow(phase, prompt, imageUrl, options);
+      return await runInterruptibly(() => openGoogleFlow(phase, prompt, imageUrl, options));
     } catch (error) {
       if (!isFlowLoginError(error)) throw error;
 
@@ -703,13 +714,44 @@ async function interruptibleDelay(ms, interval = 500) {
 
 function assertNotStopped() {
   if (!stopRequested) return;
+  throw createStopError();
+}
+
+function createStopError() {
   const error = new Error("หยุดทำงานแล้ว");
   error.code = "STOP_REQUESTED";
-  throw error;
+  return error;
+}
+
+function runInterruptibly(task) {
+  assertNotStopped();
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      stopWaiters.delete(onStop);
+      callback(value);
+    };
+    const onStop = () => finish(reject, createStopError());
+    stopWaiters.add(onStop);
+
+    Promise.resolve()
+      .then(() => {
+        assertNotStopped();
+        return task();
+      })
+      .then(
+        (value) => finish(resolve, value),
+        (error) => finish(reject, error)
+      );
+  });
 }
 
 async function requestStop() {
   stopRequested = true;
+  for (const stop of [...stopWaiters]) stop();
   helpers.showStatus("กำลังหยุด...", "info");
   await Promise.allSettled([
     chrome.runtime.sendMessage({ type: "FLOW_STOP" }),

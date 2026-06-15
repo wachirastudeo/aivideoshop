@@ -57,8 +57,12 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     assertPostMetadata({ productInfo, caption, hashtags });
   }
 
-  // เริ่มรอผลจริง (TIKTOK_DONE) ก่อนส่ง เพื่อไม่พลาด event
-  const donePromise = waitForTikTokDone(360000);
+  const jobId = crypto.randomUUID();
+  const storageKey = `tiktokJob:${jobId}`;
+  await chrome.storage.local.remove(storageKey);
+
+  // เริ่มรอผลจริงก่อนส่ง เพื่อไม่พลาด event หรือ redirect หลังคลิก Post
+  const donePromise = waitForTikTokDone(jobId, 360000);
 
   const response = await chrome.runtime.sendMessage({
     type: "TIKTOK_SEND_DRAFT",
@@ -77,17 +81,20 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
       privacy: postDefaults.privacy || "Public",
       aiGenerated: true,
       allowComment: postDefaults.allowComment !== false,
-      allowReuse: postDefaults.allowReuse !== false
+      allowReuse: postDefaults.allowReuse !== false,
+      jobId
     }
   });
 
   if (!response?.ok) {
     donePromise.cancel?.();
+    await chrome.storage.local.remove(storageKey);
     throw new Error(response?.error || "ส่งไป TikTok Studio ไม่สำเร็จ");
   }
 
   // content รัน pipeline เบื้องหลัง — รอผลจริงจาก TIKTOK_DONE (ไม่ใช่แค่ started)
   const done = await donePromise;
+  await chrome.storage.local.remove(storageKey);
   if (!done?.success) {
     throw new Error(done?.error || "อัปโหลด/โพสต์ TikTok ไม่สำเร็จ");
   }
@@ -96,28 +103,49 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
 
 /**
  * รอ event TIKTOK_DONE จาก content pipeline (ผ่าน listener แยก ไม่ค้าง message channel)
+ * @param {string} jobId
  * @param {number} timeoutMs
  * @returns {Promise<{success:boolean,error?:string,posted?:boolean,drafted?:boolean}> & {cancel:Function}}
  */
-function waitForTikTokDone(timeoutMs = 360000) {
+function waitForTikTokDone(jobId, timeoutMs = 360000) {
   let timer = null;
   let handler = null;
+  let storageHandler = null;
+  const storageKey = `tiktokJob:${jobId}`;
   const cleanup = () => {
     if (timer) clearTimeout(timer);
     if (handler) chrome.runtime.onMessage.removeListener(handler);
+    if (storageHandler) chrome.storage.onChanged.removeListener(storageHandler);
   };
   const promise = new Promise((resolve) => {
     handler = (msg) => {
-      if (msg?.type === "TIKTOK_DONE") {
+      if (msg?.type === "TIKTOK_DONE" && msg.payload?.jobId === jobId) {
         cleanup();
         resolve(msg.payload || { success: false, error: "ไม่ทราบผลอัปโหลด" });
       }
     };
     chrome.runtime.onMessage.addListener(handler);
+
+    storageHandler = (changes, areaName) => {
+      if (areaName !== "local") return;
+      const payload = changes[storageKey]?.newValue;
+      if (!payload || payload.jobId !== jobId) return;
+      cleanup();
+      resolve(payload);
+    };
+    chrome.storage.onChanged.addListener(storageHandler);
+
     timer = setTimeout(() => {
       cleanup();
       resolve({ success: false, error: "หมดเวลารอผลอัปโหลด TikTok (6 นาที)" });
     }, timeoutMs);
+
+    chrome.storage.local.get(storageKey).then((stored) => {
+      const payload = stored[storageKey];
+      if (!payload || payload.jobId !== jobId) return;
+      cleanup();
+      resolve(payload);
+    });
   });
   promise.cancel = cleanup;
   return promise;

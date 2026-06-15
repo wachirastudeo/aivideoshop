@@ -42,7 +42,7 @@ async function loadOptions() {
   setChecked("show-generation-progress", media.showProgress !== false);
 
   // Video defaults
-  setSelectValue("default-video-style", settings.defaultVideoStyle || "review");
+  setSelectValue("default-video-style", settings.defaultVideoStyle || "testimonial");
   setSelectValue("default-language", settings.defaultLanguage || "ไทย");
   setSelectValue("default-presenter", settings.defaultPresenter || "Auto");
   setSelectValue("default-voice-tone", settings.defaultVoiceTone || "Auto");

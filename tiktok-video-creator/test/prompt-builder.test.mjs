@@ -36,14 +36,30 @@ const prodA = {
 const capA = buildCaption(prodA, { captionTemplate: "{product_name}" });
 check("caption starts with product name", capA.trim().startsWith("Arzopa"), `cap=${capA}`);
 
-// --- hashtags: split comma-separated name into multiple tags ---
+// --- hashtags: split product title into word-level tags ---
 const nameTags = buildProductNameHashtags({ name: "Arzopa A1, จอภาพแบบพกพา, monitor" });
 check("name hashtags split on comma", nameTags.length >= 2, `tags=${JSON.stringify(nameTags)}`);
 check("name hashtags are #-prefixed", nameTags.every(t => t.startsWith("#")), `tags=${JSON.stringify(nameTags)}`);
+eq(
+  "product title words become separate hashtags",
+  buildProductNameHashtags({ name: "POSE รองเท้านวด" }),
+  ["#POSE", "#รองเท้านวด"]
+);
+eq(
+  "duplicate product title words are removed",
+  buildProductNameHashtags({ name: "POSE pose รองเท้านวด" }),
+  ["#POSE", "#รองเท้านวด"]
+);
 
 const postTags = buildPostHashtags(prodA, { hashtags: ["#tiktokshop", "#ของดีบอกต่อ"] });
 check("post hashtags <= 5", normalizeHashtags(postTags).length <= 5, `tags=${JSON.stringify(postTags)}`);
 check("post hashtags include base tag", postTags.some(t => /tiktokshop/i.test(t)), `tags=${JSON.stringify(postTags)}`);
+const posePostTags = buildPostHashtags(
+  { name: "POSE รองเท้านวด Relax Air EVA" },
+  { hashtags: ["#TikTokShop", "#ของดีบอกต่อ"] }
+);
+check("post hashtags include POSE title word", posePostTags.includes("#POSE"), `tags=${JSON.stringify(posePostTags)}`);
+check("post hashtags include Thai product word", posePostTags.includes("#รองเท้านวด"), `tags=${JSON.stringify(posePostTags)}`);
 
 // --- product url resolution ---
 const url = resolveProductUrl(prodA);
@@ -58,11 +74,31 @@ const vid = buildVideoPrompt({ name: "ครีมบำรุงผิว", hig
 check("video prompt locks only the product object", /preserve only its exact shape/i.test(vid));
 check("video prompt mentions sharp/clear product", /razor-sharp|clearly visible/i.test(vid), "missing sharpness directive");
 check("video prompt is 9:16 vertical", /9:16|vertical/i.test(vid));
+check("default video forbids all readable text", /Text-free output[\s\S]*no words, letters, numbers, logos/i.test(vid), vid);
+check("default video does not preserve printed source text", !/Preserve only text printed|Keep only text already printed/i.test(vid), vid);
 
 // --- image prompt: fidelity + sharp focus ---
 const img = buildImagePrompt({ name: "ครีมบำรุงผิว", highlights: "" }, settings);
 check("image prompt mentions fidelity", /preserve only its exact shape/i.test(img));
 check("image prompt sharp focus", /sharp and clearly visible|sharp focus/i.test(img));
+check("reference image always forbids readable text", /Text-free output[\s\S]*packaging copy/i.test(img), img);
+
+const staleTextSettings = {
+  ...settings,
+  showName: "false",
+  promotionText: "ลด 50%",
+  cta: "กดซื้อเลย"
+};
+const staleTextVideo = buildVideoPrompt({ name: "รองเท้าทดสอบ" }, staleTextSettings);
+check("disabled text ignores stale promotion and CTA", !/ลด 50%|กดซื้อเลย/.test(staleTextVideo), staleTextVideo);
+
+const enabledTextVideo = buildVideoPrompt(
+  { name: "รองเท้าทดสอบ" },
+  { ...settings, showName: "true", promotionText: "ส่งฟรี", textPosition: "Top third" }
+);
+check("enabled text uses only configured overlays", /รองเท้าทดสอบ \| ส่งฟรี/.test(enabledTextVideo), enabledTextVideo);
+check("enabled text respects configured position", /at Top third/i.test(enabledTextVideo), enabledTextVideo);
+check("enabled text does not inject default CTA", !/กดสั่งซื้อ|กดซื้อเลย/.test(enabledTextVideo), enabledTextVideo);
 
 // --- structural fidelity: source image overrides ambiguous title variants ---
 const cabinet = {
@@ -86,7 +122,7 @@ check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabin
 check("image prompt stays concise", cabinetImage.length < 1500, `length=${cabinetImage.length}`);
 check("video prompt stays concise", cabinetVideo.length < 1600, `length=${cabinetVideo.length}`);
 
-// --- footwear fidelity: preserve the exact model with stable Auto reviewer ---
+// --- footwear fidelity: preserve the exact model without people by default ---
 const shoe = {
   name: "รองเท้าผ้าใบผู้หญิง สีขาว",
   highlights: "",
@@ -96,15 +132,16 @@ const shoeImage = buildImagePrompt(shoe, settings);
 const shoeVideo = buildVideoPrompt(shoe, settings);
 check("shoe prompt locks shoe-specific geometry", /toe shape[\s\S]*sole thickness[\s\S]*lace pattern/i.test(shoeImage));
 check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.test(shoeImage));
-check("shoe video uses male or female reviewer", /Presenter: (?:A trendy young Thai woman|A stylish young Thai man)/i.test(shoeVideo));
-check("shoe reviewer cannot deform product", /do not wear, cover, bend, or deform it/i.test(shoeVideo));
+check("shoe video defaults to product-only", !/Presenter:/i.test(shoeVideo));
+check("shoe video explicitly forbids people", /No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
 check("shoe prompts remain concise", shoeImage.length < 1500 && shoeVideo.length < 1600, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
-// --- default behavior: review style + stable Auto reviewer ---
+// --- default behavior: UGC style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
 const generalReviewB = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
-check("default video is product review", /Product-review format/i.test(generalReviewA));
+check("default style is UGC testimonial", settings.videoStyle === "testimonial");
+check("default video uses UGC testimonial", /UGC testimonial format/i.test(generalReviewA));
 check("Auto reviewer is stable per product", generalReviewA === generalReviewB);
 check("Auto reviewer is male or female", /Presenter: (?:A trendy young Thai woman|A stylish young Thai man)/i.test(generalReviewA));
 

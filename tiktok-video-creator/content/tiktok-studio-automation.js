@@ -97,14 +97,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     // ตอบกลับทันที (started) แล้วรัน pipeline เบื้องหลัง — กัน message channel ปิดตอน pipeline ยาว
     sendResponse({ ok: true, started: true });
     handleVideoUpload(message.payload)
-      .then((result) => sendDone({ success: true, ...result }))
+      .then((result) => sendDone({ success: true, jobId: message.payload?.jobId || "", ...result }))
       .catch((err) => {
         if (err?.code === "STOP_REQUESTED") {
-          sendDone({ success: true, stopped: true });
+          sendDone({ success: true, stopped: true, jobId: message.payload?.jobId || "" });
           return;
         }
         const error = err instanceof Error ? err.message : String(err);
-        sendDone({ success: false, error });
+        sendDone({ success: false, error, jobId: message.payload?.jobId || "" });
       });
     return false;
   }

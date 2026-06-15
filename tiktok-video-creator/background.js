@@ -49,6 +49,8 @@ async function routeMessage(message, sender) {
 // เพราะ infobar "extension started debugging" ดันหน้าลง ถ้า detach แล้ว attach ใหม่
 // พิกัดที่วัดไว้ก่อนหน้าจะเพี้ยน ทำให้คลิก Generate พลาดตำแหน่ง
 const attachedDebuggerTabs = new Set();
+let flowStopVersion = 0;
+let tiktokStopVersion = 0;
 
 async function ensureDebuggerAttached(tabId) {
   if (attachedDebuggerTabs.has(tabId)) return;
@@ -172,6 +174,7 @@ async function openCreatorTab() {
 }
 
 async function openGoogleFlow(payload) {
+  const runVersion = flowStopVersion;
   const FLOW_URL = "https://labs.google/fx/tools/flow";
   const existingTabs = await queryFlowTabs();
   let tab;
@@ -210,8 +213,11 @@ async function openGoogleFlow(payload) {
 
   // รอ content script พร้อม หรือ inject เองถ้า tab เปิดอยู่ก่อน reload extension
   await ensureFlowContentScript(tab.id);
-  await prepareFlowProject(tab.id);
+  // Every product job owns a separate Flow project. Keep this invariant here
+  // even if callers or navigation behavior change later.
+  await prepareFlowProject(tab.id, { forceNew: true });
   await ensureFlowContentScript(tab.id);
+  assertRunNotStopped(runVersion, flowStopVersion);
 
   const jobId = String(payload.jobId || "");
   if (!jobId) throw new Error("ไม่พบ Flow job ID");
@@ -238,6 +244,10 @@ async function openGoogleFlow(payload) {
   if (!started?.accepted) {
     throw new Error(started?.error || "Google Flow ไม่รับคำสั่งเริ่มงาน");
   }
+  if (runVersion !== flowStopVersion) {
+    await chrome.tabs.sendMessage(tab.id, { type: "FLOW_STOP" }).catch(() => {});
+    throw createBackgroundStopError();
+  }
 
   return { tabId: tab.id, jobId, started: true };
 }
@@ -251,8 +261,14 @@ async function handleFlowPipelineDone(payload = {}) {
   return { received: true };
 }
 
-async function prepareFlowProject(tabId) {
-  const current = await chrome.tabs.get(tabId);
+async function prepareFlowProject(tabId, { forceNew = false } = {}) {
+  let current = await chrome.tabs.get(tabId);
+  if (forceNew && isFlowProjectUrl(current.url || "")) {
+    await chrome.tabs.update(tabId, { url: "https://labs.google/fx/tools/flow" });
+    await waitForTabComplete(tabId);
+    await ensureFlowContentScript(tabId);
+    current = await chrome.tabs.get(tabId);
+  }
   if (isFlowProjectUrl(current.url || "")) return;
 
   const response = await chrome.tabs.sendMessage(tabId, { type: "FLOW_PREPARE_PROJECT" });
@@ -297,22 +313,25 @@ async function getFlowSettings() {
 }
 
 async function stopFlowPipeline() {
+  flowStopVersion += 1;
   const tabs = await queryFlowTabs();
-  for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { type: "FLOW_STOP" }).catch(() => { });
-  }
-  return { ok: true };
+  await Promise.allSettled(tabs.map(async (tab) => {
+    await chrome.tabs.sendMessage(tab.id, { type: "FLOW_STOP" });
+    await detachDebuggerTab(tab.id);
+  }));
+  return { ok: true, stoppedTabs: tabs.length };
 }
 
 async function stopTikTokStudioPipeline() {
+  tiktokStopVersion += 1;
   const tabs = [
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/*" })),
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktok-studio/*" })),
   ];
-  for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { type: "TIKTOK_STOP" }).catch(() => {});
-  }
-  return { ok: true };
+  await Promise.allSettled(
+    tabs.map((tab) => chrome.tabs.sendMessage(tab.id, { type: "TIKTOK_STOP" }))
+  );
+  return { ok: true, stoppedTabs: tabs.length };
 }
 
 async function queryFlowTabs() {
@@ -427,6 +446,7 @@ const VIDEO_PREP_RETRY_DELAY_MS = 60000;
 
 // ─── TikTok Studio: Send draft/post ผ่าน Page UI Automation บนหน้า upload ──────
 async function sendTikTokDraft(payload) {
+  const runVersion = tiktokStopVersion;
   const { videoUrl, caption = "", hashtags = [] } = payload;
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const postDefaults = settings.postDefaults || {};
@@ -466,6 +486,11 @@ async function sendTikTokDraft(payload) {
   
   const dataUrl = `data:${mimeType || "video/mp4"};base64,${base64Data}`;
   const videoPayloadUrl = await transferVideoDataUrl(tabId, dataUrl);
+  assertRunNotStopped(runVersion, tiktokStopVersion);
+  const completionMonitor = monitorTikTokSubmission(tabId, {
+    jobId: payload.jobId || "",
+    mode
+  });
   const response = await chrome.tabs.sendMessage(tabId, {
     type: "TIKTOK_UPLOAD_VIDEO",
     payload: {
@@ -483,17 +508,72 @@ async function sendTikTokDraft(payload) {
       privacy: payload.privacy ?? postDefaults.privacy ?? "",
       aiGenerated: true,
       allowComment: payload.allowComment ?? postDefaults.allowComment ?? true,
-      allowReuse: payload.allowReuse ?? postDefaults.allowReuse ?? true
+      allowReuse: payload.allowReuse ?? postDefaults.allowReuse ?? true,
+      jobId: payload.jobId || ""
     }
   });
 
   if (!response?.ok) {
+    completionMonitor.cancel();
     throw new Error(response?.error || "การกรอกและอัปโหลดวิดีโอบนหน้าเว็บล้มเหลว");
+  }
+  if (runVersion !== tiktokStopVersion) {
+    completionMonitor.cancel();
+    await chrome.tabs.sendMessage(tabId, { type: "TIKTOK_STOP" }).catch(() => {});
+    throw createBackgroundStopError();
   }
 
   // content รัน pipeline เบื้องหลังและตอบ started ทันที — ผลจริงจะมาทาง TIKTOK_DONE
   await notify("TikTok Automation", "เริ่มอัปโหลด/กรอกข้อมูลบนหน้า TikTok แล้ว ดูความคืบหน้าที่แท็บ TikTok");
   return { ok: true, started: true };
+}
+
+function monitorTikTokSubmission(tabId, { jobId = "", mode = "post" } = {}) {
+  let finished = false;
+  let timer = null;
+  const storageKey = jobId ? `tiktokJob:${jobId}` : "";
+  const cleanup = () => {
+    if (finished) return;
+    finished = true;
+    chrome.tabs.onUpdated.removeListener(onUpdated);
+    if (timer) clearTimeout(timer);
+  };
+  const complete = async (url) => {
+    if (finished || !storageKey) return;
+    cleanup();
+    await chrome.storage.local.set({
+      [storageKey]: {
+        success: true,
+        jobId,
+        posted: mode === "post",
+        drafted: mode === "draft",
+        mode,
+        completionUrl: url,
+        completedAt: new Date().toISOString()
+      }
+    });
+  };
+  const onUpdated = (updatedTabId, changeInfo, tab) => {
+    if (updatedTabId !== tabId) return;
+    const url = changeInfo.url || tab?.url || "";
+    if (/\/tiktokstudio\/content(?:[?#]|$)/i.test(url)) {
+      complete(url).catch(() => {});
+    }
+  };
+  chrome.tabs.onUpdated.addListener(onUpdated);
+  timer = setTimeout(cleanup, 6 * 60 * 1000);
+  return { cancel: cleanup };
+}
+
+function assertRunNotStopped(runVersion, currentVersion) {
+  if (runVersion === currentVersion) return;
+  throw createBackgroundStopError();
+}
+
+function createBackgroundStopError() {
+  const error = new Error("หยุดทำงานแล้ว");
+  error.code = "STOP_REQUESTED";
+  return error;
 }
 
 async function retryVideoPreparation(videoUrl) {
@@ -680,6 +760,9 @@ async function openTikTokStudioUploadTab() {
 
 async function handleTikTokDone(payload = {}) {
   console.log("TikTok Done:", payload);
+  if (payload.jobId) {
+    await chrome.storage.local.set({ [`tiktokJob:${payload.jobId}`]: payload });
+  }
   if (payload.stopped) {
     await notify("TikTok Automation", "หยุดการอัปโหลด TikTok แล้ว");
     return { ok: true };
