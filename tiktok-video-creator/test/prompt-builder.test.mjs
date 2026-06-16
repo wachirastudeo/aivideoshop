@@ -122,18 +122,18 @@ check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabin
 check("image prompt stays concise", cabinetImage.length < 1500, `length=${cabinetImage.length}`);
 check("video prompt stays concise", cabinetVideo.length < 1600, `length=${cabinetVideo.length}`);
 
-// --- footwear fidelity: preserve the exact model without people by default ---
+// --- footwear fidelity: preserve the exact model while Auto includes a reviewer ---
 const shoe = {
   name: "รองเท้าผ้าใบผู้หญิง สีขาว",
   highlights: "",
-  autoOptions: { presenter: "woman", cameraMovement: "Handheld Shake", location: "Urban Street" }
+  autoOptions: { presenter: "none", cameraMovement: "Handheld Shake", location: "Urban Street" }
 };
 const shoeImage = buildImagePrompt(shoe, settings);
 const shoeVideo = buildVideoPrompt(shoe, settings);
 check("shoe prompt locks shoe-specific geometry", /toe shape[\s\S]*sole thickness[\s\S]*lace pattern/i.test(shoeImage));
 check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.test(shoeImage));
-check("shoe video defaults to product-only", !/Presenter:/i.test(shoeVideo));
-check("shoe video explicitly forbids people", /No people, faces, presenters/i.test(shoeVideo));
+check("shoe video Auto includes a reviewer", /Presenter: (?:A trendy young Thai woman|A stylish young Thai man)/i.test(shoeVideo));
+check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
 check("shoe prompts remain concise", shoeImage.length < 1500 && shoeVideo.length < 1600, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
@@ -144,6 +144,22 @@ check("default style is UGC testimonial", settings.videoStyle === "testimonial")
 check("default video uses UGC testimonial", /UGC testimonial format/i.test(generalReviewA));
 check("Auto reviewer is stable per product", generalReviewA === generalReviewB);
 check("Auto reviewer is male or female", /Presenter: (?:A trendy young Thai woman|A stylish young Thai man)/i.test(generalReviewA));
+check(
+  "women product selects Thai woman reviewer",
+  /Presenter: A trendy young Thai woman/i.test(buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง", productId: "women-shoe" }, settings))
+);
+check(
+  "tools product selects Thai man reviewer",
+  /Presenter: A stylish young Thai man/i.test(buildVideoPrompt({ name: "สว่านไฟฟ้าสำหรับช่าง", productId: "power-drill" }, settings))
+);
+check(
+  "AI real-reviewer recommendation is respected",
+  /Presenter: A stylish young Thai man/i.test(buildVideoPrompt({
+    name: "น้ำหอมรุ่นใหม่",
+    productId: "recommended-man",
+    autoOptions: { presenter: "man" }
+  }, settings))
+);
 
 // Explicit presenter choice must override Auto.
 const explicitNone = buildVideoPrompt(
@@ -151,6 +167,7 @@ const explicitNone = buildVideoPrompt(
   { ...settings, presenter: "none" }
 );
 check("explicit presenter choice wins", !/Presenter:/i.test(explicitNone));
+check("explicit no-presenter forbids people", /No people, faces, presenters/i.test(explicitNone));
 
 // --- auto presenter/location inference by category (beauty -> reviewer) ---
 const vidBeauty = buildVideoPrompt({ name: "เซรั่มหน้าใส วิตามินซี", highlights: "" }, settings);

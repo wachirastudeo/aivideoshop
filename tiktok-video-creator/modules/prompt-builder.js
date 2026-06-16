@@ -88,7 +88,7 @@ const PRESENTERS = {
   living_product: "The product itself becomes a living character with cute 3D eyes and personality"
 };
 
-const THAI_PERSON_DIRECTION = "Make the reviewer clearly Thai and natural. Keep the product fully visible and unchanged; do not wear, cover, bend, or deform it.";
+const THAI_PERSON_DIRECTION = "Natural Thai reviewer. Keep the product visible and unchanged; do not wear, cover, bend, or deform it.";
 
 const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the single product. Preserve only its exact shape, proportions, structure/count, materials, colors, hardware, labels, and printed details; the visible product overrides conflicting title variants. Do not redesign it.";
 
@@ -294,9 +294,9 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
   const footwear = isFootwearProduct(productInfo);
   return {
     videoStyle: isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle,
-    presenter: isAuto(settings.presenter)
-      ? (footwear ? "none" : (recommended.presenter ?? inferred.presenter ?? pickAutoReviewer(productInfo)))
-      : settings.presenter,
+    // Auto always includes a real reviewer. People-free output is only allowed
+    // when the user explicitly selects the "none" presenter option.
+    presenter: isAuto(settings.presenter) ? pickAutoReviewer(productInfo) : settings.presenter,
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
     location: isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location,
@@ -363,6 +363,30 @@ function isFootwearProduct(productInfo = {}) {
 }
 
 function pickAutoReviewer(productInfo = {}) {
+  const recommended = productInfo.autoOptions?.presenter;
+  if (recommended === "woman" || recommended === "man") return recommended;
+
+  const productText = [
+    productInfo.name,
+    productInfo.originalName,
+    productInfo.category,
+    productInfo.highlights,
+    productInfo.targetGroup
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  if (/(ผู้หญิง|สตรี|สาว|คุณแม่|แม่และเด็ก|woman|women|female|lady|ladies|girl|girls|maternity|mom|mother)/i.test(productText)) {
+    return "woman";
+  }
+  if (/(ผู้ชาย|บุรุษ|หนุ่ม|ช่าง|man|men|male|boy|boys|gentleman|mechanic)/i.test(productText)) {
+    return "man";
+  }
+  if (/(ครีม|เซรั่ม|สกินแคร์|เมคอัพ|เครื่องสำอาง|ลิป|มาสคาร่า|น้ำหอม|เครื่องประดับ|กระเป๋า|beauty|skincare|makeup|cosmetic|lipstick|jewelry|handbag)/i.test(productText)) {
+    return "woman";
+  }
+  if (/(เครื่องมือ|สว่าน|ประแจ|ไขควง|รถยนต์|มอเตอร์ไซค์|อะไหล่|เกมมิ่ง|tool|drill|wrench|screwdriver|automotive|motorcycle|gaming)/i.test(productText)) {
+    return "man";
+  }
+
   const identity = String(
     productInfo.productId ||
     productInfo.product_id ||
