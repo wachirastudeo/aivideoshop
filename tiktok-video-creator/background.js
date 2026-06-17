@@ -27,6 +27,8 @@ async function routeMessage(message, sender) {
     case "FETCH_PRODUCTS":          return fetchShowcaseProducts(message.payload);
     case "PULL_SHOPEE_PRODUCTS":     return pullShopeeProducts(message.payload);
     case "SHOPEE_CLICK_POINT":       return clickPointWithDebugger(message.payload, sender);
+    case "SHOPEE_FETCH_IMAGES":      return fetchShopeeImages(message.payload);
+    case "SHOPEE_CLOSE_SCRAPE_TAB":  return closeShopeeScrapeTab();
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
     case "DOWNLOAD_VIDEO":           return downloadVideo(message.payload);
     case "POST_TO_TIKTOK":           return postToTikTok(message.payload);
@@ -385,6 +387,75 @@ async function ensureFlowContentScript(tabId) {
 }
 
 const SHOPEE_OFFER_URL = "https://affiliate.shopee.co.th/offer/product_offer";
+
+// แท็บที่ใช้เปิดหน้าสินค้าจริงทีละลิงก์เพื่อดึง gallery (reuse ตัวเดียว)
+let shopeeScrapeTabId = null;
+
+async function closeShopeeScrapeTab() {
+  if (shopeeScrapeTabId != null) {
+    try { await chrome.tabs.remove(shopeeScrapeTabId); } catch { }
+    shopeeScrapeTabId = null;
+  }
+  return { closed: true };
+}
+
+// เปิดลิงก์สินค้าจริง 1 ลิงก์ แล้วดึงรูปทั้งหมด (gallery)
+// ถ้า Shopee เด้งหน้า anti-bot/verify → คืน blocked:true (ไม่ข้าม)
+async function fetchShopeeImages({ productUrl } = {}) {
+  if (!/^https:\/\/(?:[\w-]+\.)?shopee\.co\.th\//.test(productUrl || "")) {
+    return { images: [], error: "ลิงก์สินค้าไม่ถูกต้อง" };
+  }
+
+  let tab = null;
+  if (shopeeScrapeTabId != null) {
+    try { tab = await chrome.tabs.get(shopeeScrapeTabId); } catch { shopeeScrapeTabId = null; }
+  }
+  if (tab) {
+    await chrome.tabs.update(shopeeScrapeTabId, { url: productUrl });
+  } else {
+    // active:true เพื่อให้ผู้ใช้เห็น/กดผ่าน captcha ของ Shopee เองได้ถ้าโดนกัน
+    tab = await chrome.tabs.create({ url: productUrl, active: true });
+    shopeeScrapeTabId = tab.id;
+  }
+  await waitForTabComplete(shopeeScrapeTabId);
+  await delay(2000); // รอ gallery render
+
+  let result;
+  try {
+    [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: shopeeScrapeTabId },
+      func: scrapeShopeeGallery
+    });
+  } catch (error) {
+    return { images: [], error: "อ่านหน้าสินค้าไม่สำเร็จ: " + error.message };
+  }
+  return result || { images: [] };
+}
+
+// รันในหน้าสินค้า shopee.co.th — เก็บ URL รูปทั้งหมดจาก gallery
+function scrapeShopeeGallery() {
+  if (/verify\/traffic|anti_bot|\/captcha/i.test(location.href)) {
+    return { images: [], blocked: true };
+  }
+  const set = new Set();
+  const norm = (s) => {
+    if (!s) return "";
+    if (s.startsWith("//")) s = "https:" + s;
+    return s.split("@")[0].split("_tn")[0]; // ตัด suffix resize/thumbnail → รูปเต็ม
+  };
+  // 1) รูปจาก <img> ที่อยู่บน CDN ของ Shopee
+  document.querySelectorAll("img").forEach((img) => {
+    const s = img.currentSrc || img.src || img.getAttribute("data-src") || "";
+    if (/susercontent\.com\//.test(s) && !/icon|logo|label|rating/i.test(s)) set.add(norm(s));
+  });
+  // 2) background-image (gallery thumbnails บางตัวเป็น div bg)
+  document.querySelectorAll('[style*="susercontent"]').forEach((el) => {
+    const m = (el.getAttribute("style") || "").match(/url\(["']?([^"')]+susercontent[^"')]+)["']?\)/);
+    if (m) set.add(norm(m[1]));
+  });
+  const images = [...set].filter((u) => u && u.length > 30).slice(0, 9);
+  return { images, blocked: false };
+}
 
 async function pullShopeeProducts({ keyword, count, mode, minCommission } = {}) {
   if (!keyword) throw new Error("ไม่มีคำค้นหา");

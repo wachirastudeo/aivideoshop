@@ -23,6 +23,12 @@
     </div>
     <button id="shopee-pull" class="button button--primary button--full" type="button">ดึง → Export CSV + ทำวิดีโอ</button>
     <div id="shopee-status" class="hint" aria-live="polite"></div>
+
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0;">
+    <p class="hint">มีไฟล์ CSV อยู่แล้ว? อัปโหลดเพื่อไล่เปิดทีละลิงก์ดึงรูปจริง (หลายรูป/ชิ้น) แล้วทำวิดีโอ</p>
+    <input id="shopee-csv" type="file" accept=".csv,text/csv" hidden>
+    <button id="shopee-csv-btn" class="button button--ghost button--full" type="button">อัปโหลด CSV → ดึงรูปทำรายการ</button>
+    <div id="shopee-csv-progress" class="hint" aria-live="polite"></div>
   </div>
 </section>
 

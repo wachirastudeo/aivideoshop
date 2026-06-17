@@ -51,6 +51,133 @@ function applySource(source) {
  */
 function bindShopeeEvents() {
   document.querySelector("#shopee-pull")?.addEventListener("click", () => runShopeePull());
+
+  const csvBtn = document.querySelector("#shopee-csv-btn");
+  const csvInput = document.querySelector("#shopee-csv");
+  csvBtn?.addEventListener("click", () => csvInput?.click());
+  csvInput?.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // reset เพื่อเลือกไฟล์เดิมซ้ำได้
+    if (file) await importShopeeCsv(file);
+  });
+}
+
+/**
+ * @description อ่านไฟล์ CSV → ตัดคำ → ไล่เปิดลิงก์สินค้าดึงรูปจริง → ทำรายการ → หน้าวิดีโอ
+ */
+async function importShopeeCsv(file) {
+  const btn = document.querySelector("#shopee-csv-btn");
+  const setProg = (t, type) => {
+    const el = document.querySelector("#shopee-csv-progress");
+    if (el) { el.textContent = t; el.style.color = type === "error" ? "#e23" : type === "success" ? "#1a7" : ""; }
+  };
+
+  try {
+    if (btn) btn.disabled = true;
+    const text = await file.text();
+    const rows = parseShopeeCsv(text);
+    if (!rows.length) throw new Error("ไฟล์ว่างหรืออ่านไม่ออก");
+
+    setProg(`พบ ${rows.length} สินค้า — เริ่มดึงรูป...`);
+    helpers.logActivity?.(`อ่าน CSV: ${rows.length} สินค้า`);
+
+    const built = [];
+    let blocked = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      setProg(`กำลังดึงรูป ${i + 1}/${rows.length}: ${row.name.slice(0, 24)}...`);
+      let images = [];
+      if (row.productUrl) {
+        const res = await chrome.runtime.sendMessage({ type: "SHOPEE_FETCH_IMAGES", payload: { productUrl: row.productUrl } });
+        if (res?.ok) {
+          images = res.images || [];
+          if (res.blocked) blocked++;
+        }
+      }
+      built.push({
+        productId: row.productId,
+        name: row.name,
+        price: row.price,
+        currency: "THB",
+        displayImageUrl: images[0] || "",
+        imageUrls: images,                 // หลายรูป → image picker ใช้งานได้
+        selectedImageUrls: images.slice(0, 1),
+        productUrl: row.productUrl || row.offerUrl,
+        shopName: row.shopName,
+        commission: row.commission,
+        commissionRate: "",
+        stockCount: "1",
+        source: "shopee"
+      });
+    }
+    await chrome.runtime.sendMessage({ type: "SHOPEE_CLOSE_SCRAPE_TAB" });
+
+    // แสดงเป็นรายการ (เหมือน TikTok) — เลือกรูป/เลือกสินค้า แล้วกดสร้างวิดีโอเอง
+    products = built;
+    selectedIds.clear();
+    currentPage = 1;
+    applySource("tiktok");
+    renderProducts();
+    const blockNote = blocked ? ` (${blocked} ชิ้นโดน Shopee กัน captcha ดึงรูปไม่ได้)` : "";
+    setProg(`ทำรายการ ${built.length} ชิ้นแล้ว — เลือกรูป/สินค้าแล้วกดสร้างวิดีโอ${blockNote}`, "success");
+    helpers.logActivity?.(`CSV → รายการ ${built.length} ชิ้น${blockNote}`, "success");
+  } catch (error) {
+    setProg(error.message, "error");
+    helpers.logActivity?.(`อ่าน CSV ไม่สำเร็จ: ${error.message}`, "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/**
+ * @description ตัดคำ CSV ของ Shopee (รองรับ field มี comma ในเครื่องหมายคำพูด)
+ * คอลัมน์: รหัสสินค้า,ชื่อสินค้า,ราคา,ขาย,ชื่อร้านค้า,อัตราค่าคอมมิชชัน,คอมมิชชัน,ลิงก์สินค้า,ลิงก์ข้อเสนอ
+ */
+function parseShopeeCsv(text) {
+  const clean = text.replace(/^﻿/, "");
+  const lines = clean.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+
+  const splitRow = (line) => {
+    const cells = [];
+    let cur = "", inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if (c === "," && !inQuotes) { cells.push(cur); cur = ""; }
+      else cur += c;
+    }
+    cells.push(cur);
+    return cells;
+  };
+
+  const header = splitRow(lines[0]).map((h) => h.trim());
+  const idx = (name) => header.findIndex((h) => h.includes(name));
+  const col = {
+    id: idx("รหัสสินค้า"),
+    name: idx("ชื่อสินค้า"),
+    price: idx("ราคา"),
+    shop: idx("ชื่อร้าน"),
+    comm: idx("คอมมิชชัน"),
+    link: idx("ลิงก์สินค้า"),
+    offer: idx("ลิงก์ข้อเสนอ")
+  };
+
+  return lines.slice(1).map((line) => {
+    const c = splitRow(line);
+    const get = (i) => (i >= 0 ? (c[i] || "").trim() : "");
+    return {
+      productId: get(col.id),
+      name: get(col.name),
+      price: get(col.price).replace(/[^\d.]/g, ""),
+      shopName: get(col.shop),
+      commission: get(col.comm),
+      productUrl: get(col.link),
+      offerUrl: get(col.offer)
+    };
+  }).filter((r) => r.productUrl || r.productId);
 }
 
 async function runShopeePull() {
