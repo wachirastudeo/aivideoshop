@@ -168,8 +168,23 @@
     };
   }
 
-  async function run(keyword, count, mode = "export") {
-    log(`run keyword="${keyword}" count=${count} mode=${mode}`);
+  function getCardCommission(card) {
+    const t = card?.querySelector(".commRate")?.textContent || "";
+    return parseFloat((t.match(/(\d+(?:\.\d+)?)%/) || [])[1] || "0") || 0;
+  }
+
+  // เรียงผลลัพธ์ตามค่าคอมจากมากไปน้อย (ปุ่ม "คอมมิชชัน (%)")
+  async function sortByCommissionDesc() {
+    const btn = [...document.querySelectorAll("span, button, div, a")]
+      .find((e) => visible(e) && (e.textContent || "").trim() === "คอมมิชชัน (%)" && e.querySelectorAll("*").length <= 1);
+    if (!btn) return false;
+    btn.click();
+    await sleep(2500);
+    return true;
+  }
+
+  async function run(keyword, count, mode = "export", minCommission = 0) {
+    log(`run keyword="${keyword}" count=${count} mode=${mode} minComm=${minCommission}`);
 
     // 1) ค้นหา
     const input = await waitFor(findSearchInput, { timeout: 10000 });
@@ -187,6 +202,13 @@
     await waitFor(() => findProductCheckboxes().length > 0, { timeout: 8000 });
     await sleep(800);
 
+    // กรองค่าคอม: เรียง desc ก่อน (คอมสูงขึ้นบน) แล้วค่อยติ๊ก/หยุดเมื่อต่ำกว่าเกณฑ์
+    if (minCommission > 0) {
+      await sortByCommissionDesc();
+      await waitFor(() => findProductCheckboxes().length > 0, { timeout: 8000 });
+      await sleep(600);
+    }
+
     // Shopee ติ๊กได้สูงสุด 100 ชิ้น/หน้า ต่อการ export หนึ่งครั้ง
     const PAGE_CAP = 100;
     const want = Math.min(count, PAGE_CAP);
@@ -196,9 +218,10 @@
     let ticked = 0;
     let stagnant = 0;
     let lastSeen = 0;
+    let belowThreshold = false; // เจอการ์ดคอมต่ำกว่าเกณฑ์ (เรียง desc → ที่เหลือต่ำหมด)
     const collected = []; // mode "collect": เก็บ object สินค้าจากการ์ดที่ติ๊ก
 
-    while (ticked < want) {
+    while (ticked < want && !belowThreshold) {
       const boxes = findProductCheckboxes();
       if (!boxes.length) {
         const ready = await waitFor(() => findProductCheckboxes().length > 0, { timeout: 6000 });
@@ -209,6 +232,11 @@
       stripNewCardAnchors(); // กันแท็บสินค้าเด้งตอนติ๊ก (รวมการ์ดที่เพิ่ง scroll โหลด)
       for (const box of boxes) {
         if (ticked >= want) break;
+        const card = box.closest(".ItemCard__container");
+        if (minCommission > 0 && getCardCommission(card) < minCommission) {
+          belowThreshold = true; // เรียงคอม desc แล้ว → ตัวถัดไปต่ำกว่าหมด หยุดได้
+          break;
+        }
         if (!isChecked(box)) {
           tickCheckbox(box);
           await sleep(140);
@@ -216,13 +244,13 @@
         if (isChecked(box)) {
           ticked++;
           if (mode === "collect") {
-            const product = scrapeCard(box.closest(".ItemCard__container"));
+            const product = scrapeCard(card);
             if (product) collected.push(product);
           }
         }
       }
 
-      if (ticked >= want) break;
+      if (ticked >= want || belowThreshold) break;
 
       // ยังไม่ครบ → scroll โหลดสินค้าเพิ่ม (lazy list)
       if (boxes.length === lastSeen) {
@@ -265,7 +293,12 @@
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "SHOPEE_PING") { reply({ pong: true }); return false; }
     if (msg?.type === "SHOPEE_RUN") {
-      run(msg.keyword, Math.max(1, parseInt(msg.count, 10) || 1), msg.mode === "collect" ? "collect" : "export")
+      run(
+        msg.keyword,
+        Math.max(1, parseInt(msg.count, 10) || 1),
+        msg.mode === "collect" ? "collect" : "export",
+        Math.max(0, Number(msg.minCommission) || 0)
+      )
         .then(reply)
         .catch((err) => reply({ ok: false, error: err?.message || String(err) }));
       return true; // async

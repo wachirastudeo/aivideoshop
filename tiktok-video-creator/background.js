@@ -386,10 +386,11 @@ async function ensureFlowContentScript(tabId) {
 
 const SHOPEE_OFFER_URL = "https://affiliate.shopee.co.th/offer/product_offer";
 
-async function pullShopeeProducts({ keyword, count, mode } = {}) {
+async function pullShopeeProducts({ keyword, count, mode, minCommission } = {}) {
   if (!keyword) throw new Error("ไม่มีคำค้นหา");
   const want = Math.max(1, parseInt(count, 10) || 1);
   const collect = mode === "collect";
+  const minComm = Math.max(0, Number(minCommission) || 0);
 
   const existing = await chrome.tabs.query({ url: "https://affiliate.shopee.co.th/*" });
   let tab = existing[0];
@@ -410,7 +411,7 @@ async function pullShopeeProducts({ keyword, count, mode } = {}) {
 
   // โหมด collect (ดึงเข้าแอป) แค่ติ๊ก+อ่าน DOM ไม่ต้อง trusted click
   if (collect) {
-    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode: "collect" });
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode: "collect", minCommission: minComm });
     if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
     return { ticked: result.ticked, capped: result.capped, products: result.products || [] };
   }
@@ -423,7 +424,7 @@ async function pullShopeeProducts({ keyword, count, mode } = {}) {
   await delay(700);
 
   try {
-    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode: "export" });
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode: "export", minCommission: minComm });
     if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
     return { ticked: result.ticked, capped: result.capped };
   } finally {

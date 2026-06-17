@@ -17,6 +17,10 @@
       <label class="field__label" for="shopee-count">จำนวนที่ต้องการ</label>
       <input id="shopee-count" class="input" type="number" min="1" max="500" value="10">
     </div>
+    <div class="field">
+      <label class="field__label" for="shopee-min-comm">ค่าคอมขั้นต่ำ % (เว้นว่าง = ไม่กรอง)</label>
+      <input id="shopee-min-comm" class="input" type="number" min="0" max="100" step="1" placeholder="เช่น 5">
+    </div>
     <button id="shopee-pull-app" class="button button--primary button--full" type="button">ดึงเข้าแอป → ทำวิดีโอ</button>
     <button id="shopee-pull" class="button button--ghost button--full" type="button">ดึง & Export CSV</button>
     <div id="shopee-status" class="hint" aria-live="polite"></div>

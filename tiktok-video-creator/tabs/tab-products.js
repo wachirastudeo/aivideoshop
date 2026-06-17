@@ -57,22 +57,28 @@ function bindShopeeEvents() {
 async function runShopeePull(mode) {
   const keyword = document.querySelector("#shopee-keyword")?.value.trim() || "";
   const count = parseInt(document.querySelector("#shopee-count")?.value, 10);
+  const minCommRaw = document.querySelector("#shopee-min-comm")?.value.trim() || "";
+  const minCommission = minCommRaw === "" ? 0 : Math.max(0, parseFloat(minCommRaw) || 0);
   const buttons = [document.querySelector("#shopee-pull-app"), document.querySelector("#shopee-pull")].filter(Boolean);
 
   if (!keyword) return setShopeeStatus("กรอกคำค้นหาก่อน", "error");
   if (!Number.isInteger(count) || count < 1) return setShopeeStatus("จำนวนต้องเป็นเลขจำนวนเต็มมากกว่า 0", "error");
 
   buttons.forEach((b) => (b.disabled = true));
-  setShopeeStatus(`กำลังเปิด Shopee และดึง ${count} ชิ้น...`);
-  helpers.logActivity?.(`ดึง Shopee (${mode}): "${keyword}" จำนวน ${count}`);
+  const commNote = minCommission > 0 ? ` คอม ≥${minCommission}%` : "";
+  setShopeeStatus(`กำลังเปิด Shopee และดึง ${count} ชิ้น...${commNote}`);
+  helpers.logActivity?.(`ดึง Shopee (${mode}): "${keyword}" จำนวน ${count}${commNote}`);
 
   try {
     const response = await chrome.runtime.sendMessage({
       type: "PULL_SHOPEE_PRODUCTS",
-      payload: { keyword, count, mode }
+      payload: { keyword, count, mode, minCommission }
     });
     if (!response?.ok) throw new Error(response?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
-    const capNote = response.capped ? " (Shopee จำกัด 100 ชิ้น/ครั้ง)" : "";
+    let capNote = response.capped ? " (Shopee จำกัด 100 ชิ้น/ครั้ง)" : "";
+    if (minCommission > 0 && (response.ticked ?? 0) < count) {
+      capNote += ` (คอม ≥${minCommission}% มีแค่ ${response.ticked ?? 0} ชิ้น)`;
+    }
 
     if (mode === "collect") {
       const items = (response.products || []).filter((p) => p.productId || p.name);
