@@ -95,9 +95,21 @@
     return /checked|active/i.test(el.className);
   }
 
-  function tickCheckbox(el) {
-    if (isChecked(el)) return;
-    el.click();
+  // คลิกติ๊ก แล้ว verify; ถ้าไม่ติดลองคลิก target อื่นในการ์ด (input/span/box)
+  async function tickCheckbox(el) {
+    if (isChecked(el)) return true;
+    const targets = [
+      el,
+      el.querySelector("input.ant-checkbox-input"),
+      el.querySelector(".ant-checkbox"),
+      el.querySelector(".ant-checkbox-inner")
+    ].filter(Boolean);
+    for (const t of targets) {
+      t.click();
+      await sleep(120);
+      if (isChecked(el)) return true;
+    }
+    return isChecked(el);
   }
 
   // คลิกแบบ trusted ผ่าน background → chrome.debugger (Input.dispatchMouseEvent)
@@ -189,6 +201,9 @@
     // 1) ค้นหา
     const input = await waitFor(findSearchInput, { timeout: 10000 });
     if (!input) return { ok: false, error: "หาช่องค้นหาไม่เจอ — โครงหน้าอาจเปลี่ยน" };
+    // รอ list แรกโหลด (หน้า interactive) ก่อนพิมพ์ — กัน search ไม่ทำงานเพราะ SPA ยังไม่พร้อม
+    await waitFor(() => findProductCheckboxes().length > 0, { timeout: 12000 });
+    await sleep(600);
     input.focus();
     nativeSetValue(input, keyword);
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
@@ -219,10 +234,13 @@
     let stagnant = 0;
     let lastSeen = 0;
     let belowThreshold = false; // เจอการ์ดคอมต่ำกว่าเกณฑ์ (เรียง desc → ที่เหลือต่ำหมด)
+    let boxesSeen = 0;          // diagnostic: เจอ checkbox สูงสุดกี่ตัว
+    let clickAttempts = 0;      // diagnostic: พยายามคลิกติ๊กกี่ครั้ง
     const collected = []; // mode "collect": เก็บ object สินค้าจากการ์ดที่ติ๊ก
 
     while (ticked < want && !belowThreshold) {
       const boxes = findProductCheckboxes();
+      boxesSeen = Math.max(boxesSeen, boxes.length);
       if (!boxes.length) {
         const ready = await waitFor(() => findProductCheckboxes().length > 0, { timeout: 6000 });
         if (!ready) break;
@@ -238,8 +256,8 @@
           break;
         }
         if (!isChecked(box)) {
-          tickCheckbox(box);
-          await sleep(140);
+          clickAttempts++;
+          await tickCheckbox(box);
         }
         if (isChecked(box)) {
           ticked++;
@@ -265,7 +283,10 @@
     restoreCardAnchors(); // คืน href ให้การ์ดก่อนทำสเต็ปต่อไป
 
     if (ticked === 0) {
-      return { ok: false, error: "ไม่พบสินค้าให้ติ๊ก (ลองคำค้นอื่น หรือเช็คการล็อกอิน Shopee)" };
+      if (boxesSeen === 0) {
+        return { ok: false, error: "ไม่พบการ์ดสินค้า (search ไม่ขึ้นผล/หน้าโหลดช้า) — ลองคำค้นอื่นหรือเช็คล็อกอิน Shopee" };
+      }
+      return { ok: false, error: `เจอสินค้า ${boxesSeen} ชิ้น แต่ติ๊กไม่ติด (คลิก ${clickAttempts} ครั้ง) — checkbox อาจเปลี่ยนโครง` };
     }
 
     // โหมด collect: ดึงข้อมูล+รูปเข้าแอป ไม่ต้อง export CSV
