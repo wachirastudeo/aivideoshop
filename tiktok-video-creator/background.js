@@ -424,9 +424,9 @@ async function pullShopeeProducts({ keyword, count, mode, minCommission } = {}) 
   await delay(700);
 
   try {
-    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode: "export", minCommission: minComm });
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode, minCommission: minComm });
     if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
-    return { ticked: result.ticked, capped: result.capped };
+    return { ticked: result.ticked, capped: result.capped, products: result.products || [] };
   } finally {
     await detachDebuggerTab(tab.id);
   }

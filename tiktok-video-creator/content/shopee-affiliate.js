@@ -261,10 +261,8 @@
         }
         if (isChecked(box)) {
           ticked++;
-          if (mode === "collect") {
-            const product = scrapeCard(card);
-            if (product) collected.push(product);
-          }
+          const product = scrapeCard(card); // เก็บข้อมูลทุก mode (ใช้ทำวิดีโอ)
+          if (product) collected.push(product);
         }
       }
 
@@ -289,10 +287,11 @@
       return { ok: false, error: `เจอสินค้า ${boxesSeen} ชิ้น แต่ติ๊กไม่ติด (คลิก ${clickAttempts} ครั้ง) — checkbox อาจเปลี่ยนโครง` };
     }
 
-    // โหมด collect: ดึงข้อมูล+รูปเข้าแอป ไม่ต้อง export CSV
+    // โหมด collect: ดึงข้อมูล+รูปเข้าแอปอย่างเดียว ไม่ต้อง export CSV
     if (mode === "collect") {
       return { ok: true, ticked, capped, products: collected };
     }
+    // โหมด export/both: ทำต่อไป export CSV — และคืน products ให้ทำวิดีโอด้วย
 
     // 3) กดปุ่ม bulk "รับลิงก์แบบทีเดียวทั้งหมด" (synthetic พอ — แค่เปิด modal)
     const bulkBtn = await waitFor(findBulkButton, { timeout: 6000 });
@@ -308,7 +307,7 @@
     if (!clicked) return { ok: false, error: `กดปุ่ม "เอา ลิงก์" (trusted) ไม่สำเร็จ (ติ๊กไว้ ${ticked} ชิ้น)` };
     await sleep(3000); // รอสร้างลิงก์ + เริ่มดาวน์โหลด CSV
 
-    return { ok: true, ticked, capped };
+    return { ok: true, ticked, capped, products: collected };
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {

@@ -50,29 +50,29 @@ function applySource(source) {
  * @description ผูก event ฝั่ง Shopee: ปุ่ม "ดึงเข้าแอป" (collect) และ "Export CSV" (export)
  */
 function bindShopeeEvents() {
-  document.querySelector("#shopee-pull-app")?.addEventListener("click", () => runShopeePull("collect"));
-  document.querySelector("#shopee-pull")?.addEventListener("click", () => runShopeePull("export"));
+  document.querySelector("#shopee-pull")?.addEventListener("click", () => runShopeePull());
 }
 
-async function runShopeePull(mode) {
+async function runShopeePull() {
   const keyword = document.querySelector("#shopee-keyword")?.value.trim() || "";
   const count = parseInt(document.querySelector("#shopee-count")?.value, 10);
   const minCommRaw = document.querySelector("#shopee-min-comm")?.value.trim() || "";
   const minCommission = minCommRaw === "" ? 0 : Math.max(0, parseFloat(minCommRaw) || 0);
-  const buttons = [document.querySelector("#shopee-pull-app"), document.querySelector("#shopee-pull")].filter(Boolean);
+  const pullBtn = document.querySelector("#shopee-pull");
 
   if (!keyword) return setShopeeStatus("กรอกคำค้นหาก่อน", "error");
   if (!Number.isInteger(count) || count < 1) return setShopeeStatus("จำนวนต้องเป็นเลขจำนวนเต็มมากกว่า 0", "error");
 
-  buttons.forEach((b) => (b.disabled = true));
+  if (pullBtn) pullBtn.disabled = true;
   const commNote = minCommission > 0 ? ` คอม ≥${minCommission}%` : "";
   setShopeeStatus(`กำลังเปิด Shopee และดึง ${count} ชิ้น...${commNote}`);
-  helpers.logActivity?.(`ดึง Shopee (${mode}): "${keyword}" จำนวน ${count}${commNote}`);
+  helpers.logActivity?.(`ดึง Shopee: "${keyword}" จำนวน ${count}${commNote}`);
 
   try {
+    // mode "both": ติ๊ก → Export CSV (trusted click) + คืนข้อมูลสินค้ามาทำวิดีโอ
     const response = await chrome.runtime.sendMessage({
       type: "PULL_SHOPEE_PRODUCTS",
-      payload: { keyword, count, mode, minCommission }
+      payload: { keyword, count, mode: "both", minCommission }
     });
     if (!response?.ok) throw new Error(response?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
     let capNote = response.capped ? " (Shopee จำกัด 100 ชิ้น/ครั้ง)" : "";
@@ -80,23 +80,22 @@ async function runShopeePull(mode) {
       capNote += ` (คอม ≥${minCommission}% มีแค่ ${response.ticked ?? 0} ชิ้น)`;
     }
 
-    if (mode === "collect") {
-      const items = (response.products || []).filter((p) => p.productId || p.name);
-      if (!items.length) throw new Error("ดึงข้อมูลสินค้าไม่ได้ (อาจไม่มีรูป/ชื่อบนการ์ด)");
-      const queue = items.map(buildSelectedProductPayload);
-      await chrome.storage.local.set({ selectedProduct: queue[0], productQueue: queue, activeTab: "video" });
-      setShopeeStatus(`ดึงเข้าแอป ${queue.length} ชิ้น — ไปหน้าสร้างวิดีโอ${capNote}`, "success");
-      helpers.logActivity?.(`ดึง Shopee เข้าแอป ${queue.length} ชิ้น`, "success");
-      await helpers.switchTab("video");
-    } else {
-      setShopeeStatus(`ติ๊กแล้ว ${response.ticked ?? count} ชิ้น — ตรวจไฟล์ CSV ที่ดาวน์โหลด${capNote}`, "success");
-      helpers.logActivity?.(`Shopee export สำเร็จ (${response.ticked ?? count} ชิ้น)`, "success");
+    const items = (response.products || []).filter((p) => p.productId || p.name);
+    if (!items.length) {
+      // export CSV สำเร็จแต่ดึงข้อมูลทำวิดีโอไม่ได้
+      setShopeeStatus(`Export CSV แล้ว ${response.ticked ?? count} ชิ้น (ดึงข้อมูลทำวิดีโอไม่ได้)${capNote}`, "success");
+      return;
     }
+    const queue = items.map(buildSelectedProductPayload);
+    await chrome.storage.local.set({ selectedProduct: queue[0], productQueue: queue, activeTab: "video" });
+    setShopeeStatus(`Export CSV + ดึง ${queue.length} ชิ้นเข้าแอป — ไปหน้าสร้างวิดีโอ${capNote}`, "success");
+    helpers.logActivity?.(`Shopee: export CSV + ทำวิดีโอ ${queue.length} ชิ้น`, "success");
+    await helpers.switchTab("video");
   } catch (error) {
     setShopeeStatus(error.message, "error");
     helpers.logActivity?.(`Shopee ไม่สำเร็จ: ${error.message}`, "error");
   } finally {
-    buttons.forEach((b) => (b.disabled = false));
+    if (pullBtn) pullBtn.disabled = false;
   }
 }
 
