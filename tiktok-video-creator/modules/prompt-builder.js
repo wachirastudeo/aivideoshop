@@ -210,38 +210,56 @@ export function buildImagePrompt(productInfo, settings) {
  * @param {object} settings - settings ของวิดีโอ
  * @returns {string} prompt ภาษาอังกฤษ
  */
-export function buildVideoPrompt(productInfo, settings) {
+export function buildVideoPrompt(productInfo, settings = {}) {
   const auto = resolveAutoSettings(productInfo, settings);
   const locationStr = resolvePromptLocation(auto);
-  const durationSeconds = Number.parseInt(settings.videoDuration, 10) || 8;
-  const textEnabled = settings.showName === true || settings.showName === "true";
+  const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
+  const textEnabled = settings?.showName === true || settings?.showName === "true";
   const productName = generationProductName(productInfo.name, 220) || "the attached product";
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const overlayText = [
     textEnabled ? productName : "",
-    textEnabled ? compactPromptText(settings.promotionText, 80) : ""
+    textEnabled ? compactPromptText(settings?.promotionText, 80) : ""
   ].filter(Boolean);
 
+  const isOmniFlash = settings?.videoModel === "omni-flash";
+
   const promptParts = [
-    `Create a ${durationSeconds}-second vertical 9:16 product video for ${productName}.`,
+    isOmniFlash
+      ? `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`
+      : `Create a ${durationSeconds}-second vertical 9:16 product video for ${productName}.`,
     PRODUCT_FIDELITY_DIRECTION,
     PRODUCT_ISOLATION_DIRECTION,
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
-    `New suitable scene: ${compactPromptText(locationStr, 100)}, ${compactPromptText(auto.mood, 60)} lighting. Do not recreate the original scene.`,
-    auto.videoStyle === "review"
-      ? "Product-review format: clearly present the product, key details, and realistic use."
-      : "",
-    auto.videoStyle === "testimonial"
-      ? "UGC testimonial format: natural handheld framing, authentic review vibe, and casual realistic presentation."
-      : "",
-    `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep the whole product sharp, clearly visible, stable, centered, and unchanged.`,
-    VIDEO_REALISM_DIRECTION,
-    textEnabled && overlayText.length
-      ? `Use only these Thai overlays at ${compactPromptText(settings.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. Do not add any other readable text.`
-      : TEXT_FREE_DIRECTION
   ];
+
+  if (isOmniFlash) {
+    promptParts.push(
+      getMultiSceneDescription(auto.videoStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60)),
+      `Keep all shots sharp, clearly visible, stable, and centered.`,
+      VIDEO_REALISM_DIRECTION
+    );
+  } else {
+    promptParts.push(
+      `New suitable scene: ${compactPromptText(locationStr, 100)}, ${compactPromptText(auto.mood, 60)} lighting. Do not recreate the original scene.`,
+      auto.videoStyle === "review"
+        ? "Product-review format: clearly present the product, key details, and realistic use."
+        : "",
+      auto.videoStyle === "testimonial"
+        ? "UGC testimonial format: natural handheld framing, authentic review vibe, and casual realistic presentation."
+        : "",
+      `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep the whole product sharp, clearly visible, stable, centered, and unchanged.`,
+      VIDEO_REALISM_DIRECTION
+    );
+  }
+
+  promptParts.push(
+    textEnabled && overlayText.length
+      ? `Use only these Thai overlays at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. Do not add any other readable text.`
+      : TEXT_FREE_DIRECTION
+  );
 
   if (auto.presenter && auto.presenter !== "none") {
     promptParts.push(`Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION}`);
@@ -250,6 +268,94 @@ export function buildVideoPrompt(productInfo, settings) {
   }
 
   return promptParts.filter(Boolean).join("\n");
+}
+
+function getMultiSceneDescription(videoStyle, productName, locationStr, mood) {
+  const loc = locationStr ? ` in a ${locationStr} setting` : "";
+  const moodStyle = mood ? ` with ${mood} lighting` : "";
+
+  switch (videoStyle) {
+    case "sales":
+      return [
+        "This video must consist of multiple sequential scenes with clear cuts/transitions to drive sales:",
+        `- Scene 1 (Product Hook): A dynamic, eye-catching 2-second opening shot showcasing ${productName}${loc}${moodStyle}.`,
+        `- Scene 2 (Benefit Showcase): A 3-second scene demonstrating the main benefits and features of the product in action.`,
+        `- Scene 3 (Detail Close-up): A 3-second macro close-up of ${productName}'s quality and texture.`,
+        `- Scene 4 (CTA Moment): A final 2-second persuasive shopping CTA shot, presenting the product beautifully.`
+      ].join("\n");
+
+    case "review":
+      return [
+        "This video must consist of multiple sequential scenes with clear cuts/transitions for a product review:",
+        `- Scene 1 (Showcase): A 3-second 360-degree rotation showing ${productName} from all angles${loc}${moodStyle}.`,
+        `- Scene 2 (Detail Zoom): A 3-second close-up zoom on the main features and highlights of the product.`,
+        `- Scene 3 (Realistic Use): A 2-second final scene showing the product placed ready for use.`
+      ].join("\n");
+
+    case "lifestyle":
+      return [
+        "This video must consist of multiple sequential scenes with clear cuts/transitions showing the product in lifestyle context:",
+        `- Scene 1 (Atmosphere): A 3-second opening scene establishing a warm, realistic lifestyle environment${loc}${moodStyle}.`,
+        `- Scene 2 (In-Use): A 3-second scene showing a presenter interacting naturally with ${productName}.`,
+        `- Scene 3 (Close-up): A 2-second authentic close-up of the product in its natural setting.`
+      ].join("\n");
+
+    case "flash-sale":
+      return [
+        "This video must consist of multiple sequential scenes with fast, energetic cuts/transitions for a flash sale:",
+        `- Scene 1 (Urgency Hook): A high-energy 2-second opening shot of ${productName}${loc}${moodStyle} to stop the scroll.`,
+        `- Scene 2 (Promo Showcase): A 3-second rapid shot highlighting the product promotion and benefits.`,
+        `- Scene 3 (Countdown CTA): A final 3-second fast cut shot emphasizing limited time/action.`
+      ].join("\n");
+
+    case "unboxing":
+      return [
+        "This video must consist of multiple sequential scenes with clear cuts/transitions showing the unboxing process:",
+        `- Scene 1 (The Box): A 3-second shot of hands starting to open the packaging of ${productName}${loc}${moodStyle}.`,
+        `- Scene 2 (The Reveal): A 3-second satisfying reveal moment as the package is unwrapped/opened.`,
+        `- Scene 3 (Detail Showcase): A 2-second close-up showing the pristine product out of the box.`
+      ].join("\n");
+
+    case "before-after":
+      return [
+        "This video must consist of multiple sequential scenes with clear cuts/transitions showing the transition/comparison:",
+        `- Scene 1 (Problem/Before): A 3-second opening scene showing the need/before state with ${productName}${loc}${moodStyle}.`,
+        `- Scene 2 (Transition): A 2-second transition effect or application moment.`,
+        `- Scene 3 (Solution/After): A 3-second reveal showing the successful outcome and results after using the product.`
+      ].join("\n");
+
+    case "testimonial":
+      return [
+        "This video must consist of multiple sequential scenes with clear cuts/transitions for a UGC testimonial:",
+        `- Scene 1 (Reviewer Hook): A 3-second opening with a reviewer holding ${productName} and talking to the camera${loc}${moodStyle}.`,
+        `- Scene 2 (Feature Showcase): A 3-second cut to the reviewer demonstrating how the product works.`,
+        `- Scene 3 (Recommendation): A 2-second final recommendation shot with the reviewer smiling.`
+      ].join("\n");
+
+    case "cinematic":
+      return [
+        "This video must consist of multiple sequential scenes with smooth, cinematic cuts/transitions:",
+        `- Scene 1 (Aesthetic Opening): A slow-motion 3-second elegant opening shot of ${productName}${loc}${moodStyle}.`,
+        `- Scene 2 (Macro Details): A 3-second slow macro close-up of the luxury texture and fine details.`,
+        `- Scene 3 (Hero Shot): A 2-second final premium hero shot presenting the product majestically.`
+      ].join("\n");
+
+    case "trending-hook":
+      return [
+        "This video must consist of multiple sequential scenes with fast cuts/transitions for a trending TikTok hook:",
+        `- Scene 1 (Thumb-Stop Hook): A highly eye-catching, unique 2-second opening shot of ${productName}${loc}${moodStyle}.`,
+        `- Scene 2 (Product Reveal): A 3-second quick reveal showing the product features and utility.`,
+        `- Scene 3 (Summary Cut): A final 3-second fast energetic cut summarizing the product appeal.`
+      ].join("\n");
+
+    default:
+      return [
+        "This video must consist of multiple sequential scenes with clear cuts/transitions:",
+        `- Scene 1 (Hook): A dynamic, eye-catching 2-second opening shot featuring ${productName}${loc}${moodStyle}.`,
+        `- Scene 2 (Showcase): A 3-second scene demonstrating the product, showing key details and features.`,
+        `- Scene 3 (CTA): A 3-second close-up hero shot focusing on ${productName} with clear and appealing presentation.`
+      ].join("\n");
+  }
 }
 
 function compactPromptText(value, maxLength) {

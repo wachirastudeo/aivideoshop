@@ -180,6 +180,15 @@ check("formatPrice non-empty", typeof fp === "string" && fp.length > 0, `fp=${fp
 // --- normalizeHashtags dedup + cap ---
 eq("normalizeHashtags dedup+cap", normalizeHashtags(["#a", "#a", "#b", "#c", "#d", "#e", "#f"], 3), ["#a", "#b", "#c"]);
 
+// --- omni-flash: multi-scene description ---
+const omniSettings = { ...settings, videoModel: "omni-flash", videoStyle: "sales" };
+const omniVid = buildVideoPrompt({ name: "เครื่องปั่นน้ำผลไม้", highlights: "" }, omniSettings);
+check("omni-flash video prompt requests multi-scene", /multi-scene/i.test(omniVid), omniVid);
+check("omni-flash video prompt has Scene 1", /Scene 1 \(Product Hook\)/i.test(omniVid), omniVid);
+check("omni-flash video prompt has Scene 2", /Scene 2 \(Benefit Showcase\)/i.test(omniVid), omniVid);
+check("omni-flash video prompt has Scene 3", /Scene 3 \(Detail Close-up\)/i.test(omniVid), omniVid);
+check("omni-flash video prompt has Scene 4", /Scene 4 \(CTA Moment\)/i.test(omniVid), omniVid);
+
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
