@@ -77,7 +77,8 @@ function bindShopeeEvents() {
         payload: { keyword, count }
       });
       if (!response?.ok) throw new Error(response?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
-      setShopeeStatus(`ติ๊กแล้ว ${response.ticked ?? count} ชิ้น — ตรวจไฟล์ CSV ที่ดาวน์โหลด`, "success");
+      const capNote = response.capped ? " (Shopee จำกัด 100 ชิ้น/ครั้ง)" : "";
+      setShopeeStatus(`ติ๊กแล้ว ${response.ticked ?? count} ชิ้น — ตรวจไฟล์ CSV ที่ดาวน์โหลด${capNote}`, "success");
       helpers.logActivity?.(`Shopee export สำเร็จ (${response.ticked ?? count} ชิ้น)`, "success");
     } catch (error) {
       setShopeeStatus(error.message, "error");

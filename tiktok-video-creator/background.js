@@ -26,6 +26,7 @@ async function routeMessage(message, sender) {
   switch (message?.type) {
     case "FETCH_PRODUCTS":          return fetchShowcaseProducts(message.payload);
     case "PULL_SHOPEE_PRODUCTS":     return pullShopeeProducts(message.payload);
+    case "SHOPEE_CLICK_POINT":       return clickPointWithDebugger(message.payload, sender);
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
     case "DOWNLOAD_VIDEO":           return downloadVideo(message.payload);
     case "POST_TO_TIKTOK":           return postToTikTok(message.payload);
@@ -405,9 +406,21 @@ async function pullShopeeProducts({ keyword, count } = {}) {
   }
 
   await ensureShopeeContentScript(tab.id);
-  const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want });
-  if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
-  return { ticked: result.ticked };
+
+  // ปุ่ม "เอา ลิงก์" ของ Shopee ไม่ยอม generate/download จาก synthetic click
+  // ต้องเป็น trusted click ผ่าน chrome.debugger (เหมือนปุ่ม Generate ของ Flow)
+  // attach ก่อนให้ infobar "extension started debugging" ดันหน้าลงให้เสร็จ
+  // แล้วค่อยให้ content script วัดพิกัดปุ่ม — พิกัดจะตรงกับตอน debugger click
+  await ensureDebuggerAttached(tab.id);
+  await delay(700);
+
+  try {
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want });
+    if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
+    return { ticked: result.ticked, capped: result.capped };
+  } finally {
+    await detachDebuggerTab(tab.id);
+  }
 }
 
 async function ensureShopeeContentScript(tabId) {

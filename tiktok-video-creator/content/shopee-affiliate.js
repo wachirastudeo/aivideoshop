@@ -59,35 +59,61 @@
     return candidates.find(visible) || null;
   }
 
-  function findExportButton() {
+  // ปุ่ม bulk ใน batch-bar: "รับลิงก์แบบทีเดียวทั้งหมด"
+  function findBulkButton() {
     return (
-      byText("button", /export|ส่งออก|ดาวน์โหลด|download/i) ||
-      byText('[role="button"], a, div', /export|ส่งออก|ดาวน์โหลด/i) ||
+      byText(".batch-bar button.ant-btn-primary, .batch-bar button", /รับลิงก์แบบ|ส่งออก|export/i) ||
+      byText("button.ant-btn-primary, button", /รับลิงก์แบบ|ส่งออก|export/i) ||
       null
     );
   }
 
-  // checkbox ของ Shopee อาจเป็น <input type=checkbox> หรือ custom component
+  // ปุ่มยืนยันใน modal: "เอา ลิงก์" (สร้างลิงก์ + ดาวน์โหลด CSV)
+  function findModalConfirm() {
+    return byText(
+      ".ant-modal button, .ant-drawer button, [role='dialog'] button",
+      /^เอา\s?ลิงก์$|ยืนยัน|ดาวน์โหลด|confirm|export/i
+    );
+  }
+
+  // checkbox สินค้าเป็น Ant Design: label.ant-checkbox-wrapper ในการ์ดสินค้า
   function findProductCheckboxes() {
-    const native = Array.from(
-      document.querySelectorAll('tbody input[type="checkbox"], [class*="row"] input[type="checkbox"], input[type="checkbox"]')
+    const scoped = Array.from(
+      document.querySelectorAll(
+        ".ItemCard__container .ant-checkbox-wrapper, .AffiliateItemCard__gelinkSection .ant-checkbox-wrapper"
+      )
     ).filter(visible);
-    if (native.length) return native;
-    // custom checkbox: element ที่มี role=checkbox หรือ class shopee
-    return Array.from(
-      document.querySelectorAll('[role="checkbox"], [class*="checkbox"]')
-    ).filter((el) => visible(el) && !el.closest("thead"));
+    if (scoped.length) return scoped;
+    return Array.from(document.querySelectorAll("label.ant-checkbox-wrapper")).filter(visible);
   }
 
   function isChecked(el) {
+    if (el.classList?.contains("ant-checkbox-wrapper")) {
+      return el.classList.contains("ant-checkbox-wrapper-checked") || !!el.querySelector(".ant-checkbox-checked");
+    }
     if (el.matches?.('input[type="checkbox"]')) return el.checked;
-    return el.getAttribute("aria-checked") === "true" || /checked|active/i.test(el.className);
+    return /checked|active/i.test(el.className);
   }
 
   function tickCheckbox(el) {
     if (isChecked(el)) return;
     el.click();
   }
+
+  // คลิกแบบ trusted ผ่าน background → chrome.debugger (Input.dispatchMouseEvent)
+  // จำเป็นสำหรับปุ่ม "เอา ลิงก์": synthetic click ได้ไฟล์ CSV เปล่า, trusted click ได้ไฟล์เต็ม
+  async function trustedClick(el) {
+    const r = el.getBoundingClientRect();
+    const x = Math.round(r.left + r.width / 2);
+    const y = Math.round(r.top + r.height / 2);
+    const res = await chrome.runtime.sendMessage({ type: "SHOPEE_CLICK_POINT", payload: { x, y } });
+    return Boolean(res?.ok && res?.clicked);
+  }
+
+  // กัน event bubble จาก checkbox ไปเปิดลิงก์การ์ดสินค้า (เปิดแท็บใหม่)
+  const anchorGuard = (e) => {
+    if (e.target.closest(".ant-checkbox-wrapper") && e.target.closest("a")) e.preventDefault();
+  };
 
   async function run(keyword, count) {
     log(`run keyword="${keyword}" count=${count}`);
@@ -102,14 +128,22 @@
     const searchBtn = byText("button", /^ค้นหา$|^search$/i);
     if (searchBtn) searchBtn.click();
 
-    await sleep(2500);
+    // รอผลค้นหาโหลด (รอการ์ดสินค้าโผล่)
+    await waitFor(() => findProductCheckboxes().length > 0, { timeout: 8000 });
+    await sleep(800);
 
-    // 2) ติ๊ก N ชิ้นแรก (เลื่อนหน้า/scroll ถ้ายังไม่ครบ)
+    // Shopee ติ๊กได้สูงสุด 100 ชิ้น/หน้า ต่อการ export หนึ่งครั้ง
+    const PAGE_CAP = 100;
+    const want = Math.min(count, PAGE_CAP);
+    const capped = count > PAGE_CAP;
+
+    // 2) ติ๊ก N ชิ้นแรก (scroll โหลดเพิ่มถ้ายังไม่ครบ)
     let ticked = 0;
-    let lastSeen = 0;
     let stagnant = 0;
+    let lastSeen = 0;
 
-    while (ticked < count) {
+    document.addEventListener("click", anchorGuard, true);
+    while (ticked < want) {
       const boxes = findProductCheckboxes();
       if (!boxes.length) {
         const ready = await waitFor(() => findProductCheckboxes().length > 0, { timeout: 6000 });
@@ -118,49 +152,47 @@
       }
 
       for (const box of boxes) {
-        if (ticked >= count) break;
+        if (ticked >= want) break;
         if (!isChecked(box)) {
           tickCheckbox(box);
-          await sleep(120);
+          await sleep(140);
         }
         if (isChecked(box)) ticked++;
       }
 
-      if (ticked >= count) break;
+      if (ticked >= want) break;
 
-      // โหลดเพิ่ม: scroll ลงล่างสุด เผื่อ infinite scroll / เปลี่ยนหน้า
+      // ยังไม่ครบ → scroll โหลดสินค้าเพิ่ม (lazy list)
       if (boxes.length === lastSeen) {
-        stagnant++;
-        const nextBtn = byText('button, a, [role="button"], li', /^›$|^>$|ถัดไป|next/i);
-        if (nextBtn && !nextBtn.matches("[disabled]")) {
-          nextBtn.click();
-          await sleep(2000);
-        } else if (stagnant >= 2) {
-          break; // ไม่มีสินค้าเพิ่มแล้ว
-        }
+        if (++stagnant >= 3) break; // ไม่มีสินค้าเพิ่มแล้ว
       } else {
         stagnant = 0;
       }
       lastSeen = boxes.length;
       window.scrollTo(0, document.body.scrollHeight);
-      await sleep(1200);
+      await sleep(1400);
+    }
+    document.removeEventListener("click", anchorGuard, true);
+
+    if (ticked === 0) {
+      return { ok: false, error: "ไม่พบสินค้าให้ติ๊ก (ลองคำค้นอื่น หรือเช็คการล็อกอิน Shopee)" };
     }
 
-    if (ticked === 0) return { ok: false, error: "ไม่พบสินค้าให้ติ๊ก (ลองคำค้นอื่น หรือเช็คการล็อกอิน)" };
+    // 3) กดปุ่ม bulk "รับลิงก์แบบทีเดียวทั้งหมด" (synthetic พอ — แค่เปิด modal)
+    const bulkBtn = await waitFor(findBulkButton, { timeout: 6000 });
+    if (!bulkBtn) return { ok: false, error: `ติ๊กแล้ว ${ticked} ชิ้น แต่หาปุ่ม "รับลิงก์แบบทีเดียวทั้งหมด" ไม่เจอ` };
+    bulkBtn.click();
 
-    // 3) กด Export ของเว็บ + ยืนยัน modal (ถ้ามี)
-    const exportBtn = await waitFor(findExportButton, { timeout: 6000 });
-    if (!exportBtn) return { ok: false, error: `ติ๊กแล้ว ${ticked} ชิ้น แต่หาปุ่ม Export ไม่เจอ` };
-    exportBtn.click();
-    await sleep(1200);
+    // 4) modal → ปุ่ม "เอา ลิงก์": ต้อง TRUSTED CLICK ผ่าน debugger
+    //    (synthetic click ได้ไฟล์ CSV เปล่า — Shopee สร้าง/ดาวน์โหลดเฉพาะ trusted event)
+    const confirmBtn = await waitFor(findModalConfirm, { timeout: 8000 });
+    if (!confirmBtn) return { ok: false, error: `เปิด popup แล้วแต่หาปุ่ม "เอา ลิงก์" ไม่เจอ (ติ๊กไว้ ${ticked} ชิ้น)` };
+    await sleep(400); // ให้ modal เข้าที่ก่อนวัดพิกัด
+    const clicked = await trustedClick(confirmBtn);
+    if (!clicked) return { ok: false, error: `กดปุ่ม "เอา ลิงก์" (trusted) ไม่สำเร็จ (ติ๊กไว้ ${ticked} ชิ้น)` };
+    await sleep(3000); // รอสร้างลิงก์ + เริ่มดาวน์โหลด CSV
 
-    const confirmBtn = byText('button, [role="button"]', /ยืนยัน|confirm|ตกลง|ดาวน์โหลด|export/i);
-    if (confirmBtn && confirmBtn !== exportBtn) {
-      confirmBtn.click();
-      await sleep(800);
-    }
-
-    return { ok: true, ticked };
+    return { ok: true, ticked, capped };
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
