@@ -110,10 +110,27 @@
     return Boolean(res?.ok && res?.clicked);
   }
 
-  // กัน event bubble จาก checkbox ไปเปิดลิงก์การ์ดสินค้า (เปิดแท็บใหม่)
-  const anchorGuard = (e) => {
-    if (e.target.closest(".ant-checkbox-wrapper") && e.target.closest("a")) e.preventDefault();
-  };
+  // checkbox อยู่ใน <a> ของการ์ด → คลิกติ๊กจะเปิดแท็บสินค้าด้วย
+  // ใช้ preventDefault ไม่ได้ เพราะจะยกเลิกการติ๊ก checkbox ไปพร้อมกัน
+  // จึงถอด href/target ของการ์ดชั่วคราว (checkbox ติ๊กได้ + ไม่เด้งแท็บ)
+  const strippedAnchors = new Map();
+  function stripNewCardAnchors() {
+    document.querySelectorAll(".ItemCard__container").forEach((card) => {
+      const a = card.closest("a");
+      if (a && a.hasAttribute("href") && !strippedAnchors.has(a)) {
+        strippedAnchors.set(a, { href: a.getAttribute("href"), target: a.getAttribute("target") });
+        a.removeAttribute("href");
+        a.removeAttribute("target");
+      }
+    });
+  }
+  function restoreCardAnchors() {
+    for (const [a, v] of strippedAnchors) {
+      if (v.href != null) a.setAttribute("href", v.href);
+      if (v.target != null) a.setAttribute("target", v.target);
+    }
+    strippedAnchors.clear();
+  }
 
   async function run(keyword, count) {
     log(`run keyword="${keyword}" count=${count}`);
@@ -123,9 +140,11 @@
     if (!input) return { ok: false, error: "หาช่องค้นหาไม่เจอ — โครงหน้าอาจเปลี่ยน" };
     input.focus();
     nativeSetValue(input, keyword);
-    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true }));
-    input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true }));
-    const searchBtn = byText("button", /^ค้นหา$|^search$/i);
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+    // ปุ่ม "ค้นหา" ของ Shopee เป็น addon (span) ไม่ใช่ <button> — กดเสริมให้ชัวร์
+    const searchBtn = [...document.querySelectorAll("button, span, a")]
+      .find((e) => visible(e) && (e.textContent || "").trim() === "ค้นหา" && e.querySelectorAll("*").length <= 1);
     if (searchBtn) searchBtn.click();
 
     // รอผลค้นหาโหลด (รอการ์ดสินค้าโผล่)
@@ -142,7 +161,6 @@
     let stagnant = 0;
     let lastSeen = 0;
 
-    document.addEventListener("click", anchorGuard, true);
     while (ticked < want) {
       const boxes = findProductCheckboxes();
       if (!boxes.length) {
@@ -151,6 +169,7 @@
         continue;
       }
 
+      stripNewCardAnchors(); // กันแท็บสินค้าเด้งตอนติ๊ก (รวมการ์ดที่เพิ่ง scroll โหลด)
       for (const box of boxes) {
         if (ticked >= want) break;
         if (!isChecked(box)) {
@@ -172,7 +191,7 @@
       window.scrollTo(0, document.body.scrollHeight);
       await sleep(1400);
     }
-    document.removeEventListener("click", anchorGuard, true);
+    restoreCardAnchors(); // คืน href ให้การ์ดก่อนทำสเต็ปต่อไป
 
     if (ticked === 0) {
       return { ok: false, error: "ไม่พบสินค้าให้ติ๊ก (ลองคำค้นอื่น หรือเช็คการล็อกอิน Shopee)" };
