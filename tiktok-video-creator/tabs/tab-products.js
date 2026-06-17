@@ -47,46 +47,51 @@ function applySource(source) {
 }
 
 /**
- * @description ผูก event ฝั่ง Shopee: ค้นหา + จำนวน → สั่ง background ดึง & Export
+ * @description ผูก event ฝั่ง Shopee: ปุ่ม "ดึงเข้าแอป" (collect) และ "Export CSV" (export)
  */
 function bindShopeeEvents() {
-  const pullBtn = document.querySelector("#shopee-pull");
-  if (!pullBtn) return;
+  document.querySelector("#shopee-pull-app")?.addEventListener("click", () => runShopeePull("collect"));
+  document.querySelector("#shopee-pull")?.addEventListener("click", () => runShopeePull("export"));
+}
 
-  pullBtn.addEventListener("click", async () => {
-    const keyword = document.querySelector("#shopee-keyword")?.value.trim() || "";
-    const count = parseInt(document.querySelector("#shopee-count")?.value, 10);
-    const statusEl = document.querySelector("#shopee-status");
+async function runShopeePull(mode) {
+  const keyword = document.querySelector("#shopee-keyword")?.value.trim() || "";
+  const count = parseInt(document.querySelector("#shopee-count")?.value, 10);
+  const buttons = [document.querySelector("#shopee-pull-app"), document.querySelector("#shopee-pull")].filter(Boolean);
 
-    if (!keyword) {
-      setShopeeStatus("กรอกคำค้นหาก่อน", "error");
-      return;
-    }
-    if (!Number.isInteger(count) || count < 1) {
-      setShopeeStatus("จำนวนต้องเป็นเลขจำนวนเต็มมากกว่า 0", "error");
-      return;
-    }
+  if (!keyword) return setShopeeStatus("กรอกคำค้นหาก่อน", "error");
+  if (!Number.isInteger(count) || count < 1) return setShopeeStatus("จำนวนต้องเป็นเลขจำนวนเต็มมากกว่า 0", "error");
 
-    pullBtn.disabled = true;
-    setShopeeStatus(`กำลังเปิด Shopee และดึง ${count} ชิ้น...`);
-    helpers.logActivity?.(`ดึง Shopee: "${keyword}" จำนวน ${count}`);
+  buttons.forEach((b) => (b.disabled = true));
+  setShopeeStatus(`กำลังเปิด Shopee และดึง ${count} ชิ้น...`);
+  helpers.logActivity?.(`ดึง Shopee (${mode}): "${keyword}" จำนวน ${count}`);
 
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: "PULL_SHOPEE_PRODUCTS",
-        payload: { keyword, count }
-      });
-      if (!response?.ok) throw new Error(response?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
-      const capNote = response.capped ? " (Shopee จำกัด 100 ชิ้น/ครั้ง)" : "";
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "PULL_SHOPEE_PRODUCTS",
+      payload: { keyword, count, mode }
+    });
+    if (!response?.ok) throw new Error(response?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
+    const capNote = response.capped ? " (Shopee จำกัด 100 ชิ้น/ครั้ง)" : "";
+
+    if (mode === "collect") {
+      const items = (response.products || []).filter((p) => p.productId || p.name);
+      if (!items.length) throw new Error("ดึงข้อมูลสินค้าไม่ได้ (อาจไม่มีรูป/ชื่อบนการ์ด)");
+      const queue = items.map(buildSelectedProductPayload);
+      await chrome.storage.local.set({ selectedProduct: queue[0], productQueue: queue, activeTab: "video" });
+      setShopeeStatus(`ดึงเข้าแอป ${queue.length} ชิ้น — ไปหน้าสร้างวิดีโอ${capNote}`, "success");
+      helpers.logActivity?.(`ดึง Shopee เข้าแอป ${queue.length} ชิ้น`, "success");
+      await helpers.switchTab("video");
+    } else {
       setShopeeStatus(`ติ๊กแล้ว ${response.ticked ?? count} ชิ้น — ตรวจไฟล์ CSV ที่ดาวน์โหลด${capNote}`, "success");
       helpers.logActivity?.(`Shopee export สำเร็จ (${response.ticked ?? count} ชิ้น)`, "success");
-    } catch (error) {
-      setShopeeStatus(error.message, "error");
-      helpers.logActivity?.(`Shopee ไม่สำเร็จ: ${error.message}`, "error");
-    } finally {
-      pullBtn.disabled = false;
     }
-  });
+  } catch (error) {
+    setShopeeStatus(error.message, "error");
+    helpers.logActivity?.(`Shopee ไม่สำเร็จ: ${error.message}`, "error");
+  } finally {
+    buttons.forEach((b) => (b.disabled = false));
+  }
 }
 
 function setShopeeStatus(text, type) {

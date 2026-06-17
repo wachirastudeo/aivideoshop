@@ -386,9 +386,10 @@ async function ensureFlowContentScript(tabId) {
 
 const SHOPEE_OFFER_URL = "https://affiliate.shopee.co.th/offer/product_offer";
 
-async function pullShopeeProducts({ keyword, count } = {}) {
+async function pullShopeeProducts({ keyword, count, mode } = {}) {
   if (!keyword) throw new Error("ไม่มีคำค้นหา");
   const want = Math.max(1, parseInt(count, 10) || 1);
+  const collect = mode === "collect";
 
   const existing = await chrome.tabs.query({ url: "https://affiliate.shopee.co.th/*" });
   let tab = existing[0];
@@ -407,7 +408,14 @@ async function pullShopeeProducts({ keyword, count } = {}) {
 
   await ensureShopeeContentScript(tab.id);
 
-  // ปุ่ม "เอา ลิงก์" ของ Shopee ไม่ยอม generate/download จาก synthetic click
+  // โหมด collect (ดึงเข้าแอป) แค่ติ๊ก+อ่าน DOM ไม่ต้อง trusted click
+  if (collect) {
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode: "collect" });
+    if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
+    return { ticked: result.ticked, capped: result.capped, products: result.products || [] };
+  }
+
+  // โหมด export: ปุ่ม "เอา ลิงก์" ไม่ยอม generate/download จาก synthetic click
   // ต้องเป็น trusted click ผ่าน chrome.debugger (เหมือนปุ่ม Generate ของ Flow)
   // attach ก่อนให้ infobar "extension started debugging" ดันหน้าลงให้เสร็จ
   // แล้วค่อยให้ content script วัดพิกัดปุ่ม — พิกัดจะตรงกับตอน debugger click
@@ -415,7 +423,7 @@ async function pullShopeeProducts({ keyword, count } = {}) {
   await delay(700);
 
   try {
-    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want });
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode: "export" });
     if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
     return { ticked: result.ticked, capped: result.capped };
   } finally {

@@ -132,8 +132,44 @@
     strippedAnchors.clear();
   }
 
-  async function run(keyword, count) {
-    log(`run keyword="${keyword}" count=${count}`);
+  // ดึงข้อมูลสินค้าจากการ์ด ให้ shape เดียวกับ TikTok normalizeProduct
+  // เพื่อ reuse pipeline สร้างวิดีโอเดิม (รูป + ชื่อ + ราคา เพียงพอต่อการทำวิดีโอ)
+  function scrapeCard(card) {
+    if (!card) return null;
+    const a = card.closest("a") || card.querySelector("a");
+    // href อาจถูก stripNewCardAnchors ถอดไปชั่วคราว → อ่านค่าเดิมจาก map
+    const href = a?.getAttribute("href") || (a && strippedAnchors.get(a)?.href) || "";
+    const productId = (href.match(/product_offer\/(\d+)/) || [])[1] || "";
+    const name = (card.querySelector(".ItemCard__name")?.textContent || "").trim();
+    const img = card.querySelector("img");
+    let imageUrl = img?.currentSrc || img?.src || img?.getAttribute("data-src") || "";
+    if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl;
+    const price = (card.querySelector(".price")?.textContent || "").replace(/[^\d.]/g, "");
+    const symbol = (card.querySelector(".symbol--left")?.textContent || "฿").trim();
+    const commRate = ((card.querySelector(".commRate")?.textContent || "").match(/(\d+(?:\.\d+)?)%/) || [])[1] || "";
+    if (!productId && !name) return null;
+    return {
+      productId,
+      product_id: productId,
+      name,
+      originalName: name,
+      displayImageUrl: imageUrl,
+      flowImageUrl: imageUrl,
+      imageUrls: imageUrl ? [imageUrl] : [],
+      price,
+      currency: symbol === "฿" ? "THB" : symbol,
+      productUrl: productId ? `https://affiliate.shopee.co.th/offer/product_offer/${productId}` : "",
+      shopName: "",
+      category: "",
+      details: "",
+      commission: "",
+      commissionRate: commRate,
+      source: "shopee"
+    };
+  }
+
+  async function run(keyword, count, mode = "export") {
+    log(`run keyword="${keyword}" count=${count} mode=${mode}`);
 
     // 1) ค้นหา
     const input = await waitFor(findSearchInput, { timeout: 10000 });
@@ -160,6 +196,7 @@
     let ticked = 0;
     let stagnant = 0;
     let lastSeen = 0;
+    const collected = []; // mode "collect": เก็บ object สินค้าจากการ์ดที่ติ๊ก
 
     while (ticked < want) {
       const boxes = findProductCheckboxes();
@@ -176,7 +213,13 @@
           tickCheckbox(box);
           await sleep(140);
         }
-        if (isChecked(box)) ticked++;
+        if (isChecked(box)) {
+          ticked++;
+          if (mode === "collect") {
+            const product = scrapeCard(box.closest(".ItemCard__container"));
+            if (product) collected.push(product);
+          }
+        }
       }
 
       if (ticked >= want) break;
@@ -195,6 +238,11 @@
 
     if (ticked === 0) {
       return { ok: false, error: "ไม่พบสินค้าให้ติ๊ก (ลองคำค้นอื่น หรือเช็คการล็อกอิน Shopee)" };
+    }
+
+    // โหมด collect: ดึงข้อมูล+รูปเข้าแอป ไม่ต้อง export CSV
+    if (mode === "collect") {
+      return { ok: true, ticked, capped, products: collected };
     }
 
     // 3) กดปุ่ม bulk "รับลิงก์แบบทีเดียวทั้งหมด" (synthetic พอ — แค่เปิด modal)
@@ -217,7 +265,7 @@
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "SHOPEE_PING") { reply({ pong: true }); return false; }
     if (msg?.type === "SHOPEE_RUN") {
-      run(msg.keyword, Math.max(1, parseInt(msg.count, 10) || 1))
+      run(msg.keyword, Math.max(1, parseInt(msg.count, 10) || 1), msg.mode === "collect" ? "collect" : "export")
         .then(reply)
         .catch((err) => reply({ ok: false, error: err?.message || String(err) }));
       return true; // async
