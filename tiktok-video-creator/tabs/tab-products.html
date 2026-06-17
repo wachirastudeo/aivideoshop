@@ -1,4 +1,28 @@
-<section class="section" data-collapsible data-collapse-key="products.filters">
+<div class="source-switch" role="tablist" aria-label="แหล่งสินค้า">
+  <button class="source-switch__button source-switch__button--active" data-source="tiktok" type="button">TikTok</button>
+  <button class="source-switch__button" data-source="shopee" type="button">Shopee</button>
+</div>
+
+<section id="source-shopee" class="section" hidden>
+  <div class="section__header">
+    <h2>ดึงสินค้า Shopee Affiliate</h2>
+  </div>
+  <div class="section__body">
+    <p class="hint">ค้นหาสินค้าจาก affiliate.shopee.co.th แล้วติ๊ก N ชิ้นแรก กด Export ของเว็บเพื่อดาวน์โหลดไฟล์ CSV (ต้องล็อกอิน Shopee Affiliate ใน Chrome ก่อน)</p>
+    <div class="field">
+      <label class="field__label" for="shopee-keyword">คำค้นหา</label>
+      <input id="shopee-keyword" class="input" type="search" placeholder="เช่น พัดลมพกพา">
+    </div>
+    <div class="field">
+      <label class="field__label" for="shopee-count">จำนวนที่ต้องการ</label>
+      <input id="shopee-count" class="input" type="number" min="1" max="500" value="10">
+    </div>
+    <button id="shopee-pull" class="button button--primary button--full" type="button">เริ่มดึง & Export</button>
+    <div id="shopee-status" class="hint" aria-live="polite"></div>
+  </div>
+</section>
+
+<section id="source-tiktok" class="section" data-collapsible data-collapse-key="products.filters">
   <div class="section__header">
     <h2>สินค้า TikTok Showcase</h2>
     <button id="connect-tiktok" class="button button--ghost" type="button">เชื่อมต่อ</button>

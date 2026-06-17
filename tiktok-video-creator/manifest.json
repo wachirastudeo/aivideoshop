@@ -25,6 +25,8 @@
     "https://*.flow-content.google/*",
     "https://*.tiktokcdn.com/*",
     "https://*.ibyteimg.com/*",
+    "https://affiliate.shopee.co.th/*",
+    "https://*.shopee.co.th/*",
     "https://generativelanguage.googleapis.com/*",
     "https://api.openai.com/*"
   ],
@@ -49,6 +51,17 @@
       "matches": [
         "https://www.tiktok.com/tiktokstudio*",
         "https://www.tiktok.com/tiktok-studio*"
+      ],
+      "run_at": "document_idle",
+      "world": "ISOLATED",
+      "all_frames": false
+    },
+    {
+      "js": [
+        "content/shopee-affiliate.js"
+      ],
+      "matches": [
+        "https://affiliate.shopee.co.th/*"
       ],
       "run_at": "document_idle",
       "world": "ISOLATED",

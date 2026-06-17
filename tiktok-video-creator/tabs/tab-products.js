@@ -14,8 +14,85 @@ const ITEMS_PER_PAGE = 10;
  */
 export async function initProductsTab(injectedHelpers) {
   helpers = injectedHelpers;
+  bindSourceSwitch();
+  bindShopeeEvents();
   bindProductEvents();
+
+  const stored = await chrome.storage.local.get(["pullSource"]);
+  applySource(stored.pullSource === "shopee" ? "shopee" : "tiktok");
+
   await loadProducts({ reset: true, silent: true });
+}
+
+/**
+ * @description สลับแหล่งดึงสินค้า TikTok / Shopee
+ */
+function bindSourceSwitch() {
+  document.querySelectorAll(".source-switch__button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      applySource(btn.dataset.source);
+      chrome.storage.local.set({ pullSource: btn.dataset.source });
+    });
+  });
+}
+
+function applySource(source) {
+  document.querySelectorAll(".source-switch__button").forEach((btn) => {
+    btn.classList.toggle("source-switch__button--active", btn.dataset.source === source);
+  });
+  const tiktokPanel = document.querySelector("#source-tiktok");
+  const shopeePanel = document.querySelector("#source-shopee");
+  if (tiktokPanel) tiktokPanel.hidden = source !== "tiktok";
+  if (shopeePanel) shopeePanel.hidden = source !== "shopee";
+}
+
+/**
+ * @description ผูก event ฝั่ง Shopee: ค้นหา + จำนวน → สั่ง background ดึง & Export
+ */
+function bindShopeeEvents() {
+  const pullBtn = document.querySelector("#shopee-pull");
+  if (!pullBtn) return;
+
+  pullBtn.addEventListener("click", async () => {
+    const keyword = document.querySelector("#shopee-keyword")?.value.trim() || "";
+    const count = parseInt(document.querySelector("#shopee-count")?.value, 10);
+    const statusEl = document.querySelector("#shopee-status");
+
+    if (!keyword) {
+      setShopeeStatus("กรอกคำค้นหาก่อน", "error");
+      return;
+    }
+    if (!Number.isInteger(count) || count < 1) {
+      setShopeeStatus("จำนวนต้องเป็นเลขจำนวนเต็มมากกว่า 0", "error");
+      return;
+    }
+
+    pullBtn.disabled = true;
+    setShopeeStatus(`กำลังเปิด Shopee และดึง ${count} ชิ้น...`);
+    helpers.logActivity?.(`ดึง Shopee: "${keyword}" จำนวน ${count}`);
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "PULL_SHOPEE_PRODUCTS",
+        payload: { keyword, count }
+      });
+      if (!response?.ok) throw new Error(response?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
+      setShopeeStatus(`ติ๊กแล้ว ${response.ticked ?? count} ชิ้น — ตรวจไฟล์ CSV ที่ดาวน์โหลด`, "success");
+      helpers.logActivity?.(`Shopee export สำเร็จ (${response.ticked ?? count} ชิ้น)`, "success");
+    } catch (error) {
+      setShopeeStatus(error.message, "error");
+      helpers.logActivity?.(`Shopee ไม่สำเร็จ: ${error.message}`, "error");
+    } finally {
+      pullBtn.disabled = false;
+    }
+  });
+}
+
+function setShopeeStatus(text, type) {
+  const el = document.querySelector("#shopee-status");
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = type === "error" ? "#e23" : type === "success" ? "#1a7" : "";
 }
 
 /**

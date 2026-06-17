@@ -441,6 +441,41 @@ html[data-mode="tab"] .app-shell {
   color: var(--muted-2);
 }
 
+.source-switch {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+}
+
+.source-switch__button {
+  flex: 1;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.source-switch__button + .source-switch__button {
+  border-left: 1px solid var(--line);
+}
+
+.source-switch__button--active {
+  background: var(--accent, #111);
+  color: #fff;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--muted-2);
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+
 .input,
 .textarea,
 .select {

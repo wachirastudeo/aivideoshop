@@ -25,6 +25,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function routeMessage(message, sender) {
   switch (message?.type) {
     case "FETCH_PRODUCTS":          return fetchShowcaseProducts(message.payload);
+    case "PULL_SHOPEE_PRODUCTS":     return pullShopeeProducts(message.payload);
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
     case "DOWNLOAD_VIDEO":           return downloadVideo(message.payload);
     case "POST_TO_TIKTOK":           return postToTikTok(message.payload);
@@ -380,6 +381,62 @@ async function ensureFlowContentScript(tabId) {
   if (!ready) {
     throw new Error("content script ของ Google Flow ยังไม่พร้อมหลัง inject");
   }
+}
+
+const SHOPEE_OFFER_URL = "https://affiliate.shopee.co.th/offer/product_offer";
+
+async function pullShopeeProducts({ keyword, count } = {}) {
+  if (!keyword) throw new Error("ไม่มีคำค้นหา");
+  const want = Math.max(1, parseInt(count, 10) || 1);
+
+  const existing = await chrome.tabs.query({ url: "https://affiliate.shopee.co.th/*" });
+  let tab = existing[0];
+  if (tab) {
+    await chrome.tabs.update(tab.id, { active: true, url: SHOPEE_OFFER_URL });
+    try { await chrome.windows.update(tab.windowId, { focused: true }); } catch { }
+  } else {
+    tab = await chrome.tabs.create({ url: SHOPEE_OFFER_URL, active: true });
+  }
+  await waitForTabComplete(tab.id);
+
+  tab = await chrome.tabs.get(tab.id);
+  if (/\/login|\/seller\/login|account.*login/i.test(tab.url || "")) {
+    throw new Error("ยังไม่ได้ล็อกอิน Shopee Affiliate — ล็อกอินในแท็บที่เปิดแล้วลองใหม่");
+  }
+
+  await ensureShopeeContentScript(tab.id);
+  const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want });
+  if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
+  return { ticked: result.ticked };
+}
+
+async function ensureShopeeContentScript(tabId) {
+  if (await waitForShopeeReady(tabId, 2500)) return;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["content/shopee-affiliate.js"] });
+  } catch (error) {
+    throw new Error("inject content script ไปยัง Shopee ไม่สำเร็จ: " + error.message);
+  }
+  const ready = await waitForShopeeReady(tabId, 8000);
+  if (!ready) throw new Error("content script ของ Shopee ยังไม่พร้อมหลัง inject");
+}
+
+function waitForShopeeReady(tabId, timeoutMs = 10000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const interval = setInterval(async () => {
+      try {
+        const response = await chrome.tabs.sendMessage(tabId, { type: "SHOPEE_PING" });
+        clearInterval(interval);
+        resolve(Boolean(response?.pong));
+      } catch {
+        if (Date.now() - start > timeoutMs) {
+          clearInterval(interval);
+          resolve(false);
+        }
+      }
+    }, 500);
+  });
 }
 
 function waitForTabComplete(tabId) {
