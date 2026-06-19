@@ -350,8 +350,6 @@ function productMarkup(p, index) {
           <button class="button batch-analyze" type="button">${sparkIcon()} วิเคราะห์จุดขาย</button>
           <button class="button batch-copy" type="button">${copyIcon()} คัดลอก Prompt</button>
           <button class="button button--danger batch-stop" type="button" ${RUNNING_STATUSES.has(p.status) ? "" : "hidden"}>${stopIcon()} หยุด</button>
-          <button class="button batch-download" type="button" ${p.videoUrl ? "" : "disabled"}>${downloadIcon()} Download</button>
-          <button class="button button--primary batch-post" type="button" ${p.videoUrl ? "" : "disabled"}>${postButtonText}</button>
         </div>
       </div>
     </article>
@@ -404,8 +402,6 @@ function bindBatchEvents() {
     item.querySelector(".batch-copy")?.addEventListener("click", () => copyPrompts(item));
     item.querySelector(".batch-stop")?.addEventListener("click", () => handleStop(p));
     item.querySelector(".batch-upload-approved")?.addEventListener("change", (e) => handleUploadApproved(e, p));
-    item.querySelector(".batch-download")?.addEventListener("click", () => handleDownload(p));
-    item.querySelector(".batch-post")?.addEventListener("click", () => handlePost(p));
     item.querySelector(".batch-remove")?.addEventListener("click", () => {
       productQueue.splice(idx, 1);
       renderQueue();
