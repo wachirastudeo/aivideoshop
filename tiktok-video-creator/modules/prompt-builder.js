@@ -223,37 +223,19 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     textEnabled ? compactPromptText(settings?.promotionText, 80) : ""
   ].filter(Boolean);
 
-  const isOmniFlash = settings?.videoModel === "omni-flash";
-
   const promptParts = [
-    isOmniFlash
-      ? `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`
-      : `Create a ${durationSeconds}-second vertical 9:16 product video for ${productName}.`,
+    `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`,
     PRODUCT_FIDELITY_DIRECTION,
     PRODUCT_ISOLATION_DIRECTION,
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
   ];
 
-  if (isOmniFlash) {
-    promptParts.push(
-      getMultiSceneDescription(auto.videoStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60)),
-      `Keep all shots sharp, clearly visible, stable, and centered.`,
-      VIDEO_REALISM_DIRECTION
-    );
-  } else {
-    promptParts.push(
-      `New suitable scene: ${compactPromptText(locationStr, 100)}, ${compactPromptText(auto.mood, 60)} lighting. Do not recreate the original scene.`,
-      auto.videoStyle === "review"
-        ? "Product-review format: clearly present the product, key details, and realistic use."
-        : "",
-      auto.videoStyle === "testimonial"
-        ? "UGC testimonial format: natural handheld framing, authentic review vibe, and casual realistic presentation."
-        : "",
-      `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep the whole product sharp, clearly visible, stable, centered, and unchanged.`,
-      VIDEO_REALISM_DIRECTION
-    );
-  }
+  promptParts.push(
+    getMultiSceneDescription(auto.videoStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60)),
+    `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep all shots sharp, clearly visible, stable, and centered.`,
+    VIDEO_REALISM_DIRECTION
+  );
 
   promptParts.push(
     textEnabled && overlayText.length

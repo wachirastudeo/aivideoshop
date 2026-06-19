@@ -117,10 +117,10 @@ check("video prompt forbids adding or removing parts", /never add, remove/i.test
 check("image prompt isolates only the named product", /single product|one product only/i.test(cabinetImage));
 check("image prompt rejects source-scene objects", /ignore the original background and every unrelated object/i.test(cabinetImage));
 check("image prompt creates a new suitable background", /background that fits this product category/i.test(cabinetImage));
-check("video prompt does not recreate source scene", /do not recreate the original scene/i.test(cabinetVideo));
+check("video prompt is multi-scene", /multi-scene/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
 check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabinetVideo) && !/Urban Street/i.test(cabinetVideo));
 check("image prompt stays concise", cabinetImage.length < 1500, `length=${cabinetImage.length}`);
-check("video prompt stays concise", cabinetVideo.length < 1600, `length=${cabinetVideo.length}`);
+check("video prompt stays concise", cabinetVideo.length < 2000, `length=${cabinetVideo.length}`);
 
 // --- footwear fidelity: preserve the exact model while Auto includes a reviewer ---
 const shoe = {
@@ -135,13 +135,13 @@ check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.t
 check("shoe video Auto includes a reviewer", /Presenter: (?:A trendy young Thai woman|A stylish young Thai man)/i.test(shoeVideo));
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
-check("shoe prompts remain concise", shoeImage.length < 1500 && shoeVideo.length < 1600, `image=${shoeImage.length} video=${shoeVideo.length}`);
+check("shoe prompts remain concise", shoeImage.length < 1500 && shoeVideo.length < 2000, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
 // --- default behavior: UGC style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
 const generalReviewB = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
 check("default style is UGC testimonial", settings.videoStyle === "testimonial");
-check("default video uses UGC testimonial", /UGC testimonial format/i.test(generalReviewA));
+check("default video uses UGC testimonial", /UGC testimonial/i.test(generalReviewA));
 check("Auto reviewer is stable per product", generalReviewA === generalReviewB);
 check("Auto reviewer is male or female", /Presenter: (?:A trendy young Thai woman|A stylish young Thai man)/i.test(generalReviewA));
 check(
