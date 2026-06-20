@@ -1199,6 +1199,23 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload", opt
     return [...done];
 }
 
+// ล้างรูปที่แนบไว้ใน prompt panel ทั้งหมด (กดปุ่ม remove/cancel ของแต่ละรูป)
+async function clearPromptAttachments() {
+    const panel = getPromptPanel();
+    if (!panel) return;
+    let removed = 0;
+    for (let i = 0; i < 12; i++) {
+        const removeBtn = panel.querySelector(
+            "button[aria-label*='cancel' i],button[aria-label*='remove' i],button[aria-label*='delete' i],button[aria-label*='ลบ']"
+        );
+        if (!removeBtn || !isVisible(removeBtn)) break;
+        await humanClick(removeBtn);
+        removed += 1;
+        await sleep(300);
+    }
+    if (removed) log(`ล้างรูปแนบเดิม ${removed} รูปออกจาก prompt แล้ว`);
+}
+
 async function switchMediaTab(tabIcon) {
     const labels = tabIcon === "image"
         ? ["View images", "Images", "Generated", "รูปภาพ"]
@@ -1920,6 +1937,10 @@ async function runPipeline(payload) {
 
             // 4b. เปลี่ยน config เป็น VIDEO mode + portrait
             if (cfg.autoPortrait) await ensureConfig("video", options);
+
+            // ล้างรูป listing ที่แนบไว้ตอนสร้างภาพออกก่อน ไม่งั้นวิดีโอจะอ้างอิง
+            // รูปสินค้าเดิมแทนภาพที่เจนเสร็จใน Phase 1
+            await clearPromptAttachments();
 
             // 5b. Combined mode must animate the Phase 1 output, regardless
             //     of whether Flow is configured for Ingredients or Frames.
