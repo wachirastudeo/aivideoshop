@@ -100,6 +100,7 @@ const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pa
 
 const VIDEO_REALISM_DIRECTION = "Keep motion subtle and realistic; no morphing, duplication, or impossible action.";
 const SPEECH_DIRECTION = "Speak one short natural Thai line once; never repeat or loop the same phrase across scenes.";
+const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
 const TEXT_FREE_DIRECTION = "Text-free output. No words, letters, numbers, logos, brand names, labels, packaging copy, captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI. Omit reference text without changing product shape or colors; this overrides label fidelity.";
 
@@ -232,8 +233,19 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     analysisDirection,
   ];
 
-  const sceneBreakdown = getMultiSceneDescription(auto.videoStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
+  const noPeople = !(auto.presenter && auto.presenter !== "none");
+  // Person-centric styles embed a presenter/reviewer in the scenes; fall back to
+  // the product-only review flow so "no people" does not get contradicted.
+  const sceneStyle = noPeople && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
+    ? "review"
+    : auto.videoStyle;
+  let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
     .replace(/\d+-second\s*/g, "");
+  if (noPeople) {
+    sceneBreakdown = sceneBreakdown
+      .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown on its own")
+      .replace(/\b(presenter|reviewer|person)\b/gi, "product");
+  }
 
   promptParts.push(
     `MUST be multiple distinct scenes with hard cuts, not one continuous shot; split the ${durationSeconds}s evenly across the scenes below.`,
@@ -251,7 +263,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   if (auto.presenter && auto.presenter !== "none") {
     promptParts.push(`Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION} ${SPEECH_DIRECTION}`);
   } else {
-    promptParts.push(NO_PEOPLE_DIRECTION);
+    promptParts.push(`${NO_PEOPLE_DIRECTION} ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
   }
 
   return promptParts.filter(Boolean).join("\n");
