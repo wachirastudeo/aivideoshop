@@ -268,7 +268,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   promptParts.push(
     textEnabled && overlayText.length
-      ? `MUST always display these exact Thai text overlays, clearly legible and on-screen in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. The text is required in the final video; do not omit it and do not add any other readable text.`
+      ? `MUST always display these exact Thai text overlays, clearly legible and on-screen in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. Render the Thai script accurately with correct Thai characters, vowels, and tone marks, spelled exactly as written, in a clean readable sans-serif font with high contrast — no garbled, fake, or misspelled letters. The text is required in the final video; do not omit it and do not add any other readable text.`
       : TEXT_FREE_DIRECTION
   );
 
