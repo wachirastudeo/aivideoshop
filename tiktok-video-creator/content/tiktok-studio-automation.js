@@ -550,14 +550,23 @@ async function fillCaptionAndHashtags(caption, hashtags) {
     if (!tag) continue;
     document.execCommand("insertText", false, ` #${tag}`);
     await sleep(250);
+    // ปิด popup แนะนำแฮชแท็ก ไม่งั้นพอ focus หลุด (กดโพส) TikTok จะ commit suggestion ทับ
+    dismissCaptionSuggestion(editor);
+    await sleep(150);
   }
 
-  editor.dispatchEvent(new InputEvent("input", {
-    bubbles: true,
-    inputType: "insertText",
-    data: editor.textContent,
-  }));
+  // เคาะ popup ที่อาจค้างเป็นรอบสุดท้าย แล้วค่อยยิง input/change ให้ DraftJS อัปเดต state
+  dismissCaptionSuggestion(editor);
+  await sleep(150);
+  editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: " " }));
   editor.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+// ปิดกล่อง suggestion (hashtag/mention) ของ TikTok caption editor ด้วย Escape
+function dismissCaptionSuggestion(editor) {
+  const opts = { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true };
+  (editor || document.body).dispatchEvent(new KeyboardEvent("keydown", opts));
+  (editor || document.body).dispatchEvent(new KeyboardEvent("keyup", opts));
 }
 
 async function applyUploadSettings(settings) {

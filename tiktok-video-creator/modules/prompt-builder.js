@@ -533,9 +533,9 @@ function promptAutoOptions(videoStyle, presenter, voiceTone, mood, location, cam
 export function buildCaption(productInfo, defaults = {}) {
   const template = defaults.captionTemplate || "{product_name}";
   const productUrl = resolveProductUrl(productInfo);
-  const productName = resolveCaptionProductName(productInfo);
-  const caption = renderCaptionTemplate(template, {
-    product_name: cleanCaptionText(productName),
+  const hook = cleanCaptionText(resolveCaptionProductName(productInfo));
+  const body = renderCaptionTemplate(template, {
+    product_name: hook,
     product_id: sanitizeText(productInfo.productId),
     product_url: sanitizeText(productUrl),
     price: formatPrice(productInfo),
@@ -546,11 +546,10 @@ export function buildCaption(productInfo, defaults = {}) {
     cta: cleanCaptionText(productInfo.cta || "สั่งได้เลย")
   });
 
-  const productNameLine = defaults.autoAddProductLink !== false && productName && !caption.includes(productName)
-    ? `\n${cleanCaptionText(productName)}`
-    : "";
-
-  return `${caption}${productNameLine}`.trim();
+  // caption ต้องขึ้นต้นด้วยช่อง "ชื่อสินค้า / Hook" เสมอ แล้วตามด้วยเนื้อ caption (ไม่ซ้ำ Hook)
+  if (!hook) return body.trim();
+  const rest = body.startsWith(hook) ? body.slice(hook.length).trim() : body.trim();
+  return rest ? `${hook}\n${rest}` : hook;
 }
 
 function renderCaptionTemplate(template, variables) {
