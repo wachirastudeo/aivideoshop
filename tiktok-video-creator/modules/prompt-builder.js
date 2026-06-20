@@ -82,6 +82,7 @@ const PACING = {
 const PRESENTERS = {
   Auto: "Let AI choose whether a Thai presenter improves the product video",
   none: "No humans, focus entirely on the product visual",
+  hands_only: "Only realistic Thai hands holding and presenting the product, no face or body",
   woman: "A trendy young Thai woman reviewer interacting with the product",
   man: "A stylish young Thai man reviewer presenting the product",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
@@ -90,11 +91,15 @@ const PRESENTERS = {
 
 const THAI_PERSON_DIRECTION = "Natural Thai reviewer. Keep the product visible and unchanged; do not wear, cover, bend, or deform it.";
 
+const HANDS_DIRECTION = "Show only realistic human hands holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand; never add, merge, distort, or remove fingers. Keep the product fully visible and unchanged.";
+
 const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the single product. Preserve only its exact shape, proportions, structure/count, materials, colors, hardware, labels, and printed details; the visible product overrides conflicting title variants. Do not redesign it.";
 
 const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
 
 const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangement of drawers, shelves, doors, compartments, handles, legs, and other product parts. Never add, remove, merge, or rearrange them.";
+
+const SCALE_FIDELITY_DIRECTION = "Keep the product's proportions and real-world scale identical to the uploaded reference: same width-to-height ratio and part dimensions; never stretch, squash, elongate, enlarge, or shrink it.";
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
 
@@ -194,6 +199,7 @@ export function buildImagePrompt(productInfo, settings) {
   const promptParts = [
     `Create one vertical 9:16 commercial product photo of ${productName}.`,
     PRODUCT_FIDELITY_DIRECTION,
+    SCALE_FIDELITY_DIRECTION,
     PRODUCT_ISOLATION_DIRECTION,
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
@@ -228,15 +234,18 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`,
     PRODUCT_FIDELITY_DIRECTION,
+    SCALE_FIDELITY_DIRECTION,
     PRODUCT_ISOLATION_DIRECTION,
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
   ];
 
+  const handsOnly = auto.presenter === "hands_only";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
-  // Person-centric styles embed a presenter/reviewer in the scenes; fall back to
-  // the product-only review flow so "no people" does not get contradicted.
-  const sceneStyle = noPeople && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
+  // Person-centric styles embed a full presenter/reviewer in the scenes; fall back
+  // to the product-only review flow when there is no presenter, or when only hands
+  // are allowed, so the scene text never demands a full face/body.
+  const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
     ? "review"
     : auto.videoStyle;
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
@@ -256,11 +265,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   promptParts.push(
     textEnabled && overlayText.length
-      ? `Use only these Thai overlays at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. Do not add any other readable text.`
+      ? `MUST always display these exact Thai text overlays, clearly legible and on-screen in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. The text is required in the final video; do not omit it and do not add any other readable text.`
       : TEXT_FREE_DIRECTION
   );
 
-  if (auto.presenter && auto.presenter !== "none") {
+  if (handsOnly) {
+    promptParts.push(`${HANDS_DIRECTION} ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
+  } else if (auto.presenter && auto.presenter !== "none") {
     promptParts.push(`Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION} ${SPEECH_DIRECTION}`);
   } else {
     promptParts.push(`${NO_PEOPLE_DIRECTION} ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
@@ -561,13 +572,15 @@ function renderCaptionLine(line, variables) {
 }
 
 export function resolveCaptionProductName(productInfo = {}) {
+  // Lead with the user-edited "ชื่อสินค้า / Hook" field (productInfo.name);
+  // fall back to the raw scraped title only when it is empty.
   return cleanCaptionText(
+    productInfo.name ||
     productInfo.originalName ||
     productInfo.productLinkTitle ||
     productInfo.rawProduct?.title ||
     productInfo.rawProduct?.product_name ||
     productInfo.rawProduct?.name ||
-    productInfo.name ||
     ""
   );
 }

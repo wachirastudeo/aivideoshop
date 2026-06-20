@@ -1211,28 +1211,38 @@ async function switchMediaTab(tabIcon) {
 }
 
 async function addTileToPrompt(media) {
-    const beforeAttachCount = promptAttachmentCount();
-    const directAdd = findAddButtonNear(media);
-    if (directAdd) {
-        await humanClick(directAdd);
-        if (await waitPromptAttachment(beforeAttachCount)) return true;
+    // Flow บางครั้งเปิดเมนูช้า/แลค ทำให้กดรอบเดียวไม่ติด — วน retry ทั้ง 3 วิธี
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        const beforeAttachCount = promptAttachmentCount();
+        const directAdd = findAddButtonNear(media);
+        if (directAdd) {
+            await humanClick(directAdd);
+            if (await waitPromptAttachment(beforeAttachCount)) return true;
+        }
+
+        const menuOpen = document.querySelector('[role="menu"][data-state="open"]');
+        if (menuOpen) { document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); await sleep(300); }
+
+        await rightClick(media);
+        const ctxMenu = await waitEl('[role="menu"][data-state="open"]', 3500);
+        const menuItem = ctxMenu ? findPromptMenuItem(ctxMenu) : null;
+        if (menuItem) {
+            await humanClick(menuItem);
+            if (await waitPromptAttachment(beforeAttachCount)) return true;
+        }
+
+        document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await sleep(300);
+
+        if (await dragTileToPrompt(media, beforeAttachCount)) return true;
+
+        if (attempt < 3) {
+            log(`⚠️ แนบรูปไม่ติด ลองใหม่ (รอบ ${attempt + 1}/3)...`);
+            await sleep(700);
+        }
     }
 
-    const menuOpen = document.querySelector('[role="menu"][data-state="open"]');
-    if (menuOpen) { document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); await sleep(300); }
-
-    await rightClick(media);
-    let ctxMenu = await waitEl('[role="menu"][data-state="open"]', 2500);
-    let menuItem = ctxMenu ? findPromptMenuItem(ctxMenu) : null;
-    if (menuItem) {
-        await humanClick(menuItem);
-        if (await waitPromptAttachment(beforeAttachCount)) return true;
-    }
-
-    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    await sleep(300);
-
-    return dragTileToPrompt(media, beforeAttachCount);
+    return false;
 }
 
 function getPromptPanel() {

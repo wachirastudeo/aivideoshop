@@ -1,4 +1,4 @@
-import { buildCaption, buildPostHashtags, normalizeHashtags, sanitizeText } from "./prompt-builder.js";
+import { buildCaption, buildPostHashtags, normalizeHashtags, sanitizeText, resolveCaptionProductName } from "./prompt-builder.js";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
@@ -102,7 +102,7 @@ async function generatePostCopyWithGemini(productInfo, defaults, settings, fallb
     if (!response.ok) throw new Error(await getGeminiErrorMessage(response, "Gemini สร้าง caption/hashtag ไม่สำเร็จ"));
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text || "{}";
-    return normalizeGeneratedPostCopy(JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}"), fallback);
+    return normalizeGeneratedPostCopy(JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}"), fallback, productInfo);
   } finally {
     clearTimeout(timeout);
   }
@@ -140,7 +140,7 @@ async function generatePostCopyWithOpenAI(productInfo, defaults, settings, fallb
     }
 
     const data = await response.json();
-    return normalizeGeneratedPostCopy(JSON.parse(data.choices?.[0]?.message?.content || "{}"), fallback);
+    return normalizeGeneratedPostCopy(JSON.parse(data.choices?.[0]?.message?.content || "{}"), fallback, productInfo);
   } finally {
     clearTimeout(timeout);
   }
@@ -162,6 +162,7 @@ function buildPostCopyPrompt(productInfo = {}, defaults = {}) {
     `Default hashtags: ${baseHashtags}`,
     "Rules:",
     `- Caption must be natural Thai TikTok Shop sales copy, maximum ${POST_CAPTION_MAX_LENGTH} characters.`,
+    "- The caption MUST begin with the edited product name / hook exactly as given, then the sales copy on the next line.",
     "- Use the full product title as the main source for product-specific details.",
     "- Do not include product URLs or raw links.",
     "- Do not include hashtags inside caption; return hashtags separately.",
@@ -187,14 +188,26 @@ function sanitizeLongText(value) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, POST_CAPTION_MAX_LENGTH);
 }
 
-function normalizeGeneratedPostCopy(value, fallback) {
-  const caption = truncatePostCaption(cleanGeneratedCaption(value?.caption) || fallback.caption);
+function normalizeGeneratedPostCopy(value, fallback, productInfo = {}) {
+  const rawCaption = cleanGeneratedCaption(value?.caption) || fallback.caption;
+  const caption = truncatePostCaption(ensureCaptionLeadsWithHook(rawCaption, productInfo));
   const hashtags = normalizeHashtags(cleanGeneratedHashtags(value?.hashtags?.length ? value.hashtags : fallback.hashtags), 5);
   return {
     caption,
     hashtags,
     source: "ai"
   };
+}
+
+// caption ต้องขึ้นต้นด้วยช่อง "ชื่อสินค้า / Hook" เสมอ — ถ้า AI ไม่ใส่ ให้เติมนำให้
+function ensureCaptionLeadsWithHook(caption, productInfo = {}) {
+  const hook = resolveCaptionProductName(productInfo);
+  const text = String(caption || "").trim();
+  if (!hook) return text;
+  const normalizedHook = hook.toLowerCase();
+  const normalizedHead = text.slice(0, hook.length).toLowerCase();
+  if (normalizedHead === normalizedHook) return text;
+  return text ? `${hook}\n${text}` : hook;
 }
 
 function cleanGeneratedHashtags(value) {
