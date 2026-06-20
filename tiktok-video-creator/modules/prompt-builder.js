@@ -99,6 +99,7 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangemen
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
 
 const VIDEO_REALISM_DIRECTION = "Keep motion subtle and realistic; no morphing, duplication, or impossible action.";
+const SPEECH_DIRECTION = "Speak one short natural Thai line once; never repeat or loop the same phrase across scenes.";
 
 const TEXT_FREE_DIRECTION = "Text-free output. No words, letters, numbers, logos, brand names, labels, packaging copy, captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI. Omit reference text without changing product shape or colors; this overrides label fidelity.";
 
@@ -231,8 +232,12 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     analysisDirection,
   ];
 
+  const sceneBreakdown = getMultiSceneDescription(auto.videoStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
+    .replace(/\d+-second\s*/g, "");
+
   promptParts.push(
-    getMultiSceneDescription(auto.videoStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60)),
+    `MUST be multiple distinct scenes with hard cuts, not one continuous shot; split the ${durationSeconds}s evenly across the scenes below.`,
+    sceneBreakdown,
     `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep all shots sharp, clearly visible, stable, and centered.`,
     VIDEO_REALISM_DIRECTION
   );
@@ -244,7 +249,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   );
 
   if (auto.presenter && auto.presenter !== "none") {
-    promptParts.push(`Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION}`);
+    promptParts.push(`Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION} ${SPEECH_DIRECTION}`);
   } else {
     promptParts.push(NO_PEOPLE_DIRECTION);
   }

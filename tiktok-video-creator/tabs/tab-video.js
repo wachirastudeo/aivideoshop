@@ -849,7 +849,7 @@ async function handlePost(product) {
 
 async function getPostAction() {
   const { settings: syncSettings = {} } = await chrome.storage.sync.get("settings");
-  return syncSettings.postDefaults?.afterCreateAction || settings.postAction || "post";
+  return settings.postAction || syncSettings.postDefaults?.afterCreateAction || "post";
 }
 
 function getActionButtonText(action) {
