@@ -101,6 +101,8 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangemen
 
 const SCALE_FIDELITY_DIRECTION = "Keep the product's proportions and real-world scale identical to the uploaded reference: same width-to-height ratio and part dimensions; never stretch, squash, elongate, enlarge, or shrink it.";
 
+const MATCH_STILL_DIRECTION = "Animate the attached reference still: keep the product looking exactly like it; add only camera motion and scene action, never redraw or restyle it.";
+
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
 
 const VIDEO_REALISM_DIRECTION = "Keep motion subtle and realistic; no morphing, duplication, or impossible action.";
@@ -233,6 +235,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`,
+    MATCH_STILL_DIRECTION,
     PRODUCT_FIDELITY_DIRECTION,
     SCALE_FIDELITY_DIRECTION,
     PRODUCT_ISOLATION_DIRECTION,
