@@ -109,7 +109,7 @@ const VIDEO_REALISM_DIRECTION = "Keep motion subtle and realistic; no morphing, 
 const SPEECH_DIRECTION = "Speak one short natural Thai line once; never repeat or loop the same phrase across scenes.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
-const TEXT_FREE_DIRECTION = "Text-free output. No words, letters, numbers, logos, brand names, labels, packaging copy, captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI. Omit reference text without changing product shape or colors; this overrides label fidelity.";
+const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
 
 const NO_PEOPLE_DIRECTION = "Product-only scene. No people, faces, presenters, reviewers, characters, celebrities, or public figures.";
 

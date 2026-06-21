@@ -617,6 +617,17 @@ async function applyUploadSettings(settings) {
   return { productRequired, productAdded, aigcOk };
 }
 
+// แท็บถูกเลือกอยู่หรือยัง — รองรับ data-active / aria-selected / class active|selected
+function isTabActive(tab) {
+  if (!tab) return false;
+  const el = tab.closest('[role="tab"], [data-active], button') || tab;
+  return (
+    el.getAttribute("data-active") === "true" ||
+    el.getAttribute("aria-selected") === "true" ||
+    /(^|\s)(active|selected)(\s|$)|--active|--selected/i.test(el.className || "")
+  );
+}
+
 async function applyProductLink(productId, productUrl, productName) {
   const productKey = String(productId || productUrl || "").trim();
   if (!productKey) return true; // ไม่ได้ระบุสินค้า ไม่ถือว่าพลาด
@@ -668,7 +679,8 @@ async function applyProductLink(productId, productUrl, productName) {
   // STEP 4: เลือกแท็บ Showcase products + รอช่องค้นหา
   const searchInput = await retryUntil("STEP4 เลือก Showcase + รอช่องค้นหา", () => {
     const tab = findButtonByText(["showcase products", "นำเสนอสินค้า"]);
-    if (isClickable(tab) && tab.getAttribute("data-active") === null) realClick(tab);
+    // คลิกแท็บ Showcase ถ้ายังไม่ active — รองรับทั้ง data-active="false", aria-selected, class
+    if (isClickable(tab) && !isTabActive(tab)) realClick(tab);
     return document.querySelector('input[placeholder="Search products"], .product-search-input input, .product-selector-modal input[placeholder*="Search product"]');
   }, 30000);
   if (!searchInput) return false;

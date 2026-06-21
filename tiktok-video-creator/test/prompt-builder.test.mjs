@@ -76,14 +76,14 @@ const vid = buildVideoPrompt({ name: "ครีมบำรุงผิว", hig
 check("video prompt locks only the product object", /preserve only its exact shape/i.test(vid));
 check("video prompt mentions sharp/clear product", /razor-sharp|clearly visible/i.test(vid), "missing sharpness directive");
 check("video prompt is 9:16 vertical", /9:16|vertical/i.test(vid));
-check("default video forbids all readable text", /Text-free output[\s\S]*no words, letters, numbers, logos/i.test(vid), vid);
-check("default video does not preserve printed source text", !/Preserve only text printed|Keep only text already printed/i.test(vid), vid);
+check("default video forbids added scene text", /do not add any extra readable text/i.test(vid), vid);
+check("default video preserves the product's own printed text", /Keep the product's own printed text/i.test(vid), vid);
 
 // --- image prompt: fidelity + sharp focus ---
 const img = buildImagePrompt({ name: "ครีมบำรุงผิว", highlights: "" }, settings);
 check("image prompt mentions fidelity", /preserve only its exact shape/i.test(img));
 check("image prompt sharp focus", /sharp and clearly visible|sharp focus/i.test(img));
-check("reference image always forbids readable text", /Text-free output[\s\S]*packaging copy/i.test(img), img);
+check("reference image keeps product text but forbids added text", /Keep the product's own printed text[\s\S]*do not add any extra readable text/i.test(img), img);
 
 const staleTextSettings = {
   ...settings,
