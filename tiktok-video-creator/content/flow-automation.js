@@ -1647,17 +1647,23 @@ async function clickGenerate() {
     log("🚀 กด Generate!");
     btn.scrollIntoView({ block: "center", inline: "center" });
     await sleep(400);
+    // มีการ์ดใหม่แล้ว = เริ่มเจนแล้ว ห้ามกดซ้ำ (กันเจนภาพ 2 รอบ)
+    const generationStarted = () => getMediaCards().some(card => card.key && !preGenMediaKeys.has(card.key));
+
     if (await clickButtonCenterWithDebugger(btn) && await waitGenerationStarted(btn, 5000)) {
         return true;
     }
+    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
 
     log("Trusted click ยังไม่เริ่มสร้าง → ลอง human click...");
     await humanClick(btn);
     if (await waitGenerationStarted(btn, 3500)) return true;
+    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
 
     log("Human click ยังไม่เริ่มสร้าง → ลอง DOM click...");
     click(btn);
     if (await waitGenerationStarted(btn, 2000)) return true;
+    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
 
     log("DOM click ยังไม่เริ่มสร้าง → ลองกด Enter...");
     btn.focus();
@@ -1749,14 +1755,15 @@ async function waitGenerationStarted(button, timeoutMs = 7000) {
     while (Date.now() < end) {
         if (stopRequested) return false;
         const disabled = button.disabled || button.getAttribute("aria-disabled") === "true";
-        const newCards = getMediaCards().filter(card => card.key && !preGenMediaKeys.has(card.key));
-        const hasNewProgress = newCards.some(card => mediaCardStatus(card).progress);
+        // การ์ดใหม่ใดๆ ที่โผล่หลังกด = เริ่มเจนแล้ว (ไม่ต้องรอ % progress)
+        // กัน false-negative ที่ทำให้กด Generate ซ้ำ → เจนภาพ 2 รอบ
+        const hasNewCard = getMediaCards().some(card => card.key && !preGenMediaKeys.has(card.key));
         if (disabled) {
             if (!disabledSince) disabledSince = Date.now();
         } else {
             disabledSince = 0;
         }
-        if (hasNewProgress || (disabledSince && Date.now() - disabledSince >= 500)) {
+        if (hasNewCard || (disabledSince && Date.now() - disabledSince >= 500)) {
             log("✅ Flow เริ่มสร้างแล้ว");
             return true;
         }
@@ -1912,9 +1919,7 @@ async function runPipeline(payload) {
         log("ตรวจหน้าต่างที่บังพื้นที่อัปโหลด...");
         await closeFlowPanels({ required: true });
 
-        // 2. สลับไป Uploaded tab
-        log("เปิดคลัง Uploaded...");
-        await switchToUploadedTab();
+        // 2. ไม่กด filter ใดๆ ในแถบซ้าย (All Media เห็นทุกอย่าง) — อัปโหลดผ่านปุ่ม + ในช่อง prompt
         await closeFlowPanels({ required: true });
 
         // 3. อัปโหลดรูป (รองรับหลายรูปจาก options.imageUrls สำหรับ Ingredients)
@@ -1947,9 +1952,9 @@ async function runPipeline(payload) {
         // 4. ตั้งค่า mode + ratio
         if (cfg.autoPortrait) await ensureConfig(phase === "combined" ? "image" : phase, options);
 
-        // 5. แนบรูปเข้า prompt (หน้า Uploaded)
+        // 5. แนบรูปเข้า prompt — ไม่กด filter, หาในวิวปัจจุบัน (รูปเพิ่งอัปโหลดอยู่ใน DOM แล้ว)
         if (uploadedTiles.length > 0) {
-            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload");
+            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
             if (attached.length !== uploadedTiles.length) throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบ จึงไม่กด Generate");
         }
 
@@ -1964,7 +1969,7 @@ async function runPipeline(payload) {
         const resultPhase = phase === "combined" ? "image" : phase;
         const restartInitialGeneration = async (context = {}) => {
             if (cfg.autoPortrait) await ensureConfig(resultPhase, options);
-            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload");
+            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
             if (attached.length !== uploadedTiles.length) {
                 throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบระหว่าง Retry");
             }

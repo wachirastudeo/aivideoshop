@@ -103,6 +103,8 @@ const SCALE_FIDELITY_DIRECTION = "Keep the product's proportions and real-world 
 
 const MATCH_STILL_DIRECTION = "CRITICAL: the attached still is the exact first frame. Animate THAT image — the product's shape, proportions, printed pattern/artwork, colors, materials, text, and logo must stay pixel-identical to the still in every single scene and frame. Add only camera motion, lighting shifts, and scene action around it. Never redraw, restyle, re-render, swap, or alter the product; if a scene changes background, the same exact product from the still must remain unchanged.";
 
+const STILL_TEXT_LOCK_DIRECTION = "Freeze every letter, word, number, logo, and printed graphic exactly as it appears on the product in the still — treat them as fixed, locked pixels. Do NOT re-render, re-typeset, translate, warp, blur, flicker, morph, or regenerate any text or print across scenes or hard cuts; keep it crisp, sharp, and legible, character-for-character identical in every frame. If a clean render of the text cannot be guaranteed during motion, keep the product still and move only the camera/background instead of distorting it.";
+
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
 
 const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork/pattern EXACTLY as in the reference: identical motif, characters, illustration, layout, composition, scale, position, orientation, and all colors. Treat the printed graphic as fixed image data — copy it pixel-faithfully, never reinterpret, redraw, restyle, simplify, mirror, shift, recolor, or replace it with a different design. Keep camera cutout, buttons, and ports placement unchanged.";
@@ -238,6 +240,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`,
     MATCH_STILL_DIRECTION,
+    STILL_TEXT_LOCK_DIRECTION,
     PRODUCT_FIDELITY_DIRECTION,
     SCALE_FIDELITY_DIRECTION,
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
