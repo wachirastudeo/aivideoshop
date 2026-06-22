@@ -938,11 +938,12 @@ function getDisplayProductImage(product = {}) {
 }
 
 function getFlowProductImage(product = {}) {
-  // เลือก full URL (http/https/data) ที่ใช้ได้จริงก่อน — กัน bare tos uri ที่อัพไม่ได้
+  // ใช้ "ภาพที่ผู้ใช้เลือก" (imageUrls) ก่อนเสมอ แล้วค่อย fallback ไปรูปแสดงผลหลัก
+  // เลือก full URL (http/https/data) ที่ใช้ได้จริง — กัน bare tos uri ที่อัพไม่ได้
   const candidates = [
+    ...(product.imageUrls || []),
     product.displayImageUrl,
-    product.flowImageUrl,
-    ...(product.imageUrls || [])
+    product.flowImageUrl
   ];
   for (let url of candidates) {
     url = String(url || "").trim();
@@ -951,7 +952,7 @@ function getFlowProductImage(product = {}) {
     if (/^https?:\/\//i.test(url) || url.startsWith("data:")) return url;
   }
   // ไม่มี full URL — คืนตัวแรก ให้ normalizeImageUrlForUpload ฝั่ง Flow แปลงต่อ
-  return product.flowImageUrl || product.imageUrls?.[0] || product.displayImageUrl || "";
+  return product.imageUrls?.[0] || product.flowImageUrl || product.displayImageUrl || "";
 }
 
 // คืนรูปสินค้าหลายรูป (full URL ที่ใช้ได้) สำหรับ Ingredients — ดึงจาก display + imageUrls
@@ -976,17 +977,12 @@ function getFlowProductImages(product = {}) {
     out.push(url);
   };
 
-  // คิวเก่าที่มีรูปเดียวอาจเก็บ origin URL ที่คืน JSON; ใช้รูปแสดงผลที่โหลดได้แทน
-  if (product.imageUrls?.length === 1) {
-    push(product.displayImageUrl);
-  }
-
-  // ดึงจากกลุ่มรูปภาพสินค้าที่เลือกด้านล่าง (imageUrls)
-  if (out.length === 0 && product.imageUrls && product.imageUrls.length > 0) {
+  // ใช้ "ภาพที่ผู้ใช้เลือกด้านล่าง" (imageUrls) ก่อนเสมอ — รวมกรณีเลือกรูปเดียว
+  if (product.imageUrls && product.imageUrls.length > 0) {
     product.imageUrls.forEach(push);
   }
 
-  // หากไม่มีรูปภาพใน imageUrls เลย ค่อย fallback ไปยังรูปภาพแสดงผลหลัก
+  // หากภาพที่เลือกโหลดไม่ได้เลย (เช่นคิวเก่าเก็บ bare origin URL) ค่อย fallback ไปรูปแสดงผลหลัก
   if (out.length === 0) {
     push(product.displayImageUrl);
     push(product.flowImageUrl);

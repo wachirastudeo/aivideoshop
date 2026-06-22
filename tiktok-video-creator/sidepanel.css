@@ -1163,6 +1163,10 @@ html[data-mode="tab"] .activity-log {
   background: #050506;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
+  /* ขยายตามเนื้อหา ไม่มี scroll ซ้อนใน textarea */
+  field-sizing: content;
+  overflow: hidden;
+  resize: none;
 }
 
 @media (min-width: 640px) {

@@ -413,9 +413,15 @@ function findFallbackMediaCard(tile, phase = "", tabIcon = "", excludedKeys = ne
         .map(card => ({ card, status: mediaCardStatus(card), el: findMediaCard(card) }))
         .filter(item => item.el && !excludedKeys.has(item.card.key));
 
-    const candidates = tabIcon === "drive_folder_upload"
+    let candidates = tabIcon === "drive_folder_upload"
         ? cards.filter(item => isReadyUploadedImageCard(item.card, item.status, item.el))
         : cards.filter(item => isGeneratedResultCard(item.card, item.status, "image"));
+    // สำหรับภาพที่เจน: ตัดการ์ดที่มีอยู่ "ก่อนกด Generate" (เช่นรูปอัพโหลดด้านบน) ออก
+    // เพื่อไม่ให้หยิบภาพต้นฉบับแทนภาพที่เจนเสร็จ
+    if (tabIcon !== "drive_folder_upload") {
+        const generatedOnly = candidates.filter(item => !preGenMediaKeys.has(item.card.key));
+        if (generatedOnly.length) candidates = generatedOnly;
+    }
     if (!candidates.length) return null;
 
     if (tile?.mediaUrl) {
@@ -432,7 +438,8 @@ function findFallbackMediaCard(tile, phase = "", tabIcon = "", excludedKeys = ne
         if (byLabel) return byLabel;
     }
 
-    return candidates[0];
+    // ไม่มี match เป๊ะ → เลือกตัวล่างสุด/ใหม่สุด (ภาพที่เจนล่าสุดอยู่ด้านล่าง) สำหรับภาพที่เจน
+    return tabIcon === "drive_folder_upload" ? candidates[0] : candidates[candidates.length - 1];
 }
 function describeMediaCard(el) {
     const root = el?.closest?.("[data-tile-id], [draggable='true'], a[href*='/edit/'], article") || el;
@@ -1160,8 +1167,8 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload", opt
     const target = tiles.length;
     log(`แนบรูปเข้า prompt (${target} รูป)...`);
 
-    // สลับไป tab ที่ถูกต้อง (Uploaded หรือ Images)
-    await switchMediaTab(tabIcon);
+    // สลับไป tab ที่ถูกต้อง (Uploaded หรือ Images) — ข้ามได้ถ้ารูปอยู่ใน view แล้ว
+    if (!options.skipTabSwitch) await switchMediaTab(tabIcon);
 
     const done = new Set();
     const usedResolvedKeys = new Set();
@@ -1966,13 +1973,25 @@ async function runPipeline(payload) {
             // รูปสินค้าเดิมแทนภาพที่เจนเสร็จใน Phase 1
             await clearPromptAttachments();
 
-            // 5b. Combined mode must animate the Phase 1 output, regardless
-            //     of whether Flow is configured for Ingredients or Frames.
-            const videoRefTiles = [result];
-            const videoReferenceTab = "image";
-            const attachedGenerated = await attachUploadsToPrompt(videoRefTiles, videoReferenceTab, {
-                allowFallback: false
-            });
+            // 5b. นำภาพที่เจนเสร็จ "อัพโหลดเข้า Flow" ใหม่ แล้วใช้เป็น reference วิดีโอ
+            //     ชัวร์กว่าการไปเลือกการ์ดในกริด (กันหยิบรูปต้นฉบับ/ไม่เจอ tile)
+            let videoRefTiles = [result];
+            let videoReferenceTab = "image";
+            let videoAttachOpts = { allowFallback: true, skipTabSwitch: true };
+            if (result.mediaUrl) {
+                try {
+                    await switchToUploadedTab();
+                    const genTiles = await uploadImages([result.mediaUrl], cfg.uploadWaitSec * 1000);
+                    if (!genTiles.length) throw new Error("ไม่พบ tile หลังอัพโหลด");
+                    videoRefTiles = genTiles;
+                    videoReferenceTab = "drive_folder_upload";
+                    videoAttachOpts = {};
+                    log("✅ อัพโหลดภาพที่เจนเสร็จเข้า Flow แล้ว ใช้เป็น reference วิดีโอ");
+                } catch (e) {
+                    log(`⚠️ อัพโหลดภาพที่เจนเข้า Flow ไม่สำเร็จ (${e.message}) → ใช้ภาพในกริดแทน`);
+                }
+            }
+            const attachedGenerated = await attachUploadsToPrompt(videoRefTiles, videoReferenceTab, videoAttachOpts);
             if (attachedGenerated.length !== 1) {
                 throw new Error("แนบภาพที่สร้างใหม่เข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate");
             }
@@ -1988,9 +2007,7 @@ async function runPipeline(payload) {
             // 8b. รอผลลัพธ์วิดีโอ
             const restartVideoGeneration = async (context = {}) => {
                 if (cfg.autoPortrait) await ensureConfig("video", options);
-                const retryAttached = await attachUploadsToPrompt(videoRefTiles, videoReferenceTab, {
-                    allowFallback: false
-                });
+                const retryAttached = await attachUploadsToPrompt(videoRefTiles, videoReferenceTab, videoAttachOpts);
                 if (retryAttached.length !== 1) {
                     throw new Error("แนบภาพที่สร้างใหม่เป็น reference วิดีโอไม่สำเร็จระหว่าง Retry");
                 }
