@@ -1254,6 +1254,26 @@ function findImageLibraryTab() {
     return null;
 }
 
+// แนบ "ภาพที่เจนเสร็จ" เข้า prompt วิดีโอโดยตรงจากผลลัพธ์ — คลิกขวา Add to prompt
+// ไม่สลับแท็บ/filter ใดๆ (กันไปโดน Upload filter แล้วหาภาพที่เจนไม่เจอ)
+async function addGeneratedStillToPrompt(result) {
+    let el = findMediaCard(result);
+    if (!el) {
+        // เผื่อ tile-id เปลี่ยน → หาภาพที่เจนล่าสุดในผลลัพธ์ปัจจุบัน (ตัดรูปอัพโหลดออกแล้ว)
+        const fb = findFallbackMediaCard(result, "image", "image");
+        el = fb?.el || null;
+    }
+    if (!el) throw new Error("ไม่เจอภาพที่เจนเสร็จเพื่อแนบเข้า prompt วิดีโอ");
+    el.scrollIntoView({ block: "center", behavior: "instant" });
+    await sleep(400);
+    const media = el.querySelector("img,video,[role='img']") || el;
+    const before = promptAttachmentCount();
+    const ok = await addTileToPrompt(media);
+    if (!ok && promptAttachmentCount() <= before) {
+        throw new Error("คลิกขวา Add to prompt ภาพที่เจนไม่สำเร็จ");
+    }
+}
+
 async function addTileToPrompt(media) {
     // Flow บางครั้งเปิดเมนูช้า/แลค ทำให้กดรอบเดียวไม่ติด — วน retry ทั้ง 3 วิธี
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -1973,28 +1993,9 @@ async function runPipeline(payload) {
             // รูปสินค้าเดิมแทนภาพที่เจนเสร็จใน Phase 1
             await clearPromptAttachments();
 
-            // 5b. นำภาพที่เจนเสร็จ "อัพโหลดเข้า Flow" ใหม่ แล้วใช้เป็น reference วิดีโอ
-            //     ชัวร์กว่าการไปเลือกการ์ดในกริด (กันหยิบรูปต้นฉบับ/ไม่เจอ tile)
-            let videoRefTiles = [result];
-            let videoReferenceTab = "image";
-            let videoAttachOpts = { allowFallback: true, skipTabSwitch: true };
-            if (result.mediaUrl) {
-                try {
-                    await switchToUploadedTab();
-                    const genTiles = await uploadImages([result.mediaUrl], cfg.uploadWaitSec * 1000);
-                    if (!genTiles.length) throw new Error("ไม่พบ tile หลังอัพโหลด");
-                    videoRefTiles = genTiles;
-                    videoReferenceTab = "drive_folder_upload";
-                    videoAttachOpts = {};
-                    log("✅ อัพโหลดภาพที่เจนเสร็จเข้า Flow แล้ว ใช้เป็น reference วิดีโอ");
-                } catch (e) {
-                    log(`⚠️ อัพโหลดภาพที่เจนเข้า Flow ไม่สำเร็จ (${e.message}) → ใช้ภาพในกริดแทน`);
-                }
-            }
-            const attachedGenerated = await attachUploadsToPrompt(videoRefTiles, videoReferenceTab, videoAttachOpts);
-            if (attachedGenerated.length !== 1) {
-                throw new Error("แนบภาพที่สร้างใหม่เข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate");
-            }
+            // 5b. ภาพที่เจนเสร็จอยู่ในผลลัพธ์แล้ว → คลิกขวา Add to prompt ตรงๆ
+            //     ไม่สลับแท็บ/filter (panel ค้าง Upload ก็ไม่เกี่ยว เพราะ add จากผลลัพธ์โดยตรง)
+            await addGeneratedStillToPrompt(result);
             log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
 
             // 6b. กรอก prompt สำหรับวิดีโอ
@@ -2007,10 +2008,8 @@ async function runPipeline(payload) {
             // 8b. รอผลลัพธ์วิดีโอ
             const restartVideoGeneration = async (context = {}) => {
                 if (cfg.autoPortrait) await ensureConfig("video", options);
-                const retryAttached = await attachUploadsToPrompt(videoRefTiles, videoReferenceTab, videoAttachOpts);
-                if (retryAttached.length !== 1) {
-                    throw new Error("แนบภาพที่สร้างใหม่เป็น reference วิดีโอไม่สำเร็จระหว่าง Retry");
-                }
+                await clearPromptAttachments();
+                await addGeneratedStillToPrompt(result);
                 const retryPrompt = context.policyFallback === "no-people"
                     ? buildPeopleSafePrompt(prompt.videoPrompt)
                     : prompt.videoPrompt;

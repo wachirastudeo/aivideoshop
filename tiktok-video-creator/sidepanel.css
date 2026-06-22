@@ -1163,10 +1163,16 @@ html[data-mode="tab"] .activity-log {
   background: #050506;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
-  /* ขยายตามเนื้อหา ไม่มี scroll ซ้อนใน textarea */
+  /* default สั้น ~3 บรรทัด ไม่มี scroll ซ้อน — คลิกแล้วขยายเต็ม */
   field-sizing: content;
-  overflow: hidden;
   resize: none;
+  max-height: 4.5em;
+  overflow: hidden;
+  cursor: pointer;
+}
+.prompt-textarea:focus {
+  max-height: none;
+  cursor: text;
 }
 
 @media (min-width: 640px) {
