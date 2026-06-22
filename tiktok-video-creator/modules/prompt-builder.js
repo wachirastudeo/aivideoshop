@@ -105,6 +105,8 @@ const MATCH_STILL_DIRECTION = "Animate the attached reference still: keep the pr
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
 
+const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork/pattern EXACTLY as in the reference: identical motif, characters, illustration, layout, composition, scale, position, orientation, and all colors. Treat the printed graphic as fixed image data — copy it pixel-faithfully, never reinterpret, redraw, restyle, simplify, mirror, shift, recolor, or replace it with a different design. Keep camera cutout, buttons, and ports placement unchanged.";
+
 const VIDEO_REALISM_DIRECTION = "Keep motion subtle and realistic; no morphing, duplication, or impossible action.";
 const SPEECH_DIRECTION = "Speak one short natural Thai line once; never repeat or loop the same phrase across scenes.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
@@ -386,6 +388,9 @@ function buildCategoryFidelityDirection(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.category || ""}`.toLowerCase();
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
     return SHOE_FIDELITY_DIRECTION;
+  }
+  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|กรอบ|กรอบโทรศัพท์|เสื้อลาย|เสื้อยืดลาย|แก้ว|เมือก|พวงกุญแจ|สติกเกอร์|โปสเตอร์|case|cover|skin|sticker|decal|poster|mug|tumbler|tee|printed|graphic|pattern|ลาย|ลายพิมพ์|พิมพ์ลาย)/i.test(text)) {
+    return PRINTED_GRAPHIC_FIDELITY_DIRECTION;
   }
   return "";
 }

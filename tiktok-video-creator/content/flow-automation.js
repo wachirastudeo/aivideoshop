@@ -291,9 +291,14 @@ function hasPromptEditor() {
     return Boolean(el && isVisible(el));
 }
 function byIcon(name) {
-    for (const btn of document.querySelectorAll("button")) {
+    const buttons = [...document.querySelectorAll("button")];
+    // pass 1: แมตช์ icon ligature แบบเป๊ะก่อน (กันปุ่ม "Upload images" มาชน byIcon("image"))
+    for (const btn of buttons) {
         const i = btn.querySelector("i,.google-symbols,.material-icons,[class*='icon']");
         if (i?.textContent?.trim() === name) return btn;
+    }
+    // pass 2: fallback label substring
+    for (const btn of buttons) {
         const label = `${btn.getAttribute("aria-label") || ""} ${btn.textContent || ""}`.toLowerCase();
         if (label.includes(name.toLowerCase())) return btn;
     }
@@ -1217,14 +1222,29 @@ async function clearPromptAttachments() {
 }
 
 async function switchMediaTab(tabIcon) {
-    const labels = tabIcon === "image"
-        ? ["View images", "Images", "Generated", "รูปภาพ"]
-        : ["View uploaded media", "Uploaded", "Uploads", "อัปโหลด"];
-    const tabBtn = byIcon(tabIcon) || byText(labels);
+    let tabBtn;
+    if (tabIcon === "image") {
+        // แท็บภาพที่เจน — ห้ามไปโดนปุ่ม upload ("Upload images" มีคำว่า image)
+        tabBtn = findImageLibraryTab();
+    } else {
+        tabBtn = byIcon(tabIcon) || byText(["View uploaded media", "Uploaded", "Uploads", "อัปโหลด"]);
+    }
     if (tabBtn) {
         await humanClick(tabBtn);
         await sleep(1200);
     }
+}
+
+// หาแท็บคลัง "Images"/"All Media" โดยตัดปุ่มที่เกี่ยวกับ upload ออก
+function findImageLibraryTab() {
+    const labels = ["view images", "images", "all media", "generated", "รูปภาพ"];
+    for (const el of document.querySelectorAll("button,[role='button'],[role='tab'],a,div[tabindex]")) {
+        if (!isVisible(el)) continue;
+        const t = elementText(el).toLowerCase();
+        if (/upload|อัปโหลด/.test(t)) continue;
+        if (labels.some(l => t.includes(l))) return el;
+    }
+    return null;
 }
 
 async function addTileToPrompt(media) {
@@ -1849,6 +1869,7 @@ async function loadSettings() {
 async function runPipeline(payload) {
     const { phase, prompt, imageUrl, options = {} } = payload;
     stopRequested = false;
+    let imageResult = null;
     try {
         log("เริ่ม Auto Flow...");
         watchNotice();
@@ -1929,6 +1950,9 @@ async function runPipeline(payload) {
         const result = await waitForResult(resultPhase, {
             restartGeneration: restartInitialGeneration
         });
+        if (resultPhase === "image") {
+            imageResult = { imgUrl: result.mediaUrl, imgTileId: result.tileId };
+        }
 
         if (phase === "combined" && result.tileId) {
             if (!prompt?.videoPrompt) throw new Error("ไม่มี prompt สำหรับสร้างวิดีโอ Phase 2");
@@ -1996,6 +2020,10 @@ async function runPipeline(payload) {
         await detachFlowDebugger();
         await sleep(5000);
         removeOverlay();
+        // เก็บภาพที่เจนเสร็จไว้ ถึงแม้ phase วิดีโอจะล้มเหลว จะได้ไม่ต้องเจนภาพใหม่
+        if (imageResult?.imgUrl) {
+            return { ok: false, error: err.message, imgUrl: imageResult.imgUrl, imgTileId: imageResult.imgTileId };
+        }
         return { ok: false, error: err.message };
     }
 }

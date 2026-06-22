@@ -627,13 +627,18 @@ async function processQueue() {
         break;
       }
       errorCount += 1;
-      product.status = "post_blocked";
+      // กู้ภาพที่เจนเสร็จก่อนวิดีโอล้มเหลว เพื่อให้กดต่อวิดีโอได้โดยไม่ต้องเจนภาพใหม่
+      if (err?.imgUrl) {
+        product.approvedImage = err.imgUrl;
+        product.flowImageTileId = err.imgTileId || product.flowImageTileId || "";
+      }
+      product.status = err?.imgUrl ? "image_done" : "post_blocked";
       product.errorMessage = err.message;
       await persistState();
       renderQueue();
       helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
-      helpers.logActivity?.(`หยุดคิวที่สินค้า ${i + 1}: ${err.message}`, "error");
-      break;
+      helpers.logActivity?.(`ข้ามสินค้า ${i + 1} (ทำต่อรายการถัดไป): ${err.message}`, "error");
+      continue;
     }
     }
 

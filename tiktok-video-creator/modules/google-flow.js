@@ -35,7 +35,13 @@ export async function openGoogleFlow(phase, prompt, imageUrl = "", options = {})
   const result = await donePromise;
   await chrome.storage.local.remove(storageKey);
   if (!result?.ok) {
-    throw new Error(result?.error || "Google Flow สร้างผลลัพธ์ไม่สำเร็จ");
+    const error = new Error(result?.error || "Google Flow สร้างผลลัพธ์ไม่สำเร็จ");
+    // เก็บภาพที่เจนเสร็จไว้ (ถ้ามี) เพื่อให้ผู้เรียกไม่ต้องเจนภาพใหม่
+    if (result?.imgUrl) {
+      error.imgUrl = result.imgUrl;
+      error.imgTileId = result.imgTileId || "";
+    }
+    throw error;
   }
   return result;
 }
