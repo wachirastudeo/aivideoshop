@@ -1832,6 +1832,14 @@ async function waitForResult(phase, options = {}) {
                 await sleep(1000);
                 continue;
             }
+            // ด่านสุดท้ายก่อน Retry: เช็คให้แน่ใจว่าไม่มีผลลัพธ์ที่เสร็จจริงอยู่แล้ว
+            // กัน Flow โชว์ Failed ชั่วคราวบนการ์ดข้างเคียง ทั้งที่วิดีโอตัวจริงเจนเสร็จแล้ว
+            // → ถ้าเจอ result ที่สำเร็จ ให้คืนค่าเลย ไม่รีบเจนซ้ำ
+            const confirmed = findReadyGeneratedResult(phase);
+            if (confirmed) {
+                log("✅ พบผลลัพธ์ที่เสร็จจริงก่อน Retry — ไม่เจนซ้ำ");
+                return confirmed;
+            }
             if (retryAttempts < maxRetryAttempts) {
                 retryAttempts++;
                 const retryResult = await retryFailedMediaCard(
@@ -1885,6 +1893,17 @@ function isGeneratedResultCard(card, status, phase) {
         return hasActiveVideo || /\.(mp4|webm|mov)(\?|$)/i.test(card.mediaUrl);
     }
     return hasImage && !hasActiveVideo;
+}
+
+// re-scan การ์ดปัจจุบันหา result ที่สร้างเสร็จจริง (ใช้ยืนยันก่อนตัดสินใจ Retry)
+function findReadyGeneratedResult(phase) {
+    for (const card of getMediaCards()) {
+        if (!card.key || preGenMediaKeys.has(card.key)) continue;
+        const status = mediaCardStatus(card);
+        if (!isGeneratedResultCard(card, status, phase)) continue;
+        return { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key };
+    }
+    return null;
 }
 
 // ── Load settings ────────────────────────────────────────────
