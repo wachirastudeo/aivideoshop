@@ -1101,7 +1101,7 @@ async function ensureConfig(phase, options = {}) {
     await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO"); await sleep(800);
     // เลือก sub-tab วิดีโอ: Ingredients (VIDEO_REFERENCES) หรือ Frames (VIDEO_FRAMES)
     if (phase !== "image") {
-        const refMode = (options.videoRefMode || "ingredients") === "frames" ? "VIDEO_FRAMES" : "VIDEO_REFERENCES";
+        const refMode = (options.videoRefMode || "frames") === "ingredients" ? "VIDEO_REFERENCES" : "VIDEO_FRAMES";
         const picked = await clickMenuTab(refMode);
         if (picked) log(`เลือกแท็บวิดีโอ: ${refMode === "VIDEO_FRAMES" ? "Frames" : "Ingredients"}`);
         await sleep(600);
