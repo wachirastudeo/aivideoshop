@@ -110,7 +110,7 @@ const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pa
 const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork/pattern EXACTLY as in the reference: identical motif, characters, illustration, layout, composition, scale, position, orientation, and all colors. Treat the printed graphic as fixed image data — copy it pixel-faithfully, never reinterpret, redraw, restyle, simplify, mirror, shift, recolor, or replace it with a different design. Keep camera cutout, buttons, and ports placement unchanged.";
 
 const VIDEO_REALISM_DIRECTION = "Keep motion subtle and realistic; no morphing, duplication, or impossible action.";
-const SPEECH_DIRECTION = "Speak one short natural Thai line once; never repeat or loop the same phrase across scenes.";
+const SPEECH_DIRECTION = "Across the ENTIRE clip there is at most ONE short natural Thai spoken line, said a single time in one scene only; every other scene has NO speech (ambient sound or music only). Never repeat, loop, echo, re-say, restart, or paraphrase that line; no duplicated, doubled, or stuttering audio.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
 const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
