@@ -1101,7 +1101,7 @@ async function ensureConfig(phase, options = {}) {
     await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO"); await sleep(800);
     // เลือก sub-tab วิดีโอ: Ingredients (VIDEO_REFERENCES) หรือ Frames (VIDEO_FRAMES)
     if (phase !== "image") {
-        const refMode = (options.videoRefMode || "ingredients") === "frames" ? "VIDEO_FRAMES" : "VIDEO_REFERENCES";
+        const refMode = (options.videoRefMode || "frames") === "ingredients" ? "VIDEO_REFERENCES" : "VIDEO_FRAMES";
         const picked = await clickMenuTab(refMode);
         if (picked) log(`เลือกแท็บวิดีโอ: ${refMode === "VIDEO_FRAMES" ? "Frames" : "Ingredients"}`);
         await sleep(600);
@@ -1256,6 +1256,71 @@ function findImageLibraryTab() {
 
 // แนบ "ภาพที่เจนเสร็จ" เข้า prompt วิดีโอโดยตรงจากผลลัพธ์ — คลิกขวา Add to prompt
 // ไม่สลับแท็บ/filter ใดๆ (กันไปโดน Upload filter แล้วหาภาพที่เจนไม่เจอ)
+// ── Frames mode: ใส่ภาพที่เจนเป็น Start (first) frame ผ่าน asset picker ──
+// ต่างจาก Ingredients (แนบเป็น reference หลวมๆ) — Frames ยึดภาพเป็นเฟรมแรกจริง สินค้าเป๊ะ
+// DOM จริง: ช่อง "Start" (div) → คลิก → [role=dialog] asset picker → แท็บ Images → คลิกภาพ
+function findFrameStartSlot() {
+    return [...document.querySelectorAll('div,button,[role="button"]')]
+        .find(el => isVisible(el) && /^start$/i.test((el.textContent || "").trim()) && (el.children?.length || 0) <= 2) || null;
+}
+function pickDialogImage(dialog, result) {
+    const tid = result?.tileId || "";
+    if (tid) {
+        const byTile = dialog.querySelector(`[data-tile-id="${(window.CSS && CSS.escape) ? CSS.escape(tid) : tid}"]`);
+        if (byTile && isVisible(byTile)) return byTile;
+    }
+    const imgs = [...dialog.querySelectorAll("img")].filter(im => isVisible(im) && (im.naturalWidth || im.width || 0) > 24);
+    if (!imgs.length) return null;
+    const want = result?.mediaUrl || "";
+    const target = (want && imgs.find(im => (im.currentSrc || im.src) === want)) || imgs[0];
+    return target.closest('[data-tile-id],button,[role="button"],a,li') || target;
+}
+async function attachStillAsStartFrame(result) {
+    const slot = findFrameStartSlot();
+    if (!slot) throw new Error("ไม่เจอช่อง Start frame");
+    await humanClick(slot);
+    const dialog = await waitEl('[role="dialog"]', 7000);
+    if (!dialog) throw new Error("asset picker ไม่เปิดหลังคลิก Start");
+    await sleep(800);
+    // เลือกแท็บ Images (ภาพที่เจนในโปรเจกต์) ให้ชัวร์
+    const imagesTab = [...dialog.querySelectorAll('button,[role="button"],[role="tab"],div,span')]
+        .find(el => isVisible(el) && /^images$/i.test((el.textContent || "").trim()) && (el.children?.length || 0) <= 2);
+    if (imagesTab) { await humanClick(imagesTab); await sleep(1000); }
+    // หาภาพที่เจน (วน poll เผื่อ thumbnail โหลดช้า)
+    let pick = null;
+    for (let end = Date.now() + 6000; Date.now() < end;) {
+        pick = pickDialogImage(dialog, result);
+        if (pick) break;
+        await sleep(400);
+    }
+    if (!pick) throw new Error("ไม่เจอภาพที่เจนใน asset picker");
+    await humanClick(pick);
+    // รอ dialog ปิด = เลือกสำเร็จ (เผื่อมีปุ่มยืนยัน)
+    const gone = async (ms) => { for (let e = Date.now() + ms; Date.now() < e;) { if (!document.querySelector('[role="dialog"]')) return true; await sleep(300); } return false; };
+    if (!(await gone(5000))) {
+        const confirm = byText(["Select", "Add", "Use", "Done", "เลือก", "ใช้"]);
+        if (confirm) await humanClick(confirm);
+        if (!(await gone(4000))) throw new Error("asset picker ไม่ปิดหลังเลือกภาพ");
+    }
+}
+// แนบภาพที่เจนเข้า Phase 2: ลอง Frames (Start frame, สินค้าเป๊ะ) ก่อน → fallback Ingredients
+// (reference) ถ้าพลาด เพื่อกัน "ปุ่ม disabled → ไม่สร้างวิดีโอ"
+async function attachStillForVideo(result, options, cfg) {
+    if ((options.videoRefMode || "frames") !== "ingredients") {
+        try {
+            await attachStillAsStartFrame(result);
+            log("✅ ใส่ภาพเป็น Start frame (Frames mode) — สินค้าเป๊ะ");
+            return;
+        } catch (error) {
+            log(`⚠️ ใส่ Start frame ไม่สำเร็จ (${error.message}) → fallback Ingredients`);
+            if (cfg?.autoPortrait) await ensureConfig("video", { ...options, videoRefMode: "ingredients" });
+            await clearPromptAttachments();
+        }
+    }
+    await addGeneratedStillToPrompt(result);
+    log("✅ ใช้ภาพเป็น reference วิดีโอ (Ingredients)");
+}
+
 async function addGeneratedStillToPrompt(result) {
     let el = findMediaCard(result);
     if (!el) {
@@ -2037,8 +2102,7 @@ async function runPipeline(payload) {
 
             // 5b. ภาพที่เจนเสร็จอยู่ในผลลัพธ์แล้ว → คลิกขวา Add to prompt ตรงๆ
             //     ไม่สลับแท็บ/filter (panel ค้าง Upload ก็ไม่เกี่ยว เพราะ add จากผลลัพธ์โดยตรง)
-            await addGeneratedStillToPrompt(result);
-            log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
+            await attachStillForVideo(result, options, cfg);
 
             // 6b. กรอก prompt สำหรับวิดีโอ
             log("กรอก Prompt วิดีโอ...");
@@ -2051,7 +2115,7 @@ async function runPipeline(payload) {
             const restartVideoGeneration = async (context = {}) => {
                 if (cfg.autoPortrait) await ensureConfig("video", options);
                 await clearPromptAttachments();
-                await addGeneratedStillToPrompt(result);
+                await attachStillForVideo(result, options, cfg);
                 const retryPrompt = context.policyFallback === "no-people"
                     ? buildPeopleSafePrompt(prompt.videoPrompt)
                     : prompt.videoPrompt;
