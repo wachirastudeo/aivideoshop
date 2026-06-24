@@ -1101,7 +1101,7 @@ async function ensureConfig(phase, options = {}) {
     await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO"); await sleep(800);
     // เลือก sub-tab วิดีโอ: Ingredients (VIDEO_REFERENCES) หรือ Frames (VIDEO_FRAMES)
     if (phase !== "image") {
-        const refMode = (options.videoRefMode || "frames") === "ingredients" ? "VIDEO_REFERENCES" : "VIDEO_FRAMES";
+        const refMode = (options.videoRefMode || "ingredients") === "frames" ? "VIDEO_FRAMES" : "VIDEO_REFERENCES";
         const picked = await clickMenuTab(refMode);
         if (picked) log(`เลือกแท็บวิดีโอ: ${refMode === "VIDEO_FRAMES" ? "Frames" : "Ingredients"}`);
         await sleep(600);
@@ -1774,7 +1774,9 @@ async function waitGenerationStarted(button, timeoutMs = 7000) {
 
 // ── 8. waitForResult ─────────────────────────────────────────
 async function waitForResult(phase, options = {}) {
-    const maxRetryAttempts = 1;
+    // ภาพ Phase 1 เสถียร — retry แค่ 1 (กันเจนซ้ำเมื่อ detect พลาดชั่วคราว)
+    // วิดีโอ Veo fail/queue บ่อย — retry ได้ถึง 3
+    const maxRetryAttempts = phase === "video" ? 3 : 1;
     const maxMs = phase === "image" ? 180000 : 300000;
     const progressGraceMs = 25000;
     // Flow can briefly mark queued Veo jobs as Failed, then replace the same
@@ -1808,7 +1810,7 @@ async function waitForResult(phase, options = {}) {
             }
             if (!isGeneratedResultCard(card, status, phase)) continue;
             log("✅ พบผลลัพธ์ที่สร้างเสร็จแล้ว!");
-            return { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key };
+            return { tileId: card.tileId || card.key, mediaUrl: resolveResultMediaUrl(card), href: card.href, key: card.key };
         }
         if (failedResult) {
             pendingFailure = failedResult;
@@ -1876,8 +1878,16 @@ function hasVisibleGenerationIndicator() {
         .some(isVisible);
 }
 
+// card.mediaUrl อาจว่างตอน detect ภาพเสร็จเร็ว (bg/blob ยัง resolve ไม่ทัน)
+// → ดึงซ้ำจาก DOM กัน imgUrl ว่างใน Phase 2 / การบันทึกภาพ
+function resolveResultMediaUrl(card) {
+    if (card.mediaUrl) return card.mediaUrl;
+    const el = findMediaCard(card);
+    if (!el) return "";
+    const direct = el.matches?.("img") ? (el.currentSrc || el.src) : "";
+    return direct || getTileMediaUrl(el) || "";
+}
 function isGeneratedResultCard(card, status, phase) {
-    if (!status.ready || !card.mediaUrl) return false;
     const text = `${card.label || ""} ${status.text || ""}`.toLowerCase();
     if (text.includes("uploaded image")) return false;
     if (text.includes("upload")) return false;
@@ -1887,12 +1897,18 @@ function isGeneratedResultCard(card, status, phase) {
     const videoEl = el?.matches?.("video") ? el : el?.querySelector?.("video");
     // Ensure the video element actually has an active source to prevent empty/placeholder tags from breaking image detection
     const hasActiveVideo = Boolean(videoEl && (videoEl.src || videoEl.currentSrc || videoEl.querySelector("source")?.src));
-    const hasImage = Boolean(el?.matches?.("img") || el?.querySelector?.("img,[style*='background-image']"));
-    
+
     if (phase === "video") {
+        if (!status.ready || !card.mediaUrl) return false;
         return hasActiveVideo || /\.(mp4|webm|mov)(\?|$)/i.test(card.mediaUrl);
     }
-    return hasImage && !hasActiveVideo;
+    // image: ยึดว่ามี <img> ในการ์ดโหลดเสร็จจริง (naturalWidth>0) = ภาพถูกสร้างเสร็จแล้วใน grid
+    // เชื่อถือได้กว่า status text (progress/failed ค้าง false-positive) ที่ทำให้ภาพเสร็จแล้ว
+    // ไม่ถูกนับ → guard พลาด → กด Generate ซ้ำ. bg-image ที่มี url ก็ถือว่าเสร็จเช่นกัน
+    const imgEl = el?.matches?.("img") ? el : el?.querySelector?.("img");
+    const imageLoaded = Boolean(imgEl && imgEl.complete && imgEl.naturalWidth > 0);
+    const bgLoaded = !imgEl && Boolean(el?.querySelector?.("[style*='background-image']"));
+    return (imageLoaded || bgLoaded) && !hasActiveVideo;
 }
 
 // re-scan การ์ดปัจจุบันหา result ที่สร้างเสร็จจริง (ใช้ยืนยันก่อนตัดสินใจ Retry)
@@ -1987,6 +2003,8 @@ async function runPipeline(payload) {
         // 8. รอผลลัพธ์
         const resultPhase = phase === "combined" ? "image" : phase;
         const restartInitialGeneration = async (context = {}) => {
+            // กันเจนซ้ำ: ถ้ามีภาพใหม่ใน grid อยู่แล้ว ไม่ต้องกด Generate ใหม่ — รอผลของภาพนั้น
+            if (findReadyGeneratedResult(resultPhase)) { log("ตรวจเจอภาพใหม่ใน grid แล้ว — ไม่เจนซ้ำ"); return; }
             if (cfg.autoPortrait) await ensureConfig(resultPhase, options);
             const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
             if (attached.length !== uploadedTiles.length) {
