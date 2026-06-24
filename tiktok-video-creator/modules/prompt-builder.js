@@ -101,16 +101,14 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangemen
 
 const SCALE_FIDELITY_DIRECTION = "Keep the product's proportions and real-world scale identical to the uploaded reference: same width-to-height ratio and part dimensions; never stretch, squash, elongate, enlarge, or shrink it.";
 
-const MATCH_STILL_DIRECTION = "CRITICAL: the attached still is the exact first frame. Animate THAT image — the product's shape, proportions, printed pattern/artwork, colors, materials, text, and logo must stay pixel-identical to the still in every single scene and frame. Add only camera motion, lighting shifts, and scene action around it. Never redraw, restyle, re-render, swap, or alter the product; if a scene changes background, the same exact product from the still must remain unchanged.";
+const MATCH_STILL_DIRECTION = "CRITICAL: treat the attached reference image as the exact product. Keep its shape, proportions, colors, materials, and all printed text, logos, and graphics identical in every scene and hard cut. Animate only camera, lighting, and scene action around it; never redraw, restyle, swap, warp, or distort the product or its text.";
 
-const STILL_TEXT_LOCK_DIRECTION = "Freeze every letter, word, number, logo, and printed graphic exactly as it appears on the product in the still — treat them as fixed, locked pixels. Do NOT re-render, re-typeset, translate, warp, blur, flicker, morph, or regenerate any text or print across scenes or hard cuts; keep it crisp, sharp, and legible, character-for-character identical in every frame. If a clean render of the text cannot be guaranteed during motion, keep the product still and move only the camera/background instead of distorting it.";
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
 
 const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork/pattern EXACTLY as in the reference: identical motif, characters, illustration, layout, composition, scale, position, orientation, and all colors. Treat the printed graphic as fixed image data — copy it pixel-faithfully, never reinterpret, redraw, restyle, simplify, mirror, shift, recolor, or replace it with a different design. Keep camera cutout, buttons, and ports placement unchanged.";
 
-const VIDEO_REALISM_DIRECTION = "Keep motion subtle and realistic; no morphing, duplication, or impossible action.";
-const SPEECH_DIRECTION = "Across the ENTIRE clip there is at most ONE short natural Thai spoken line, said a single time in one scene only; every other scene has NO speech (ambient sound or music only). Never repeat, loop, echo, re-say, restart, or paraphrase that line; no duplicated, doubled, or stuttering audio.";
+const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
 const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
@@ -240,9 +238,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`,
     MATCH_STILL_DIRECTION,
-    STILL_TEXT_LOCK_DIRECTION,
     PRODUCT_FIDELITY_DIRECTION,
-    SCALE_FIDELITY_DIRECTION,
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
   ];
@@ -264,10 +260,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   promptParts.push(
-    `MUST be multiple distinct scenes with hard cuts, not one continuous shot; split the ${durationSeconds}s evenly across the scenes below.`,
+    `Use distinct scenes with hard cuts; split the ${durationSeconds}s evenly across the scenes below.`,
     sceneBreakdown,
-    `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep all shots sharp, clearly visible, stable, and centered.`,
-    VIDEO_REALISM_DIRECTION
+    `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep every shot sharp, clearly visible, and stable. Realistic motion only — no morphing, duplication, or impossible action.`
   );
 
   promptParts.push(
