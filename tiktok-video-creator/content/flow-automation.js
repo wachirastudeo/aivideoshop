@@ -475,6 +475,14 @@ function mediaCardStatus(cardInfo) {
     if (!el) return { ready: false, failed: false, progress: true, rendered: false, text: "" };
     const text = mediaCardDeepText(el).toLowerCase();
 
+    const hasFailureLabel = [...el.querySelectorAll("div,span,p")]
+        .some(node => node.children.length === 0 && /^(failed|failure|ล้มเหลว)$/i.test(node.textContent?.trim() || ""));
+    const hasFailureMessage = /\b(generation|creation|rendering)\s+failed\b/i.test(text)
+        || text.includes("couldn't generate")
+        || text.includes("could not generate")
+        || text.includes("สร้างไม่สำเร็จ");
+    const hasFailure = hasFailureLabel || hasFailureMessage;
+
     // มี indicator กำลังโหลดจริงไหม (progress bar / spinner) — กัน % ค้างใน text ทำให้รอเก้อ
     const hasLoadingIndicator = Boolean(
         el.querySelector?.("[role='progressbar'], progress, [class*='progress'], [class*='spinner'], [class*='loading']")
@@ -482,22 +490,17 @@ function mediaCardStatus(cardInfo) {
     const wordProgress = text.includes("uploading") || text.includes("processing") ||
         text.includes("generating") || text.includes("rendering") || text.includes("creating") ||
         text.includes("queued") || text.includes("pending") || text.includes("waiting");
-    // นับ % เป็น progress เฉพาะตอนมี loading indicator จริงเท่านั้น
-    const percentProgress = hasLoadingIndicator && /\b\d{1,3}\s*%/.test(text);
+    // Flow sometimes renders progress as plain text only. Count it as active
+    // unless the same card is explicitly marked Failed.
+    const percentProgress = !hasFailure && /\b\d{1,3}\s*%/.test(text);
     const video = el.matches?.("video") ? el : el.querySelector?.("video");
     const hasPlayableVideo = Boolean(
         video && (video.currentSrc || video.src || video.querySelector("source")?.src)
     );
     const pendingVideoProgress = Boolean(el.querySelector?.("[role='slider']")) && !hasPlayableVideo;
-    const progress = wordProgress || percentProgress || pendingVideoProgress;
+    const progress = !hasFailure && (wordProgress || percentProgress || pendingVideoProgress || hasLoadingIndicator);
 
-    const hasFailureLabel = [...el.querySelectorAll("div,span,p")]
-        .some(node => node.children.length === 0 && /^(failed|failure|ล้มเหลว)$/i.test(node.textContent?.trim() || ""));
-    const hasFailureMessage = /\b(generation|creation|rendering)\s+failed\b/i.test(text)
-        || text.includes("couldn't generate")
-        || text.includes("could not generate")
-        || text.includes("สร้างไม่สำเร็จ");
-    const failed = !progress && (hasFailureLabel || hasFailureMessage);
+    const failed = !progress && hasFailure;
     const rendered = hasRenderableMedia(el);
     return { ready: rendered && !progress, failed, progress, rendered, text };
 }
@@ -1884,9 +1887,11 @@ async function waitForResult(phase, options = {}) {
         if (hasActiveGeneration) {
             // A failed sibling tile can appear while another requested video
             // is still rendering. Do not age or act on that failure yet.
+            pendingFailure = "";
+            pendingFailedCard = null;
             failureSeenAt = 0;
             const rem = Math.round((end - Date.now()) / 1000);
-            log(`วิดีโอยังกำลังสร้างอยู่ รอต่อ... (~${rem}s)`);
+            log(`${phase === "video" ? "วิดีโอ" : "ภาพ"}ยังกำลังสร้างอยู่ รอต่อ... (~${rem}s)`);
             await sleep(1000);
             continue;
         }
