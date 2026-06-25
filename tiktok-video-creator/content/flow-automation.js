@@ -475,14 +475,6 @@ function mediaCardStatus(cardInfo) {
     if (!el) return { ready: false, failed: false, progress: true, rendered: false, text: "" };
     const text = mediaCardDeepText(el).toLowerCase();
 
-    const hasFailureLabel = [...el.querySelectorAll("div,span,p")]
-        .some(node => node.children.length === 0 && /^(failed|failure|ล้มเหลว)$/i.test(node.textContent?.trim() || ""));
-    const hasFailureMessage = /\b(generation|creation|rendering)\s+failed\b/i.test(text)
-        || text.includes("couldn't generate")
-        || text.includes("could not generate")
-        || text.includes("สร้างไม่สำเร็จ");
-    const hasFailure = hasFailureLabel || hasFailureMessage;
-
     // มี indicator กำลังโหลดจริงไหม (progress bar / spinner) — กัน % ค้างใน text ทำให้รอเก้อ
     const hasLoadingIndicator = Boolean(
         el.querySelector?.("[role='progressbar'], progress, [class*='progress'], [class*='spinner'], [class*='loading']")
@@ -490,20 +482,22 @@ function mediaCardStatus(cardInfo) {
     const wordProgress = text.includes("uploading") || text.includes("processing") ||
         text.includes("generating") || text.includes("rendering") || text.includes("creating") ||
         text.includes("queued") || text.includes("pending") || text.includes("waiting");
+    // นับ % เป็น progress เฉพาะตอนมี loading indicator จริงเท่านั้น
+    const percentProgress = hasLoadingIndicator && /\b\d{1,3}\s*%/.test(text);
     const video = el.matches?.("video") ? el : el.querySelector?.("video");
     const hasPlayableVideo = Boolean(
         video && (video.currentSrc || video.src || video.querySelector("source")?.src)
     );
     const pendingVideoProgress = Boolean(el.querySelector?.("[role='slider']")) && !hasPlayableVideo;
-    // percent ที่ไต่อยู่ = การ์ดกำลังเจนจริง; การ์ดที่ Failed จริงจะแทน % ด้วยคำว่า
-    // "Failed" ไม่ใช่โชว์ % คู่กัน → ถ้ายังเห็น % แปลว่าป้าย Failed หลุดมาจาก tile ข้างเคียง
-    const percentProgress = /\b\d{1,3}\s*%/.test(text);
-    // สัญญาณ "กำลังเจนจริง" (spinner/คำว่า generating/แถบวิดีโอ/percent) เชื่อถือได้กว่า
-    // ป้าย Failed ที่อาจหลุดมาจาก tile ข้างเคียง → ให้ override Failed ได้
-    const activeGenerating = wordProgress || pendingVideoProgress || hasLoadingIndicator || percentProgress;
-    const progress = activeGenerating;
+    const progress = wordProgress || percentProgress || pendingVideoProgress;
 
-    const failed = !activeGenerating && hasFailure;
+    const hasFailureLabel = [...el.querySelectorAll("div,span,p")]
+        .some(node => node.children.length === 0 && /^(failed|failure|ล้มเหลว)$/i.test(node.textContent?.trim() || ""));
+    const hasFailureMessage = /\b(generation|creation|rendering)\s+failed\b/i.test(text)
+        || text.includes("couldn't generate")
+        || text.includes("could not generate")
+        || text.includes("สร้างไม่สำเร็จ");
+    const failed = !progress && (hasFailureLabel || hasFailureMessage);
     const rendered = hasRenderableMedia(el);
     return { ready: rendered && !progress, failed, progress, rendered, text };
 }
@@ -1262,71 +1256,6 @@ function findImageLibraryTab() {
 
 // แนบ "ภาพที่เจนเสร็จ" เข้า prompt วิดีโอโดยตรงจากผลลัพธ์ — คลิกขวา Add to prompt
 // ไม่สลับแท็บ/filter ใดๆ (กันไปโดน Upload filter แล้วหาภาพที่เจนไม่เจอ)
-// ── Frames mode: ใส่ภาพที่เจนเป็น Start (first) frame ผ่าน asset picker ──
-// ต่างจาก Ingredients (แนบเป็น reference หลวมๆ) — Frames ยึดภาพเป็นเฟรมแรกจริง สินค้าเป๊ะ
-// DOM จริง: ช่อง "Start" (div) → คลิก → [role=dialog] asset picker → แท็บ Images → คลิกภาพ
-function findFrameStartSlot() {
-    return [...document.querySelectorAll('div,button,[role="button"]')]
-        .find(el => isVisible(el) && /^start$/i.test((el.textContent || "").trim()) && (el.children?.length || 0) <= 2) || null;
-}
-function pickDialogImage(dialog, result) {
-    const tid = result?.tileId || "";
-    if (tid) {
-        const byTile = dialog.querySelector(`[data-tile-id="${(window.CSS && CSS.escape) ? CSS.escape(tid) : tid}"]`);
-        if (byTile && isVisible(byTile)) return byTile;
-    }
-    const imgs = [...dialog.querySelectorAll("img")].filter(im => isVisible(im) && (im.naturalWidth || im.width || 0) > 24);
-    if (!imgs.length) return null;
-    const want = result?.mediaUrl || "";
-    const target = (want && imgs.find(im => (im.currentSrc || im.src) === want)) || imgs[0];
-    return target.closest('[data-tile-id],button,[role="button"],a,li') || target;
-}
-async function attachStillAsStartFrame(result) {
-    const slot = findFrameStartSlot();
-    if (!slot) throw new Error("ไม่เจอช่อง Start frame");
-    await humanClick(slot);
-    const dialog = await waitEl('[role="dialog"]', 7000);
-    if (!dialog) throw new Error("asset picker ไม่เปิดหลังคลิก Start");
-    await sleep(800);
-    // เลือกแท็บ Images (ภาพที่เจนในโปรเจกต์) ให้ชัวร์
-    const imagesTab = [...dialog.querySelectorAll('button,[role="button"],[role="tab"],div,span')]
-        .find(el => isVisible(el) && /^images$/i.test((el.textContent || "").trim()) && (el.children?.length || 0) <= 2);
-    if (imagesTab) { await humanClick(imagesTab); await sleep(1000); }
-    // หาภาพที่เจน (วน poll เผื่อ thumbnail โหลดช้า)
-    let pick = null;
-    for (let end = Date.now() + 6000; Date.now() < end;) {
-        pick = pickDialogImage(dialog, result);
-        if (pick) break;
-        await sleep(400);
-    }
-    if (!pick) throw new Error("ไม่เจอภาพที่เจนใน asset picker");
-    await humanClick(pick);
-    // รอ dialog ปิด = เลือกสำเร็จ (เผื่อมีปุ่มยืนยัน)
-    const gone = async (ms) => { for (let e = Date.now() + ms; Date.now() < e;) { if (!document.querySelector('[role="dialog"]')) return true; await sleep(300); } return false; };
-    if (!(await gone(5000))) {
-        const confirm = byText(["Select", "Add", "Use", "Done", "เลือก", "ใช้"]);
-        if (confirm) await humanClick(confirm);
-        if (!(await gone(4000))) throw new Error("asset picker ไม่ปิดหลังเลือกภาพ");
-    }
-}
-// แนบภาพที่เจนเข้า Phase 2: ลอง Frames (Start frame, สินค้าเป๊ะ) ก่อน → fallback Ingredients
-// (reference) ถ้าพลาด เพื่อกัน "ปุ่ม disabled → ไม่สร้างวิดีโอ"
-async function attachStillForVideo(result, options, cfg) {
-    if ((options.videoRefMode || "ingredients") === "frames") {
-        try {
-            await attachStillAsStartFrame(result);
-            log("✅ ใส่ภาพเป็น Start frame (Frames mode) — สินค้าเป๊ะ");
-            return;
-        } catch (error) {
-            log(`⚠️ ใส่ Start frame ไม่สำเร็จ (${error.message}) → fallback Ingredients`);
-            if (cfg?.autoPortrait) await ensureConfig("video", { ...options, videoRefMode: "ingredients" });
-            await clearPromptAttachments();
-        }
-    }
-    await addGeneratedStillToPrompt(result);
-    log("✅ ใช้ภาพเป็น reference วิดีโอ (Ingredients)");
-}
-
 async function addGeneratedStillToPrompt(result) {
     let el = findMediaCard(result);
     if (!el) {
@@ -1845,9 +1774,7 @@ async function waitGenerationStarted(button, timeoutMs = 7000) {
 
 // ── 8. waitForResult ─────────────────────────────────────────
 async function waitForResult(phase, options = {}) {
-    // ภาพ Phase 1 เสถียร — retry แค่ 1 (กันเจนซ้ำเมื่อ detect พลาดชั่วคราว)
-    // วิดีโอ Veo fail/queue บ่อย — retry ได้ถึง 3
-    const maxRetryAttempts = phase === "video" ? 3 : 1;
+    const maxRetryAttempts = 1;
     const maxMs = phase === "image" ? 180000 : 300000;
     const progressGraceMs = 25000;
     // Flow can briefly mark queued Veo jobs as Failed, then replace the same
@@ -1881,7 +1808,7 @@ async function waitForResult(phase, options = {}) {
             }
             if (!isGeneratedResultCard(card, status, phase)) continue;
             log("✅ พบผลลัพธ์ที่สร้างเสร็จแล้ว!");
-            return { tileId: card.tileId || card.key, mediaUrl: resolveResultMediaUrl(card), href: card.href, key: card.key };
+            return { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key };
         }
         if (failedResult) {
             pendingFailure = failedResult;
@@ -1890,11 +1817,9 @@ async function waitForResult(phase, options = {}) {
         if (hasActiveGeneration) {
             // A failed sibling tile can appear while another requested video
             // is still rendering. Do not age or act on that failure yet.
-            pendingFailure = "";
-            pendingFailedCard = null;
             failureSeenAt = 0;
             const rem = Math.round((end - Date.now()) / 1000);
-            log(`${phase === "video" ? "วิดีโอ" : "ภาพ"}ยังกำลังสร้างอยู่ รอต่อ... (~${rem}s)`);
+            log(`วิดีโอยังกำลังสร้างอยู่ รอต่อ... (~${rem}s)`);
             await sleep(1000);
             continue;
         }
@@ -1951,16 +1876,8 @@ function hasVisibleGenerationIndicator() {
         .some(isVisible);
 }
 
-// card.mediaUrl อาจว่างตอน detect ภาพเสร็จเร็ว (bg/blob ยัง resolve ไม่ทัน)
-// → ดึงซ้ำจาก DOM กัน imgUrl ว่างใน Phase 2 / การบันทึกภาพ
-function resolveResultMediaUrl(card) {
-    if (card.mediaUrl) return card.mediaUrl;
-    const el = findMediaCard(card);
-    if (!el) return "";
-    const direct = el.matches?.("img") ? (el.currentSrc || el.src) : "";
-    return direct || getTileMediaUrl(el) || "";
-}
 function isGeneratedResultCard(card, status, phase) {
+    if (!status.ready || !card.mediaUrl) return false;
     const text = `${card.label || ""} ${status.text || ""}`.toLowerCase();
     if (text.includes("uploaded image")) return false;
     if (text.includes("upload")) return false;
@@ -1970,18 +1887,12 @@ function isGeneratedResultCard(card, status, phase) {
     const videoEl = el?.matches?.("video") ? el : el?.querySelector?.("video");
     // Ensure the video element actually has an active source to prevent empty/placeholder tags from breaking image detection
     const hasActiveVideo = Boolean(videoEl && (videoEl.src || videoEl.currentSrc || videoEl.querySelector("source")?.src));
-
+    const hasImage = Boolean(el?.matches?.("img") || el?.querySelector?.("img,[style*='background-image']"));
+    
     if (phase === "video") {
-        if (!status.ready || !card.mediaUrl) return false;
         return hasActiveVideo || /\.(mp4|webm|mov)(\?|$)/i.test(card.mediaUrl);
     }
-    // image: ยึดว่ามี <img> ในการ์ดโหลดเสร็จจริง (naturalWidth>0) = ภาพถูกสร้างเสร็จแล้วใน grid
-    // เชื่อถือได้กว่า status text (progress/failed ค้าง false-positive) ที่ทำให้ภาพเสร็จแล้ว
-    // ไม่ถูกนับ → guard พลาด → กด Generate ซ้ำ. bg-image ที่มี url ก็ถือว่าเสร็จเช่นกัน
-    const imgEl = el?.matches?.("img") ? el : el?.querySelector?.("img");
-    const imageLoaded = Boolean(imgEl && imgEl.complete && imgEl.naturalWidth > 0);
-    const bgLoaded = !imgEl && Boolean(el?.querySelector?.("[style*='background-image']"));
-    return (imageLoaded || bgLoaded) && !hasActiveVideo;
+    return hasImage && !hasActiveVideo;
 }
 
 // re-scan การ์ดปัจจุบันหา result ที่สร้างเสร็จจริง (ใช้ยืนยันก่อนตัดสินใจ Retry)
@@ -2076,8 +1987,6 @@ async function runPipeline(payload) {
         // 8. รอผลลัพธ์
         const resultPhase = phase === "combined" ? "image" : phase;
         const restartInitialGeneration = async (context = {}) => {
-            // กันเจนซ้ำ: ถ้ามีภาพใหม่ใน grid อยู่แล้ว ไม่ต้องกด Generate ใหม่ — รอผลของภาพนั้น
-            if (findReadyGeneratedResult(resultPhase)) { log("ตรวจเจอภาพใหม่ใน grid แล้ว — ไม่เจนซ้ำ"); return; }
             if (cfg.autoPortrait) await ensureConfig(resultPhase, options);
             const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
             if (attached.length !== uploadedTiles.length) {
@@ -2110,7 +2019,8 @@ async function runPipeline(payload) {
 
             // 5b. ภาพที่เจนเสร็จอยู่ในผลลัพธ์แล้ว → คลิกขวา Add to prompt ตรงๆ
             //     ไม่สลับแท็บ/filter (panel ค้าง Upload ก็ไม่เกี่ยว เพราะ add จากผลลัพธ์โดยตรง)
-            await attachStillForVideo(result, options, cfg);
+            await addGeneratedStillToPrompt(result);
+            log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
 
             // 6b. กรอก prompt สำหรับวิดีโอ
             log("กรอก Prompt วิดีโอ...");
@@ -2123,7 +2033,7 @@ async function runPipeline(payload) {
             const restartVideoGeneration = async (context = {}) => {
                 if (cfg.autoPortrait) await ensureConfig("video", options);
                 await clearPromptAttachments();
-                await attachStillForVideo(result, options, cfg);
+                await addGeneratedStillToPrompt(result);
                 const retryPrompt = context.policyFallback === "no-people"
                     ? buildPeopleSafePrompt(prompt.videoPrompt)
                     : prompt.videoPrompt;
