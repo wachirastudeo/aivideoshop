@@ -66,7 +66,7 @@ export async function syncSelectedProductToVideoTab() {
 function bindGlobalEvents() {
   [
     "video-style", "presenter", "voice-tone", "location", "custom-location",
-    "show-name", "promotion-text", "text-position", "camera-movement",
+    "clip-text", "promotion-text", "text-position", "camera-movement",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action",
     "image-model", "video-model", "video-ref-mode"
   ].forEach((id) => {
@@ -91,7 +91,7 @@ function fillGlobalFormFromState() {
   setValue("voice-tone", settings.voiceTone);
   setValue("location", settings.location);
   setValue("custom-location", settings.customLocation);
-  setValue("show-name", settings.showName);
+  setValue("clip-text", settings.clipText);
   setValue("promotion-text", settings.promotionText);
   setValue("text-position", settings.textPosition);
   setValue("camera-movement", settings.cameraMovement);
@@ -115,7 +115,7 @@ function syncSettingsForm() {
     voiceTone: getValue("voice-tone"),
     location: getValue("location"),
     customLocation: getValue("custom-location"),
-    showName: getValue("show-name"),
+    clipText: getValue("clip-text"),
     promotionText: getValue("promotion-text"),
     textPosition: getValue("text-position"),
     cameraMovement: getValue("camera-movement"),
@@ -199,7 +199,7 @@ function normalizeSettings(value) {
   return {
     ...value,
     language: "ไทย",
-    showName: value.showName === true || value.showName === "true" ? "true" : "false",
+    clipText: (value.clipText || "").trim(),
     cta: "กดสั่งซื้อที่ตะกร้าด้านล่าง",
     customCta: "",
     location: value.location || "Auto",
@@ -218,7 +218,7 @@ function normalizeSettings(value) {
 }
 
 function syncVideoTextSettingsVisibility() {
-  const enabled = getValue("show-name") === "true";
+  const enabled = (getValue("clip-text") || "").trim() !== "";
   document.querySelectorAll(".video-text-setting").forEach((field) => {
     field.hidden = !enabled;
   });
@@ -524,6 +524,12 @@ async function processQueue() {
   if (isProcessing) return;
   if (productQueue.length === 0) {
     helpers.showStatus("ยังไม่มีสินค้าในคิว", "error");
+    return;
+  }
+  syncSettingsForm();
+  if (!settings.clipText) {
+    helpers.showStatus("กรุณากรอก \"ข้อความในคลิป\" ก่อนเริ่มสร้าง", "error");
+    document.querySelector("#clip-text")?.focus();
     return;
   }
 

@@ -137,7 +137,7 @@ export function getDefaultSettings() {
     location: "Auto",
     customLocation: "",
     language: "ไทย",
-    showName: "false",
+    clipText: "",
     promotionText: "",
     cta: "🛒 กดสั่งซื้อที่ตะกร้าด้านล่าง",
     customCta: "",
@@ -226,12 +226,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const auto = resolveAutoSettings(productInfo, settings);
   const locationStr = resolvePromptLocation(auto);
   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
-  const textEnabled = settings?.showName === true || settings?.showName === "true";
+  const clipText = compactPromptText(settings?.clipText, 80);
+  const textEnabled = Boolean(clipText);
   const productName = generationProductName(productInfo.name, 220) || "the attached product";
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const overlayText = [
-    textEnabled ? productName : "",
+    clipText,
     textEnabled ? compactPromptText(settings?.promotionText, 80) : ""
   ].filter(Boolean);
 
@@ -267,7 +268,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   promptParts.push(
     textEnabled && overlayText.length
-      ? `MUST always display these exact Thai text overlays, clearly legible and on-screen in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. Render the Thai script accurately with correct Thai characters, vowels, and tone marks, spelled exactly as written, in a clean readable sans-serif font with high contrast — no garbled, fake, or misspelled letters. The text is required in the final video; do not omit it and do not add any other readable text.`
+      ? `MUST always display these exact Thai text overlays, clearly legible and on-screen in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. Render the Thai script accurately with correct Thai characters, vowels, and tone marks, spelled exactly as written. Style it as eye-catching TikTok-pop kinetic typography: a bold rounded heavy sans-serif, bright punchy colors with a contrasting outline or soft drop shadow / highlight pill behind the words so it stays readable on any background, large and centered in its safe area, with a lively pop-in animation — vibrant and playful but clean, never garbled, fake, or misspelled. The text is required in the final video; do not omit it and do not add any other readable text.`
       : TEXT_FREE_DIRECTION
   );
 
