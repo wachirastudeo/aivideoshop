@@ -21,6 +21,19 @@
       <label class="field__label" for="shopee-min-comm">ค่าคอมขั้นต่ำ % (เว้นว่าง = ไม่กรอง)</label>
       <input id="shopee-min-comm" class="input" type="number" min="0" max="100" step="1" placeholder="เช่น 5">
     </div>
+    <div class="field">
+      <label class="field__label" for="shopee-min-sales">ยอดขายขั้นต่ำ (ชิ้น) (เว้นว่าง = ไม่กรอง)</label>
+      <input id="shopee-min-sales" class="input" type="number" min="0" value="10" placeholder="เช่น 10">
+    </div>
+    <div class="field">
+      <label class="field__label" for="shopee-sort">เรียงลำดับตาม</label>
+      <select id="shopee-sort" class="select">
+        <option value="ความเกี่ยวข้อง" selected>ความเกี่ยวข้อง</option>
+        <option value="ขายดี">ขายดี (ขายดีที่สุด)</option>
+        <option value="คอมมิชชัน (%)">คอมมิชชัน (%)</option>
+        <option value="ราคา">ราคา</option>
+      </select>
+    </div>
     <button id="shopee-pull" class="button button--primary button--full" type="button">ดึง → Export CSV + ทำวิดีโอ</button>
     <div id="shopee-status" class="hint" aria-live="polite"></div>
 
@@ -36,6 +49,15 @@
   <div class="section__header">
     <h2>สินค้า TikTok Showcase</h2>
     <button id="connect-tiktok" class="button button--ghost" type="button">เชื่อมต่อ</button>
+  </div>
+  <div class="section__body">
+    <button id="load-more-products" class="button button--ghost button--full" type="button" hidden>โหลดข้อมูลจาก TikTok เพิ่ม (ชุดถัดไป)</button>
+  </div>
+</section>
+
+<section id="product-list-section" class="section">
+  <div class="section__header">
+    <h2>รายการสินค้าในระบบ</h2>
   </div>
   <div class="section__body">
     <div class="product-toolbar">
@@ -62,6 +84,5 @@
     </div>
     <div id="product-list" class="product-list"></div>
     <div id="pagination-controls" class="pagination-container"></div>
-    <button id="load-more-products" class="button button--ghost button--full" type="button" hidden>โหลดข้อมูลจาก TikTok เพิ่ม (ชุดถัดไป)</button>
   </div>
 </section>

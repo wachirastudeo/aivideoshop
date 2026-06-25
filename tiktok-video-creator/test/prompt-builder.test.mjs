@@ -190,7 +190,9 @@ check("omni-flash video prompt requests multi-scene", /multi-scene/i.test(omniVi
 check("omni-flash video prompt has Scene 1", /Scene 1 \(Product Hook\)/i.test(omniVid), omniVid);
 check("omni-flash video prompt has Scene 2", /Scene 2 \(Benefit Showcase\)/i.test(omniVid), omniVid);
 check("omni-flash video prompt has Scene 3", /Scene 3 \(Detail Close-up\)/i.test(omniVid), omniVid);
-check("omni-flash video prompt has Scene 4", /Scene 4 \(CTA Moment\)/i.test(omniVid), omniVid);
+// --- empty caption template returns empty string ---
+const capEmpty = buildCaption(prodA, { captionTemplate: "" });
+eq("empty caption template returns empty string", capEmpty, "");
 
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);

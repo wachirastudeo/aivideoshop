@@ -45,6 +45,14 @@ export async function analyzeProductImages(imageDataUrls, productInfo = {}) {
 }
 
 export async function generatePostCopy(productInfo = {}, defaults = {}) {
+  const template = defaults.captionTemplate !== undefined ? defaults.captionTemplate : "{product_name}";
+  if (typeof template === "string" && template.trim() === "") {
+    return {
+      caption: "",
+      hashtags: normalizeHashtags(buildPostHashtags(productInfo, { ...defaults, hashtags: productInfo.hashtags || defaults.hashtags }), 5),
+      source: "empty_template"
+    };
+  }
   const fallback = buildFallbackPostCopy(productInfo, defaults);
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const provider = settings.aiProvider || "gemini";

@@ -12,7 +12,20 @@ export async function downloadVideo(url, productInfo) {
     throw new Error("กรุณาใส่ URL วิดีโอแบบ HTTPS, blob หรือ data");
   }
 
-  const filename = buildTikTokVideoFilename(productInfo);
+  const { settings = {} } = await chrome.storage.sync.get("settings");
+  const postDefaults = settings.postDefaults || {};
+
+  const isShopee = productInfo.source === "shopee" || (productInfo.productUrl && /shopee\.co\.th/i.test(productInfo.productUrl));
+
+  let filename = "";
+  if (isShopee) {
+    const folder = (postDefaults.shopeeCsvFolder || "shopee_exports").trim();
+    const baseFilename = buildShopeeVideoFilename(productInfo);
+    filename = folder ? `${folder}/${baseFilename}` : baseFilename;
+  } else {
+    filename = buildTikTokVideoFilename(productInfo);
+  }
+
   const response = await chrome.runtime.sendMessage({
     type: "DOWNLOAD_VIDEO",
     payload: { url, filename }
@@ -23,6 +36,7 @@ export async function downloadVideo(url, productInfo) {
     productInfo.preparedVideoUrl = response.videoUrl;
     productInfo.preparedVideoMimeType = response.mimeType || "";
   }
+  response.filename = filename.split("/").pop();
   return response;
 }
 
@@ -45,13 +59,13 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     : (postDefaults.defaultMode === "schedule" ? "schedule" : "now");
   const productUrl = resolveProductUrl(productInfo);
   productInfo.productUrl = productUrl;
-  const postCopy = productInfo.caption
+  const postCopy = (productInfo.caption !== undefined && productInfo.caption !== null)
     ? {
         caption: productInfo.caption,
         hashtags: buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags })
       }
     : await generatePostCopy(productInfo, postDefaults);
-  const caption = postCopy.caption || buildCaption(productInfo, postDefaults);
+  const caption = postCopy.caption !== undefined ? postCopy.caption : buildCaption(productInfo, postDefaults);
   const hashtags = normalizeHashtags(postCopy.hashtags || buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags }), 5);
   if (postMode === "post") {
     assertPostMetadata({ productInfo, caption, hashtags });
@@ -158,6 +172,13 @@ export function buildTikTokVideoFilename(productInfo = {}) {
   return `${safeId}_${date}_tiktok.mp4`;
 }
 
+export function buildShopeeVideoFilename(productInfo = {}) {
+  const rawId = productInfo.productId || productInfo.id || productInfo.name || "shopee_product";
+  const safeId = String(rawId).replace(/[^\w-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) || "shopee_product";
+  const date = new Date().toISOString().slice(0, 10);
+  return `${safeId}_${date}_shopee.mp4`;
+}
+
 export function resolveProductLinkTitle(productInfo = {}) {
   return String(
     productInfo.productLinkTitle ||
@@ -172,8 +193,6 @@ export function resolveProductLinkTitle(productInfo = {}) {
 
 export function assertPostMetadata({ productInfo = {}, caption = "", hashtags = [] } = {}) {
   const missing = [];
-  if (!String(caption || "").trim()) missing.push("caption");
-  if (!normalizeHashtags(hashtags).length) missing.push("hashtags");
   if (!resolveProductUrl(productInfo)) missing.push("productUrl");
 
   if (missing.length) {

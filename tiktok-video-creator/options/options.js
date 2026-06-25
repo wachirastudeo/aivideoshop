@@ -52,6 +52,8 @@ async function loadOptions() {
   setValue("caption-template", post.captionTemplate || "{product_name}\n{product_details}\n{cta}");
   setValue("default-hashtags", normalizeHashtags(post.hashtags || ["#TikTokShop", "#ของดีบอกต่อ"], 4).join(", "));
   setChecked("auto-add-product-link", post.autoAddProductLink !== false);
+  setValue("shopee-csv-folder", post.shopeeCsvFolder || "shopee_exports");
+  setValue("shopee-csv-filename", post.shopeeCsvFilename || "shopee_products.csv");
 
   // Sync model card UI
   syncModelCards();
@@ -116,7 +118,9 @@ async function saveSettings() {
       hashtags: normalizeHashtags(getValue("default-hashtags"), 4),
       autoAddProductLink: getChecked("auto-add-product-link"),
       afterCreateAction: existingSettings.postDefaults?.afterCreateAction || "post",
-      defaultMode: existingSettings.postDefaults?.defaultMode || "now"
+      defaultMode: existingSettings.postDefaults?.defaultMode || "now",
+      shopeeCsvFolder: getValue("shopee-csv-folder") || "shopee_exports",
+      shopeeCsvFilename: getValue("shopee-csv-filename") || "shopee_products.csv"
     }
   };
 

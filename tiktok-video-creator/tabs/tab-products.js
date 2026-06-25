@@ -69,7 +69,22 @@ async function importShopeeCsv(file) {
   const btn = document.querySelector("#shopee-csv-btn");
   const setProg = (t, type) => {
     const el = document.querySelector("#shopee-csv-progress");
-    if (el) { el.textContent = t; el.style.color = type === "error" ? "#e23" : type === "success" ? "#1a7" : ""; }
+    if (!el) return;
+    el.style.color = type === "error" ? "#e23" : type === "success" ? "#1a7" : "";
+    if (type !== "error" && type !== "success" && t) {
+      el.innerHTML = `
+        <div class="spinner-container">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>${escapeHtml(t)}</span>
+        </div>
+      `;
+      showLoadingOverlay(t);
+    } else {
+      el.textContent = t;
+      if (type === "success" || type === "error") {
+        hideLoadingOverlay();
+      }
+    }
   };
 
   try {
@@ -106,7 +121,8 @@ async function importShopeeCsv(file) {
         shopName: row.shopName,
         commission: row.commission,
         commissionRate: "",
-        stockCount: "1",
+        salesCount: row.salesCount,
+        stockCount: "99",
         source: "shopee"
       });
     }
@@ -116,7 +132,6 @@ async function importShopeeCsv(file) {
     products = built;
     selectedIds.clear();
     currentPage = 1;
-    applySource("tiktok");
     renderProducts();
     const blockNote = blocked ? ` (${blocked} ชิ้นโดน Shopee กัน captcha ดึงรูปไม่ได้)` : "";
     setProg(`ทำรายการ ${built.length} ชิ้นแล้ว — เลือกรูป/สินค้าแล้วกดสร้างวิดีโอ${blockNote}`, "success");
@@ -126,6 +141,7 @@ async function importShopeeCsv(file) {
     helpers.logActivity?.(`อ่าน CSV ไม่สำเร็จ: ${error.message}`, "error");
   } finally {
     if (btn) btn.disabled = false;
+    hideLoadingOverlay();
   }
 }
 
@@ -162,7 +178,8 @@ function parseShopeeCsv(text) {
     shop: idx("ชื่อร้าน"),
     comm: idx("คอมมิชชัน"),
     link: idx("ลิงก์สินค้า"),
-    offer: idx("ลิงก์ข้อเสนอ")
+    offer: idx("ลิงก์ข้อเสนอ"),
+    sales: idx("ขาย")
   };
 
   return lines.slice(1).map((line) => {
@@ -175,7 +192,8 @@ function parseShopeeCsv(text) {
       shopName: get(col.shop),
       commission: get(col.comm),
       productUrl: get(col.link),
-      offerUrl: get(col.offer)
+      offerUrl: get(col.offer),
+      salesCount: get(col.sales)
     };
   }).filter((r) => r.productUrl || r.productId);
 }
@@ -185,6 +203,9 @@ async function runShopeePull() {
   const count = parseInt(document.querySelector("#shopee-count")?.value, 10);
   const minCommRaw = document.querySelector("#shopee-min-comm")?.value.trim() || "";
   const minCommission = minCommRaw === "" ? 0 : Math.max(0, parseFloat(minCommRaw) || 0);
+  const minSalesRaw = document.querySelector("#shopee-min-sales")?.value.trim() || "";
+  const minSales = minSalesRaw === "" ? 0 : Math.max(0, parseInt(minSalesRaw, 10) || 0);
+  const sortBy = document.querySelector("#shopee-sort")?.value || "ความเกี่ยวข้อง";
   const pullBtn = document.querySelector("#shopee-pull");
 
   if (!keyword) return setShopeeStatus("กรอกคำค้นหาก่อน", "error");
@@ -192,45 +213,116 @@ async function runShopeePull() {
 
   if (pullBtn) pullBtn.disabled = true;
   const commNote = minCommission > 0 ? ` คอม ≥${minCommission}%` : "";
-  setShopeeStatus(`กำลังเปิด Shopee และดึง ${count} ชิ้น...${commNote}`);
-  helpers.logActivity?.(`ดึง Shopee: "${keyword}" จำนวน ${count}${commNote}`);
+  const salesNote = minSales > 0 ? ` ขาย ≥${minSales}ชิ้น` : "";
+  setShopeeStatus(`กำลังเปิด Shopee และดึง ${count} ชิ้น...${commNote}${salesNote}`);
+  showLoadingOverlay(`กำลังเปิด Shopee และดึง ${count} ชิ้น...${commNote}${salesNote}`);
+  helpers.logActivity?.(`ดึง Shopee: "${keyword}" จำนวน ${count}${commNote}${salesNote} เรียงลำดับ: ${sortBy}`);
 
   try {
     // mode "both": ติ๊ก → Export CSV (trusted click) + คืนข้อมูลสินค้ามาทำวิดีโอ
     const response = await chrome.runtime.sendMessage({
       type: "PULL_SHOPEE_PRODUCTS",
-      payload: { keyword, count, mode: "both", minCommission }
+      payload: { keyword, count, mode: "both", minCommission, minSales, sortBy }
     });
     if (!response?.ok) throw new Error(response?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
     let capNote = response.capped ? " (Shopee จำกัด 100 ชิ้น/ครั้ง)" : "";
-    if (minCommission > 0 && (response.ticked ?? 0) < count) {
-      capNote += ` (คอม ≥${minCommission}% มีแค่ ${response.ticked ?? 0} ชิ้น)`;
+    const filterNotes = [];
+    if (minCommission > 0) filterNotes.push(`คอม ≥${minCommission}%`);
+    if (minSales > 0) filterNotes.push(`ขาย ≥${minSales} ชิ้น`);
+    if (filterNotes.length > 0 && (response.ticked ?? 0) < count) {
+      capNote += ` (${filterNotes.join(" และ ")} มีแค่ ${response.ticked ?? 0} ชิ้น)`;
     }
 
     const items = (response.products || []).filter((p) => p.productId || p.name);
     if (!items.length) {
-      // export CSV สำเร็จแต่ดึงข้อมูลทำวิดีโอไม่ได้
-      setShopeeStatus(`Export CSV แล้ว ${response.ticked ?? count} ชิ้น (ดึงข้อมูลทำวิดีโอไม่ได้)${capNote}`, "success");
+      setShopeeStatus(`ไม่พบข้อมูลสินค้าที่ดึงมาได้${capNote}`, "error");
       return;
     }
-    const queue = items.map(buildSelectedProductPayload);
-    await chrome.storage.local.set({ selectedProduct: queue[0], productQueue: queue, activeTab: "video" });
-    setShopeeStatus(`Export CSV + ดึง ${queue.length} ชิ้นเข้าแอป — ไปหน้าสร้างวิดีโอ${capNote}`, "success");
-    helpers.logActivity?.(`Shopee: export CSV + ทำวิดีโอ ${queue.length} ชิ้น`, "success");
-    await helpers.switchTab("video");
+
+    setShopeeStatus(`พบ ${items.length} สินค้า — เริ่มดึงรูปภาพของแต่ละสินค้า...`);
+    showLoadingOverlay(`พบ ${items.length} สินค้า — เริ่มดึงรูปภาพของแต่ละสินค้า...`);
+    helpers.logActivity?.(`ดึง Shopee: พบ ${items.length} สินค้า — กำลังดึงรูปภาพเข้าระบบ`);
+
+    const built = [];
+    let blocked = 0;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      setShopeeStatus(`กำลังดึงรูป ${i + 1}/${items.length}: ${item.name.slice(0, 24)}...`);
+      showLoadingOverlay(`กำลังดึงรูป ${i + 1}/${items.length}:\n${item.name.slice(0, 32)}...`);
+      
+      let images = [];
+      let consumerUrl = item.productUrl;
+      if (item.productUrl) {
+        const res = await chrome.runtime.sendMessage({
+          type: "SHOPEE_FETCH_IMAGES",
+          payload: { productUrl: item.productUrl }
+        });
+        if (res?.ok) {
+          images = res.images || [];
+          if (res.consumerUrl) {
+            consumerUrl = res.consumerUrl;
+          }
+          if (res.blocked) blocked++;
+        }
+      }
+      
+      const finalImages = images.length > 0 ? images : (item.imageUrls || []);
+      built.push({
+        ...item,
+        displayImageUrl: finalImages[0] || item.displayImageUrl || "",
+        imageUrls: finalImages,
+        selectedImageUrls: finalImages.slice(0, 1),
+        productUrl: consumerUrl // เก็บลิงก์สินค้าจริง (ฝั่งผู้บริโภค)
+      });
+    }
+
+    await chrome.runtime.sendMessage({ type: "SHOPEE_CLOSE_SCRAPE_TAB" });
+
+    products = built;
+    selectedIds.clear();
+    currentPage = 1;
+    renderProducts();
+
+    const blockNote = blocked ? ` (${blocked} ชิ้นโดน captcha ดึงรูปไม่ได้)` : "";
+    setShopeeStatus(`ดึงสินค้า ${built.length} ชิ้นเข้ามาในรายการแล้ว — เลือกรูป/สินค้าแล้วกดสร้างวิดีโอ${blockNote}${capNote}`, "success");
+    helpers.logActivity?.(`Shopee: ดึงสินค้า ${built.length} ชิ้นเข้ารายการสำเร็จ${blockNote}`, "success");
   } catch (error) {
     setShopeeStatus(error.message, "error");
     helpers.logActivity?.(`Shopee ไม่สำเร็จ: ${error.message}`, "error");
   } finally {
     if (pullBtn) pullBtn.disabled = false;
+    hideLoadingOverlay();
   }
+}
+
+function showLoadingOverlay(text) {
+  const overlay = document.querySelector("#loading-overlay");
+  const txtEl = document.querySelector("#loading-overlay-text");
+  if (overlay) {
+    if (txtEl) txtEl.textContent = text || "กำลังดำเนินการ...";
+    overlay.hidden = false;
+  }
+}
+
+function hideLoadingOverlay() {
+  const overlay = document.querySelector("#loading-overlay");
+  if (overlay) overlay.hidden = true;
 }
 
 function setShopeeStatus(text, type) {
   const el = document.querySelector("#shopee-status");
   if (!el) return;
-  el.textContent = text;
   el.style.color = type === "error" ? "#e23" : type === "success" ? "#1a7" : "";
+  if (type !== "error" && type !== "success" && text) {
+    el.innerHTML = `
+      <div class="spinner-container">
+        <span class="spinner" aria-hidden="true"></span>
+        <span>${escapeHtml(text)}</span>
+      </div>
+    `;
+  } else {
+    el.textContent = text;
+  }
 }
 
 /**
@@ -585,6 +677,11 @@ function productMarkup(product) {
     ? `<span class="meta-badge meta-badge--danger">หมดสต๊อก</span>`
     : '';
 
+  let salesBadge = '';
+  if (product.salesCount) {
+    salesBadge = `<span class="meta-badge meta-badge--info">ขายแล้ว ${product.salesCount}</span>`;
+  }
+
   const isSelected = selectedIds.has(product.productId);
   const allImages = (product.imageUrls || []).filter(Boolean);
   const totalImages = allImages.length;
@@ -605,6 +702,7 @@ function productMarkup(product) {
         <p class="product-card__meta">
           <strong>${escapeHtml(formatPrice(product))}</strong>
           ${commissionBadge}
+          ${salesBadge}
           ${stockBadge}
         </p>
       </div>

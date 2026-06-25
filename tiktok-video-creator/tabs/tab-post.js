@@ -12,7 +12,9 @@ const DEFAULT_POST_SETTINGS = {
   location: "",
   aiGenerated: true,
   allowComment: true,
-  allowReuse: true
+  allowReuse: true,
+  shopeeCsvFolder: "shopee_exports",
+  shopeeCsvFilename: "shopee_products.csv"
 };
 
 let helpers = {};
@@ -50,7 +52,7 @@ function bindEvents() {
   });
 
   document.querySelectorAll(
-    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-privacy, #post-schedule-time, #post-location, #post-allow-comment, #post-allow-reuse"
+    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-privacy, #post-schedule-time, #post-location, #post-allow-comment, #post-allow-reuse, #post-shopee-csv-folder, #post-shopee-csv-filename"
   ).forEach((input) => {
     input.addEventListener("input", scheduleAutoSave);
     input.addEventListener("change", scheduleAutoSave);
@@ -120,12 +122,8 @@ async function runTestUpload() {
   const postCopy = manualCaption
     ? { caption: manualCaption, hashtags }
     : await generatePostCopy(productInfo, postSettings);
-  const caption = postCopy.caption || buildCaption(productInfo, postSettings);
+  const caption = postCopy.caption !== undefined ? postCopy.caption : buildCaption(productInfo, postSettings);
   const finalHashtags = normalizeHashtags(postCopy.hashtags?.length ? postCopy.hashtags : hashtags, 5);
-
-  if (uploadMode === "post") {
-    if (!caption) { setTestStatus("โพสต์จริงต้องมี caption", "error"); return; }
-  }
   if (postType === "schedule" && !postSettings.scheduleTime) {
     setTestStatus("กรุณาเลือกเวลาโพสต์ก่อนตั้งเวลา", "error");
     return;
@@ -211,6 +209,8 @@ function fillForm(value) {
   setChecked("post-ai-generated", post.aiGenerated);
   setChecked("post-allow-comment", post.allowComment);
   setChecked("post-allow-reuse", post.allowReuse);
+  setValue("post-shopee-csv-folder", post.shopeeCsvFolder || "shopee_exports");
+  setValue("post-shopee-csv-filename", post.shopeeCsvFilename || "shopee_products.csv");
   syncScheduleState();
   syncPublishModeState();
   isHydrating = false;
@@ -242,7 +242,9 @@ function readForm(existingPostDefaults = {}) {
     location: getValue("post-location"),
     aiGenerated: true,
     allowComment: getChecked("post-allow-comment"),
-    allowReuse: getChecked("post-allow-reuse")
+    allowReuse: getChecked("post-allow-reuse"),
+    shopeeCsvFolder: hasField("post-shopee-csv-folder") ? getValue("post-shopee-csv-folder") : existing.shopeeCsvFolder,
+    shopeeCsvFilename: hasField("post-shopee-csv-filename") ? getValue("post-shopee-csv-filename") : existing.shopeeCsvFilename
   });
 }
 
@@ -267,7 +269,9 @@ function normalizePostSettings(value = {}) {
     autoAddProductLink: post.autoAddProductLink !== false,
     aiGenerated: true,
     allowComment: post.allowComment !== false,
-    allowReuse: post.allowReuse !== false
+    allowReuse: post.allowReuse !== false,
+    shopeeCsvFolder: post.shopeeCsvFolder || DEFAULT_POST_SETTINGS.shopeeCsvFolder,
+    shopeeCsvFilename: post.shopeeCsvFilename || DEFAULT_POST_SETTINGS.shopeeCsvFilename
   };
 }
 

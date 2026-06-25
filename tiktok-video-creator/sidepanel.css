@@ -704,6 +704,11 @@ html[data-mode="tab"] .app-shell {
   background: rgba(255, 59, 48, 0.08);
 }
 
+.meta-badge--info {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .product-batch-item summary {
   transition: all 0.2s ease;
 }
@@ -1655,4 +1660,76 @@ html[data-mode="tab"] .activity-log {
   .flow-job__title h3 {
     white-space: normal;
   }
+}
+
+/* Spinner for loading states */
+.spinner-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--text-muted, #a1a1aa);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent, #fe2c55);
+  border-radius: 50%;
+  animation: spinner-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spinner-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Global Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(18, 18, 22, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-overlay__content {
+  background: #24242c;
+  border: 1px solid var(--line, #3a3a44);
+  padding: 24px 32px;
+  border-radius: 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  max-width: 280px;
+  width: 90%;
+}
+
+.loading-overlay__spinner {
+  width: 42px;
+  height: 42px;
+  border: 3.5px solid rgba(254, 44, 85, 0.1);
+  border-top-color: var(--accent, #fe2c55);
+  border-radius: 50%;
+  animation: spinner-spin 0.85s linear infinite;
+}
+
+.loading-overlay__text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text, #fff);
+  line-height: 1.5;
+  word-break: break-word;
 }

@@ -31,6 +31,7 @@ async function routeMessage(message, sender) {
     case "SHOPEE_CLOSE_SCRAPE_TAB":  return closeShopeeScrapeTab();
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
     case "DOWNLOAD_VIDEO":           return downloadVideo(message.payload);
+    case "DOWNLOAD_FILE":            return downloadFile(message.payload);
     case "POST_TO_TIKTOK":           return postToTikTok(message.payload);
     case "GET_FLOW_SETTINGS":        return getFlowSettings();
     case "FLOW_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
@@ -418,6 +419,59 @@ async function fetchShopeeImages({ productUrl } = {}) {
     shopeeScrapeTabId = tab.id;
   }
   await waitForTabComplete(shopeeScrapeTabId);
+
+  // Check if we are on the affiliate product offer page
+  let resolvedConsumerUrl = productUrl;
+  let currentTab = await chrome.tabs.get(shopeeScrapeTabId);
+  if (currentTab.url && currentTab.url.includes("affiliate.shopee.co.th/offer/product_offer/")) {
+    await delay(1500); // รอ dynamic content โหลด
+    let extractedUrlResult;
+    try {
+      [{ result: extractedUrlResult }] = await chrome.scripting.executeScript({
+        target: { tabId: shopeeScrapeTabId },
+        func: () => {
+          const anchors = Array.from(document.querySelectorAll("a"));
+          // 1. หาลิงก์สินค้าตรงฝั่ง consumer
+          let link = anchors.find(a => {
+            const href = a.href || "";
+            return href.includes("shopee.co.th") && !href.includes("affiliate.shopee.co.th") && (href.includes("/product/") || /-i\.\d+\.\d+/i.test(href));
+          });
+          if (link) return link.href;
+
+          // 2. หาลิงก์ shopee.co.th ทั่วไปที่ไม่ใช่ subdomain ไม่เกี่ยวข้อง
+          link = anchors.find(a => {
+            const href = a.href || "";
+            return href.includes("shopee.co.th") && 
+                   !href.includes("affiliate.shopee.co.th") && 
+                   !href.includes("help.shopee.co.th") && 
+                   !href.includes("seller.shopee.co.th") &&
+                   !href.includes("banhang.shopee") &&
+                   !/sign-in|login|logout/i.test(href);
+          });
+          if (link) return link.href;
+
+          // 3. หาปุ่ม/ลิงก์ที่มีข้อความชี้นำ
+          link = anchors.find(a => {
+            const text = (a.textContent || "").trim();
+            return /ดูสินค้า|รายละเอียด|view\s*on\s*shopee|view\s*product/i.test(text);
+          });
+          if (link) return link.href;
+
+          return null;
+        }
+      });
+    } catch (err) {
+      console.error("Failed to extract original product link:", err);
+    }
+
+    if (extractedUrlResult) {
+      resolvedConsumerUrl = extractedUrlResult;
+      // เดินทางไปยังหน้าสินค้าจริงเพื่อทำการดึงรูปภาพแบบเต็ม
+      await chrome.tabs.update(shopeeScrapeTabId, { url: extractedUrlResult });
+      await waitForTabComplete(shopeeScrapeTabId);
+    }
+  }
+
   await delay(2000); // รอ gallery render
 
   let result;
@@ -429,7 +483,9 @@ async function fetchShopeeImages({ productUrl } = {}) {
   } catch (error) {
     return { images: [], error: "อ่านหน้าสินค้าไม่สำเร็จ: " + error.message };
   }
-  return result || { images: [] };
+  const responseData = result || { images: [] };
+  responseData.consumerUrl = resolvedConsumerUrl;
+  return responseData;
 }
 
 // รันในหน้าสินค้า shopee.co.th — เก็บ URL รูปทั้งหมดจาก gallery
@@ -441,7 +497,10 @@ function scrapeShopeeGallery() {
   const norm = (s) => {
     if (!s) return "";
     if (s.startsWith("//")) s = "https:" + s;
-    return s.split("@")[0].split("_tn")[0]; // ตัด suffix resize/thumbnail → รูปเต็ม
+    let url = s.split("@")[0];
+    // Only strip _tn if it is at the end of the path/filename, preventing cutting random hash strings in half
+    url = url.replace(/_tn$/, "").replace(/_tn(?=\.[a-zA-Z0-9]+(?:\?|$))/, "");
+    return url;
   };
   // 1) รูปจาก <img> ที่อยู่บน CDN ของ Shopee
   document.querySelectorAll("img").forEach((img) => {
@@ -457,11 +516,12 @@ function scrapeShopeeGallery() {
   return { images, blocked: false };
 }
 
-async function pullShopeeProducts({ keyword, count, mode, minCommission } = {}) {
+async function pullShopeeProducts({ keyword, count, mode, minCommission, minSales, sortBy } = {}) {
   if (!keyword) throw new Error("ไม่มีคำค้นหา");
   const want = Math.max(1, parseInt(count, 10) || 1);
   const collect = mode === "collect";
   const minComm = Math.max(0, Number(minCommission) || 0);
+  const minS = Math.max(0, parseInt(minSales, 10) || 0);
 
   const existing = await chrome.tabs.query({ url: "https://affiliate.shopee.co.th/*" });
   let tab = existing[0];
@@ -482,7 +542,7 @@ async function pullShopeeProducts({ keyword, count, mode, minCommission } = {}) 
 
   // โหมด collect (ดึงเข้าแอป) แค่ติ๊ก+อ่าน DOM ไม่ต้อง trusted click
   if (collect) {
-    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode: "collect", minCommission: minComm });
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode: "collect", minCommission: minComm, minSales: minS, sortBy });
     if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
     return { ticked: result.ticked, capped: result.capped, products: result.products || [] };
   }
@@ -495,7 +555,7 @@ async function pullShopeeProducts({ keyword, count, mode, minCommission } = {}) 
   await delay(700);
 
   try {
-    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode, minCommission: minComm });
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode, minCommission: minComm, minSales: minS, sortBy });
     if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
     return { ticked: result.ticked, capped: result.capped, products: result.products || [] };
   } finally {
@@ -551,16 +611,81 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const pendingDownloads = new Map(); // downloadId -> filename
+const pendingFilenameQueue = []; // FIFO queue for filenames (handles dynamic redirects/signed URLs)
+
+chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+  if (item.byExtensionId === chrome.runtime.id) {
+    // 1. Try matching by download ID
+    let targetPath = pendingDownloads.get(item.id);
+    if (targetPath) {
+      pendingDownloads.delete(item.id);
+      suggest({
+        filename: targetPath,
+        conflictAction: "overwrite"
+      });
+      return;
+    }
+    
+    // 2. Fallback: match by FIFO queue (oldest pending filename)
+    targetPath = pendingFilenameQueue.shift();
+    if (targetPath) {
+      suggest({
+        filename: targetPath,
+        conflictAction: "overwrite"
+      });
+      return;
+    }
+  }
+  suggest();
+});
+
 async function downloadVideo(payload) {
   const preparedVideo = await prepareVideoBase64ForTikTok(payload.url);
   const mimeType = preparedVideo.mimeType || "video/mp4";
   const dataUrl = `data:${mimeType};base64,${preparedVideo.base64}`;
   const downloadUrl = /^https:|^data:/i.test(payload.url || "") ? payload.url : dataUrl;
+  
+  if (payload.filename) {
+    pendingFilenameQueue.push(payload.filename);
+  }
+
   try {
     const id = await chrome.downloads.download({ url: downloadUrl, filename: payload.filename, saveAs: false });
+    if (payload.filename) {
+      pendingDownloads.set(id, payload.filename);
+    }
     return { downloadId: id, videoUrl: dataUrl, mimeType };
   } catch (error) {
+    if (payload.filename) {
+      const idx = pendingFilenameQueue.indexOf(payload.filename);
+      if (idx > -1) pendingFilenameQueue.splice(idx, 1);
+    }
     return { downloadId: null, downloadError: error.message, videoUrl: dataUrl, mimeType };
+  }
+}
+
+async function downloadFile(payload) {
+  if (payload.filename) {
+    pendingFilenameQueue.push(payload.filename);
+  }
+  try {
+    const id = await chrome.downloads.download({
+      url: payload.url,
+      filename: payload.filename,
+      conflictAction: payload.conflictAction || "uniquify",
+      saveAs: false
+    });
+    if (payload.filename) {
+      pendingDownloads.set(id, payload.filename);
+    }
+    return { ok: true, downloadId: id };
+  } catch (error) {
+    if (payload.filename) {
+      const idx = pendingFilenameQueue.indexOf(payload.filename);
+      if (idx > -1) pendingFilenameQueue.splice(idx, 1);
+    }
+    return { ok: false, error: error.message };
   }
 }
 
@@ -779,8 +904,6 @@ async function prepareVideoBase64ForTikTok(videoUrl) {
 
 function assertTikTokPostMetadata({ caption = "", hashtags = [], productUrl = "" } = {}) {
   const missing = [];
-  if (!String(caption || "").trim()) missing.push("caption");
-  if (!normalizeHashtags(hashtags).length) missing.push("hashtags");
   if (!String(productUrl || "").trim()) missing.push("productUrl");
   if (missing.length) {
     throw new Error(`ห้ามโพสต์: ข้อมูลโพสต์ไม่ครบ (${missing.join(", ")})`);

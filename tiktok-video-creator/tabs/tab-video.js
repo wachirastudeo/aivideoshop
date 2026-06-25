@@ -3,7 +3,10 @@ import {
   buildImagePrompt,
   buildVideoPrompt,
   getDefaultSettings,
-  resolveProductUrl
+  resolveProductUrl,
+  buildCaption,
+  buildPostHashtags,
+  normalizeHashtags
 } from "../modules/prompt-builder.js";
 import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
@@ -265,6 +268,7 @@ function renderQueue() {
   if (queueCount) queueCount.textContent = productQueue.length;
   if (readyCount) readyCount.textContent = productQueue.filter((p) => p.status !== "done" && p.status !== "error").length;
   syncClearButtonState();
+  syncPostActionUI();
 
   const list = document.querySelector("#batch-product-list");
   if (!list) return;
@@ -276,6 +280,25 @@ function renderQueue() {
 
   list.innerHTML = productQueue.map(productMarkup).join("");
   bindBatchEvents();
+}
+
+function syncPostActionUI() {
+  const select = document.querySelector("#post-action");
+  if (!select) return;
+
+  const allShopee = productQueue.length > 0 && productQueue.every(p => p.source === "shopee" || (p.productUrl && /shopee\.co\.th/i.test(p.productUrl)));
+  const draftOpt = select.querySelector('option[value="draft"]');
+  const postOpt = select.querySelector('option[value="post"]');
+
+  if (allShopee) {
+    if (draftOpt) draftOpt.disabled = true;
+    if (postOpt) postOpt.disabled = true;
+    select.value = "download";
+    settings.postAction = "download";
+  } else {
+    if (draftOpt) draftOpt.disabled = false;
+    if (postOpt) postOpt.disabled = false;
+  }
 }
 
 function productMarkup(p, index) {
@@ -595,7 +618,9 @@ async function processQueue() {
       if (product.videoUrl) {
         product.productUrl = resolveProductUrl(product);
         await persistState();
-        const action = await getPostAction();
+        const isShopee = product.source === "shopee" || (product.productUrl && /shopee\.co\.th/i.test(product.productUrl));
+        const action = isShopee ? "download" : await getPostAction();
+        let downloadedInfo = null;
         if (["download", "draft", "post"].includes(action)) {
           assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังดาวน์โหลดวิดีโออัตโนมัติ...`, "info");
@@ -603,6 +628,7 @@ async function processQueue() {
           assertNotStopped();
           product.preparedVideoUrl = downloaded.videoUrl || product.preparedVideoUrl || "";
           product.preparedVideoMimeType = downloaded.mimeType || product.preparedVideoMimeType || "";
+          downloadedInfo = downloaded;
           await persistState();
         }
         if (action === "draft") {
@@ -621,6 +647,11 @@ async function processQueue() {
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังอัปโหลดและโพสต์ TikTok อัตโนมัติ...`, "info");
           await retryPostStep(`โพสต์ TikTok สินค้า ${i + 1}`, () => publishVideo(product.preparedVideoUrl || product.videoUrl, product));
           assertNotStopped();
+        }
+        if (isShopee && downloadedInfo) {
+          assertNotStopped();
+          helpers.logActivity?.(`สินค้า ${i + 1} (Shopee): กำลังบันทึกข้อมูลสินค้าลงไฟล์ CSV...`, "info");
+          await saveShopeeProductToCsv(product, downloadedInfo.filename || `${product.productId || "shopee"}_shopee.mp4`);
         }
         product.status = "done";
         product.errorMessage = "";
@@ -826,7 +857,12 @@ async function handleDownload(product) {
   try {
     if (!product.videoUrl) throw new Error("กรุณาวาง URL วิดีโอ");
     helpers.showStatus("กำลังดาวน์โหลด...", "info");
-    await downloadVideo(product.videoUrl, product);
+    const downloaded = await downloadVideo(product.videoUrl, product);
+    const isShopee = product.source === "shopee" || (product.productUrl && /shopee\.co\.th/i.test(product.productUrl));
+    if (isShopee) {
+      helpers.showStatus("กำลังบันทึก CSV...", "info");
+      await saveShopeeProductToCsv(product, downloaded.filename || `${product.productId || "shopee"}_shopee.mp4`);
+    }
     product.status = "done";
     await persistState();
     renderQueue();
@@ -836,7 +872,8 @@ async function handleDownload(product) {
 }
 
 async function handlePost(product) {
-  const action = await getPostAction();
+  const isShopee = product.source === "shopee" || (product.productUrl && /shopee\.co\.th/i.test(product.productUrl));
+  const action = isShopee ? "download" : await getPostAction();
   if (action === "download") {
     return handleDownload(product);
   }
@@ -1040,4 +1077,72 @@ function saveIcon() {
 
 function sendIcon() {
   return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg>`;
+}
+
+async function saveShopeeProductToCsv(product, videoFilename) {
+  const { settings = {} } = await chrome.storage.sync.get("settings");
+  const postDefaults = settings.postDefaults || {};
+  const folder = (postDefaults.shopeeCsvFolder || "shopee_exports").trim();
+  const filename = (postDefaults.shopeeCsvFilename || "shopee_products.csv").trim();
+  
+  const csvKey = `shopee_csv_rows:${folder}:${filename}`;
+  const localData = await chrome.storage.local.get(csvKey);
+  let rows = localData[csvKey] || [];
+  
+  const videoName = String(videoFilename || "").split("/").pop();
+  
+  const caption = (product.caption !== undefined && product.caption !== null)
+    ? product.caption
+    : buildCaption(product, postDefaults);
+  
+  const cleanCaption = String(caption || "")
+    .replace(/"/g, '""')
+    .replace(/\r?\n/g, ' ');
+    
+  const productLinks = String(product.productUrl || "").replace(/"/g, '""');
+  const hashtags = buildPostHashtags(product, postDefaults).join(" ").replace(/"/g, '""');
+  
+  const exists = rows.find(r => r.video === videoName);
+  if (!exists) {
+    rows.push({
+      video: videoName,
+      caption: cleanCaption,
+      product_links: productLinks,
+      hashtags: hashtags
+    });
+  } else {
+    exists.caption = cleanCaption;
+    exists.product_links = productLinks;
+    exists.hashtags = hashtags;
+  }
+  await chrome.storage.local.set({ [csvKey]: rows });
+  
+  const header = "video,caption,product_links,hashtags,\n";
+  const body = rows.map(r => `"${r.video}","${r.caption}","${r.product_links}","${r.hashtags}",`).join("\n");
+  const csvContent = header + body;
+  
+  // แปลงเป็น Base64 เพื่อความปลอดภัยในการดาวน์โหลดไฟล์ CSV ผ่าน data: URI ใน Chrome
+  const base64Content = btoa(unescape(encodeURIComponent(csvContent)));
+  const dataUrl = `data:text/csv;charset=utf-8;base64,${base64Content}`;
+  
+  // ล้างเครื่องหมาย / หรือ \ ด้านหน้าและด้านหลัง เพื่อให้ดาวน์โหลดผ่าน Chrome API สำเร็จ (ต้องเป็น relative path เท่านั้น)
+  const cleanFolder = folder.replace(/^[/\\]+|[/\\]+$/g, "").trim();
+  const cleanFilename = filename.replace(/^[/\\]+|[/\\]+$/g, "").trim();
+  const csvPath = cleanFolder ? `${cleanFolder}/${cleanFilename}` : cleanFilename;
+  
+  const res = await chrome.runtime.sendMessage({
+    type: "DOWNLOAD_FILE",
+    payload: {
+      url: dataUrl,
+      filename: csvPath,
+      conflictAction: "overwrite"
+    }
+  });
+
+  if (res && !res.ok) {
+    console.error("ดาวน์โหลดไฟล์ CSV ล้มเหลว:", res.error);
+    helpers.showStatus?.("บันทึก CSV ล้มเหลว: " + res.error, "error");
+  } else {
+    helpers.showStatus?.("บันทึกข้อมูลสินค้าลง CSV สำเร็จ", "success");
+  }
 }

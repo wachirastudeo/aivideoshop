@@ -10,6 +10,16 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  function parseSalesNumber(salesText) {
+    if (!salesText) return 0;
+    const clean = salesText.toLowerCase().replace(/ขายแล้ว|ขายได้|sold|ชิ้น/gi, "").replace(/[^\d.k+]/g, "").trim();
+    if (clean.includes("k")) {
+      const num = parseFloat(clean.replace("k", "")) || 0;
+      return Math.round(num * 1000);
+    }
+    return parseInt(clean, 10) || 0;
+  }
+
   function log(msg) {
     console.log("[Shopee Affiliate]", msg);
   }
@@ -152,13 +162,49 @@
     // href อาจถูก stripNewCardAnchors ถอดไปชั่วคราว → อ่านค่าเดิมจาก map
     const href = a?.getAttribute("href") || (a && strippedAnchors.get(a)?.href) || "";
     const productId = (href.match(/product_offer\/(\d+)/) || [])[1] || "";
-    const name = (card.querySelector(".ItemCard__name")?.textContent || "").trim();
+    let nameEl = card.querySelector("div.ItemCard__name, span.ItemCard__name, p.ItemCard__name");
+    if (!nameEl) nameEl = card.querySelector(".ItemCard__name");
+    if (nameEl && (nameEl.tagName === "A" || nameEl.classList.contains("ItemCard__container") || nameEl.classList.contains("ItemCard__nameSection"))) {
+      nameEl = nameEl.querySelector("div.ItemCard__name, span.ItemCard__name, p.ItemCard__name, [class*='name']") || nameEl;
+    }
+    let name = nameEl ? (nameEl.textContent || "").trim() : "";
+    if (name.includes("เอา ลิงก์") || name.includes("อัตราค่าคอมมิชชัน") || name.includes("ขายแล้ว") || name.includes("ขายได้") || name.includes("฿")) {
+      const possibleTitles = Array.from(card.querySelectorAll("div, span, p")).filter(el => {
+        const txt = (el.textContent || "").trim();
+        return txt && 
+               !txt.includes("เอา ลิงก์") && 
+               !txt.includes("อัตราค่าคอมมิชชัน") && 
+               !txt.includes("ขายแล้ว") && 
+               !txt.includes("ขายได้") &&
+               !txt.includes("฿") &&
+               !el.querySelector("div, span, p");
+      });
+      if (possibleTitles.length > 0) {
+        possibleTitles.sort((a, b) => b.textContent.length - a.textContent.length);
+        name = possibleTitles[0].textContent.trim();
+      }
+    }
     const img = card.querySelector("img");
     let imageUrl = img?.currentSrc || img?.src || img?.getAttribute("data-src") || "";
     if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl;
     const price = (card.querySelector(".price")?.textContent || "").replace(/[^\d.]/g, "");
     const symbol = (card.querySelector(".symbol--left")?.textContent || "฿").trim();
     const commRate = ((card.querySelector(".commRate")?.textContent || "").match(/(\d+(?:\.\d+)?)%/) || [])[1] || "";
+    
+    // ค้นหาข้อความ "ขายแล้ว" หรือ "ขายได้" หรือ "Sold" เพื่อเก็บจำนวนที่เคยขายได้
+    const salesEl = [...card.querySelectorAll("span, div, p")].find((el) => {
+      const txt = (el.textContent || "").trim();
+      return (txt.includes("ขายแล้ว") || txt.includes("ขายได้") || txt.toLowerCase().includes("sold")) &&
+             txt.length < 40 &&
+             !txt.includes("฿") &&
+             !txt.includes("อัตราค่าคอมมิชชัน") &&
+             !txt.includes("เอา ลิงก์");
+    });
+    let salesCount = "";
+    if (salesEl) {
+      salesCount = salesEl.textContent.replace(/ขายแล้ว|ขายได้|sold|ชิ้น/gi, "").trim();
+    }
+
     if (!productId && !name) return null;
     return {
       productId,
@@ -176,6 +222,8 @@
       details: "",
       commission: "",
       commissionRate: commRate,
+      salesCount,
+      stockCount: "99",
       source: "shopee"
     };
   }
@@ -185,18 +233,64 @@
     return parseFloat((t.match(/(\d+(?:\.\d+)?)%/) || [])[1] || "0") || 0;
   }
 
-  // เรียงผลลัพธ์ตามค่าคอมจากมากไปน้อย (ปุ่ม "คอมมิชชัน (%)")
-  async function sortByCommissionDesc() {
+  // เรียงลำดับผลลัพธ์ตามหัวข้อ (ความเกี่ยวข้อง, คอมมิชชัน (%), ขายดี, ราคา)
+  async function sortTabBy(type) {
+    if (!type || type === "ความเกี่ยวข้อง") return true;
     const btn = [...document.querySelectorAll("span, button, div, a")]
-      .find((e) => visible(e) && (e.textContent || "").trim() === "คอมมิชชัน (%)" && e.querySelectorAll("*").length <= 1);
+      .find((e) => visible(e) && (e.textContent || "").trim() === type && e.querySelectorAll("*").length <= 1);
     if (!btn) return false;
     btn.click();
     await sleep(2500);
     return true;
   }
 
-  async function run(keyword, count, mode = "export", minCommission = 0) {
-    log(`run keyword="${keyword}" count=${count} mode=${mode} minComm=${minCommission}`);
+  function getProductIdsSignature() {
+    return findProductCheckboxes().map(box => {
+      const card = box.closest(".ItemCard__container");
+      const a = card?.closest("a") || card?.querySelector("a");
+      const href = a?.getAttribute("href") || (a && strippedAnchors.get(a)?.href) || "";
+      return (href.match(/product_offer\/(\d+)/) || [])[1] || card?.querySelector(".ItemCard__name")?.textContent || "";
+    }).filter(Boolean).join(",");
+  }
+
+  async function waitPageLoadAfterAction(oldSignature, timeoutMs = 8000) {
+    const start = Date.now();
+    await sleep(500); // Allow immediate spinner to mount or list to clear
+    
+    const isSpinnerVisible = () => {
+      const spinners = [
+        ...document.querySelectorAll(".ant-spin-spinning, .ant-spin, .ant-loading, [class*='spin'], [class*='loading'], .ant-skeleton")
+      ];
+      return spinners.some(el => visible(el) && !el.closest('button, input, textarea'));
+    };
+
+    if (isSpinnerVisible()) {
+      log("Spinner detected, waiting for it to disappear...");
+      const spinnerGone = await waitFor(() => !isSpinnerVisible(), { timeout: timeoutMs, interval: 300 });
+      if (spinnerGone) {
+        log("Spinner disappeared.");
+        await sleep(500);
+        return true;
+      }
+    }
+
+    log("Waiting for signature to change from old signature...");
+    while (Date.now() - start < timeoutMs) {
+      const currentSignature = getProductIdsSignature();
+      if (currentSignature !== oldSignature) {
+        log(`Signature changed from "${oldSignature}" to "${currentSignature}". Load complete.`);
+        await sleep(500);
+        return true;
+      }
+      await sleep(300);
+    }
+    
+    log("Reached timeout waiting for page load/change.");
+    return false;
+  }
+
+  async function run(keyword, count, mode = "export", minCommission = 0, minSales = 0, sortBy = "ความเกี่ยวข้อง") {
+    log(`run keyword="${keyword}" count=${count} mode=${mode} minComm=${minCommission} minSales=${minSales} sortBy=${sortBy}`);
 
     // 1) ค้นหา
     const input = await waitFor(findSearchInput, { timeout: 10000 });
@@ -204,6 +298,10 @@
     // รอ list แรกโหลด (หน้า interactive) ก่อนพิมพ์ — กัน search ไม่ทำงานเพราะ SPA ยังไม่พร้อม
     await waitFor(() => findProductCheckboxes().length > 0, { timeout: 12000 });
     await sleep(600);
+
+    const oldSignature = getProductIdsSignature();
+    log(`Recorded product signature before search: ${oldSignature}`);
+
     input.focus();
     nativeSetValue(input, keyword);
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
@@ -213,15 +311,23 @@
       .find((e) => visible(e) && (e.textContent || "").trim() === "ค้นหา" && e.querySelectorAll("*").length <= 1);
     if (searchBtn) searchBtn.click();
 
-    // รอผลค้นหาโหลด (รอการ์ดสินค้าโผล่)
-    await waitFor(() => findProductCheckboxes().length > 0, { timeout: 8000 });
-    await sleep(800);
+    // รอผลค้นหาโหลดและหน้าจออัปเดตผลลัพธ์ใหม่
+    await waitPageLoadAfterAction(oldSignature, 12000);
 
-    // กรองค่าคอม: เรียง desc ก่อน (คอมสูงขึ้นบน) แล้วค่อยติ๊ก/หยุดเมื่อต่ำกว่าเกณฑ์
-    if (minCommission > 0) {
-      await sortByCommissionDesc();
-      await waitFor(() => findProductCheckboxes().length > 0, { timeout: 8000 });
-      await sleep(600);
+    // ทำการเรียงลำดับตามหัวข้อที่เลือก (เช่น ขายดี, คอมมิชชัน (%), ราคา)
+    if (sortBy && sortBy !== "ความเกี่ยวข้อง") {
+      const sigBeforeSort = getProductIdsSignature();
+      const sorted = await sortTabBy(sortBy);
+      if (sorted) {
+        await waitPageLoadAfterAction(sigBeforeSort, 8000);
+      }
+    } else if (minCommission > 0) {
+      // ถ้าไม่ได้เลือกเรียงอะไร แต่กรองค่าคอมขั้นต่ำ ให้เรียงคอมก่อนโดยปริยายเพื่อประสิทธิภาพ
+      const sigBeforeSort = getProductIdsSignature();
+      const sorted = await sortTabBy("คอมมิชชัน (%)");
+      if (sorted) {
+        await waitPageLoadAfterAction(sigBeforeSort, 8000);
+      }
     }
 
     // Shopee ติ๊กได้สูงสุด 100 ชิ้น/หน้า ต่อการ export หนึ่งครั้ง
@@ -233,7 +339,7 @@
     let ticked = 0;
     let stagnant = 0;
     let lastSeen = 0;
-    let belowThreshold = false; // เจอการ์ดคอมต่ำกว่าเกณฑ์ (เรียง desc → ที่เหลือต่ำหมด)
+    let belowThreshold = false; // เจอการ์ดคอมต่ำกว่าเกณฑ์
     let boxesSeen = 0;          // diagnostic: เจอ checkbox สูงสุดกี่ตัว
     let clickAttempts = 0;      // diagnostic: พยายามคลิกติ๊กกี่ครั้ง
     const collected = []; // mode "collect": เก็บ object สินค้าจากการ์ดที่ติ๊ก
@@ -252,8 +358,30 @@
         if (ticked >= want) break;
         const card = box.closest(".ItemCard__container");
         if (minCommission > 0 && getCardCommission(card) < minCommission) {
-          belowThreshold = true; // เรียงคอม desc แล้ว → ตัวถัดไปต่ำกว่าหมด หยุดได้
-          break;
+          if (sortBy === "คอมมิชชัน (%)" || (sortBy === "ความเกี่ยวข้อง" && minCommission > 0)) {
+            belowThreshold = true; // เรียงคอม desc แล้ว → ตัวถัดไปต่ำกว่าหมด หยุดได้
+            break;
+          } else {
+            // เรียงอย่างอื่น (เช่น ขายดี) → แค่ข้ามชิ้นนี้เพื่อสแกนชิ้นถัดไป
+            continue;
+          }
+        }
+        if (minSales > 0) {
+          const salesEl = [...card.querySelectorAll("span, div, p")].find((el) => {
+            const txt = (el.textContent || "").trim();
+            return txt.includes("ขายแล้ว") || txt.includes("ขายได้") || txt.toLowerCase().includes("sold");
+          });
+          const salesText = salesEl ? salesEl.textContent.trim() : "";
+          const salesNum = parseSalesNumber(salesText);
+          if (salesNum < minSales) {
+            if (sortBy === "ขายดี") {
+              belowThreshold = true; // เรียงขายดี desc แล้ว → ตัวถัดไปต่ำกว่าหมด หยุดได้
+              break;
+            } else {
+              // เรียงอย่างอื่น -> แค่ข้ามชิ้นนี้เพื่อสแกนชิ้นถัดไป
+              continue;
+            }
+          }
         }
         if (!isChecked(box)) {
           clickAttempts++;
@@ -317,7 +445,9 @@
         msg.keyword,
         Math.max(1, parseInt(msg.count, 10) || 1),
         msg.mode === "collect" ? "collect" : "export",
-        Math.max(0, Number(msg.minCommission) || 0)
+        Math.max(0, Number(msg.minCommission) || 0),
+        Math.max(0, parseInt(msg.minSales, 10) || 0),
+        msg.sortBy || "ความเกี่ยวข้อง"
       )
         .then(reply)
         .catch((err) => reply({ ok: false, error: err?.message || String(err) }));
