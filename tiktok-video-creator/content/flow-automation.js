@@ -1826,6 +1826,20 @@ async function waitForResult(phase, options = {}) {
         const newCards = getMediaCards()
             .filter(card => card.key && !preGenMediaKeys.has(card.key))
             .map(card => ({ card, status: mediaCardStatus(card) }));
+
+        // Check for completed generated result first to avoid getting stuck by page loading indicators
+        let readyResult = null;
+        for (const { card, status } of newCards) {
+            if (isGeneratedResultCard(card, status, phase)) {
+                readyResult = { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key };
+                break;
+            }
+        }
+        if (readyResult) {
+            log("✅ พบผลลัพธ์ที่สร้างเสร็จแล้ว!");
+            return readyResult;
+        }
+
         let failedResult = null;
         let failedCard = null;
         let hasActiveGeneration = hasVisibleGenerationIndicator();
@@ -1836,13 +1850,6 @@ async function waitForResult(phase, options = {}) {
                 failedResult = mediaCardFailureMessage(card, status);
                 failedCard = card;
             }
-            if (!status.progress && !status.ready && Date.now() - startedAt < progressGraceMs) {
-                log("รอ Flow เริ่มแสดงเปอร์เซ็น...");
-                continue;
-            }
-            if (!isGeneratedResultCard(card, status, phase)) continue;
-            log("✅ พบผลลัพธ์ที่สร้างเสร็จแล้ว!");
-            return { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key };
         }
         if (failedResult) {
             pendingFailure = failedResult;
@@ -1853,7 +1860,21 @@ async function waitForResult(phase, options = {}) {
             // is still rendering. Do not age or act on that failure yet.
             failureSeenAt = 0;
             const rem = Math.round((end - Date.now()) / 1000);
-            log(`วิดีโอยังกำลังสร้างอยู่ รอต่อ... (~${rem}s)`);
+            log(phase === "video" ? `วิดีโอยังกำลังสร้างอยู่ รอต่อ... (~${rem}s)` : `ภาพยังกำลังสร้างอยู่ รอต่อ... (~${rem}s)`);
+            await sleep(1000);
+            continue;
+        }
+
+        // Check if we are still waiting for progress indicator on any new card
+        let inGrace = false;
+        for (const { card, status } of newCards) {
+            if (!status.progress && !status.ready && Date.now() - startedAt < progressGraceMs) {
+                inGrace = true;
+                break;
+            }
+        }
+        if (inGrace) {
+            log("รอ Flow เริ่มแสดงเปอร์เซ็น...");
             await sleep(1000);
             continue;
         }
@@ -1915,13 +1936,16 @@ function hasVisibleGenerationIndicator() {
         ".spinner", "[class*='spinner']",
         ".loading", "[class*='loading']",
         ".loader", "[class*='loader']",
+        "[class*='progress-bar']", "[class*='progress_bar']",
+        "[class*='loading-bar']", "[class*='loading_bar']",
+        "[class*='progress-indicator']", "[class*='progress_indicator']",
         "[role='progressbar']", "progress", "[aria-busy='true']"
     ];
     for (const selector of spinnerSelectors) {
         try {
             const spinners = document.querySelectorAll(selector);
             for (const spinner of spinners) {
-                if (isVisible(spinner)) {
+                if (spinner && isVisible(spinner)) {
                     if (!spinner.closest?.('input, textarea, [contenteditable="true"], [role="textbox"], .public-DraftEditor-content')) {
                         return true;
                     }
@@ -1930,26 +1954,29 @@ function hasVisibleGenerationIndicator() {
         } catch (e) {}
     }
 
-    // ค้นหาข้อความเปอร์เซ็นต์ (0-99%) หรือคำความคืบหน้าจากอิลิเมนต์ทั่วไปที่ไม่ใช่ช่องกรอกข้อมูล (Editor)
-    const elements = document.querySelectorAll("div, span, p, figcaption, li, a, button, label, section, article");
+    // ค้นหาข้อความเปอร์เซ็นต์ (0-99%) หรือคำความคืบหน้าจากทุกอิลิเมนต์บนหน้าจอ (ยกเว้นสคริปต์/สไตล์)
+    const elements = document.getElementsByTagName("*");
     for (const el of elements) {
-        if (!isVisible(el)) continue;
-        
-        // ข้ามตัวกรอกข้อความ/Editor/Prompt inputs
-        if (el.closest?.('input, textarea, [contenteditable="true"], [role="textbox"], .public-DraftEditor-content')) {
-            continue;
-        }
+        const tagName = el.tagName.toLowerCase();
+        if (tagName === "script" || tagName === "style" || tagName === "noscript" || tagName === "iframe") continue;
 
         const text = (el.textContent || "").trim();
-        // ตรวจสอบเปอร์เซ็นต์ 1-99% ในข้อความของอิลิเมนต์นั้น (ต้องเป็นคำเดี่ยวๆ หรือสั้นๆ เช่น "37%" หรือ "Generating... 37%")
+        if (!text) continue;
+
+        // เช็คข้อความความคืบหน้า/เปอร์เซ็นต์ก่อน เพื่อประหยัดการทำงานและป้องกัน Layout Thrashing
         const hasPercent = /(?:^|\W)(?:\d{1,2})\s*%/.test(text) && text.length < 50;
         const hasProgressWord = (text.toLowerCase().includes("generating") || text.toLowerCase().includes("rendering") ||
                                  text.toLowerCase().includes("processing") || text.toLowerCase().includes("uploading") ||
                                  text.includes("กำลังสร้าง") || text.includes("กำลังเรนเดอร์") ||
                                  text.includes("กำลังประมวลผล") || text.includes("กำลังอัปโหลด") ||
                                  text.includes("รอคิว") || text.includes("กำลังรอ")) && text.length < 50;
-                                 
+
         if (hasPercent || hasProgressWord) {
+            // เช็คความเห็นได้ขององค์ประกอบและการอยู่ในช่องกรอกข้อมูลทีหลัง
+            if (!isVisible(el)) continue;
+            if (el.closest?.('input, textarea, [contenteditable="true"], [role="textbox"], .public-DraftEditor-content')) {
+                continue;
+            }
             return true;
         }
     }

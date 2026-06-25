@@ -753,15 +753,14 @@ async function applyProductLink(productId, productUrl, productName) {
   // STEP 7: รอเข้าหน้าตั้งชื่อสินค้า (modal "Product name")
   const titleInput = await retryUntil("STEP7 เข้าหน้าตั้งชื่อสินค้า", () => findProductNameInput(), 20000);
 
-  // STEP 8: แก้ชื่อ (clean) — ไม่ต้องแก้แล้วใช้ชื่อนั้นเลย
+  // STEP 8: แก้ชื่อ (clean) — ตั้งชื่อสินค้าใหม่ที่ตัดอักขระแปลกๆ ออก
   if (titleInput) {
     const existingTitle = titleInput.value;
-    log(`[Product Link] 🎯 STEP8 เข้าหน้าตั้งชื่อสำเร็จ (ใช้ชื่อเดิมตรงๆ):
-    - ID สินค้า: ${productId || "ไม่พบ ID"}
-    - ลิงก์ URL: ${productUrl || "ไม่พบ URL"}
-    - ชื่อจากคิวระบบ: "${productName || "ไม่มี"}"
-    - ชื่อแถวที่เลือกในตาราง: "${selectedRowTitle || "ไม่มี"}"
-    - ชื่อเดิมในกล่องข้อความ TikTok: "${existingTitle}"`);
+    const finalTitle = await buildProductLinkTitle(selectedRowTitle || productName, existingTitle);
+    titleInput.focus();
+    try { titleInput.select(); } catch (_) {}
+    typeIntoInput(titleInput, finalTitle);
+    log(`[Product Link] 🎯 STEP8 ตั้งชื่อสินค้าสำเร็จ: "${finalTitle}" (ชื่อเดิม: "${existingTitle}")`);
     await sleep(500);
   } else {
     log(`[Product Link] ⚠️ STEP8 ไม่พบกล่องข้อความให้กรอกชื่อสินค้า (จะลองกดเพิ่มต่อโดยใช้ค่าเริ่มต้น):
@@ -1414,10 +1413,10 @@ function cleanProductTitle(raw) {
     .trim();
 }
 
-// เก็บเฉพาะตัวอักษร(ไทย/อังกฤษ/ภาษาอื่น) วรรณยุกต์ ตัวเลข และเว้นวรรค — ตัด emoji/สัญลักษณ์แปลก ๆ ออก
+// เก็บเฉพาะตัวอักษร(ไทย/อังกฤษ/ภาษาอื่น) วรรณยุกต์ ตัวเลข เว้นวรรค และเครื่องหมายที่ใช้บ่อยในชื่อสินค้า (เช่น %, -, /, +, &, ., ,, (, ))
 function stripWeirdChars(raw) {
   return String(raw || "")
-    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
+    .replace(/[^\p{L}\p{M}\p{N}\s%\-+\/&.,()]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

@@ -217,6 +217,14 @@ export function buildImagePrompt(productInfo, settings) {
   return promptParts.filter(Boolean).join("\n");
 }
 
+function isHeavyProduct(text = "") {
+  const clean = text.toLowerCase();
+  if (/(ผ้าคลุม|ผ้าปู|สติกเกอร์|ขาตั้ง|ตัวยึด|เบาะรอง|ปลอก|โมเดล|ของเล่น|จิ๋ว|miniature|toy|cover|sticker|case|holder|mount|cushion|protector)/i.test(clean)) {
+    return false;
+  }
+  return /(ตู้|เตียง|ลิ้นชัก|ชั้นวาง|โต๊ะ|เก้าอี้|โซฟา|เฟอร์นิเจอร์|เครื่องซักผ้า|ตู้เย็น|ทีวี|โทรทัศน์|ที่นอน|ฟูก|ลู่วิ่ง|จักรยาน|แอร์|เครื่องปรับอากาศ|เตาอบ|ไมโครเวฟ|เครื่องล้างจาน|ตู้แช่|cabinet|drawer|shelf|wardrobe|dresser|furniture|table|desk|chair|sofa|couch|bed|mattress|refrigerator|fridge|freezer|washing\s*machine|washer|dryer|dishwasher|tv|television|air\s*conditioner|treadmill|bicycle|bike|oven|stove|microwave|heavy|large|bulky)/i.test(clean);
+}
+
 /**
  * @description สร้าง prompt วิดีโอสำหรับ Phase 2
  * @param {object} productInfo - ข้อมูลสินค้า
@@ -261,6 +269,20 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\b(presenter|reviewer|person)\b/gi, "product");
   }
 
+  // Adjust prompt for heavy/large products to prevent unnatural holding/lifting
+  const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const isHeavy = isHeavyProduct(productText);
+
+  if (isHeavy) {
+    const escapedName = productName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    sceneBreakdown = sceneBreakdown
+      .replace(new RegExp(`\\bholding\\s+(?:the\\s+)?(?:attached\\s+)?${escapedName}\\b`, "gi"), `standing next to ${productName}`)
+      .replace(/\bholding\s+(?:the\s+)?product\b/gi, "standing next to the product")
+      .replace(/\bholding\s+/gi, "standing next to ")
+      .replace(/\bhands\s+holding\b/gi, "hands gesturing towards")
+      .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
+  }
+
   promptParts.push(
     `Use distinct scenes with hard cuts; split the ${durationSeconds}s evenly across the scenes below.`,
     sceneBreakdown,
@@ -273,10 +295,24 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       : TEXT_FREE_DIRECTION
   );
 
+  let handsDir = HANDS_DIRECTION;
+  let presenterInstruction = auto.presenter && PRESENTERS[auto.presenter] ? PRESENTERS[auto.presenter] : PRESENTERS.none;
+
+  if (isHeavy) {
+    handsDir = handsDir
+      .replace("holding and presenting", "gesturing towards and interacting with")
+      .replace("holding", "touching or gesturing towards")
+      + " The product is large and heavy, resting stably on a flat surface or floor; do not attempt to lift, carry, or hold it in the air.";
+
+    presenterInstruction = presenterInstruction
+      .replace("holding and presenting", "standing next to and presenting")
+      .replace("holding", "presenting or interacting with");
+  }
+
   if (handsOnly) {
-    promptParts.push(`${HANDS_DIRECTION} ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
+    promptParts.push(`${handsDir} ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
   } else if (auto.presenter && auto.presenter !== "none") {
-    promptParts.push(`Presenter: ${PRESENTERS[auto.presenter] || PRESENTERS.none}. ${THAI_PERSON_DIRECTION} ${SPEECH_DIRECTION}`);
+    promptParts.push(`Presenter: ${presenterInstruction}. ${THAI_PERSON_DIRECTION} ${SPEECH_DIRECTION}`);
   } else {
     promptParts.push(`${NO_PEOPLE_DIRECTION} ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
   }
