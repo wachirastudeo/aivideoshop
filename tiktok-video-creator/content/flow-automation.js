@@ -482,8 +482,9 @@ function mediaCardStatus(cardInfo) {
     const wordProgress = text.includes("uploading") || text.includes("processing") ||
         text.includes("generating") || text.includes("rendering") || text.includes("creating") ||
         text.includes("queued") || text.includes("pending") || text.includes("waiting");
-    // นับ % เป็น progress เฉพาะตอนมี loading indicator จริงเท่านั้น
-    const percentProgress = hasLoadingIndicator && /\b\d{1,3}\s*%/.test(text);
+    // การ์ดที่โชว์ % (1–99) = กำลังเจนจริงเสมอ; การ์ดที่ fail จริงจะแทน % ด้วยคำว่า
+    // Failed ไม่ใช่โชว์ % คู่กัน → ไม่ต้องพึ่ง loading indicator (บางที DOM ไม่ match)
+    const percentProgress = /\b(?:[1-9]|[1-9]\d)\s*%/.test(text);
     const video = el.matches?.("video") ? el : el.querySelector?.("video");
     const hasPlayableVideo = Boolean(
         video && (video.currentSrc || video.src || video.querySelector("source")?.src)
