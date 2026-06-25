@@ -35,8 +35,9 @@ const PROMPT_SELECTORS = [
 let stopRequested = false;
 let preGenMediaKeys = new Set();
 
-// ── Overlay ──────────────────────────────────────────────────
+let lastSentTopic = "";
 let _overlay = null;
+
 function log(msg) {
     if (!_overlay) {
         _overlay = document.createElement("div");
@@ -48,6 +49,30 @@ function log(msg) {
     }
     _overlay.textContent = "🤖 " + msg;
     console.log("[FlowAuto]", msg);
+
+    // เอาแค่หัวข้อใหม่: ถ้าลบตัวเลขเวลาถอยหลังออกแล้วข้อความยังเป็นเรื่องเดิม จะไม่ส่งซ้ำไปที่ Side Panel
+    const topic = msg
+        .replace(/\d+\s*s\b/gi, "")
+        .replace(/\(~?\d+\s*s?\)/gi, "")
+        .replace(/\d+/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+
+    if (topic === lastSentTopic) {
+        return; // หัวข้อเดิม ข้ามการส่งไป Side Panel
+    }
+    lastSentTopic = topic;
+
+    chrome.runtime.sendMessage({
+        type: "PIPELINE_LOG",
+        payload: {
+            source: "flow-automation",
+            level: msg.includes("❌") || msg.includes("⚠️") ? "error" : "info",
+            message: `[Google Flow] ${msg}`,
+            time: Date.now()
+        }
+    }).catch(() => {});
 }
 function removeOverlay() { _overlay?.remove(); _overlay = null; }
 
@@ -352,6 +377,7 @@ function getMediaCards() {
     const candidates = [
         ...document.querySelectorAll("[data-tile-id]"),
         ...document.querySelectorAll('a[href*="/edit/"]'),
+        ...document.querySelectorAll("[draggable='true']"),
         ...document.querySelectorAll("img,video")
     ];
 
@@ -1870,8 +1896,21 @@ async function waitForResult(phase, options = {}) {
 }
 
 function hasVisibleGenerationIndicator() {
-    return [...document.querySelectorAll("[role='progressbar'],progress,[aria-busy='true']")]
+    const hasIndicator = [...document.querySelectorAll("[role='progressbar'],progress,[aria-busy='true']")]
         .some(isVisible);
+    if (hasIndicator) return true;
+
+    const cards = document.querySelectorAll("[draggable='true'], [data-tile-id], article");
+    for (const card of cards) {
+        if (!isVisible(card)) continue;
+        const text = elementText(card).toLowerCase();
+        const hasPercent = /\b(?:[1-9]|[1-9]\d)\s*%/.test(text);
+        const hasProgressWord = text.includes("generating") || text.includes("rendering") ||
+                                text.includes("processing") || text.includes("uploading") ||
+                                text.includes("queued") || text.includes("pending");
+        if (hasPercent || hasProgressWord) return true;
+    }
+    return false;
 }
 
 function isGeneratedResultCard(card, status, phase) {

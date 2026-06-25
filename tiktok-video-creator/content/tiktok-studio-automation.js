@@ -755,10 +755,18 @@ async function applyProductLink(productId, productUrl, productName) {
 
   // STEP 8: แก้ชื่อ (clean) — ไม่ต้องแก้แล้วใช้ชื่อนั้นเลย
   if (titleInput) {
-    log(`STEP8 ใช้ชื่อเดิมของ TikTok Showcase: ${titleInput.value}`);
+    const existingTitle = titleInput.value;
+    log(`[Product Link] 🎯 STEP8 เข้าหน้าตั้งชื่อสำเร็จ (ใช้ชื่อเดิมตรงๆ):
+    - ID สินค้า: ${productId || "ไม่พบ ID"}
+    - ลิงก์ URL: ${productUrl || "ไม่พบ URL"}
+    - ชื่อจากคิวระบบ: "${productName || "ไม่มี"}"
+    - ชื่อแถวที่เลือกในตาราง: "${selectedRowTitle || "ไม่มี"}"
+    - ชื่อเดิมในกล่องข้อความ TikTok: "${existingTitle}"`);
     await sleep(500);
   } else {
-    log("STEP8 ไม่พบช่องชื่อสินค้า — ใช้ชื่อเดิมของ TikTok");
+    log(`[Product Link] ⚠️ STEP8 ไม่พบกล่องข้อความให้กรอกชื่อสินค้า (จะลองกดเพิ่มต่อโดยใช้ค่าเริ่มต้น):
+    - ID สินค้า: ${productId || "ไม่พบ ID"}
+    - ชื่อจากคิวระบบ: "${productName || "ไม่มี"}"`);
   }
 
   // STEP 9: กด Add "ครั้งเดียว" แล้วรอช่องชื่อหาย = modal ปิด (re-click เฉพาะถ้าค้าง)

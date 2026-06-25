@@ -903,6 +903,8 @@ html[data-mode="tab"] .activity-log {
 
 .activity-log__item span {
   color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .activity-log__item[data-type="error"] span {
