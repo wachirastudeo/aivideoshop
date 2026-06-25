@@ -490,17 +490,19 @@ function mediaCardStatus(cardInfo) {
     const wordProgress = text.includes("uploading") || text.includes("processing") ||
         text.includes("generating") || text.includes("rendering") || text.includes("creating") ||
         text.includes("queued") || text.includes("pending") || text.includes("waiting");
-    // Flow sometimes renders progress as plain text only. Count it as active
-    // unless the same card is explicitly marked Failed.
-    const percentProgress = !hasFailure && /\b\d{1,3}\s*%/.test(text);
     const video = el.matches?.("video") ? el : el.querySelector?.("video");
     const hasPlayableVideo = Boolean(
         video && (video.currentSrc || video.src || video.querySelector("source")?.src)
     );
     const pendingVideoProgress = Boolean(el.querySelector?.("[role='slider']")) && !hasPlayableVideo;
-    const progress = !hasFailure && (wordProgress || percentProgress || pendingVideoProgress || hasLoadingIndicator);
+    // สัญญาณว่า "กำลังเจนจริง" (spinner/คำว่า generating/แถบวิดีโอ) เชื่อถือได้กว่า
+    // ป้าย Failed ที่อาจหลุดมาจาก tile ข้างเคียง → ให้ override Failed ได้
+    const activeGenerating = wordProgress || pendingVideoProgress || hasLoadingIndicator;
+    // percent อย่างเดียวอาจค้างบนการ์ดที่ Failed จริง จึงยังกันด้วย !hasFailure
+    const percentProgress = !hasFailure && /\b\d{1,3}\s*%/.test(text);
+    const progress = activeGenerating || percentProgress;
 
-    const failed = !progress && hasFailure;
+    const failed = !activeGenerating && hasFailure;
     const rendered = hasRenderableMedia(el);
     return { ready: rendered && !progress, failed, progress, rendered, text };
 }
