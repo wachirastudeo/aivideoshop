@@ -495,12 +495,13 @@ function mediaCardStatus(cardInfo) {
         video && (video.currentSrc || video.src || video.querySelector("source")?.src)
     );
     const pendingVideoProgress = Boolean(el.querySelector?.("[role='slider']")) && !hasPlayableVideo;
-    // สัญญาณว่า "กำลังเจนจริง" (spinner/คำว่า generating/แถบวิดีโอ) เชื่อถือได้กว่า
+    // percent ที่ไต่อยู่ = การ์ดกำลังเจนจริง; การ์ดที่ Failed จริงจะแทน % ด้วยคำว่า
+    // "Failed" ไม่ใช่โชว์ % คู่กัน → ถ้ายังเห็น % แปลว่าป้าย Failed หลุดมาจาก tile ข้างเคียง
+    const percentProgress = /\b\d{1,3}\s*%/.test(text);
+    // สัญญาณ "กำลังเจนจริง" (spinner/คำว่า generating/แถบวิดีโอ/percent) เชื่อถือได้กว่า
     // ป้าย Failed ที่อาจหลุดมาจาก tile ข้างเคียง → ให้ override Failed ได้
-    const activeGenerating = wordProgress || pendingVideoProgress || hasLoadingIndicator;
-    // percent อย่างเดียวอาจค้างบนการ์ดที่ Failed จริง จึงยังกันด้วย !hasFailure
-    const percentProgress = !hasFailure && /\b\d{1,3}\s*%/.test(text);
-    const progress = activeGenerating || percentProgress;
+    const activeGenerating = wordProgress || pendingVideoProgress || hasLoadingIndicator || percentProgress;
+    const progress = activeGenerating;
 
     const failed = !activeGenerating && hasFailure;
     const rendered = hasRenderableMedia(el);
