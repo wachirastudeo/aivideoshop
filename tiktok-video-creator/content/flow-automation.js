@@ -475,10 +475,6 @@ function mediaCardStatus(cardInfo) {
     if (!el) return { ready: false, failed: false, progress: true, rendered: false, text: "" };
     const text = mediaCardDeepText(el).toLowerCase();
 
-    // มี indicator กำลังโหลดจริงไหม (progress bar / spinner) — กัน % ค้างใน text ทำให้รอเก้อ
-    const hasLoadingIndicator = Boolean(
-        el.querySelector?.("[role='progressbar'], progress, [class*='progress'], [class*='spinner'], [class*='loading']")
-    );
     const wordProgress = text.includes("uploading") || text.includes("processing") ||
         text.includes("generating") || text.includes("rendering") || text.includes("creating") ||
         text.includes("queued") || text.includes("pending") || text.includes("waiting");
@@ -492,10 +488,14 @@ function mediaCardStatus(cardInfo) {
     const pendingVideoProgress = Boolean(el.querySelector?.("[role='slider']")) && !hasPlayableVideo;
     const progress = wordProgress || percentProgress || pendingVideoProgress;
 
-    // สัญญาณ fail จริงของ Flow = มี "ปุ่ม retry/redo" ในการ์ดเท่านั้น (ภาพเจนเสร็จ/กำลังเจน
-    // จะไม่มีปุ่มนี้) — เชื่อถือได้กว่าการสแกนคำว่า "Failed" ที่หลุดมาจาก tile/disclaimer ข้างเคียง
-    const failed = !progress && Boolean(findMediaCardRetryButton(cardInfo));
     const rendered = hasRenderableMedia(el);
+    // สัญญาณ fail จริงของ Flow: การ์ดล้มเหลวจะมี icon "delete" โผล่ inline บนการ์ด
+    // (การ์ดสำเร็จมีแค่ favorite / redo=Reuse prompt / more_vert ส่วน delete ซ่อนในเมนู)
+    // — เชื่อถือกว่าการสแกนคำว่า "Failed" ที่หลุดมาจาก tile ข้างเคียง/disclaimer ท้ายหน้า
+    const actionIcons = [...el.querySelectorAll(".google-symbols,.material-icons,.material-symbols-outlined,i")]
+        .map(n => (n.textContent || "").trim().toLowerCase());
+    const hasDeleteIcon = actionIcons.includes("delete") || actionIcons.includes("delete_forever");
+    const failed = !progress && !rendered && hasDeleteIcon;
     return { ready: rendered && !progress, failed, progress, rendered, text };
 }
 function mediaCardFailureMessage(cardInfo, status) {
@@ -555,10 +555,10 @@ function findMediaCardRetryButton(cardInfo) {
     return [...el.querySelectorAll("button,[role='button']")].find(button => {
         if (!isVisible(button) || button.disabled || button.getAttribute("aria-disabled") === "true") return false;
         const text = elementText(button).toLowerCase();
-        const aria = (button.getAttribute("aria-label") || "").toLowerCase();
+        // หมายเหตุ: "redo" = Reuse prompt (มีบนการ์ดสำเร็จทุกใบ) จึงห้ามนับเป็น retry
         const icon = [...button.querySelectorAll("i,.google-symbols,.material-icons")]
-            .some(node => /^(refresh|replay|redo|restart_alt|sync)$/.test(node.textContent?.trim().toLowerCase() || ""));
-        return text.includes("retry") || /retry|try again|redo/.test(aria) || icon;
+            .some(node => /^(refresh|restart_alt)$/.test(node.textContent?.trim().toLowerCase() || ""));
+        return text.includes("retry") || text.includes("try again") || icon;
     }) || null;
 }
 async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGeneration) {
