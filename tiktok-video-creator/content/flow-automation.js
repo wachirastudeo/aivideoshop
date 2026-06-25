@@ -55,6 +55,7 @@ function log(msg) {
         .replace(/\d+\s*s\b/gi, "")
         .replace(/\(~?\d+\s*s?\)/gi, "")
         .replace(/\d+/g, "")
+        .replace(/\.+/g, "") // ลบจุดทั้งหมดเพื่อไม่ให้ต่างกันที่สัญลักษณ์จุดถอยหลัง
         .replace(/\s+/g, " ")
         .trim()
         .toLowerCase();
@@ -64,12 +65,20 @@ function log(msg) {
     }
     lastSentTopic = topic;
 
+    // ล้างตัวเลขเวลาถอยหลังและจุดเพื่อความสวยงามใน Side Panel
+    const sidePanelMessage = msg
+        .replace(/\b\d+\s*s\b/gi, "")
+        .replace(/\(~?\d+\s*s?\)/gi, "")
+        .replace(/\.+$/g, "") // ลบจุดท้ายข้อความ
+        .replace(/\s+/g, " ")
+        .trim();
+
     chrome.runtime.sendMessage({
         type: "PIPELINE_LOG",
         payload: {
             source: "flow-automation",
             level: msg.includes("❌") || msg.includes("⚠️") ? "error" : "info",
-            message: `[Google Flow] ${msg}`,
+            message: `[Google Flow] ${sidePanelMessage}`,
             time: Date.now()
         }
     }).catch(() => {});
