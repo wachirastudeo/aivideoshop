@@ -1107,7 +1107,7 @@ async function ensureConfig(phase, options = {}) {
     await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO"); await sleep(800);
     // เลือก sub-tab วิดีโอ: Ingredients (VIDEO_REFERENCES) หรือ Frames (VIDEO_FRAMES)
     if (phase !== "image") {
-        const refMode = (options.videoRefMode || "frames") === "ingredients" ? "VIDEO_REFERENCES" : "VIDEO_FRAMES";
+        const refMode = (options.videoRefMode || "ingredients") === "frames" ? "VIDEO_FRAMES" : "VIDEO_REFERENCES";
         const picked = await clickMenuTab(refMode);
         if (picked) log(`เลือกแท็บวิดีโอ: ${refMode === "VIDEO_FRAMES" ? "Frames" : "Ingredients"}`);
         await sleep(600);
@@ -1312,7 +1312,7 @@ async function attachStillAsStartFrame(result) {
 // แนบภาพที่เจนเข้า Phase 2: ลอง Frames (Start frame, สินค้าเป๊ะ) ก่อน → fallback Ingredients
 // (reference) ถ้าพลาด เพื่อกัน "ปุ่ม disabled → ไม่สร้างวิดีโอ"
 async function attachStillForVideo(result, options, cfg) {
-    if ((options.videoRefMode || "frames") !== "ingredients") {
+    if ((options.videoRefMode || "ingredients") === "frames") {
         try {
             await attachStillAsStartFrame(result);
             log("✅ ใส่ภาพเป็น Start frame (Frames mode) — สินค้าเป๊ะ");
