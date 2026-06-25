@@ -87,7 +87,8 @@ check("reference image keeps product text but forbids added text", /Keep the pro
 
 const staleTextSettings = {
   ...settings,
-  showName: "false",
+  textEnabled: "false",
+  clipText: "รองเท้าทดสอบ",
   promotionText: "ลด 50%",
   cta: "กดซื้อเลย"
 };
@@ -96,7 +97,7 @@ check("disabled text ignores stale promotion and CTA", !/ลด 50%|กดซื
 
 const enabledTextVideo = buildVideoPrompt(
   { name: "รองเท้าทดสอบ" },
-  { ...settings, showName: "true", promotionText: "ส่งฟรี", textPosition: "Top third" }
+  { ...settings, textEnabled: "true", clipText: "รองเท้าทดสอบ", promotionText: "ส่งฟรี", textPosition: "Top third" }
 );
 check("enabled text uses only configured overlays", /รองเท้าทดสอบ \| ส่งฟรี/.test(enabledTextVideo), enabledTextVideo);
 check("enabled text respects configured position", /at Top third/i.test(enabledTextVideo), enabledTextVideo);

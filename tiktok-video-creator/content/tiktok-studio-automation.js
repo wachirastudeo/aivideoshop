@@ -753,14 +753,9 @@ async function applyProductLink(productId, productUrl, productName) {
   // STEP 7: รอเข้าหน้าตั้งชื่อสินค้า (modal "Product name")
   const titleInput = await retryUntil("STEP7 เข้าหน้าตั้งชื่อสินค้า", () => findProductNameInput(), 20000);
 
-  // STEP 8: แก้ชื่อ (clean) — กรอกผ่าน React setter ให้ word count อัปเดต
+  // STEP 8: แก้ชื่อ (clean) — ไม่ต้องแก้แล้วใช้ชื่อนั้นเลย
   if (titleInput) {
-    const existingTitle = titleInput.value;
-    const finalTitle = await buildProductLinkTitle(selectedRowTitle || productName, existingTitle);
-    titleInput.focus();
-    try { titleInput.select(); } catch (_) {}
-    typeIntoInput(titleInput, finalTitle);
-    log(`STEP8 ตั้งชื่อสินค้า: ${finalTitle}`);
+    log(`STEP8 ใช้ชื่อเดิมของ TikTok Showcase: ${titleInput.value}`);
     await sleep(500);
   } else {
     log("STEP8 ไม่พบช่องชื่อสินค้า — ใช้ชื่อเดิมของ TikTok");

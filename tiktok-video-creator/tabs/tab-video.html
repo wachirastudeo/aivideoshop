@@ -195,10 +195,17 @@
             <h4>ข้อความและโพสต์</h4>
           </div>
           <div class="settings-group__body">
+            <label class="field">
+              <span class="field__label">ใส่ข้อความในคลิป</span>
+              <select id="text-enabled" class="select">
+                <option value="false">ปิด</option>
+                <option value="true">เปิด</option>
+              </select>
+            </label>
             <div class="settings-grid">
-              <label class="field">
+              <label class="field video-text-setting">
                 <span class="field__label">ข้อความในคลิป <span style="color:#ff2d55">*</span></span>
-                <input id="clip-text" class="input" type="text" required maxlength="80"
+                <input id="clip-text" class="input" type="text" maxlength="80"
                   placeholder="เช่น มัทฉะแท้ 100% ✨ / ลองเลยวันนี้">
               </label>
               <label class="field video-text-setting">

@@ -137,6 +137,7 @@ export function getDefaultSettings() {
     location: "Auto",
     customLocation: "",
     language: "ไทย",
+    textEnabled: "false",
     clipText: "",
     promotionText: "",
     cta: "🛒 กดสั่งซื้อที่ตะกร้าด้านล่าง",
@@ -227,7 +228,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const locationStr = resolvePromptLocation(auto);
   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
   const clipText = compactPromptText(settings?.clipText, 80);
-  const textEnabled = Boolean(clipText);
+  const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true") && Boolean(clipText);
   const productName = generationProductName(productInfo.name, 220) || "the attached product";
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);

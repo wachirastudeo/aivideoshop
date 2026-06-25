@@ -66,7 +66,7 @@ export async function syncSelectedProductToVideoTab() {
 function bindGlobalEvents() {
   [
     "video-style", "presenter", "voice-tone", "location", "custom-location",
-    "clip-text", "promotion-text", "text-position", "camera-movement",
+    "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action",
     "image-model", "video-model", "video-ref-mode"
   ].forEach((id) => {
@@ -91,6 +91,7 @@ function fillGlobalFormFromState() {
   setValue("voice-tone", settings.voiceTone);
   setValue("location", settings.location);
   setValue("custom-location", settings.customLocation);
+  setValue("text-enabled", settings.textEnabled);
   setValue("clip-text", settings.clipText);
   setValue("promotion-text", settings.promotionText);
   setValue("text-position", settings.textPosition);
@@ -115,6 +116,7 @@ function syncSettingsForm() {
     voiceTone: getValue("voice-tone"),
     location: getValue("location"),
     customLocation: getValue("custom-location"),
+    textEnabled: getValue("text-enabled"),
     clipText: getValue("clip-text"),
     promotionText: getValue("promotion-text"),
     textPosition: getValue("text-position"),
@@ -199,6 +201,7 @@ function normalizeSettings(value) {
   return {
     ...value,
     language: "ไทย",
+    textEnabled: value.textEnabled === true || value.textEnabled === "true" ? "true" : "false",
     clipText: (value.clipText || "").trim(),
     cta: "กดสั่งซื้อที่ตะกร้าด้านล่าง",
     customCta: "",
@@ -218,7 +221,7 @@ function normalizeSettings(value) {
 }
 
 function syncVideoTextSettingsVisibility() {
-  const enabled = (getValue("clip-text") || "").trim() !== "";
+  const enabled = getValue("text-enabled") === "true";
   document.querySelectorAll(".video-text-setting").forEach((field) => {
     field.hidden = !enabled;
   });
@@ -527,8 +530,8 @@ async function processQueue() {
     return;
   }
   syncSettingsForm();
-  if (!settings.clipText) {
-    helpers.showStatus("กรุณากรอก \"ข้อความในคลิป\" ก่อนเริ่มสร้าง", "error");
+  if (settings.textEnabled === "true" && !settings.clipText) {
+    helpers.showStatus("เปิด \"ใส่ข้อความในคลิป\" แล้วต้องกรอกข้อความก่อนเริ่มสร้าง", "error");
     document.querySelector("#clip-text")?.focus();
     return;
   }
