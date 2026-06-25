@@ -194,7 +194,7 @@ function elementText(el) {
 function isVisible(el) {
     const r = el.getBoundingClientRect();
     const style = getComputedStyle(el);
-    return r.width > 0 && r.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+    return (r.width > 0 || r.height > 0 || el.offsetWidth > 0 || el.offsetHeight > 0) && style.visibility !== "hidden" && style.display !== "none";
 }
 function findAction(labels) {
     const needles = labels.map(label => String(label).toLowerCase());
@@ -503,10 +503,11 @@ function mediaCardStatus(cardInfo) {
 
     const wordProgress = text.includes("uploading") || text.includes("processing") ||
         text.includes("generating") || text.includes("rendering") || text.includes("creating") ||
-        text.includes("queued") || text.includes("pending") || text.includes("waiting");
+        text.includes("queued") || text.includes("pending") || text.includes("waiting") ||
+        text.includes("กำลังสร้าง") || text.includes("กำลังเรนเดอร์") || text.includes("กำลังประมวลผล") || text.includes("กำลังอัปโหลด") || text.includes("รอคิว") || text.includes("กำลังรอ");
     // การ์ดที่โชว์ % (1–99) = กำลังเจนจริงเสมอ; การ์ดที่ fail จริงจะแทน % ด้วยคำว่า
     // Failed ไม่ใช่โชว์ % คู่กัน → ไม่ต้องพึ่ง loading indicator (บางที DOM ไม่ match)
-    const percentProgress = /\b(?:[1-9]|[1-9]\d)\s*%/.test(text);
+    const percentProgress = /(?:^|\W)(?:\d{1,2})\s*%/.test(text);
     const video = el.matches?.("video") ? el : el.querySelector?.("video");
     const hasPlayableVideo = Boolean(
         video && (video.currentSrc || video.src || video.querySelector("source")?.src)
@@ -1900,15 +1901,48 @@ function hasVisibleGenerationIndicator() {
         .some(isVisible);
     if (hasIndicator) return true;
 
-    const cards = document.querySelectorAll("[draggable='true'], [data-tile-id], article");
-    for (const card of cards) {
-        if (!isVisible(card)) continue;
-        const text = elementText(card).toLowerCase();
-        const hasPercent = /\b(?:[1-9]|[1-9]\d)\s*%/.test(text);
-        const hasProgressWord = text.includes("generating") || text.includes("rendering") ||
-                                text.includes("processing") || text.includes("uploading") ||
-                                text.includes("queued") || text.includes("pending");
-        if (hasPercent || hasProgressWord) return true;
+    // ค้นหาสปินเนอร์/ไอคอนโหลดที่มีคลาสหรือบทบาท
+    const spinnerSelectors = [
+        ".spinner", "[class*='spinner']",
+        ".loading", "[class*='loading']",
+        ".loader", "[class*='loader']",
+        "[role='progressbar']", "progress", "[aria-busy='true']"
+    ];
+    for (const selector of spinnerSelectors) {
+        try {
+            const spinners = document.querySelectorAll(selector);
+            for (const spinner of spinners) {
+                if (isVisible(spinner)) {
+                    if (!spinner.closest?.('input, textarea, [contenteditable="true"], [role="textbox"], .public-DraftEditor-content')) {
+                        return true;
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+
+    // ค้นหาข้อความเปอร์เซ็นต์ (0-99%) หรือคำความคืบหน้าจากอิลิเมนต์ทั่วไปที่ไม่ใช่ช่องกรอกข้อมูล (Editor)
+    const elements = document.querySelectorAll("div, span, p, figcaption, li, a, button, label, section, article");
+    for (const el of elements) {
+        if (!isVisible(el)) continue;
+        
+        // ข้ามตัวกรอกข้อความ/Editor/Prompt inputs
+        if (el.closest?.('input, textarea, [contenteditable="true"], [role="textbox"], .public-DraftEditor-content')) {
+            continue;
+        }
+
+        const text = (el.textContent || "").trim();
+        // ตรวจสอบเปอร์เซ็นต์ 1-99% ในข้อความของอิลิเมนต์นั้น (ต้องเป็นคำเดี่ยวๆ หรือสั้นๆ เช่น "37%" หรือ "Generating... 37%")
+        const hasPercent = /(?:^|\W)(?:\d{1,2})\s*%/.test(text) && text.length < 50;
+        const hasProgressWord = (text.toLowerCase().includes("generating") || text.toLowerCase().includes("rendering") ||
+                                 text.toLowerCase().includes("processing") || text.toLowerCase().includes("uploading") ||
+                                 text.includes("กำลังสร้าง") || text.includes("กำลังเรนเดอร์") ||
+                                 text.includes("กำลังประมวลผล") || text.includes("กำลังอัปโหลด") ||
+                                 text.includes("รอคิว") || text.includes("กำลังรอ")) && text.length < 50;
+                                 
+        if (hasPercent || hasProgressWord) {
+            return true;
+        }
     }
     return false;
 }
