@@ -492,13 +492,9 @@ function mediaCardStatus(cardInfo) {
     const pendingVideoProgress = Boolean(el.querySelector?.("[role='slider']")) && !hasPlayableVideo;
     const progress = wordProgress || percentProgress || pendingVideoProgress;
 
-    const hasFailureLabel = [...el.querySelectorAll("div,span,p")]
-        .some(node => node.children.length === 0 && /^(failed|failure|ล้มเหลว)$/i.test(node.textContent?.trim() || ""));
-    const hasFailureMessage = /\b(generation|creation|rendering)\s+failed\b/i.test(text)
-        || text.includes("couldn't generate")
-        || text.includes("could not generate")
-        || text.includes("สร้างไม่สำเร็จ");
-    const failed = !progress && (hasFailureLabel || hasFailureMessage);
+    // สัญญาณ fail จริงของ Flow = มี "ปุ่ม retry/redo" ในการ์ดเท่านั้น (ภาพเจนเสร็จ/กำลังเจน
+    // จะไม่มีปุ่มนี้) — เชื่อถือได้กว่าการสแกนคำว่า "Failed" ที่หลุดมาจาก tile/disclaimer ข้างเคียง
+    const failed = !progress && Boolean(findMediaCardRetryButton(cardInfo));
     const rendered = hasRenderableMedia(el);
     return { ready: rendered && !progress, failed, progress, rendered, text };
 }
@@ -559,9 +555,10 @@ function findMediaCardRetryButton(cardInfo) {
     return [...el.querySelectorAll("button,[role='button']")].find(button => {
         if (!isVisible(button) || button.disabled || button.getAttribute("aria-disabled") === "true") return false;
         const text = elementText(button).toLowerCase();
+        const aria = (button.getAttribute("aria-label") || "").toLowerCase();
         const icon = [...button.querySelectorAll("i,.google-symbols,.material-icons")]
-            .some(node => node.textContent?.trim().toLowerCase() === "refresh");
-        return text.includes("retry") || icon;
+            .some(node => /^(refresh|replay|redo|restart_alt|sync)$/.test(node.textContent?.trim().toLowerCase() || ""));
+        return text.includes("retry") || /retry|try again|redo/.test(aria) || icon;
     }) || null;
 }
 async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGeneration) {
