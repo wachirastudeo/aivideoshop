@@ -69,20 +69,50 @@
     return candidates.find(visible) || null;
   }
 
-  // ปุ่ม bulk ใน batch-bar: "รับลิงก์แบบทีเดียวทั้งหมด"
+  // ปุ่ม bulk ใน batch-bar: "รับลิงก์แบบทีเดียวทั้งหมด" หรือ "รับลิงก์ทั้งหมด" หรือ "รับลิงก์"
   function findBulkButton() {
-    return (
-      byText(".batch-bar button.ant-btn-primary, .batch-bar button", /รับลิงก์แบบ|ส่งออก|export/i) ||
-      byText("button.ant-btn-primary, button", /รับลิงก์แบบ|ส่งออก|export/i) ||
-      null
-    );
+    // 1. ลองหาใน batch-bar หรือ container ที่เกี่ยวข้องโดยตรงก่อน
+    const selectors = [
+      ".batch-bar button.ant-btn-primary",
+      ".batch-bar button",
+      ".batch-bar .ant-btn",
+      ".batch-bar [role='button']",
+      "[class*='batch'] button",
+      "[class*='batch'] .ant-btn",
+      "[class*='batch'] [role='button']",
+      "[class*='bar'] button",
+      "[class*='bar'] .ant-btn",
+      "[class*='bar'] [role='button']",
+      "[class*='bottom'] button",
+      "[class*='bottom'] .ant-btn",
+      "[class*='bottom'] a",
+      "[class*='bottom'] [role='button']"
+    ].join(", ");
+
+    const bulkInBatchBar = byText(selectors, /รับลิงก์|ส่งออก|export/i);
+    if (bulkInBatchBar) return bulkInBatchBar;
+
+    // 2. fallback หาปุ่มที่มีข้อความแต่ต้องไม่ใช่ปุ่มรับลิงก์รายตัว (ไม่อยู่ในการ์ดสินค้า)
+    const allButtons = Array.from(document.querySelectorAll("button.ant-btn-primary, button, .ant-btn, a.ant-btn, [role='button']")).filter(visible);
+    return allButtons.find(btn => {
+      const text = (btn.textContent || "").trim();
+      const isMatch = /รับลิงก์|ส่งออก|export/i.test(text);
+      if (!isMatch) return false;
+      // กรองออกหากอยู่ในการ์ดสินค้าเดี่ยวๆ
+      if (btn.closest(".ItemCard__container, .AffiliateItemCard__gelinkSection, [class*='ItemCard']")) {
+        return false;
+      }
+      return true;
+    }) || null;
   }
 
   // ปุ่มยืนยันใน modal: "เอา ลิงก์" (สร้างลิงก์ + ดาวน์โหลด CSV)
   function findModalConfirm() {
     return byText(
-      ".ant-modal button, .ant-drawer button, [role='dialog'] button",
-      /^เอา\s?ลิงก์$|ยืนยัน|ดาวน์โหลด|confirm|export/i
+      ".ant-modal button, .ant-drawer button, [role='dialog'] button, .ant-modal-footer button, " +
+      ".ant-modal .ant-btn, .ant-drawer .ant-btn, [role='dialog'] .ant-btn, " +
+      ".ant-modal [role='button'], .ant-drawer [role='button'], [role='dialog'] [role='button']",
+      /เอา\s?ลิงก์|ยืนยัน|ดาวน์โหลด|confirm|export/i
     );
   }
 
@@ -108,6 +138,10 @@
   // คลิกติ๊ก แล้ว verify; ถ้าไม่ติดลองคลิก target อื่นในการ์ด (input/span/box)
   async function tickCheckbox(el) {
     if (isChecked(el)) return true;
+    if (el.scrollIntoView) {
+      el.scrollIntoView({ block: "center", inline: "center" });
+      await sleep(100);
+    }
     const targets = [
       el,
       el.querySelector("input.ant-checkbox-input"),
@@ -125,6 +159,10 @@
   // คลิกแบบ trusted ผ่าน background → chrome.debugger (Input.dispatchMouseEvent)
   // จำเป็นสำหรับปุ่ม "เอา ลิงก์": synthetic click ได้ไฟล์ CSV เปล่า, trusted click ได้ไฟล์เต็ม
   async function trustedClick(el) {
+    if (el.scrollIntoView) {
+      el.scrollIntoView({ block: "center", inline: "center" });
+      await sleep(350); // ให้ scroll เข้าที่และปุ่มหยุดนิ่ง
+    }
     const r = el.getBoundingClientRect();
     const x = Math.round(r.left + r.width / 2);
     const y = Math.round(r.top + r.height / 2);
@@ -421,14 +459,27 @@
     }
     // โหมด export/both: ทำต่อไป export CSV — และคืน products ให้ทำวิดีโอด้วย
 
-    // 3) กดปุ่ม bulk "รับลิงก์แบบทีเดียวทั้งหมด" (synthetic พอ — แค่เปิด modal)
+    // 3) กดปุ่ม bulk "รับลิงก์แบบทีเดียวทั้งหมด"
     const bulkBtn = await waitFor(findBulkButton, { timeout: 6000 });
     if (!bulkBtn) return { ok: false, error: `ติ๊กแล้ว ${ticked} ชิ้น แต่หาปุ่ม "รับลิงก์แบบทีเดียวทั้งหมด" ไม่เจอ` };
+    
+    // ลองเปิด modal ด้วย synthetic click ก่อน เพราะง่ายและเสถียรที่สุดสำหรับปุ่มที่ไม่ได้ต้องการ download CSV
     bulkBtn.click();
+    
+    // รอตรวจสอบว่า modal เปิดขึ้นมาจริงหรือไม่
+    let confirmBtn = await waitFor(findModalConfirm, { timeout: 3000 });
+    if (!confirmBtn) {
+      log("ลองคลิก bulkBtn ด้วย trustedClick (Debugger)...");
+      const clickedBulk = await trustedClick(bulkBtn);
+      if (!clickedBulk) {
+        log("trustedClick bulkBtn failed, retrying synthetic click");
+        bulkBtn.click();
+      }
+      confirmBtn = await waitFor(findModalConfirm, { timeout: 6000 });
+    }
 
     // 4) modal → ปุ่ม "เอา ลิงก์": ต้อง TRUSTED CLICK ผ่าน debugger
     //    (synthetic click ได้ไฟล์ CSV เปล่า — Shopee สร้าง/ดาวน์โหลดเฉพาะ trusted event)
-    const confirmBtn = await waitFor(findModalConfirm, { timeout: 8000 });
     if (!confirmBtn) return { ok: false, error: `เปิด popup แล้วแต่หาปุ่ม "เอา ลิงก์" ไม่เจอ (ติ๊กไว้ ${ticked} ชิ้น)` };
     await sleep(400); // ให้ modal เข้าที่ก่อนวัดพิกัด
     const clicked = await trustedClick(confirmBtn);

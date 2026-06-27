@@ -103,7 +103,11 @@ async function importShopeeCsv(file) {
       setProg(`กำลังดึงรูป ${i + 1}/${rows.length}: ${row.name.slice(0, 24)}...`);
       let images = [];
       if (row.productUrl) {
-        const res = await chrome.runtime.sendMessage({ type: "SHOPEE_FETCH_IMAGES", payload: { productUrl: row.productUrl } });
+        let res = await chrome.runtime.sendMessage({ type: "SHOPEE_FETCH_IMAGES", payload: { productUrl: row.productUrl } });
+        if (res?.ok && res.blocked) {
+          await showCaptchaPrompt(`⚠️ ตรวจพบหน้ายืนยันตัวตน (Captcha) ของ Shopee!\nกรุณาไปที่แท็บหน้าต่าง Shopee ที่เด้งขึ้นมา แล้วกดยืนยันตัวตนให้ผ่าน\nจากนั้นกลับมากดปุ่มด้านล่างเพื่อดึงรูปภาพของสินค้านี้ใหม่อีกครั้ง`);
+          res = await chrome.runtime.sendMessage({ type: "SHOPEE_FETCH_IMAGES", payload: { productUrl: row.productUrl } });
+        }
         if (res?.ok) {
           images = res.images || [];
           if (res.blocked) blocked++;
@@ -253,10 +257,17 @@ async function runShopeePull() {
       let images = [];
       let consumerUrl = item.productUrl;
       if (item.productUrl) {
-        const res = await chrome.runtime.sendMessage({
+        let res = await chrome.runtime.sendMessage({
           type: "SHOPEE_FETCH_IMAGES",
           payload: { productUrl: item.productUrl }
         });
+        if (res?.ok && res.blocked) {
+          await showCaptchaPrompt(`⚠️ ตรวจพบหน้ายืนยันตัวตน (Captcha) ของ Shopee!\nกรุณาไปที่แท็บหน้าต่าง Shopee ที่เด้งขึ้นมา แล้วกดยืนยันตัวตนให้ผ่าน\nจากนั้นกลับมากดปุ่มด้านล่างเพื่อดึงรูปภาพของสินค้านี้ใหม่อีกครั้ง`);
+          res = await chrome.runtime.sendMessage({
+            type: "SHOPEE_FETCH_IMAGES",
+            payload: { productUrl: item.productUrl }
+          });
+        }
         if (res?.ok) {
           images = res.images || [];
           if (res.consumerUrl) {
@@ -298,15 +309,47 @@ async function runShopeePull() {
 function showLoadingOverlay(text) {
   const overlay = document.querySelector("#loading-overlay");
   const txtEl = document.querySelector("#loading-overlay-text");
+  const spinner = document.querySelector("#loading-overlay-spinner");
+  const btn = document.querySelector("#loading-overlay-btn");
   if (overlay) {
     if (txtEl) txtEl.textContent = text || "กำลังดำเนินการ...";
+    if (spinner) spinner.style.display = "";
+    if (btn) btn.style.display = "none";
     overlay.hidden = false;
   }
 }
 
 function hideLoadingOverlay() {
   const overlay = document.querySelector("#loading-overlay");
+  const btn = document.querySelector("#loading-overlay-btn");
+  const spinner = document.querySelector("#loading-overlay-spinner");
   if (overlay) overlay.hidden = true;
+  if (btn) btn.style.display = "none";
+  if (spinner) spinner.style.display = "";
+}
+
+function showCaptchaPrompt(message) {
+  return new Promise((resolve) => {
+    const overlay = document.querySelector("#loading-overlay");
+    const txtEl = document.querySelector("#loading-overlay-text");
+    const spinner = document.querySelector("#loading-overlay-spinner");
+    const btn = document.querySelector("#loading-overlay-btn");
+    
+    if (overlay) overlay.hidden = false;
+    if (txtEl) txtEl.textContent = message;
+    if (spinner) spinner.style.display = "none";
+    
+    if (btn) {
+      btn.style.display = "block";
+      btn.onclick = () => {
+        btn.style.display = "none";
+        if (spinner) spinner.style.display = "";
+        resolve();
+      };
+    } else {
+      setTimeout(resolve, 5000);
+    }
+  });
 }
 
 function setShopeeStatus(text, type) {
@@ -364,7 +407,16 @@ function bindProductEvents() {
     const selectedArray = products
       .filter(p => selectedIds.has(p.productId))
       .map(buildSelectedProductPayload);
-    await chrome.storage.local.set({ selectedProduct: selectedArray[0], productQueue: selectedArray, activeTab: "video" });
+    const stored = await chrome.storage.local.get("creatorState");
+    const creatorState = stored.creatorState || {};
+    if (!creatorState.settings) creatorState.settings = {};
+    creatorState.settings.postAction = "post";
+    await chrome.storage.local.set({
+      selectedProduct: selectedArray[0],
+      productQueue: selectedArray,
+      activeTab: "video",
+      creatorState
+    });
     helpers.logActivity?.(`เลือกสินค้าเพื่อสร้างวิดีโอ ${selectedArray.length} รายการ`, "success");
     helpers.showStatus("ส่งสินค้าไปหน้า สร้างวิดีโอ แล้ว", "success");
     await helpers.switchTab("video");
@@ -549,7 +601,16 @@ async function selectProduct(product) {
   if (!product) return;
   const selectedProduct = buildSelectedProductPayload(product);
 
-  await chrome.storage.local.set({ selectedProduct, productQueue: [selectedProduct], activeTab: "video" });
+  const stored = await chrome.storage.local.get("creatorState");
+  const creatorState = stored.storedCreatorState || stored.creatorState || {};
+  if (!creatorState.settings) creatorState.settings = {};
+  creatorState.settings.postAction = "post";
+  await chrome.storage.local.set({
+    selectedProduct,
+    productQueue: [selectedProduct],
+    activeTab: "video",
+    creatorState
+  });
   helpers.logActivity?.(`เลือกสินค้าเพื่อสร้างวิดีโอ: ${selectedProduct.originalName || selectedProduct.name}`, "success");
   helpers.showStatus("ส่งสินค้าไปหน้า สร้างวิดีโอ แล้ว", "success");
   await helpers.switchTab("video");

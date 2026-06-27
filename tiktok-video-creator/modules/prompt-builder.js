@@ -132,6 +132,7 @@ export function getDefaultSettings() {
   return {
     videoStyle: "testimonial",
     presenter: "Auto",
+    customPresenter: "",
     voiceTone: "Auto",
     mood: "Auto",
     location: "Auto",
@@ -200,11 +201,14 @@ export function buildImagePrompt(productInfo, settings) {
   const details = compactPromptText(productInfo.highlights, 100);
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
+  const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const isHeavy = isHeavyProduct(productText);
 
   const promptParts = [
     `Create one vertical 9:16 commercial product photo of ${productName}.`,
     PRODUCT_FIDELITY_DIRECTION,
     SCALE_FIDELITY_DIRECTION,
+    isHeavy ? "Real scale." : "",
     PRODUCT_ISOLATION_DIRECTION,
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
@@ -217,12 +221,42 @@ export function buildImagePrompt(productInfo, settings) {
   return promptParts.filter(Boolean).join("\n");
 }
 
-function isHeavyProduct(text = "") {
+function getProductWeightCategory(text = "") {
   const clean = text.toLowerCase();
   if (/(ผ้าคลุม|ผ้าปู|สติกเกอร์|ขาตั้ง|ตัวยึด|เบาะรอง|ปลอก|โมเดล|ของเล่น|จิ๋ว|miniature|toy|cover|sticker|case|holder|mount|cushion|protector)/i.test(clean)) {
-    return false;
+    return "light";
   }
-  return /(ตู้|เตียง|ลิ้นชัก|ชั้นวาง|โต๊ะ|เก้าอี้|โซฟา|เฟอร์นิเจอร์|เครื่องซักผ้า|ตู้เย็น|ทีวี|โทรทัศน์|ที่นอน|ฟูก|ลู่วิ่ง|จักรยาน|แอร์|เครื่องปรับอากาศ|เตาอบ|ไมโครเวฟ|เครื่องล้างจาน|ตู้แช่|cabinet|drawer|shelf|wardrobe|dresser|furniture|table|desk|chair|sofa|couch|bed|mattress|refrigerator|fridge|freezer|washing\s*machine|washer|dryer|dishwasher|tv|television|air\s*conditioner|treadmill|bicycle|bike|oven|stove|microwave|heavy|large|bulky)/i.test(clean);
+
+  // 1. Immobile/bulky products (e.g. furniture, large appliances)
+  const isImmobile = /(ตู้|เตียง|ลิ้นชัก|ชั้นวาง|โต๊ะ|เก้าอี้|โซฟา|เฟอร์นิเจอร์|เครื่องซักผ้า|ตู้เย็น|ทีวี|โทรทัศน์|ที่นอน|ฟูก|ลู่วิ่ง|จักรยาน|แอร์|เครื่องปรับอากาศ|เตาอบ|ไมโครเวฟ|เครื่องล้างจาน|ตู้แช่|cabinet|drawer|shelf|wardrobe|dresser|furniture|table|desk|chair|sofa|couch|bed|mattress|refrigerator|fridge|freezer|washing\s*machine|washer|dryer|dishwasher|tv|television|air\s*conditioner|treadmill|bicycle|bike|oven|stove|microwave)/i.test(clean);
+  if (isImmobile) {
+    return "immobile";
+  }
+
+  // 2. Check weight values first (so heavy sacks >= 25kg are classified as immobile)
+  const weightRegex = /(\d+(?:\.\d+)?)\s*(?:กิโลกรัม|กิโล|กิโ|กก\.?|kg|kilograms?)(?![a-zA-Z0-9])/i;
+  const match = clean.match(weightRegex);
+  if (match) {
+    const weightVal = parseFloat(match[1]);
+    if (weightVal >= 25) {
+      return "immobile"; // 25kg or more is immobile/extremely heavy
+    }
+    if (weightVal >= 5) {
+      return "medium_heavy"; // 5-25kg is medium heavy
+    }
+  }
+
+  // 3. Medium heavy/bulky but liftable products (sacks, dumbbells, etc.)
+  const isMediumHeavyKeywords = /(กระสอบ|ข้าวสาร|ปุ๋ย|ปูนซีเมนต์|ปูน|ทรายแมว|อาหารสัตว์|อาหารสุนัข|อาหารหมา|อาหารแมว|sack|fertilizer|cement\s*bag|concrete\s*bag|pet\s*food\s*bag|dog\s*food\s*bag|cat\s*food\s*bag|cat\s*litter|dumbbell|ดัมเบล)/i.test(clean);
+  if (isMediumHeavyKeywords) {
+    return "medium_heavy";
+  }
+
+  return "light";
+}
+
+function isHeavyProduct(text = "") {
+  return getProductWeightCategory(text) !== "light";
 }
 
 /**
@@ -245,19 +279,22 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     textEnabled ? compactPromptText(settings?.promotionText, 80) : ""
   ].filter(Boolean);
 
+  const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const weightCategory = getProductWeightCategory(productText);
+  const isHeavy = weightCategory !== "light";
+  const isImmobile = weightCategory === "immobile";
+
   const promptParts = [
     `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`,
     MATCH_STILL_DIRECTION,
     PRODUCT_FIDELITY_DIRECTION,
+    isHeavy ? "Real scale." : "",
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
   ];
 
   const handsOnly = auto.presenter === "hands_only";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
-  // Person-centric styles embed a full presenter/reviewer in the scenes; fall back
-  // to the product-only review flow when there is no presenter, or when only hands
-  // are allowed, so the scene text never demands a full face/body.
   const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
     ? "review"
     : auto.videoStyle;
@@ -270,10 +307,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   // Adjust prompt for heavy/large products to prevent unnatural holding/lifting
-  const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
-  const isHeavy = isHeavyProduct(productText);
-
-  if (isHeavy) {
+  if (isImmobile) {
     const escapedName = productName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     sceneBreakdown = sceneBreakdown
       .replace(new RegExp(`\\bholding\\s+(?:the\\s+)?(?:attached\\s+)?${escapedName}\\b`, "gi"), `standing next to ${productName}`)
@@ -297,8 +331,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   let handsDir = HANDS_DIRECTION;
   let presenterInstruction = auto.presenter && PRESENTERS[auto.presenter] ? PRESENTERS[auto.presenter] : PRESENTERS.none;
+  if (auto.presenter === "กรอกเอง") {
+    presenterInstruction = auto.customPresenter || "a presenter";
+  }
 
-  if (isHeavy) {
+  if (isImmobile) {
     handsDir = handsDir
       .replace("holding and presenting", "gesturing towards and interacting with")
       .replace("holding", "touching or gesturing towards")
@@ -306,7 +343,17 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
     presenterInstruction = presenterInstruction
       .replace("holding and presenting", "standing next to and presenting")
-      .replace("holding", "presenting or interacting with");
+      .replace("holding", "presenting or interacting with")
+      + " The product is large and heavy, resting stably on a flat surface or floor; do not attempt to lift, carry, or hold it in the air.";
+  } else if (weightCategory === "medium_heavy") {
+    handsDir = handsDir
+      .replace("holding and presenting", "holding with both hands and presenting")
+      + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the hands, never as a tiny packet or a giant sack.";
+
+    presenterInstruction = presenterInstruction
+      .replace("holding and presenting", "holding with both hands and presenting")
+      .replace("holding", "holding with both hands or interacting with")
+      + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the presenter, never as a tiny packet or a giant sack.";
   }
 
   if (handsOnly) {
@@ -456,6 +503,7 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
     // Auto always includes a real reviewer. People-free output is only allowed
     // when the user explicitly selects the "none" presenter option.
     presenter: isAuto(settings.presenter) ? pickAutoReviewer(productInfo) : settings.presenter,
+    customPresenter: sanitizeText(settings.customPresenter),
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
     location: isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location,
@@ -786,4 +834,38 @@ function buildProductDetails(productInfo) {
   ].filter(Boolean);
 
   return details.join("\n");
+}
+
+export function truncateShopeeCaptionAndHashtags(caption, hashtagList = []) {
+  let rawCaption = String(caption || "")
+    .replace(/\r?\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  let tags = [...hashtagList];
+
+  let combined = `${rawCaption} ${tags.join(" ")}`.trim();
+  if (combined.length > 150) {
+    while (tags.length > 1 && `${rawCaption} ${tags.join(" ")}`.trim().length > 150) {
+      tags.pop();
+    }
+    combined = `${rawCaption} ${tags.join(" ")}`.trim();
+    if (combined.length > 150) {
+      const tagsStr = tags.join(" ");
+      const allowedCaptionLen = 150 - tagsStr.length - 1; // 1 space
+      if (allowedCaptionLen > 3) {
+        rawCaption = rawCaption.slice(0, allowedCaptionLen - 3).trim() + "...";
+      } else if (allowedCaptionLen > 0) {
+        rawCaption = rawCaption.slice(0, allowedCaptionLen).trim();
+      } else {
+        rawCaption = "";
+        tags = [tags.join(" ").slice(0, 150)];
+      }
+    }
+  }
+
+  return {
+    caption: rawCaption,
+    hashtags: tags.join(" ")
+  };
 }

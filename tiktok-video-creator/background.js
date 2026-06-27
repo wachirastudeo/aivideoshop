@@ -89,6 +89,17 @@ async function clickPointWithDebugger(payload, sender) {
     throw new Error("ตำแหน่งปุ่ม Generate ไม่ถูกต้อง");
   }
 
+  // ดึงข้อมูล tab เพื่อเอา windowId มาขยาย/โฟกัสหน้าต่าง (กันเคสย่อหน้าต่างไว้ทำให้พิกัดเพี้ยนหรือกดไม่ได้)
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab?.windowId) {
+      await chrome.windows.update(tab.windowId, { state: "normal", focused: true });
+      await new Promise((r) => setTimeout(r, 300)); // รอให้หน้าต่างขยายเสร็จ
+    }
+  } catch (err) {
+    console.error("โฟกัสหน้าต่างล้มเหลว:", err);
+  }
+
   const target = { tabId };
   await ensureDebuggerAttached(tabId);
   await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
@@ -121,6 +132,17 @@ async function insertTextWithDebugger(payload, sender) {
   const text = String(payload?.text || "");
   if (!tabId) throw new Error("ไม่พบ tab สำหรับกรอก prompt");
   if (!text) return { inserted: false };
+
+  // ดึงข้อมูล tab เพื่อเอา windowId มาขยาย/โฟกัสหน้าต่างก่อนกรอกข้อมูล
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab?.windowId) {
+      await chrome.windows.update(tab.windowId, { state: "normal", focused: true });
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  } catch (err) {
+    console.error("โฟกัสหน้าต่างล้มเหลว:", err);
+  }
 
   const target = { tabId };
   try {
@@ -403,89 +425,123 @@ async function closeShopeeScrapeTab() {
 // เปิดลิงก์สินค้าจริง 1 ลิงก์ แล้วดึงรูปทั้งหมด (gallery)
 // ถ้า Shopee เด้งหน้า anti-bot/verify → คืน blocked:true (ไม่ข้าม)
 async function fetchShopeeImages({ productUrl } = {}) {
+  const log = (msg, lvl = "info") => {
+    chrome.runtime.sendMessage({ type: "PIPELINE_LOG", payload: { level: lvl, message: `[ดึงรูป] ${msg}` } }).catch(() => {});
+  };
+
+  log(`เตรียมดึงสินค้า: ${productUrl}`);
+
   if (!/^https:\/\/(?:[\w-]+\.)?shopee\.co\.th\//.test(productUrl || "")) {
+    log(`ลิงก์ไม่ถูกต้อง: ${productUrl}`, "error");
     return { images: [], error: "ลิงก์สินค้าไม่ถูกต้อง" };
   }
 
-  let tab = null;
+  // ปิดแท็บสินค้าเดิมก่อนเสมอ (ถ้ามีเปิดอยู่) - ทำแบบไม่บล็อก (ไม่มี await) ป้องกันเบราว์เซอร์ค้าง
   if (shopeeScrapeTabId != null) {
-    try { tab = await chrome.tabs.get(shopeeScrapeTabId); } catch { shopeeScrapeTabId = null; }
+    const oldTabId = shopeeScrapeTabId;
+    shopeeScrapeTabId = null;
+    chrome.tabs.remove(oldTabId).catch(() => {});
+    log(`ปิดแท็บเก่า ID: ${oldTabId}`);
   }
-  if (tab) {
-    await chrome.tabs.update(shopeeScrapeTabId, { url: productUrl });
-  } else {
-    // active:true เพื่อให้ผู้ใช้เห็น/กดผ่าน captcha ของ Shopee เองได้ถ้าโดนกัน
+
+  // สร้างแท็บใหม่สำหรับสินค้ารายการนี้เสมอ
+  log(`กำลังสร้างแท็บใหม่...`);
+  let tab;
+  try {
     tab = await chrome.tabs.create({ url: productUrl, active: true });
     shopeeScrapeTabId = tab.id;
-  }
-  await waitForTabComplete(shopeeScrapeTabId);
-
-  // Check if we are on the affiliate product offer page
-  let resolvedConsumerUrl = productUrl;
-  let currentTab = await chrome.tabs.get(shopeeScrapeTabId);
-  if (currentTab.url && currentTab.url.includes("affiliate.shopee.co.th/offer/product_offer/")) {
-    await delay(1500); // รอ dynamic content โหลด
-    let extractedUrlResult;
-    try {
-      [{ result: extractedUrlResult }] = await chrome.scripting.executeScript({
-        target: { tabId: shopeeScrapeTabId },
-        func: () => {
-          const anchors = Array.from(document.querySelectorAll("a"));
-          // 1. หาลิงก์สินค้าตรงฝั่ง consumer
-          let link = anchors.find(a => {
-            const href = a.href || "";
-            return href.includes("shopee.co.th") && !href.includes("affiliate.shopee.co.th") && (href.includes("/product/") || /-i\.\d+\.\d+/i.test(href));
-          });
-          if (link) return link.href;
-
-          // 2. หาลิงก์ shopee.co.th ทั่วไปที่ไม่ใช่ subdomain ไม่เกี่ยวข้อง
-          link = anchors.find(a => {
-            const href = a.href || "";
-            return href.includes("shopee.co.th") && 
-                   !href.includes("affiliate.shopee.co.th") && 
-                   !href.includes("help.shopee.co.th") && 
-                   !href.includes("seller.shopee.co.th") &&
-                   !href.includes("banhang.shopee") &&
-                   !/sign-in|login|logout/i.test(href);
-          });
-          if (link) return link.href;
-
-          // 3. หาปุ่ม/ลิงก์ที่มีข้อความชี้นำ
-          link = anchors.find(a => {
-            const text = (a.textContent || "").trim();
-            return /ดูสินค้า|รายละเอียด|view\s*on\s*shopee|view\s*product/i.test(text);
-          });
-          if (link) return link.href;
-
-          return null;
-        }
-      });
-    } catch (err) {
-      console.error("Failed to extract original product link:", err);
-    }
-
-    if (extractedUrlResult) {
-      resolvedConsumerUrl = extractedUrlResult;
-      // เดินทางไปยังหน้าสินค้าจริงเพื่อทำการดึงรูปภาพแบบเต็ม
-      await chrome.tabs.update(shopeeScrapeTabId, { url: extractedUrlResult });
-      await waitForTabComplete(shopeeScrapeTabId);
-    }
+    log(`สร้างแท็บสำเร็จ ID: ${tab.id}`);
+  } catch (e) {
+    log(`สร้างแท็บล้มเหลว: ${e.message}`, "error");
+    return { images: [], error: "ไม่สามารถสร้างแท็บได้: " + e.message };
   }
 
-  await delay(2000); // รอ gallery render
-
-  let result;
   try {
-    [{ result }] = await chrome.scripting.executeScript({
-      target: { tabId: shopeeScrapeTabId },
-      func: scrapeShopeeGallery
-    });
-  } catch (error) {
-    return { images: [], error: "อ่านหน้าสินค้าไม่สำเร็จ: " + error.message };
+    if (tab.windowId) {
+      chrome.windows.update(tab.windowId, { state: "normal", focused: true }).catch(() => {});
+    }
+  } catch (e) {
+    console.error("Focus window error:", e);
   }
-  const responseData = result || { images: [] };
-  responseData.consumerUrl = resolvedConsumerUrl;
-  return responseData;
+
+  const startTime = Date.now();
+  let images = [];
+  let blocked = false;
+  let resolvedConsumerUrl = productUrl;
+  let isAffiliate = productUrl.includes("affiliate.shopee.co.th/offer/product_offer/");
+
+  log(`เริ่มวนลูปตรวจสอบรูปภาพ (สูงสุด 9 วินาที)...`);
+  // วนลูปโพลหาสินค้าและรูปภาพจนกว่าจะพบ หรือหมดเวลารอ (Timeout 9 วินาที)
+  while (Date.now() - startTime < 9000) {
+    await delay(500);
+    try {
+      const currentTab = await chrome.tabs.get(shopeeScrapeTabId);
+      
+      // กรณีลิงก์ Affiliate: ค้นหาลิงก์ปลายทางเพื่อนำทางไปต่อ
+      if (isAffiliate && currentTab.url && currentTab.url.includes("affiliate.shopee.co.th/offer/product_offer/")) {
+        log(`ตรวจพบลิงก์ Affiliate กำลังแกะลิงก์ตรง...`);
+        let extractedUrlResult;
+        try {
+          [{ result: extractedUrlResult }] = await chrome.scripting.executeScript({
+            target: { tabId: shopeeScrapeTabId },
+            injectImmediately: true,
+            func: () => {
+              const anchors = Array.from(document.querySelectorAll("a"));
+              let link = anchors.find(a => {
+                const href = a.href || "";
+                return href.includes("shopee.co.th") && !href.includes("affiliate.shopee.co.th") && (href.includes("/product/") || /-i\.\d+\.\d+/i.test(href));
+              });
+              if (link) return link.href;
+              return null;
+            }
+          });
+        } catch (err) {
+          log(`แกะลิงก์ตรงล้มเหลว: ${err.message}`, "warn");
+        }
+
+        if (extractedUrlResult) {
+          log(`แกะลิงก์ตรงสำเร็จ: ${extractedUrlResult}`);
+          resolvedConsumerUrl = extractedUrlResult;
+          isAffiliate = false;
+          await chrome.tabs.update(shopeeScrapeTabId, { url: extractedUrlResult });
+        }
+        continue;
+      }
+
+      // ดึงข้อมูลรูปภาพจากแกลเลอรี
+      let scrapeRes;
+      try {
+        [{ result: scrapeRes }] = await chrome.scripting.executeScript({
+          target: { tabId: shopeeScrapeTabId },
+          injectImmediately: true,
+          func: scrapeShopeeGallery
+        });
+      } catch (err) {
+        continue; // หน้าเว็บอาจยังไม่พร้อม ค่อยลองรอบถัดไป
+      }
+
+      if (scrapeRes) {
+        if (scrapeRes.blocked) {
+          log(`⚠️ ตรวจพบหน้า Captcha/Verify ของ Shopee!`, "warn");
+          blocked = true;
+          break; // ติดหน้า Captcha ให้เบรกออกทันที
+        }
+        if (scrapeRes.images && scrapeRes.images.length > 0) {
+          log(`ดึงรูปแกลเลอรีสำเร็จ: ${scrapeRes.images.length} รูป`);
+          images = scrapeRes.images;
+          break; // ดึงรูปได้ครบแล้ว เบรกออกเพื่อความรวดเร็ว
+        }
+      }
+    } catch (e) {
+      // เกิดข้อผิดพลาดของแท็บ ให้ลองใหม่รอบหน้า
+    }
+  }
+
+  if (images.length === 0 && !blocked) {
+    log(`หมดเวลาดึงรูปภาพของสินค้านี้ (ได้ 0 รูป)`);
+  }
+
+  return { images, blocked, consumerUrl: resolvedConsumerUrl };
 }
 
 // รันในหน้าสินค้า shopee.co.th — เก็บ URL รูปทั้งหมดจาก gallery
@@ -592,9 +648,14 @@ function waitForShopeeReady(tabId, timeoutMs = 10000) {
   });
 }
 
-function waitForTabComplete(tabId) {
+async function waitForTabComplete(tabId) {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab?.status === "complete") return;
+  } catch (e) {}
+
   return new Promise((resolve) => {
-    const timeout = setTimeout(cleanup, 15000);
+    const timeout = setTimeout(cleanup, 12000); // รอสูงสุด 12 วินาที
     function cleanup() {
       clearTimeout(timeout);
       chrome.tabs.onUpdated.removeListener(listener);

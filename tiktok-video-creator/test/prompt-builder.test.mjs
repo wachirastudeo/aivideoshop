@@ -10,7 +10,8 @@ import {
   buildImagePrompt,
   formatPrice,
   getDefaultSettings,
-  getDefaultProductInfo
+  getDefaultProductInfo,
+  truncateShopeeCaptionAndHashtags
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -123,7 +124,7 @@ check("image prompt creates a new suitable background", /background that fits th
 check("video prompt is multi-scene", /multi-scene/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
 check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabinetVideo) && !/Urban Street/i.test(cabinetVideo));
 check("image prompt stays concise", cabinetImage.length < 1500, `length=${cabinetImage.length}`);
-check("video prompt stays concise", cabinetVideo.length < 2400, `length=${cabinetVideo.length}`);
+check("video prompt stays concise", cabinetVideo.length < 2600, `length=${cabinetVideo.length}`);
 
 // --- footwear fidelity: preserve the exact model while Auto includes a reviewer ---
 const shoe = {
@@ -138,7 +139,7 @@ check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.t
 check("shoe video Auto includes a reviewer", /Presenter: (?:A trendy young Thai woman|A stylish young Thai man)/i.test(shoeVideo));
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
-check("shoe prompts remain concise", shoeImage.length < 1500 && shoeVideo.length < 2400, `image=${shoeImage.length} video=${shoeVideo.length}`);
+check("shoe prompts remain concise", shoeImage.length < 1500 && shoeVideo.length < 2600, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
 // --- default behavior: UGC style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
@@ -172,6 +173,12 @@ const explicitNone = buildVideoPrompt(
 check("explicit presenter choice wins", !/Presenter:/i.test(explicitNone));
 check("explicit no-presenter forbids people", /No people, faces, presenters/i.test(explicitNone));
 
+const customPresenterPrompt = buildVideoPrompt(
+  { name: "เครื่องปั่นน้ำผลไม้", productId: "10000002" },
+  { ...settings, presenter: "กรอกเอง", customPresenter: "a chef wearing a white hat" }
+);
+check("custom presenter option injects custom presenter text", /Presenter: a chef wearing a white hat/i.test(customPresenterPrompt), customPresenterPrompt);
+
 // --- auto presenter/location inference by category (beauty -> reviewer) ---
 const vidBeauty = buildVideoPrompt({ name: "เซรั่มหน้าใส วิตามินซี", highlights: "" }, settings);
 check("beauty auto-selects a presenter line", /Presenter:/i.test(vidBeauty));
@@ -193,6 +200,44 @@ check("omni-flash video prompt has Scene 3", /Scene 3 \(Detail Close-up\)/i.test
 // --- empty caption template returns empty string ---
 const capEmpty = buildCaption(prodA, { captionTemplate: "" });
 eq("empty caption template returns empty string", capEmpty, "");
+
+// --- Shopee caption & hashtags 150-char limit tests ---
+const shortTrunc = truncateShopeeCaptionAndHashtags("สเปรย์หอมปรับอากาศ", ["#สเปรย์หอม", "#ปรับอากาศ"]);
+eq("shopee short caption & hashtags keep all tags", shortTrunc, {
+  caption: "สเปรย์หอมปรับอากาศ",
+  hashtags: "#สเปรย์หอม #ปรับอากาศ"
+});
+
+const longCaption = "สเปรย์หอมปรับอากาศ ".repeat(7).trim(); // 132 chars
+const tagsToDrop = ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5", "#tag6"];
+const resDropped = truncateShopeeCaptionAndHashtags(longCaption, tagsToDrop);
+check("shopee drops hashtags to fit 150", `${resDropped.caption} ${resDropped.hashtags}`.trim().length <= 150, `len=${`${resDropped.caption} ${resDropped.hashtags}`.trim().length}`);
+check("shopee drops hashtags but keeps some", resDropped.hashtags.includes("#tag1") && !resDropped.hashtags.includes("#tag6"), `tags=${resDropped.hashtags}`);
+
+const veryLongCaption = "สเปรย์หอมปรับอากาศ ".repeat(10).trim(); // 189 chars
+const resTrunc = truncateShopeeCaptionAndHashtags(veryLongCaption, ["#tag1"]);
+check("shopee truncates caption if single tag still exceeds 150", `${resTrunc.caption} ${resTrunc.hashtags}`.trim().length <= 150, `len=${`${resTrunc.caption} ${resTrunc.hashtags}`.trim().length}`);
+check("shopee truncated caption ends with ellipsis", resTrunc.caption.endsWith("..."));
+
+// --- heavy/large product weight/keyword tests ---
+const heavyRice = { name: "ข้าวสารหอมมะลิกระสอบ 10 กิโล" };
+const heavyRiceImage = buildImagePrompt(heavyRice, settings);
+const heavyRiceVideo = buildVideoPrompt(heavyRice, settings);
+check("heavy product weight 10kg detected for image", /Real scale./i.test(heavyRiceImage), heavyRiceImage);
+check("heavy product weight 10kg detected for video", /Real scale./i.test(heavyRiceVideo), heavyRiceVideo);
+check("heavy product weight 10kg uses realistic medium scale instructions", /realistic medium scale relative to the presenter, never as a tiny packet or a giant sack/i.test(heavyRiceVideo), heavyRiceVideo);
+
+const heavyCement = { name: "ปูนซีเมนต์ 50kg" };
+const heavyCementVideo = buildVideoPrompt(heavyCement, settings);
+check("immobile heavy product weight 50kg prevents presenter holding product in air", /resting stably on a flat surface or floor; do not attempt to lift, carry, or hold it/i.test(heavyCementVideo), heavyCementVideo);
+
+const heavyFertilizer = { name: "ปุ๋ยเคมี 15กก." };
+const heavyFertilizerImage = buildImagePrompt(heavyFertilizer, settings);
+check("heavy product weight 15kg (Thai abbreviation กก.) detected", /Real scale./i.test(heavyFertilizerImage), heavyFertilizerImage);
+
+const lightSoap = { name: "สบู่ก้อน 100 กรัม" };
+const lightSoapImage = buildImagePrompt(lightSoap, settings);
+check("light product soap 100g not detected as heavy", !/Real scale./i.test(lightSoapImage), lightSoapImage);
 
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);

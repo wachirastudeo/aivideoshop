@@ -1,6 +1,6 @@
 /**
  * flow-automation.js
- * Pipeline ลำดับตาม autogenx:
+ * Pipeline:
  * 1. ensureProjectPage
  * 2. switchToUploadedTab
  * 3. uploadImages  ← รอ data-tile-id ใหม่
@@ -96,7 +96,7 @@ async function sleepStop(ms) {
     }
 }
 
-// ── Human click (autogenx) ───────────────────────────────────
+// ── Human click ──────────────────────────────────────────────
 function fireAt(el, cx, cy) {
     const sx = cx + window.screenX, sy = cy + window.screenY;
     const b = () => ({
@@ -708,7 +708,7 @@ function getTileMediaUrl(el) {
     return vid?.currentSrc || vid?.src || source?.src || img?.currentSrc || img?.src || bg || "";
 }
 
-// ── File input patch (autogenx) ──────────────────────────────
+// ── File input patch ─────────────────────────────────────────
 function patchFileInput() {
     const D = 3000;
     new MutationObserver(muts => {

@@ -72,9 +72,12 @@ export async function generatePostCopy(productInfo = {}, defaults = {}) {
 }
 
 function buildFallbackPostCopy(productInfo, defaults) {
+  const isShopee = productInfo.source === "shopee" || (productInfo.productUrl && /shopee\.co\.th/i.test(productInfo.productUrl));
+  const maxLen = isShopee ? 100 : POST_CAPTION_MAX_LENGTH;
+  const maxTags = isShopee ? 3 : 5;
   return {
-    caption: truncatePostCaption(buildCaption(productInfo, defaults)),
-    hashtags: normalizeHashtags(buildPostHashtags(productInfo, { ...defaults, hashtags: productInfo.hashtags || defaults.hashtags }), 5),
+    caption: truncatePostCaption(buildCaption(productInfo, defaults), maxLen),
+    hashtags: normalizeHashtags(buildPostHashtags(productInfo, { ...defaults, hashtags: productInfo.hashtags || defaults.hashtags }), maxTags),
     source: "fallback"
   };
 }
@@ -155,10 +158,13 @@ async function generatePostCopyWithOpenAI(productInfo, defaults, settings, fallb
 }
 
 function buildPostCopyPrompt(productInfo = {}, defaults = {}) {
-  const baseHashtags = normalizeHashtags(productInfo.hashtags || defaults.hashtags || [], 4).join(" ");
+  const isShopee = productInfo.source === "shopee" || (productInfo.productUrl && /shopee\.co\.th/i.test(productInfo.productUrl));
+  const maxLen = isShopee ? 100 : POST_CAPTION_MAX_LENGTH;
+  const platformName = isShopee ? "Shopee" : "TikTok Shop";
+  const baseHashtags = normalizeHashtags(productInfo.hashtags || defaults.hashtags || [], isShopee ? 3 : 4).join(" ");
   const fullProductName = resolveFullProductNameForAi(productInfo);
   return [
-    "Create TikTok Shop post copy in Thai for this product.",
+    `Create ${platformName} post copy in Thai for this product.`,
     `Full product title from source: ${sanitizeLongText(fullProductName)}`,
     `Edited product name / hook: ${sanitizeLongText(productInfo.name || "")}`,
     `Product ID: ${sanitizeText(productInfo.productId || productInfo.product_id || "")}`,
@@ -169,14 +175,16 @@ function buildPostCopyPrompt(productInfo = {}, defaults = {}) {
     `CTA: ${sanitizeText(productInfo.cta || "สั่งได้เลย")}`,
     `Default hashtags: ${baseHashtags}`,
     "Rules:",
-    `- Caption must be natural Thai TikTok Shop sales copy, maximum ${POST_CAPTION_MAX_LENGTH} characters.`,
+    `- Caption must be natural Thai ${platformName} sales copy, maximum ${maxLen} characters.`,
     "- The caption MUST begin with the edited product name / hook exactly as given, then the sales copy on the next line.",
     "- Use the full product title as the main source for product-specific details.",
     "- Do not include product URLs or raw links.",
     "- Do not include hashtags inside caption; return hashtags separately.",
     "- Do not invent medical, guaranteed, or unsupported claims.",
     "- Remove bracket/badge text, emoji, odd punctuation, and filler words.",
-    "- Return at most 5 hashtags, all directly relevant to the product/category/use case, each starting with #.",
+    isShopee
+      ? "- Return at most 3 hashtags, all directly relevant to the product/category/use case, each starting with #."
+      : "- Return at most 5 hashtags, all directly relevant to the product/category/use case, each starting with #.",
     'Return compact JSON only: {"caption":"...","hashtags":["#tag1","#tag2","#tag3"]}'
   ].join("\n");
 }
@@ -197,9 +205,12 @@ function sanitizeLongText(value) {
 }
 
 function normalizeGeneratedPostCopy(value, fallback, productInfo = {}) {
+  const isShopee = productInfo.source === "shopee" || (productInfo.productUrl && /shopee\.co\.th/i.test(productInfo.productUrl));
+  const maxLen = isShopee ? 100 : POST_CAPTION_MAX_LENGTH;
+  const maxTags = isShopee ? 3 : 5;
   const rawCaption = cleanGeneratedCaption(value?.caption) || fallback.caption;
-  const caption = truncatePostCaption(ensureCaptionLeadsWithHook(rawCaption, productInfo));
-  const hashtags = normalizeHashtags(cleanGeneratedHashtags(value?.hashtags?.length ? value.hashtags : fallback.hashtags), 5);
+  const caption = truncatePostCaption(ensureCaptionLeadsWithHook(rawCaption, productInfo), maxLen);
+  const hashtags = normalizeHashtags(cleanGeneratedHashtags(value?.hashtags?.length ? value.hashtags : fallback.hashtags), maxTags);
   return {
     caption,
     hashtags,
@@ -246,8 +257,8 @@ function cleanGeneratedCaption(value) {
     .trim();
 }
 
-function truncatePostCaption(value) {
-  return String(value || "").trim().slice(0, POST_CAPTION_MAX_LENGTH).trim();
+function truncatePostCaption(value, maxLength = POST_CAPTION_MAX_LENGTH) {
+  return String(value || "").trim().slice(0, maxLength).trim();
 }
 
 async function analyzeWithGemini(imageDataUrls, productInfo, settings) {

@@ -6,7 +6,8 @@ import {
   resolveProductUrl,
   buildCaption,
   buildPostHashtags,
-  normalizeHashtags
+  normalizeHashtags,
+  truncateShopeeCaptionAndHashtags
 } from "../modules/prompt-builder.js";
 import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
@@ -68,7 +69,7 @@ export async function syncSelectedProductToVideoTab() {
 
 function bindGlobalEvents() {
   [
-    "video-style", "presenter", "voice-tone", "location", "custom-location",
+    "video-style", "presenter", "custom-presenter", "voice-tone", "location", "custom-location",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action",
     "image-model", "video-model", "video-ref-mode"
@@ -91,6 +92,7 @@ function bindGlobalEvents() {
 function fillGlobalFormFromState() {
   setValue("video-style", settings.videoStyle);
   setValue("presenter", settings.presenter);
+  setValue("custom-presenter", settings.customPresenter);
   setValue("voice-tone", settings.voiceTone);
   setValue("location", settings.location);
   setValue("custom-location", settings.customLocation);
@@ -109,6 +111,7 @@ function fillGlobalFormFromState() {
   setValue("post-action", settings.postAction);
   syncVideoTextSettingsVisibility();
   syncCustomLocationVisibility();
+  syncCustomPresenterVisibility();
 }
 
 function syncSettingsForm() {
@@ -116,6 +119,7 @@ function syncSettingsForm() {
     ...settings,
     videoStyle: getValue("video-style"),
     presenter: getValue("presenter"),
+    customPresenter: getValue("custom-presenter"),
     voiceTone: getValue("voice-tone"),
     location: getValue("location"),
     customLocation: getValue("custom-location"),
@@ -137,6 +141,7 @@ function syncSettingsForm() {
   renderQueue();
   syncVideoTextSettingsVisibility();
   syncCustomLocationVisibility();
+  syncCustomPresenterVisibility();
   persistState();
 }
 
@@ -210,6 +215,7 @@ function normalizeSettings(value) {
     customCta: "",
     location: value.location || "Auto",
     customLocation: value.customLocation || "",
+    customPresenter: value.customPresenter || "",
     pacing: value.pacing || 2,
     transition: value.transition || "Auto",
     imageModel: value.imageModel || "nano-banana-pro",
@@ -233,6 +239,13 @@ function syncVideoTextSettingsVisibility() {
 function syncCustomLocationVisibility() {
   const customEnabled = getValue("location") === "กรอกเอง";
   document.querySelectorAll(".custom-location-setting").forEach((field) => {
+    field.hidden = !customEnabled;
+  });
+}
+
+function syncCustomPresenterVisibility() {
+  const customEnabled = getValue("presenter") === "กรอกเอง";
+  document.querySelectorAll(".custom-presenter-setting").forEach((field) => {
     field.hidden = !customEnabled;
   });
 }
@@ -1095,12 +1108,12 @@ async function saveShopeeProductToCsv(product, videoFilename) {
     ? product.caption
     : buildCaption(product, postDefaults);
   
-  const cleanCaption = String(caption || "")
-    .replace(/"/g, '""')
-    .replace(/\r?\n/g, ' ');
-    
+  const hashtagList = buildPostHashtags(product, postDefaults);
+  const truncated = truncateShopeeCaptionAndHashtags(caption, hashtagList);
+  
+  const cleanCaption = truncated.caption.replace(/"/g, '""');
   const productLinks = String(product.productUrl || "").replace(/"/g, '""');
-  const hashtags = buildPostHashtags(product, postDefaults).join(" ").replace(/"/g, '""');
+  const hashtags = truncated.hashtags.replace(/"/g, '""');
   
   const exists = rows.find(r => r.video === videoName);
   if (!exists) {
