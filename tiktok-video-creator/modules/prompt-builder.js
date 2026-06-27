@@ -93,7 +93,7 @@ const THAI_PERSON_DIRECTION = "Natural Thai reviewer. Keep the product visible a
 
 const HANDS_DIRECTION = "Show only realistic human hands holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand; never add, merge, distort, or remove fingers. Keep the product fully visible and unchanged.";
 
-const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the single product. Preserve only its exact shape, proportions, structure/count, materials, colors, hardware, labels, and printed details; the visible product overrides conflicting title variants. Do not redesign it.";
+const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the single product. Preserve only its exact shape, proportions, structure/count, materials, colors, hardware, labels, and printed details; the visible product overrides conflicting title variants. Any printed text, packaging details, and brand logos on the product must be rendered extremely sharp, clear, legible, and spelt correctly in both Thai and English. Do not redesign it.";
 
 const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
 
@@ -101,7 +101,7 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangemen
 
 const SCALE_FIDELITY_DIRECTION = "Keep the product's proportions and real-world scale identical to the uploaded reference: same width-to-height ratio and part dimensions; never stretch, squash, elongate, enlarge, or shrink it.";
 
-const MATCH_STILL_DIRECTION = "CRITICAL: treat the attached reference image as the exact product. Keep its shape, proportions, colors, materials, and all printed text, logos, and graphics identical in every scene and hard cut. Animate only camera, lighting, and scene action around it; never redraw, restyle, swap, warp, or distort the product or its text.";
+const MATCH_STILL_DIRECTION = "CRITICAL: treat the attached reference image as the exact product. Keep its shape, proportions, colors, materials, and all printed text, logos, and graphics identical in every scene and hard cut. All printed text, packaging details, and brand labels on the product must be rendered with perfect clarity, remaining extremely sharp, readable, and spelt correctly in both Thai and English. Animate only camera, lighting, and scene action around it; never redraw, restyle, swap, warp, or distort the product or its text.";
 
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
@@ -111,7 +111,7 @@ const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwor
 const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
-const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
+const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Ensure all printed words and characters (in both Thai and English) are extremely sharp, readable, and spelled correctly. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
 
 const NO_PEOPLE_DIRECTION = "Product-only scene. No people, faces, presenters, reviewers, characters, celebrities, or public figures.";
 

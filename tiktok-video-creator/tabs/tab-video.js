@@ -41,7 +41,7 @@ export async function initVideoTab(injectedHelpers) {
     imageCount: savedOptions.flow?.imageCount || 1,
     videoCount: savedOptions.flow?.videoCount || 1,
     postAction: savedOptions.postDefaults?.afterCreateAction || "post",
-    videoRefMode: "ingredients",
+    videoRefMode: "frames",
     ...(savedOptions.mediaSettings || {})
   };
 
@@ -134,7 +134,7 @@ function syncSettingsForm() {
     videoCount: parseInt(getValue("video-count"), 10) || 1,
     videoDuration: parseInt(getValue("video-duration"), 10) || 8,
     aspectRatio: getValue("aspect-ratio") || "9:16",
-    videoRefMode: getValue("video-ref-mode") || "ingredients",
+    videoRefMode: getValue("video-ref-mode") || "frames",
     postAction: getValue("post-action")
   });
 
@@ -224,7 +224,7 @@ function normalizeSettings(value) {
     videoCount: value.videoCount || 1,
     videoDuration: value.videoDuration || 8,
     aspectRatio: value.aspectRatio || "9:16",
-    videoRefMode: value.videoRefMode === "frames" ? "frames" : "ingredients",
+    videoRefMode: value.videoRefMode === "ingredients" ? "ingredients" : "frames",
     postAction: value.postAction === "both" ? "draft" : (value.postAction || "post")
   };
 }
@@ -852,7 +852,7 @@ function buildFlowOptions(product = null) {
     videoCount: settings.videoCount,
     videoDuration: settings.videoDuration,
     aspectRatio: settings.aspectRatio,
-    videoRefMode: settings.videoRefMode || "ingredients"
+    videoRefMode: settings.videoRefMode || "frames"
   };
   if (product) opts.imageUrls = getFlowProductImages(product);
   return opts;
