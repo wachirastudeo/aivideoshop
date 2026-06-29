@@ -80,11 +80,11 @@ const PACING = {
 };
 
 const PRESENTERS = {
-  Auto: "Let AI choose whether a Thai presenter improves the product video",
-  none: "No humans, focus entirely on the product visual",
-  hands_only: "Only realistic Thai hands holding and presenting the product, no face or body",
-  woman: "A trendy young Thai woman reviewer interacting with the product",
-  man: "A stylish young Thai man reviewer presenting the product",
+  Auto: "Realistic cinematic shot. Prefer product-only views. If a presenter is shown, they must stand near or gesture towards the product without complex handling.",
+  none: "No humans. Focus entirely on the product resting stably in a realistic setting with smooth camera movement.",
+  hands_only: "Only realistic hands holding the product gently and steadily, no face or body. No twisting or flipping of the product to prevent glitches.",
+  woman: "A young Thai woman reviewer presenting the product. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
+  man: "A young Thai man reviewer presenting the product. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
   living_product: "The product itself becomes a living character with cute 3D eyes and personality"
 };
@@ -93,7 +93,7 @@ const THAI_PERSON_DIRECTION = "Natural Thai reviewer. Keep the product visible a
 
 const HANDS_DIRECTION = "Show only realistic human hands holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand; never add, merge, distort, or remove fingers. Keep the product fully visible and unchanged.";
 
-const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the single product. Preserve only its exact shape, proportions, structure/count, materials, colors, hardware, labels, and printed details; the visible product overrides conflicting title variants. Any printed text, packaging details, and brand logos on the product must be rendered extremely sharp, clear, legible, and spelt correctly in both Thai and English. Do not redesign it.";
+const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the product. Preserve its exact shape, proportions, materials, colors, and original printed details. Do not write, print, or generate any new text, labels, or letters on the product package. Keep the original text layout from the reference image exactly as it is, without drawing or spelling any words from the text prompt onto the product packaging. Do not redesign it.";
 
 const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
 
@@ -101,7 +101,9 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangemen
 
 const SCALE_FIDELITY_DIRECTION = "Keep the product's proportions and real-world scale identical to the uploaded reference: same width-to-height ratio and part dimensions; never stretch, squash, elongate, enlarge, or shrink it.";
 
-const MATCH_STILL_DIRECTION = "CRITICAL: treat the attached reference image as the exact product. Keep its shape, proportions, colors, materials, and all printed text, logos, and graphics identical in every scene and hard cut. All printed text, packaging details, and brand labels on the product must be rendered with perfect clarity, remaining extremely sharp, readable, and spelt correctly in both Thai and English. Animate only camera, lighting, and scene action around it; never redraw, restyle, swap, warp, or distort the product or its text.";
+const MATCH_STILL_DIRECTION = "CRITICAL: treat the attached reference image as the exact product. Keep its shape, proportions, colors, materials, and all printed text, logos, and graphics identical in every scene. Do not write, print, or generate any new text, labels, or letters on the product package. Copy the original text layout from the reference image exactly as it is, without drawing or spelling any words from the text prompt onto the product packaging. Animate only camera, lighting, and scene action around it; never redraw, restyle, swap, warp, or distort the product or its text.";
+
+const REALISM_AND_PHYSICS_DIRECTION = "Realistic motion and physics only. No product morphing, warping, bending, or melting. No floating objects or levitation; the product and all props must rest firmly on a solid surface and obey gravity naturally. Hands or people must interact naturally without distorting the product. Camera movement must be smooth, cinematic, and stable (slow pans or zooms), with no shaky motion.";
 
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
@@ -111,7 +113,7 @@ const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwor
 const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
-const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Ensure all printed words and characters (in both Thai and English) are extremely sharp, readable, and spelled correctly. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
+const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Do not write or print any new text, letters, or words on the product packaging. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
 
 const NO_PEOPLE_DIRECTION = "Product-only scene. No people, faces, presenters, reviewers, characters, celebrities, or public figures.";
 
@@ -197,8 +199,8 @@ export function sanitizeText(value) {
  * @returns {string} prompt ภาษาอังกฤษ
  */
 export function buildImagePrompt(productInfo, settings) {
-  const productName = generationProductName(productInfo.name, 220) || "the attached product";
-  const details = compactPromptText(productInfo.highlights, 100);
+  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
+  const details = compactPromptText(productInfo.highlights || "", 100).replace(/[^\x00-\x7F]/g, "").trim();
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
@@ -271,7 +273,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
   const clipText = compactPromptText(settings?.clipText, 80);
   const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true") && Boolean(clipText);
-  const productName = generationProductName(productInfo.name, 220) || "the attached product";
+  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const overlayText = [
@@ -288,7 +290,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`,
     MATCH_STILL_DIRECTION,
     PRODUCT_FIDELITY_DIRECTION,
-    isHeavy ? "Real scale." : "",
+    REALISM_AND_PHYSICS_DIRECTION,
+    isHeavy ? "Real scale." : "Close-up scale: Show the small product in a large, prominent close-up or medium close-up. It must occupy most of the frame so all packaging text and details remain extremely sharp and readable. Do not show it as a tiny or distant object.",
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
     analysisDirection,
   ];
@@ -354,6 +357,12 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace("holding and presenting", "holding with both hands and presenting")
       .replace("holding", "holding with both hands or interacting with")
       + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the presenter, never as a tiny packet or a giant sack.";
+  } else if (weightCategory === "light") {
+    handsDir = handsDir
+      + " The product is a small item; depict it in a prominent large scale relative to the hands (close-up), ensuring the product packaging, brand name, and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+
+    presenterInstruction = presenterInstruction
+      + " The product is a small item; depict it in a prominent large scale (close-up or medium close-up) relative to the presenter, ensuring the product packaging, brand name, and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
   }
 
   if (handsOnly) {
@@ -477,8 +486,30 @@ function buildCategoryFidelityDirection(productInfo = {}) {
   return "";
 }
 
-function generationProductName(value, maxLength) {
-  return stripStructuralVariantCounts(compactPromptText(value, maxLength));
+function generationProductName(value, category = "") {
+  if (!value) return "the product";
+
+  const lowerVal = value.toLowerCase();
+  const lowerCat = String(category || "").toLowerCase();
+
+  // Map keywords to clean English generic terms
+  if (lowerVal.includes("กาแฟ") || lowerCat.includes("coffee")) return "coffee package";
+  if (lowerVal.includes("พัดลม") || lowerCat.includes("fan")) return "portable fan";
+  if (lowerVal.includes("เสื้อ") || lowerVal.includes("กางเกง") || lowerVal.includes("ผ้า") || lowerCat.includes("clothe") || lowerCat.includes("apparel")) return "clothing item";
+  if (lowerVal.includes("ครีม") || lowerVal.includes("เซรั่ม") || lowerVal.includes("บำรุง") || lowerVal.includes("สกินแคร์") || lowerCat.includes("skin") || lowerCat.includes("cosmetic")) return "skincare product bottle";
+  if (lowerVal.includes("อาหาร") || lowerVal.includes("ขนม") || lowerCat.includes("food") || lowerCat.includes("snack")) return "food product package";
+  if (lowerVal.includes("แก้ว") || lowerVal.includes("ขวด") || lowerCat.includes("bottle") || lowerCat.includes("cup")) return "cup";
+  if (lowerVal.includes("กระเป๋า") || lowerCat.includes("bag")) return "bag";
+  if (lowerVal.includes("รองเท้า") || lowerCat.includes("shoe")) return "shoe";
+
+  // If there are English words in the original name, extract the first few words to identify it
+  let englishWords = value.replace(/[^\x00-\x7F]/g, " ").replace(/\s+/g, " ").trim();
+  if (englishWords.length > 3) {
+    const words = englishWords.split(" ").slice(0, 4).join(" ");
+    if (words.length > 3) return stripStructuralVariantCounts(words);
+  }
+
+  return "the product packaging";
 }
 
 function stripStructuralVariantCounts(value) {

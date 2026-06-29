@@ -1413,10 +1413,11 @@ function cleanProductTitle(raw) {
     .trim();
 }
 
-// เก็บเฉพาะตัวอักษร(ไทย/อังกฤษ/ภาษาอื่น) วรรณยุกต์ ตัวเลข เว้นวรรค และเครื่องหมายที่ใช้บ่อยในชื่อสินค้า (เช่น %, -, /, +, &, ., ,, (, ))
+// เก็บเฉพาะตัวอักษร(ไทย/อังกฤษ/ภาษาอื่น) วรรณยุกต์ ตัวเลข และเว้นวรรคเท่านั้น (ตัดเครื่องหมายและสัญลักษณ์พิเศษทั้งหมดออกเพื่อป้องกัน TikTok ปฏิเสธ)
 function stripWeirdChars(raw) {
   return String(raw || "")
-    .replace(/[^\p{L}\p{M}\p{N}\s%\-+\/&.,()]/gu, " ")
+    .replace(/\d+(?:\.\d+)?\s*%/g, "") // ลบตัวเลขพร้อมเครื่องหมายเปอร์เซ็นต์ออกคู่กันเลย (เช่น 100%, 50% -> ลบทั้งตัวเลขและ %)
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -1471,7 +1472,8 @@ function buildProductTitlePrompt(rawTitle, fallbackTitle) {
     "Rules:",
     `- Return one natural product name, maximum ${PRODUCT_TITLE_MAX} characters.`,
     "- Preserve useful brand/model/type words when possible.",
-    "- Remove badges, promotions, bracket text, emoji, punctuation, price, quantity claims, and filler words.",
+    "- Use ONLY letters, numbers, and spaces. Remove all punctuation, brackets, parentheses, hyphens, slashes, ampersands, percent signs, and special symbols.",
+    "- Remove badges, promotions, bracket text, emoji, price, quantity claims, and filler words.",
     "- Thai or English is OK. Use the same main language as the original title.",
     "- If the title is long, cut at a natural word boundary.",
     'Return compact JSON only: {"title":"..."}'

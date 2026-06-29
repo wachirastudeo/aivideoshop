@@ -554,8 +554,11 @@ function scrapeShopeeGallery() {
     if (!s) return "";
     if (s.startsWith("//")) s = "https:" + s;
     let url = s.split("@")[0];
-    // Only strip _tn if it is at the end of the path/filename, preventing cutting random hash strings in half
+    // Strip thumbnail suffixes (_tn)
     url = url.replace(/_tn$/, "").replace(/_tn(?=\.[a-zA-Z0-9]+(?:\?|$))/, "");
+    // Strip size suffixes (e.g. _w640, _w320, _s120, _w640_h640)
+    url = url.replace(/_(?:w|h|s)\d+(?:_(?:w|h|s)\d+)?(?=\.[a-zA-Z0-9]+(?:\?|$))/, "");
+    url = url.replace(/_(?:w|h|s)\d+(?:_(?:w|h|s)\d+)?$/, "");
     return url;
   };
   // 1) รูปจาก <img> ที่อยู่บน CDN ของ Shopee

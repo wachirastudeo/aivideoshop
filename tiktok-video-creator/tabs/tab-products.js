@@ -21,7 +21,13 @@ export async function initProductsTab(injectedHelpers) {
   const stored = await chrome.storage.local.get(["pullSource"]);
   applySource(stored.pullSource === "shopee" ? "shopee" : "tiktok");
 
-  await loadProducts({ reset: true, silent: true });
+  if (products.length > 0) {
+    renderProducts();
+    const loadMore = document.querySelector("#load-more-products");
+    if (loadMore) loadMore.hidden = !nextPageToken;
+  } else {
+    await loadProducts({ reset: true, silent: true });
+  }
 }
 
 /**

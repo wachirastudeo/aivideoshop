@@ -644,8 +644,8 @@ html[data-mode="tab"] .app-shell {
 }
 
 .product-card__image {
-  width: 50px;
-  height: 50px;
+  width: 72px;
+  height: 72px;
   border-radius: 6px;
   object-fit: cover;
   background: #000;
@@ -1434,8 +1434,8 @@ html[data-mode="tab"] .activity-log {
 }
 
 .flow-job__thumb {
-  width: 50px;
-  height: 50px;
+  width: 72px;
+  height: 72px;
   border-radius: 6px;
   border: 1px solid var(--line);
 }
@@ -1645,8 +1645,7 @@ html[data-mode="tab"] .activity-log {
 }
 
 @media (max-width: 560px) {
-  .flow-hero,
-  .flow-job__header {
+  .flow-hero {
     flex-direction: column;
     align-items: stretch;
   }
@@ -1655,10 +1654,6 @@ html[data-mode="tab"] .activity-log {
   .flow-result-grid,
   .settings-grid {
     grid-template-columns: 1fr;
-  }
-
-  .flow-job__title h3 {
-    white-space: normal;
   }
 }
 

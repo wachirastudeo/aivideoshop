@@ -2265,16 +2265,38 @@ function mimeToImageExt(mime) {
 }
 
 // แปลง URL/URI ภาพให้เป็น full URL สำหรับอัปโหลด (รองรับ tos key เปล่าจาก TikTok)
+function maximizeProductImageUrl(url) {
+    if (!url) return "";
+    if (url.startsWith("//")) {
+        url = "https:" + url;
+    }
+    // TikTok/ByteDance CDN Image Processing Optimization
+    if (url.includes("ibyteimg.com") && url.includes("~tplv-")) {
+        let maximized = url.replace(/-(?:resize|crop)-jpeg:\d+:\d+\.jpeg/gi, "-origin-jpeg.jpeg");
+        maximized = maximized.replace(/-(?:resize|crop)-webp:\d+:\d+\.webp/gi, "-origin-webp.webp");
+        maximized = maximized.replace(/-(?:resize|crop):\d+:\d+\.jpeg/gi, "-origin.jpeg");
+        maximized = maximized.replace(/-(?:resize|crop):\d+:\d+\.webp/gi, "-origin.webp");
+        maximized = maximized.replace(/-(?:resize|crop)(?:-jpeg|-webp)?:\d+:\d+/gi, (match) => {
+            return match.replace(/resize|crop/i, "origin").split(":")[0];
+        });
+        return maximized;
+    }
+    return url;
+}
+
 function normalizeImageUrlForUpload(raw) {
     let u = String(raw || "").trim();
     if (!u) return "";
-    if (u.startsWith("//")) return "https:" + u;
-    if (/^https?:\/\//i.test(u) || u.startsWith("data:")) return u;
+    if (u.startsWith("//")) u = "https:" + u;
+    if (/^https?:\/\//i.test(u)) {
+        return maximizeProductImageUrl(u);
+    }
+    if (u.startsWith("data:")) return u;
     // tos key เปล่า เช่น tos-alisg-i-aphluv4xwc-sg/abc... → สร้าง full CDN URL
     const key = u.replace(/^\/+/, "");
     if (/^(tos-|obj\/tos)/i.test(key)) {
         const token = key.match(/-i-([a-z0-9]+)-/i)?.[1] || "";
-        const suffix = token ? `~tplv-${token}-resize-jpeg:800:800.jpeg` : "";
+        const suffix = token ? `~tplv-${token}-origin-jpeg.jpeg` : "";
         return `https://p16-oec-general.tiktokcdn.com/${key}${suffix}`;
     }
     return u;

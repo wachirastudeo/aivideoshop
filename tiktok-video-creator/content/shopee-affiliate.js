@@ -225,6 +225,13 @@
     const img = card.querySelector("img");
     let imageUrl = img?.currentSrc || img?.src || img?.getAttribute("data-src") || "";
     if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl;
+    if (imageUrl) {
+      let url = imageUrl.split("@")[0];
+      url = url.replace(/_tn$/, "").replace(/_tn(?=\.[a-zA-Z0-9]+(?:\?|$))/, "");
+      url = url.replace(/_(?:w|h|s)\d+(?:_(?:w|h|s)\d+)?(?=\.[a-zA-Z0-9]+(?:\?|$))/, "");
+      url = url.replace(/_(?:w|h|s)\d+(?:_(?:w|h|s)\d+)?$/, "");
+      imageUrl = url;
+    }
     const price = (card.querySelector(".price")?.textContent || "").replace(/[^\d.]/g, "");
     const symbol = (card.querySelector(".symbol--left")?.textContent || "฿").trim();
     const commRate = ((card.querySelector(".commRate")?.textContent || "").match(/(\d+(?:\.\d+)?)%/) || [])[1] || "";

@@ -1,0 +1,348 @@
+diff --git a/tiktok-video-creator/background.js b/tiktok-video-creator/background.js
+index 4c9881b..38cdad2 100644
+--- a/tiktok-video-creator/background.js
++++ b/tiktok-video-creator/background.js
+@@ -554,8 +554,11 @@ function scrapeShopeeGallery() {
+     if (!s) return "";
+     if (s.startsWith("//")) s = "https:" + s;
+     let url = s.split("@")[0];
+-    // Only strip _tn if it is at the end of the path/filename, preventing cutting random hash strings in half
++    // Strip thumbnail suffixes (_tn)
+     url = url.replace(/_tn$/, "").replace(/_tn(?=\.[a-zA-Z0-9]+(?:\?|$))/, "");
++    // Strip size suffixes (e.g. _w640, _w320, _s120, _w640_h640)
++    url = url.replace(/_(?:w|h|s)\d+(?:_(?:w|h|s)\d+)?(?=\.[a-zA-Z0-9]+(?:\?|$))/, "");
++    url = url.replace(/_(?:w|h|s)\d+(?:_(?:w|h|s)\d+)?$/, "");
+     return url;
+   };
+   // 1) รูปจาก <img> ที่อยู่บน CDN ของ Shopee
+diff --git a/tiktok-video-creator/content/flow-automation.js b/tiktok-video-creator/content/flow-automation.js
+index 9ae48cd..31631e5 100644
+--- a/tiktok-video-creator/content/flow-automation.js
++++ b/tiktok-video-creator/content/flow-automation.js
+@@ -2265,16 +2265,38 @@ function mimeToImageExt(mime) {
+ }
+ 
+ // แปลง URL/URI ภาพให้เป็น full URL สำหรับอัปโหลด (รองรับ tos key เปล่าจาก TikTok)
++function maximizeProductImageUrl(url) {
++    if (!url) return "";
++    if (url.startsWith("//")) {
++        url = "https:" + url;
++    }
++    // TikTok/ByteDance CDN Image Processing Optimization
++    if (url.includes("ibyteimg.com") && url.includes("~tplv-")) {
++        let maximized = url.replace(/-(?:resize|crop)-jpeg:\d+:\d+\.jpeg/gi, "-origin-jpeg.jpeg");
++        maximized = maximized.replace(/-(?:resize|crop)-webp:\d+:\d+\.webp/gi, "-origin-webp.webp");
++        maximized = maximized.replace(/-(?:resize|crop):\d+:\d+\.jpeg/gi, "-origin.jpeg");
++        maximized = maximized.replace(/-(?:resize|crop):\d+:\d+\.webp/gi, "-origin.webp");
++        maximized = maximized.replace(/-(?:resize|crop)(?:-jpeg|-webp)?:\d+:\d+/gi, (match) => {
++            return match.replace(/resize|crop/i, "origin").split(":")[0];
++        });
++        return maximized;
++    }
++    return url;
++}
++
+ function normalizeImageUrlForUpload(raw) {
+     let u = String(raw || "").trim();
+     if (!u) return "";
+-    if (u.startsWith("//")) return "https:" + u;
+-    if (/^https?:\/\//i.test(u) || u.startsWith("data:")) return u;
++    if (u.startsWith("//")) u = "https:" + u;
++    if (/^https?:\/\//i.test(u)) {
++        return maximizeProductImageUrl(u);
++    }
++    if (u.startsWith("data:")) return u;
+     // tos key เปล่า เช่น tos-alisg-i-aphluv4xwc-sg/abc... → สร้าง full CDN URL
+     const key = u.replace(/^\/+/, "");
+     if (/^(tos-|obj\/tos)/i.test(key)) {
+         const token = key.match(/-i-([a-z0-9]+)-/i)?.[1] || "";
+-        const suffix = token ? `~tplv-${token}-resize-jpeg:800:800.jpeg` : "";
++        const suffix = token ? `~tplv-${token}-origin-jpeg.jpeg` : "";
+         return `https://p16-oec-general.tiktokcdn.com/${key}${suffix}`;
+     }
+     return u;
+diff --git a/tiktok-video-creator/content/shopee-affiliate.js b/tiktok-video-creator/content/shopee-affiliate.js
+index 66deaeb..4277453 100644
+--- a/tiktok-video-creator/content/shopee-affiliate.js
++++ b/tiktok-video-creator/content/shopee-affiliate.js
+@@ -225,6 +225,13 @@
+     const img = card.querySelector("img");
+     let imageUrl = img?.currentSrc || img?.src || img?.getAttribute("data-src") || "";
+     if (imageUrl.startsWith("//")) imageUrl = "https:" + imageUrl;
++    if (imageUrl) {
++      let url = imageUrl.split("@")[0];
++      url = url.replace(/_tn$/, "").replace(/_tn(?=\.[a-zA-Z0-9]+(?:\?|$))/, "");
++      url = url.replace(/_(?:w|h|s)\d+(?:_(?:w|h|s)\d+)?(?=\.[a-zA-Z0-9]+(?:\?|$))/, "");
++      url = url.replace(/_(?:w|h|s)\d+(?:_(?:w|h|s)\d+)?$/, "");
++      imageUrl = url;
++    }
+     const price = (card.querySelector(".price")?.textContent || "").replace(/[^\d.]/g, "");
+     const symbol = (card.querySelector(".symbol--left")?.textContent || "฿").trim();
+     const commRate = ((card.querySelector(".commRate")?.textContent || "").match(/(\d+(?:\.\d+)?)%/) || [])[1] || "";
+diff --git a/tiktok-video-creator/content/tiktok-studio-automation.js b/tiktok-video-creator/content/tiktok-studio-automation.js
+index ed63cb2..5bd90e5 100644
+--- a/tiktok-video-creator/content/tiktok-studio-automation.js
++++ b/tiktok-video-creator/content/tiktok-studio-automation.js
+@@ -1413,10 +1413,11 @@ function cleanProductTitle(raw) {
+     .trim();
+ }
+ 
+-// เก็บเฉพาะตัวอักษร(ไทย/อังกฤษ/ภาษาอื่น) วรรณยุกต์ ตัวเลข เว้นวรรค และเครื่องหมายที่ใช้บ่อยในชื่อสินค้า (เช่น %, -, /, +, &, ., ,, (, ))
++// เก็บเฉพาะตัวอักษร(ไทย/อังกฤษ/ภาษาอื่น) วรรณยุกต์ ตัวเลข และเว้นวรรคเท่านั้น (ตัดเครื่องหมายและสัญลักษณ์พิเศษทั้งหมดออกเพื่อป้องกัน TikTok ปฏิเสธ)
+ function stripWeirdChars(raw) {
+   return String(raw || "")
+-    .replace(/[^\p{L}\p{M}\p{N}\s%\-+\/&.,()]/gu, " ")
++    .replace(/\d+(?:\.\d+)?\s*%/g, "") // ลบตัวเลขพร้อมเครื่องหมายเปอร์เซ็นต์ออกคู่กันเลย (เช่น 100%, 50% -> ลบทั้งตัวเลขและ %)
++    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
+     .replace(/\s+/g, " ")
+     .trim();
+ }
+@@ -1471,7 +1472,8 @@ function buildProductTitlePrompt(rawTitle, fallbackTitle) {
+     "Rules:",
+     `- Return one natural product name, maximum ${PRODUCT_TITLE_MAX} characters.`,
+     "- Preserve useful brand/model/type words when possible.",
+-    "- Remove badges, promotions, bracket text, emoji, punctuation, price, quantity claims, and filler words.",
++    "- Use ONLY letters, numbers, and spaces. Remove all punctuation, brackets, parentheses, hyphens, slashes, ampersands, percent signs, and special symbols.",
++    "- Remove badges, promotions, bracket text, emoji, price, quantity claims, and filler words.",
+     "- Thai or English is OK. Use the same main language as the original title.",
+     "- If the title is long, cut at a natural word boundary.",
+     'Return compact JSON only: {"title":"..."}'
+diff --git a/tiktok-video-creator/modules/prompt-builder.js b/tiktok-video-creator/modules/prompt-builder.js
+index 1daa1e6..16d1230 100644
+--- a/tiktok-video-creator/modules/prompt-builder.js
++++ b/tiktok-video-creator/modules/prompt-builder.js
+@@ -80,11 +80,11 @@ const PACING = {
+ };
+ 
+ const PRESENTERS = {
+-  Auto: "Let AI choose whether a Thai presenter improves the product video",
+-  none: "No humans, focus entirely on the product visual",
+-  hands_only: "Only realistic Thai hands holding and presenting the product, no face or body",
+-  woman: "A trendy young Thai woman reviewer interacting with the product",
+-  man: "A stylish young Thai man reviewer presenting the product",
++  Auto: "Realistic cinematic shot. Prefer product-only views. If a presenter is shown, they must stand near or gesture towards the product without complex handling.",
++  none: "No humans. Focus entirely on the product resting stably in a realistic setting with smooth camera movement.",
++  hands_only: "Only realistic hands holding the product gently and steadily, no face or body. No twisting or flipping of the product to prevent glitches.",
++  woman: "A young Thai woman reviewer presenting the product. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
++  man: "A young Thai man reviewer presenting the product. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
+   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
+   living_product: "The product itself becomes a living character with cute 3D eyes and personality"
+ };
+@@ -93,7 +93,7 @@ const THAI_PERSON_DIRECTION = "Natural Thai reviewer. Keep the product visible a
+ 
+ const HANDS_DIRECTION = "Show only realistic human hands holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand; never add, merge, distort, or remove fingers. Keep the product fully visible and unchanged.";
+ 
+-const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the single product. Preserve only its exact shape, proportions, structure/count, materials, colors, hardware, labels, and printed details; the visible product overrides conflicting title variants. Any printed text, packaging details, and brand logos on the product must be rendered extremely sharp, clear, legible, and spelt correctly in both Thai and English. Do not redesign it.";
++const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the product. Preserve its exact shape, proportions, materials, colors, and original printed details. Do not write, print, or generate any new text, labels, or letters on the product package. Keep the original text layout from the reference image exactly as it is, without drawing or spelling any words from the text prompt onto the product packaging. Do not redesign it.";
+ 
+ const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
+ 
+@@ -101,7 +101,9 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangemen
+ 
+ const SCALE_FIDELITY_DIRECTION = "Keep the product's proportions and real-world scale identical to the uploaded reference: same width-to-height ratio and part dimensions; never stretch, squash, elongate, enlarge, or shrink it.";
+ 
+-const MATCH_STILL_DIRECTION = "CRITICAL: treat the attached reference image as the exact product. Keep its shape, proportions, colors, materials, and all printed text, logos, and graphics identical in every scene and hard cut. All printed text, packaging details, and brand labels on the product must be rendered with perfect clarity, remaining extremely sharp, readable, and spelt correctly in both Thai and English. Animate only camera, lighting, and scene action around it; never redraw, restyle, swap, warp, or distort the product or its text.";
++const MATCH_STILL_DIRECTION = "CRITICAL: treat the attached reference image as the exact product. Keep its shape, proportions, colors, materials, and all printed text, logos, and graphics identical in every scene. Do not write, print, or generate any new text, labels, or letters on the product package. Copy the original text layout from the reference image exactly as it is, without drawing or spelling any words from the text prompt onto the product packaging. Animate only camera, lighting, and scene action around it; never redraw, restyle, swap, warp, or distort the product or its text.";
++
++const REALISM_AND_PHYSICS_DIRECTION = "Realistic motion and physics only. No product morphing, warping, bending, or melting. No floating objects or levitation; the product and all props must rest firmly on a solid surface and obey gravity naturally. Hands or people must interact naturally without distorting the product. Camera movement must be smooth, cinematic, and stable (slow pans or zooms), with no shaky motion.";
+ 
+ 
+ const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
+@@ -111,7 +113,7 @@ const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwor
+ const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
+ const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
+ 
+-const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Ensure all printed words and characters (in both Thai and English) are extremely sharp, readable, and spelled correctly. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
++const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Do not write or print any new text, letters, or words on the product packaging. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
+ 
+ const NO_PEOPLE_DIRECTION = "Product-only scene. No people, faces, presenters, reviewers, characters, celebrities, or public figures.";
+ 
+@@ -197,8 +199,8 @@ export function sanitizeText(value) {
+  * @returns {string} prompt ภาษาอังกฤษ
+  */
+ export function buildImagePrompt(productInfo, settings) {
+-  const productName = generationProductName(productInfo.name, 220) || "the attached product";
+-  const details = compactPromptText(productInfo.highlights, 100);
++  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
++  const details = compactPromptText(productInfo.highlights || "", 100).replace(/[^\x00-\x7F]/g, "").trim();
+   const analysisDirection = buildAnalysisDirection(productInfo);
+   const categoryDirection = buildCategoryFidelityDirection(productInfo);
+   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+@@ -271,7 +273,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
+   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
+   const clipText = compactPromptText(settings?.clipText, 80);
+   const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true") && Boolean(clipText);
+-  const productName = generationProductName(productInfo.name, 220) || "the attached product";
++  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
+   const analysisDirection = buildAnalysisDirection(productInfo);
+   const categoryDirection = buildCategoryFidelityDirection(productInfo);
+   const overlayText = [
+@@ -288,7 +290,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
+     `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`,
+     MATCH_STILL_DIRECTION,
+     PRODUCT_FIDELITY_DIRECTION,
+-    isHeavy ? "Real scale." : "",
++    REALISM_AND_PHYSICS_DIRECTION,
++    isHeavy ? "Real scale." : "Close-up scale: Show the small product in a large, prominent close-up or medium close-up. It must occupy most of the frame so all packaging text and details remain extremely sharp and readable. Do not show it as a tiny or distant object.",
+     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
+     analysisDirection,
+   ];
+@@ -354,6 +357,12 @@ export function buildVideoPrompt(productInfo, settings = {}) {
+       .replace("holding and presenting", "holding with both hands and presenting")
+       .replace("holding", "holding with both hands or interacting with")
+       + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the presenter, never as a tiny packet or a giant sack.";
++  } else if (weightCategory === "light") {
++    handsDir = handsDir
++      + " The product is a small item; depict it in a prominent large scale relative to the hands (close-up), ensuring the product packaging, brand name, and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
++
++    presenterInstruction = presenterInstruction
++      + " The product is a small item; depict it in a prominent large scale (close-up or medium close-up) relative to the presenter, ensuring the product packaging, brand name, and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+   }
+ 
+   if (handsOnly) {
+@@ -477,8 +486,30 @@ function buildCategoryFidelityDirection(productInfo = {}) {
+   return "";
+ }
+ 
+-function generationProductName(value, maxLength) {
+-  return stripStructuralVariantCounts(compactPromptText(value, maxLength));
++function generationProductName(value, category = "") {
++  if (!value) return "the product";
++
++  const lowerVal = value.toLowerCase();
++  const lowerCat = String(category || "").toLowerCase();
++
++  // Map keywords to clean English generic terms
++  if (lowerVal.includes("กาแฟ") || lowerCat.includes("coffee")) return "coffee package";
++  if (lowerVal.includes("พัดลม") || lowerCat.includes("fan")) return "portable fan";
++  if (lowerVal.includes("เสื้อ") || lowerVal.includes("กางเกง") || lowerVal.includes("ผ้า") || lowerCat.includes("clothe") || lowerCat.includes("apparel")) return "clothing item";
++  if (lowerVal.includes("ครีม") || lowerVal.includes("เซรั่ม") || lowerVal.includes("บำรุง") || lowerVal.includes("สกินแคร์") || lowerCat.includes("skin") || lowerCat.includes("cosmetic")) return "skincare product bottle";
++  if (lowerVal.includes("อาหาร") || lowerVal.includes("ขนม") || lowerCat.includes("food") || lowerCat.includes("snack")) return "food product package";
++  if (lowerVal.includes("แก้ว") || lowerVal.includes("ขวด") || lowerCat.includes("bottle") || lowerCat.includes("cup")) return "cup";
++  if (lowerVal.includes("กระเป๋า") || lowerCat.includes("bag")) return "bag";
++  if (lowerVal.includes("รองเท้า") || lowerCat.includes("shoe")) return "shoe";
++
++  // If there are English words in the original name, extract the first few words to identify it
++  let englishWords = value.replace(/[^\x00-\x7F]/g, " ").replace(/\s+/g, " ").trim();
++  if (englishWords.length > 3) {
++    const words = englishWords.split(" ").slice(0, 4).join(" ");
++    if (words.length > 3) return stripStructuralVariantCounts(words);
++  }
++
++  return "the product packaging";
+ }
+ 
+ function stripStructuralVariantCounts(value) {
+diff --git a/tiktok-video-creator/modules/tiktok-api.js b/tiktok-video-creator/modules/tiktok-api.js
+index 32fa4f7..a8335b4 100644
+--- a/tiktok-video-creator/modules/tiktok-api.js
++++ b/tiktok-video-creator/modules/tiktok-api.js
+@@ -119,16 +119,39 @@ function resolveDisplayProductImageUrl(item = {}, imageUrls = []) {
+   return url;
+ }
+ 
++function maximizeProductImageUrl(url) {
++  if (!url) return "";
++  if (url.startsWith("//")) {
++    url = "https:" + url;
++  }
++  // TikTok/ByteDance CDN Image Processing Optimization
++  if (url.includes("ibyteimg.com") && url.includes("~tplv-")) {
++    // Replace crop or resize templates with origin-jpeg.jpeg or origin-webp.webp
++    let maximized = url.replace(/-(?:resize|crop)-jpeg:\d+:\d+\.jpeg/gi, "-origin-jpeg.jpeg");
++    maximized = maximized.replace(/-(?:resize|crop)-webp:\d+:\d+\.webp/gi, "-origin-webp.webp");
++    maximized = maximized.replace(/-(?:resize|crop):\d+:\d+\.jpeg/gi, "-origin.jpeg");
++    maximized = maximized.replace(/-(?:resize|crop):\d+:\d+\.webp/gi, "-origin.webp");
++    maximized = maximized.replace(/-(?:resize|crop)(?:-jpeg|-webp)?:\d+:\d+/gi, (match) => {
++      return match.replace(/resize|crop/i, "origin").split(":")[0];
++    });
++    return maximized;
++  }
++  return url;
++}
++
+ function normalizeProductImageUrl(raw) {
+   let u = String(raw || "").trim();
+   if (!u) return "";
+-  if (u.startsWith("//")) return "https:" + u;
+-  if (/^https?:\/\//i.test(u) || u.startsWith("data:")) return u;
++  if (u.startsWith("//")) u = "https:" + u;
++  if (/^https?:\/\//i.test(u)) {
++    return maximizeProductImageUrl(u);
++  }
++  if (u.startsWith("data:")) return u;
+   // tos key เปล่าจาก TikTok (image.uri) → สร้าง full CDN URL (token อยู่ในคีย์)
+   const key = u.replace(/^\/+/, "");
+   if (/^(tos-|obj\/tos)/i.test(key)) {
+     const token = key.match(/-i-([a-z0-9]+)-/i)?.[1] || "";
+-    const suffix = token ? `~tplv-${token}-resize-jpeg:800:800.jpeg` : "";
++    const suffix = token ? `~tplv-${token}-origin-jpeg.jpeg` : "";
+     return `https://p16-oec-va.ibyteimg.com/${key}${suffix}`;
+   }
+   return u;
+diff --git a/tiktok-video-creator/sidepanel.css b/tiktok-video-creator/sidepanel.css
+index f50415e..d6f70cd 100644
+--- a/tiktok-video-creator/sidepanel.css
++++ b/tiktok-video-creator/sidepanel.css
+@@ -644,8 +644,8 @@ html[data-mode="tab"] .app-shell {
+ }
+ 
+ .product-card__image {
+-  width: 50px;
+-  height: 50px;
++  width: 72px;
++  height: 72px;
+   border-radius: 6px;
+   object-fit: cover;
+   background: #000;
+@@ -1434,8 +1434,8 @@ html[data-mode="tab"] .activity-log {
+ }
+ 
+ .flow-job__thumb {
+-  width: 50px;
+-  height: 50px;
++  width: 72px;
++  height: 72px;
+   border-radius: 6px;
+   border: 1px solid var(--line);
+ }
+@@ -1645,8 +1645,7 @@ html[data-mode="tab"] .activity-log {
+ }
+ 
+ @media (max-width: 560px) {
+-  .flow-hero,
+-  .flow-job__header {
++  .flow-hero {
+     flex-direction: column;
+     align-items: stretch;
+   }
+@@ -1656,10 +1655,6 @@ html[data-mode="tab"] .activity-log {
+   .settings-grid {
+     grid-template-columns: 1fr;
+   }
+-
+-  .flow-job__title h3 {
+-    white-space: normal;
+-  }
+ }
+ 
+ /* Spinner for loading states */
+diff --git a/tiktok-video-creator/tabs/tab-products.js b/tiktok-video-creator/tabs/tab-products.js
+index aed213b..f2118b2 100644
+--- a/tiktok-video-creator/tabs/tab-products.js
++++ b/tiktok-video-creator/tabs/tab-products.js
+@@ -21,7 +21,13 @@ export async function initProductsTab(injectedHelpers) {
+   const stored = await chrome.storage.local.get(["pullSource"]);
+   applySource(stored.pullSource === "shopee" ? "shopee" : "tiktok");
+ 
+-  await loadProducts({ reset: true, silent: true });
++  if (products.length > 0) {
++    renderProducts();
++    const loadMore = document.querySelector("#load-more-products");
++    if (loadMore) loadMore.hidden = !nextPageToken;
++  } else {
++    await loadProducts({ reset: true, silent: true });
++  }
+ }
+ 
+ /**
