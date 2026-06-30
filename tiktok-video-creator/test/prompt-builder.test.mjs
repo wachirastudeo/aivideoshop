@@ -35,7 +35,7 @@ const prodA = {
   rawProduct: { product_id: "123456789" }
 };
 const capA = buildCaption(prodA, { captionTemplate: "{product_name}" });
-check("caption starts with product name", capA.trim().startsWith("Arzopa"), `cap=${capA}`);
+check("caption contains product name", capA.includes("Arzopa"), `cap=${capA}`);
 
 // --- hashtags: split product title into word-level tags ---
 const nameTags = buildProductNameHashtags({ name: "Arzopa A1, จอภาพแบบพกพา, monitor" });

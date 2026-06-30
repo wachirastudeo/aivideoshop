@@ -176,7 +176,7 @@ function buildPostCopyPrompt(productInfo = {}, defaults = {}) {
     `Default hashtags: ${baseHashtags}`,
     "Rules:",
     `- Caption must be natural Thai ${platformName} sales copy, maximum ${maxLen} characters.`,
-    "- The caption MUST begin with the edited product name / hook exactly as given, then the sales copy on the next line.",
+    "- Do NOT start the caption with the exact product name or hook. Instead, generate a randomized, highly engaging, catchy, and unique opening hook phrase in Thai (e.g. curiosity gap, questions, bold statements, or urgency) to start the caption. Ensure it is creative and randomized each time so it does not look duplicate.",
     "- Use the full product title as the main source for product-specific details.",
     "- Do not include product URLs or raw links.",
     "- Do not include hashtags inside caption; return hashtags separately.",
@@ -218,15 +218,9 @@ function normalizeGeneratedPostCopy(value, fallback, productInfo = {}) {
   };
 }
 
-// caption ต้องขึ้นต้นด้วยช่อง "ชื่อสินค้า / Hook" เสมอ — ถ้า AI ไม่ใส่ ให้เติมนำให้
+// caption แบบสุ่มขึ้นต้น ไม่บังคับตาม Hook อีกต่อไปเพื่อไม่ให้เกิดความซ้ำซ้อน
 function ensureCaptionLeadsWithHook(caption, productInfo = {}) {
-  const hook = resolveCaptionProductName(productInfo);
-  const text = String(caption || "").trim();
-  if (!hook) return text;
-  const normalizedHook = hook.toLowerCase();
-  const normalizedHead = text.slice(0, hook.length).toLowerCase();
-  if (normalizedHead === normalizedHook) return text;
-  return text ? `${hook}\n${text}` : hook;
+  return String(caption || "").trim();
 }
 
 function cleanGeneratedHashtags(value) {
@@ -280,9 +274,10 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
     "For name, do not include a structural count unless it is clearly and completely visible in the image.",
     "For structureAdvice, write one concise English instruction containing only visually verified structure, counts, arrangement, and proportions. Explicitly say not to add or remove parts.",
     "For promptAdvice, write concise English guidance that preserves only the named product. Explicitly instruct generation to discard the original background and unrelated objects, choose a new setting suitable for the product category, and ensure all printed text, packaging details, and brand logos on the product are rendered extremely sharp, clear, legible, and spelt correctly in both Thai and English.",
+    "For hooks, generate an array of 5 distinct high-converting sales hooks in Thai, customized for TikTok Shop. Each hook must be under 50 characters, punchy, stop the scroll, and appeal to different angles (e.g. pain points, promotions/discounts, transformation/results, trending/social proof, urgency).",
     "The recommended location must fit the product's realistic use, not a generic trendy scene. For example, cabinets, drawers, shelves, and indoor furniture belong in a clean appropriate interior, never an urban street.",
     "Recommend creative options for an 8-second vertical TikTok product video.",
-    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
+    'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5"],"highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
   const parts = [{ text: prompt }];
 
@@ -327,6 +322,7 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
 
     return {
       name: sanitizeText(parsed.name || productName),
+      hooks: Array.isArray(parsed.hooks) ? parsed.hooks.map(h => sanitizeText(h)) : [],
       highlights: normalizeHighlights(parsed.highlights),
       targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
       structureAdvice: sanitizeText(parsed.structureAdvice || ""),
@@ -356,9 +352,10 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
     "For name, do not include a structural count unless it is clearly and completely visible in the image.",
     "For structureAdvice, write one concise English instruction containing only visually verified structure, counts, arrangement, and proportions. Explicitly say not to add or remove parts.",
     "For promptAdvice, write concise English guidance that preserves only the named product. Explicitly instruct generation to discard the original background and unrelated objects, choose a new setting suitable for the product category, and ensure all printed text, packaging details, and brand logos on the product are rendered extremely sharp, clear, legible, and spelt correctly in both Thai and English.",
+    "For hooks, generate an array of 5 distinct high-converting sales hooks in Thai, customized for TikTok Shop. Each hook must be under 50 characters, punchy, stop the scroll, and appeal to different angles (e.g. pain points, promotions/discounts, transformation/results, trending/social proof, urgency).",
     "The recommended location must fit the product's realistic use, not a generic trendy scene. For example, cabinets, drawers, shelves, and indoor furniture belong in a clean appropriate interior, never an urban street.",
     "Recommend creative options for an 8-second vertical TikTok product video.",
-    'Return compact JSON only: {"name":"Thai short name","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
+    'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5"],"highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
 
   const content = [{ type: "text", text: prompt }];
@@ -406,6 +403,7 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
 
     return {
       name: sanitizeText(parsed.name || productName),
+      hooks: Array.isArray(parsed.hooks) ? parsed.hooks.map(h => sanitizeText(h)) : [],
       highlights: normalizeHighlights(parsed.highlights),
       targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
       structureAdvice: sanitizeText(parsed.structureAdvice || ""),
@@ -544,6 +542,13 @@ function buildTitleBasedFallback(productInfo) {
 
   return {
     name,
+    hooks: [
+      name,
+      `ชี้เป้าสุดคุ้ม: ${name}`,
+      `รีวิวผู้ใช้จริง: ${name}`,
+      `หลังจากลอง ${name}`,
+      `ของมันต้องมี: ${name}`
+    ],
     highlights: existingHighlights || [
       `• ${name} เหมาะกับการนำเสนอแบบเห็นสินค้าชัดเจน`,
       "• เน้นจุดเด่นหลัก ราคา และประโยชน์ที่ลูกค้าจะได้รับ",

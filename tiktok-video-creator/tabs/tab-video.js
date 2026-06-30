@@ -314,6 +314,19 @@ function syncPostActionUI() {
   }
 }
 
+function getOrGenerateHooks(p) {
+  if (p.hooks && p.hooks.length > 0) return p.hooks;
+  const name = p.name || p.originalName || "";
+  if (!name) return [];
+  return [
+    name,
+    `ชี้เป้าสุดคุ้ม: ${name}`,
+    `รีวิวผู้ใช้จริง: ${name}`,
+    `หลังจากลอง ${name}`,
+    `ของมันต้องมี: ${name}`
+  ].map(h => h.trim());
+}
+
 function productMarkup(p, index) {
   const sourceImage = getDisplayProductImage(p);
   const approvedImage = p.approvedImage || "";
@@ -334,6 +347,23 @@ function productMarkup(p, index) {
           <img src="${escapeAttr(url)}" data-fallback="${escapeAttr(sourceImage)}" alt="" width="180" height="240">
           <figcaption>ภาพ ${i + 1}/${galleryImages.length}</figcaption>
         </figure>`).join("");
+
+  const hooks = getOrGenerateHooks(p);
+  const hookPillsMarkup = hooks.length > 0 ? `
+    <div class="hook-container">
+      <span class="hook-label">ตัวเลือก Hook ขายของ:</span>
+      <div class="hook-list">
+        ${hooks.map(h => {
+          const isActive = (p.name || "").trim() === h;
+          return `
+            <button type="button" class="hook-pill ${isActive ? 'hook-pill--active' : ''}" title="${escapeAttr(h)}">
+              ${escapeHtml(h)}
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  ` : "";
 
   return `
     <article class="flow-job" data-index="${index}" data-status="${escapeHtml(p.status)}">
@@ -358,6 +388,8 @@ function productMarkup(p, index) {
           <span class="field__label">ชื่อสินค้า / Hook</span>
           <input class="input batch-name" value="${escapeAttr(p.name || "")}">
         </label>
+
+        ${hookPillsMarkup}
 
         <label class="field">
           <span class="field__label">จุดขาย / ไฮไลต์</span>
@@ -423,12 +455,45 @@ function bindBatchEvents() {
     const p = productQueue[idx];
     if (!p) return;
 
-    item.querySelector(".batch-name")?.addEventListener("input", (e) => {
+    const nameInput = item.querySelector(".batch-name");
+    nameInput?.addEventListener("input", (e) => {
       p.name = e.target.value;
       p.status = p.status === "idle" ? "prompt_ready" : p.status;
       updatePrompts(item, p);
       persistState();
       renderCountersOnly();
+
+      // Sync active state of hook pills
+      const val = e.target.value.trim();
+      item.querySelectorAll(".hook-pill").forEach((pill) => {
+        if (pill.getAttribute("title").trim() === val) {
+          pill.classList.add("hook-pill--active");
+        } else {
+          pill.classList.remove("hook-pill--active");
+        }
+      });
+    });
+
+    item.querySelectorAll(".hook-pill").forEach((pill) => {
+      pill.addEventListener("click", () => {
+        const selectedHook = pill.getAttribute("title");
+        p.name = selectedHook;
+        if (nameInput) nameInput.value = selectedHook;
+
+        // Toggle active classes
+        item.querySelectorAll(".hook-pill").forEach((pl) => {
+          if (pl === pill) {
+            pl.classList.add("hook-pill--active");
+          } else {
+            pl.classList.remove("hook-pill--active");
+          }
+        });
+
+        p.status = p.status === "idle" ? "prompt_ready" : p.status;
+        updatePrompts(item, p);
+        persistState();
+        renderCountersOnly();
+      });
     });
     item.querySelector(".batch-highlights")?.addEventListener("input", (e) => {
       p.highlights = e.target.value;
@@ -483,6 +548,7 @@ async function handleAnalyze(product) {
     const analysis = await analyzeProductImages(getAnalysisProductImages(product), product);
     // ไม่เขียน highlights ทับ — ให้ผู้ใช้กรอกเอง
     product.name = analysis.name || product.name;
+    product.hooks = analysis.hooks || [];
     product.targetGroup = analysis.targetGroup || product.targetGroup;
     product.structureAdvice = analysis.structureAdvice || product.structureAdvice || "";
     product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
@@ -596,6 +662,7 @@ async function processQueue() {
           assertNotStopped();
           // ไม่เขียน highlights ทับ — ให้ผู้ใช้กรอกเอง
           product.name = analysis.name || product.name;
+          product.hooks = analysis.hooks || [];
           product.targetGroup = analysis.targetGroup || product.targetGroup;
           product.structureAdvice = analysis.structureAdvice || product.structureAdvice || "";
           product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";

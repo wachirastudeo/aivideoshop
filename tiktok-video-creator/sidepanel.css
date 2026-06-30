@@ -1728,3 +1728,50 @@ html[data-mode="tab"] .activity-log {
   line-height: 1.5;
   word-break: break-word;
 }
+
+.hook-container {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hook-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.hook-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hook-pill {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: left;
+  transition: all 0.15s ease;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.hook-pill:hover {
+  background: var(--line);
+  border-color: var(--muted-2);
+}
+
+.hook-pill--active {
+  background: rgba(254, 44, 85, 0.1);
+  border-color: var(--accent-pink);
+  color: #fff;
+  font-weight: 600;
+}
+

@@ -668,10 +668,24 @@ export function buildCaption(productInfo, defaults = {}) {
     cta: cleanCaptionText(productInfo.cta || "สั่งได้เลย")
   });
 
-  // caption ต้องขึ้นต้นด้วยช่อง "ชื่อสินค้า / Hook" เสมอ แล้วตามด้วยเนื้อ caption (ไม่ซ้ำ Hook)
   if (!hook) return body.trim();
   const rest = body.startsWith(hook) ? body.slice(hook.length).trim() : body.trim();
-  return rest ? `${hook}\n${rest}` : hook;
+
+  // สุ่มคำขึ้นต้นสนุกๆ นำหน้า Hook เพื่อไม่ให้ข้อความโพสต์ซ้ำซ้อน
+  const randomOpenings = [
+    "ชี้เป้าความคุ้มวันนี้! ✨",
+    "บอกต่อของดีที่ต้องมี! 🛍️",
+    "ใครยังไม่มีรีบเลย! 🔥",
+    "ไอเทมเด็ดชิ้นนี้ห้ามพลาด! 😍",
+    "ลองหรือยัง? ของดีบอกต่อ 💯",
+    "ตัวช่วยชีวิตดีขึ้นเยอะ! 👍",
+    "หลังจากลองตัวนี้คือปังมาก! 💖",
+    "ส่องด่วน! ดีงามเกินต้าน 🌟"
+  ];
+  const prefix = randomOpenings[Math.floor(Math.random() * randomOpenings.length)];
+  const randomizedHook = `${prefix} ${hook}`;
+
+  return rest ? `${randomizedHook}\n${rest}` : randomizedHook;
 }
 
 function renderCaptionTemplate(template, variables) {
