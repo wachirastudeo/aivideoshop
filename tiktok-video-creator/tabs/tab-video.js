@@ -314,9 +314,15 @@ function syncPostActionUI() {
   }
 }
 
+function truncateText(str, maxLen = 30) {
+  if (!str) return "";
+  if (str.length <= maxLen) return str;
+  return str.slice(0, maxLen) + "...";
+}
+
 function getOrGenerateHooks(p) {
   if (p.hooks && p.hooks.length > 0) return p.hooks;
-  const name = p.name || p.originalName || "";
+  const name = p.originalName || p.name || "";
   if (!name) return [];
   return [
     name,
@@ -349,19 +355,22 @@ function productMarkup(p, index) {
         </figure>`).join("");
 
   const hooks = getOrGenerateHooks(p);
-  const hookPillsMarkup = hooks.length > 0 ? `
+  const uniqueHooks = hooks.filter(h => h.trim() !== (p.originalName || "").trim());
+  const currentName = (p.name || "").trim();
+  const activeHook = uniqueHooks.find(h => h.trim() === currentName) || "";
+
+  const hookDropdownMarkup = uniqueHooks.length > 0 ? `
     <div class="hook-container">
-      <span class="hook-label">ตัวเลือก Hook ขายของ:</span>
-      <div class="hook-list">
-        ${hooks.map(h => {
-          const isActive = (p.name || "").trim() === h;
-          return `
-            <button type="button" class="hook-pill ${isActive ? 'hook-pill--active' : ''}" title="${escapeAttr(h)}">
-              ${escapeHtml(h)}
-            </button>
-          `;
-        }).join("")}
-      </div>
+      <label class="field">
+        <span class="field__label">ตัวเลือก Hook ขายของ</span>
+        <select class="select batch-hook-select">
+          <option value="none" ${!activeHook ? 'selected' : ''}>ไม่ใช้ Hook (ใช้ชื่อปกติ: ${escapeHtml(truncateText(p.originalName || p.name || "", 25))})</option>
+          ${uniqueHooks.map(h => {
+            const isSelected = h.trim() === currentName;
+            return `<option value="${escapeAttr(h)}" ${isSelected ? 'selected' : ''}>${escapeHtml(h)}</option>`;
+          }).join("")}
+        </select>
+      </label>
     </div>
   ` : "";
 
@@ -389,7 +398,7 @@ function productMarkup(p, index) {
           <input class="input batch-name" value="${escapeAttr(p.name || "")}">
         </label>
 
-        ${hookPillsMarkup}
+        ${hookDropdownMarkup}
 
         <label class="field">
           <span class="field__label">จุดขาย / ไฮไลต์</span>
@@ -456,44 +465,46 @@ function bindBatchEvents() {
     if (!p) return;
 
     const nameInput = item.querySelector(".batch-name");
+    const hookSelect = item.querySelector(".batch-hook-select");
+
     nameInput?.addEventListener("input", (e) => {
-      p.name = e.target.value;
+      const val = e.target.value;
+      p.name = val;
       p.status = p.status === "idle" ? "prompt_ready" : p.status;
       updatePrompts(item, p);
       persistState();
       renderCountersOnly();
 
-      // Sync active state of hook pills
-      const val = e.target.value.trim();
-      item.querySelectorAll(".hook-pill").forEach((pill) => {
-        if (pill.getAttribute("title").trim() === val) {
-          pill.classList.add("hook-pill--active");
-        } else {
-          pill.classList.remove("hook-pill--active");
+      // Sync selection in hook dropdown
+      if (hookSelect) {
+        let found = false;
+        const trimmedVal = val.trim();
+        for (let i = 1; i < hookSelect.options.length; i++) {
+          if (hookSelect.options[i].value.trim() === trimmedVal) {
+            hookSelect.selectedIndex = i;
+            found = true;
+            break;
+          }
         }
-      });
+        if (!found) {
+          hookSelect.value = "none";
+        }
+      }
     });
 
-    item.querySelectorAll(".hook-pill").forEach((pill) => {
-      pill.addEventListener("click", () => {
-        const selectedHook = pill.getAttribute("title");
-        p.name = selectedHook;
-        if (nameInput) nameInput.value = selectedHook;
+    hookSelect?.addEventListener("change", (e) => {
+      const selectedVal = e.target.value;
+      if (selectedVal === "none") {
+        p.name = p.originalName || "";
+      } else {
+        p.name = selectedVal;
+      }
+      if (nameInput) nameInput.value = p.name;
 
-        // Toggle active classes
-        item.querySelectorAll(".hook-pill").forEach((pl) => {
-          if (pl === pill) {
-            pl.classList.add("hook-pill--active");
-          } else {
-            pl.classList.remove("hook-pill--active");
-          }
-        });
-
-        p.status = p.status === "idle" ? "prompt_ready" : p.status;
-        updatePrompts(item, p);
-        persistState();
-        renderCountersOnly();
-      });
+      p.status = p.status === "idle" ? "prompt_ready" : p.status;
+      updatePrompts(item, p);
+      persistState();
+      renderCountersOnly();
     });
     item.querySelector(".batch-highlights")?.addEventListener("input", (e) => {
       p.highlights = e.target.value;
