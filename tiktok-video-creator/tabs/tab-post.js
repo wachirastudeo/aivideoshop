@@ -25,6 +25,7 @@ export async function initPostTab(injectedHelpers) {
   const postSettings = await loadPostSettings();
   fillForm(postSettings);
   bindEvents();
+  await checkSelectedProductForPost();
 }
 
 async function loadPostSettings() {
@@ -303,4 +304,17 @@ function getChecked(id) {
 function setChecked(id, value) {
   const el = document.querySelector(`#${id}`);
   if (el) el.checked = Boolean(value);
+}
+
+async function checkSelectedProductForPost() {
+  const stored = await chrome.storage.local.get("selectedProductForPost");
+  if (stored.selectedProductForPost) {
+    const product = stored.selectedProductForPost;
+    setValue("post-test-product-name", product.name || product.originalName || "");
+    setValue("post-test-product-id", product.productId || "");
+    setValue("post-test-product-url", product.productUrl || "");
+    
+    await chrome.storage.local.remove("selectedProductForPost");
+    helpers.showStatus?.("ดึงข้อมูลสินค้ามาป้อนให้เรียบร้อยแล้ว", "success");
+  }
 }

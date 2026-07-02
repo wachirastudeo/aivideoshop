@@ -589,6 +589,30 @@ function renderProducts() {
       await selectProduct(product);
     });
   });
+
+  list.querySelectorAll("[data-go-post]").forEach((button) => {
+    button.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const product = products.find((item) => item.productId === button.dataset.goPost);
+      if (product) {
+        await sendProductToPostTab(product);
+      }
+    });
+  });
+
+  list.querySelectorAll(".product-card__id").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = el.dataset.copyId;
+      if (id) {
+        navigator.clipboard.writeText(id).then(() => {
+          helpers.showStatus(`คัดลอก ID: ${id} แล้ว`, "success");
+        }).catch(() => {
+          helpers.showStatus("คัดลอกล้มเหลว", "error");
+        });
+      }
+    });
+  });
   
   updateBatchUI();
   renderPagination(totalPages);
@@ -832,6 +856,13 @@ function productMarkup(product) {
       <img class="product-card__image" src="${imageUrl}" alt="" data-pick-images="${escapeHtml(product.productId)}" title="คลิกเพื่อเลือกหลายรูป" style="cursor:pointer;">
       <div class="product-card__content">
         <h3 class="product-card__name" title="${escapeHtml(product.name)}">${escapeHtml(product.name)}</h3>
+        <div class="product-card__id" data-copy-id="${escapeHtml(product.productId)}" style="font-size:10px;color:var(--muted);margin-top:4px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel-2);padding:2px 6px;border:1px dashed var(--line);border-radius:4px;" title="คลิกเพื่อคัดลอก ID">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span>ID: ${escapeHtml(product.productId)}</span>
+        </div>
         <p class="product-card__meta">
           <strong>${escapeHtml(formatPrice(product))}</strong>
           ${commissionBadge}
@@ -839,6 +870,7 @@ function productMarkup(product) {
           ${stockBadge}
         </p>
       </div>
+      <button class="icon-button" type="button" data-go-post="${escapeHtml(product.productId)}" title="ส่งไปโพสต์" aria-label="ส่งไปโพสต์">${postIcon()}</button>
       <button class="icon-button" type="button" data-download-images="${escapeHtml(product.productId)}" title="ดาวน์โหลดภาพ" aria-label="ดาวน์โหลดภาพ">${downloadIcon()}</button>
       <button class="icon-button" type="button" data-create-video="${escapeHtml(product.productId)}" title="สร้างวิดีโอ" aria-label="สร้างวิดีโอ">${videoIcon()}</button>
     </article>
@@ -946,4 +978,19 @@ function getFormattedDateTime() {
   const min = String(now.getMinutes()).padStart(2, '0');
   const ss = String(now.getSeconds()).padStart(2, '0');
   return `${yyyy}${mm}${dd}_${hh}${min}${ss}`;
+}
+
+function postIcon() {
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg>`;
+}
+
+async function sendProductToPostTab(product) {
+  if (!product) return;
+  const payload = buildSelectedProductPayload(product);
+  await chrome.storage.local.set({
+    selectedProductForPost: payload
+  });
+  helpers.logActivity?.(`เลือกสินค้าเพื่อส่งไปโพสต์: ${payload.originalName || payload.name}`, "success");
+  helpers.showStatus("ส่งสินค้าไปหน้า โพสต์ TikTok แล้ว", "success");
+  await helpers.switchTab("post");
 }
