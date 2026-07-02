@@ -923,6 +923,8 @@ async function downloadProductImages(product) {
   }
   
   urlsToDownload = [...new Set(urlsToDownload.filter(Boolean))].map(url => url.startsWith("//") ? "https:" + url : url);
+  console.log("[DEBUG-DOWNLOAD] Product Name:", product.name);
+  console.log("[DEBUG-DOWNLOAD] URLs to download:", urlsToDownload);
   
   if (urlsToDownload.length === 0) {
     helpers.showStatus("ไม่พบรูปภาพสินค้าที่จะดาวน์โหลด", "error");
@@ -941,6 +943,7 @@ async function downloadProductImages(product) {
     const url = urlsToDownload[i];
     const ext = getExtensionFromUrl(url);
     const filename = `aivideoshop/download_${dateTimeStr}/${sanitizedName}_${i + 1}${ext}`;
+    console.log(`[DEBUG-DOWNLOAD] Requesting image ${i + 1}/${urlsToDownload.length}:`, url, "->", filename);
     
     try {
       const res = await chrome.runtime.sendMessage({
@@ -951,12 +954,14 @@ async function downloadProductImages(product) {
           conflictAction: "uniquify"
         }
       });
+      console.log(`[DEBUG-DOWNLOAD] Response for image ${i + 1}:`, res);
       if (res?.ok) {
         successCount++;
       } else {
         errors.push(`รูปที่ ${i + 1}: ${res?.error || "ดาวน์โหลดไม่สำเร็จ"}`);
       }
     } catch (err) {
+      console.error(`[DEBUG-DOWNLOAD] Error for image ${i + 1}:`, err);
       errors.push(`รูปที่ ${i + 1}: ${err.message || "เกิดข้อผิดพลาด"}`);
     }
   }

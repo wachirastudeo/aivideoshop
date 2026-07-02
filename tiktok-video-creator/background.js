@@ -32,6 +32,7 @@ async function routeMessage(message, sender) {
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
     case "DOWNLOAD_VIDEO":           return downloadVideo(message.payload);
     case "DOWNLOAD_FILE":            return downloadFile(message.payload);
+    case "FETCH_IMAGE_DATA":         return fetchImageData(message.payload);
     case "POST_TO_TIKTOK":           return postToTikTok(message.payload);
     case "GET_FLOW_SETTINGS":        return getFlowSettings();
     case "FLOW_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
@@ -527,9 +528,15 @@ async function fetchShopeeImages({ productUrl } = {}) {
           break; // ติดหน้า Captcha ให้เบรกออกทันที
         }
         if (scrapeRes.images && scrapeRes.images.length > 0) {
-          log(`ดึงรูปแกลเลอรีสำเร็จ: ${scrapeRes.images.length} รูป`);
           images = scrapeRes.images;
-          break; // ดึงรูปได้ครบแล้ว เบรกออกเพื่อความรวดเร็ว
+          const elapsed = Date.now() - startTime;
+          // รออย่างน้อย 2 วินาทีเพื่อให้โหลดรูปแกลเลอรีครบ (หรือหยุดทันทีถ้าได้รูปเยอะแล้ว เช่น >= 5 รูป)
+          if (images.length >= 5 || elapsed >= 2000) {
+            log(`ดึงรูปแกลเลอรีสำเร็จ: ${images.length} รูป`);
+            break;
+          } else {
+            log(`พบรูปภาพ ${images.length} รูป... กำลังรอโหลดรูปเพิ่มเติม...`);
+          }
         }
       }
     } catch (e) {
@@ -675,44 +682,48 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const pendingDownloads = new Map(); // downloadId -> filename
-const pendingUrlDownloads = new Map(); // url -> filename
-const pendingFilenameQueue = []; // FIFO queue for filenames (handles dynamic redirects/signed URLs)
-
 chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
   if (item.byExtensionId === chrome.runtime.id) {
-    // 0. Try matching by exact URL
-    let targetPath = pendingUrlDownloads.get(item.url);
-    if (targetPath) {
-      pendingUrlDownloads.delete(item.url);
-      const idx = pendingFilenameQueue.indexOf(targetPath);
-      if (idx > -1) pendingFilenameQueue.splice(idx, 1);
-      suggest({
-        filename: targetPath,
-        conflictAction: "overwrite"
-      });
-      return;
+    let targetPath = null;
+    let conflictAction = null;
+    
+    // 1. Try to extract filename and conflict action from URL hash or custom parameter
+    if (item.url && item.url.includes("x-filename=")) {
+      const match = item.url.match(/[#;?]x-filename=([^;&]+)/);
+      if (match) {
+        targetPath = decodeURIComponent(match[1]);
+      }
+    }
+    if (item.url && item.url.includes("x-conflict=")) {
+      const matchConflict = item.url.match(/[#;&?]x-conflict=([^;&]+)/);
+      if (matchConflict) {
+        conflictAction = matchConflict[1];
+      }
     }
     
-    // 1. Try matching by download ID
-    let targetPathById = pendingDownloads.get(item.id);
-    if (targetPathById) {
-      pendingDownloads.delete(item.id);
-      const idx = pendingFilenameQueue.indexOf(targetPathById);
-      if (idx > -1) pendingFilenameQueue.splice(idx, 1);
-      suggest({
-        filename: targetPathById,
-        conflictAction: "overwrite"
-      });
-      return;
+    // 2. Fallback: if no targetPath in URL, but item.filename already contains our custom path
+    if (!targetPath && item.filename) {
+      const index = item.filename.indexOf("aivideoshop");
+      if (index !== -1) {
+        targetPath = item.filename.substring(index).replace(/\\/g, "/");
+      }
     }
     
-    // 2. Fallback: match by FIFO queue (oldest pending filename)
-    targetPath = pendingFilenameQueue.shift();
     if (targetPath) {
+      // 3. Determine conflictAction if not explicitly specified
+      if (!conflictAction) {
+        const lowerPath = targetPath.toLowerCase();
+        if (lowerPath.endsWith(".mp4") || lowerPath.endsWith(".webm")) {
+          conflictAction = "overwrite";
+        } else {
+          // Default to uniquify for images/CSV and other files to prevent overwriting
+          conflictAction = "uniquify";
+        }
+      }
+      
       suggest({
         filename: targetPath,
-        conflictAction: "overwrite"
+        conflictAction: conflictAction
       });
       return;
     }
@@ -723,82 +734,110 @@ chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
 async function downloadVideo(payload) {
   const preparedVideo = await prepareVideoBase64ForTikTok(payload.url);
   const mimeType = preparedVideo.mimeType || "video/mp4";
-  const dataUrl = `data:${mimeType};base64,${preparedVideo.base64}`;
-  const downloadUrl = /^https:|^data:/i.test(payload.url || "") ? payload.url : dataUrl;
+  const conflict = payload.conflictAction || "overwrite";
+  const base64Url = `data:${mimeType};x-filename=${encodeURIComponent(payload.filename)};x-conflict=${conflict};base64,${preparedVideo.base64}`;
+  const downloadUrl = /^https:|^data:/i.test(payload.url || "")
+    ? (payload.url + (payload.url.includes("#") ? "&" : "#") + `x-filename=${encodeURIComponent(payload.filename)}&x-conflict=${conflict}`)
+    : base64Url;
   
-  if (payload.filename) {
-    pendingFilenameQueue.push(payload.filename);
-  }
-
   try {
-    if (payload.filename) {
-      pendingUrlDownloads.set(downloadUrl, payload.filename);
-    }
-    const id = await chrome.downloads.download({ url: downloadUrl, filename: payload.filename, saveAs: false });
-    if (payload.filename) {
-      pendingDownloads.set(id, payload.filename);
-    }
-    return { downloadId: id, videoUrl: dataUrl, mimeType };
+    const id = await chrome.downloads.download({
+      url: downloadUrl,
+      filename: payload.filename,
+      conflictAction: conflict,
+      saveAs: false
+    });
+    return { downloadId: id, videoUrl: base64Url, mimeType };
   } catch (error) {
-    if (payload.filename) {
-      const idx = pendingFilenameQueue.indexOf(payload.filename);
-      if (idx > -1) pendingFilenameQueue.splice(idx, 1);
-    }
-    return { downloadId: null, downloadError: error.message, videoUrl: dataUrl, mimeType };
+    return { downloadId: null, downloadError: error.message, videoUrl: base64Url, mimeType };
   }
 }
 
-function downloadFile(payload) {
-  return new Promise((resolve) => {
-    if (payload.filename) {
-      pendingUrlDownloads.set(payload.url, payload.filename);
-      pendingFilenameQueue.push(payload.filename);
+async function fetchAsDataUrl(url, filename, conflict = "overwrite") {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const blob = await response.blob();
+  const buffer = await blob.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i += 8192) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+  }
+  const base64 = btoa(binary);
+  const mime = blob.type || "image/jpeg";
+  return `data:${mime};x-filename=${encodeURIComponent(filename)};x-conflict=${conflict};base64,${base64}`;
+}
+
+async function fetchImageData(payload) {
+  // Use a dummy filename for fetchImageData since it is just loading data and not downloading via Chrome
+  const dataUrl = await fetchAsDataUrl(payload.url, "dummy.jpg", "overwrite");
+  const commaIdx = dataUrl.indexOf(",");
+  const base64 = dataUrl.substring(commaIdx + 1);
+  const mime = dataUrl.substring(5, commaIdx).split(";")[0];
+  return { base64, mime };
+}
+
+async function downloadFile(payload) {
+  try {
+    let downloadUrl = payload.url;
+    const conflict = payload.conflictAction || "overwrite";
+    if (downloadUrl && !downloadUrl.startsWith("data:")) {
+      try {
+        downloadUrl = await fetchAsDataUrl(payload.url, payload.filename, conflict);
+      } catch (fetchErr) {
+        console.warn("[background] fetchAsDataUrl failed, falling back to direct URL:", fetchErr.message);
+        downloadUrl = payload.url + (payload.url.includes("#") ? "&" : "#") + `x-filename=${encodeURIComponent(payload.filename)}&x-conflict=${conflict}`;
+      }
+    } else if (downloadUrl && downloadUrl.startsWith("data:")) {
+      const commaIdx = downloadUrl.indexOf(",");
+      const head = downloadUrl.substring(0, commaIdx);
+      const base64 = downloadUrl.substring(commaIdx + 1);
+      downloadUrl = `${head};x-filename=${encodeURIComponent(payload.filename)};x-conflict=${conflict},${base64}`;
     }
-    chrome.downloads.download({
-      url: payload.url,
-      filename: payload.filename,
-      conflictAction: payload.conflictAction || "uniquify",
-      saveAs: false
-    }, (downloadId) => {
-      if (chrome.runtime.lastError) {
-        if (payload.filename) {
-          pendingUrlDownloads.delete(payload.url);
-          const idx = pendingFilenameQueue.indexOf(payload.filename);
-          if (idx > -1) pendingFilenameQueue.splice(idx, 1);
+    
+    return new Promise((resolve) => {
+      chrome.downloads.download({
+        url: downloadUrl,
+        filename: payload.filename,
+        conflictAction: conflict,
+        saveAs: false
+      }, (downloadId) => {
+        if (chrome.runtime.lastError) {
+          resolve({ ok: false, error: chrome.runtime.lastError.message });
+          return;
         }
-        resolve({ ok: false, error: chrome.runtime.lastError.message });
-        return;
-      }
-      if (payload.filename) {
-        pendingDownloads.set(downloadId, payload.filename);
-      }
-      const checkAndResolve = (state, error) => {
-        if (state === "complete") {
-          chrome.downloads.onChanged.removeListener(listener);
-          resolve({ ok: true, downloadId });
-          return true;
-        } else if (state === "interrupted") {
-          chrome.downloads.onChanged.removeListener(listener);
-          resolve({ ok: false, error: "Download interrupted: " + (error || "") });
-          return true;
-        }
-        return false;
-      };
-      const listener = (delta) => {
-        if (delta.id === downloadId) {
-          checkAndResolve(delta.state?.current, delta.error?.current);
-        }
-      };
-      chrome.downloads.onChanged.addListener(listener);
-      
-      // Check if the download already finished (e.g. from cache)
-      chrome.downloads.search({ id: downloadId }, (results) => {
-        if (results && results[0]) {
-          checkAndResolve(results[0].state, results[0].error);
-        }
+        
+        const checkAndResolve = (state, error) => {
+          if (state === "complete") {
+            chrome.downloads.onChanged.removeListener(listener);
+            resolve({ ok: true, downloadId });
+            return true;
+          } else if (state === "interrupted") {
+            chrome.downloads.onChanged.removeListener(listener);
+            resolve({ ok: false, error: "Download interrupted: " + (error || "") });
+            return true;
+          }
+          return false;
+        };
+        
+        const listener = (delta) => {
+          if (delta.id === downloadId) {
+            checkAndResolve(delta.state?.current, delta.error?.current);
+          }
+        };
+        chrome.downloads.onChanged.addListener(listener);
+        
+        chrome.downloads.search({ id: downloadId }, (results) => {
+          if (results && results[0]) {
+            checkAndResolve(results[0].state, results[0].error);
+          }
+        });
       });
     });
-  });
+  } catch (error) {
+    return { ok: false, error: "ดาวน์โหลดรูปล้มเหลว: " + error.message };
+  }
 }
 
 async function postToTikTok(payload) {

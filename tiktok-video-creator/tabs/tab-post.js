@@ -38,6 +38,7 @@ function bindEvents() {
   document.querySelector("#post-open-upload")?.addEventListener("click", openTikTokUpload);
   document.querySelector("#post-test-file")?.addEventListener("change", onTestFileChange);
   document.querySelector("#post-test-run")?.addEventListener("click", runTestUpload);
+  document.querySelector("#post-test-generate-ai")?.addEventListener("click", () => generateAndFillCaptionAndHashtags());
   document.querySelector("#post-reset-settings")?.addEventListener("click", async () => {
     fillForm(DEFAULT_POST_SETTINGS);
     await savePostSettings();
@@ -106,13 +107,19 @@ async function runTestUpload() {
 
   const productName = getValue("post-test-product-name").trim();
   const manualCaption = getValue("post-test-caption").trim();
+  const manualHashtags = getValue("post-test-hashtags").trim();
   const productId = getValue("post-test-product-id").trim();
   const productUrl = getValue("post-test-product-url").trim();
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const postSettings = readForm(settings.postDefaults);
   const postType = postSettings.defaultMode || "draft";
   const uploadMode = postType === "now" || postType === "schedule" ? "post" : "draft";
-  const hashtags = normalizeHashtags(postSettings.hashtags, 5);
+
+  const defaultHashtags = normalizeHashtags(postSettings.hashtags, 5);
+  const hashtags = manualHashtags
+    ? normalizeHashtags(manualHashtags.split(",").map(t => t.trim()).filter(Boolean), 5)
+    : defaultHashtags;
+
   const productInfo = {
     productId,
     productUrl,
@@ -120,11 +127,15 @@ async function runTestUpload() {
     originalName: productName,
     cta: "สั่งได้เลย"
   };
-  const postCopy = manualCaption
-    ? { caption: manualCaption, hashtags }
-    : await generatePostCopy(productInfo, postSettings);
-  const caption = postCopy.caption !== undefined ? postCopy.caption : buildCaption(productInfo, postSettings);
-  const finalHashtags = normalizeHashtags(postCopy.hashtags?.length ? postCopy.hashtags : hashtags, 5);
+
+  let caption = manualCaption;
+  let finalHashtags = hashtags;
+
+  if (!caption) {
+    const postCopy = await generatePostCopy(productInfo, postSettings);
+    caption = postCopy.caption !== undefined ? postCopy.caption : buildCaption(productInfo, postSettings);
+    finalHashtags = normalizeHashtags(postCopy.hashtags?.length ? postCopy.hashtags : hashtags, 5);
+  }
   if (postType === "schedule" && !postSettings.scheduleTime) {
     setTestStatus("กรุณาเลือกเวลาโพสต์ก่อนตั้งเวลา", "error");
     return;
@@ -315,6 +326,51 @@ async function checkSelectedProductForPost() {
     setValue("post-test-product-url", product.productUrl || "");
     
     await chrome.storage.local.remove("selectedProductForPost");
-    helpers.showStatus?.("ดึงข้อมูลสินค้ามาป้อนให้เรียบร้อยแล้ว", "success");
+    helpers.showStatus?.("ดึงข้อมูลสินค้ามาป้อนให้เรียบร้อยแล้ว กำลังสร้าง Caption...", "success");
+
+    // ดึง/สร้าง Caption และ Hashtags ให้อัตโนมัติทันที
+    await generateAndFillCaptionAndHashtags(product);
+  }
+}
+
+async function generateAndFillCaptionAndHashtags(product = null) {
+  const productName = getValue("post-test-product-name").trim();
+  const productId = getValue("post-test-product-id").trim();
+  const productUrl = getValue("post-test-product-url").trim();
+
+  if (!productName) {
+    setTestStatus("กรุณากรอกชื่อสินค้าเพื่อสร้าง Caption", "error");
+    return;
+  }
+
+  setTestStatus("กำลังสร้าง Caption และ Hashtags ด้วย AI/Template...", "info");
+  const generateBtn = document.querySelector("#post-test-generate-ai");
+  if (generateBtn) generateBtn.disabled = true;
+
+  try {
+    const { settings = {} } = await chrome.storage.sync.get("settings");
+    const postSettings = normalizePostSettings(settings.postDefaults);
+    const defaultsHashtags = normalizeHashtags(postSettings.hashtags, 5);
+
+    const productInfo = {
+      productId,
+      productUrl,
+      name: productName,
+      originalName: productName,
+      cta: "สั่งได้เลย",
+      ...(product || {})
+    };
+
+    const postCopy = await generatePostCopy(productInfo, postSettings);
+    const caption = postCopy.caption !== undefined ? postCopy.caption : buildCaption(productInfo, postSettings);
+    const finalHashtags = normalizeHashtags(postCopy.hashtags?.length ? postCopy.hashtags : defaultsHashtags, 5);
+
+    setValue("post-test-caption", caption);
+    setValue("post-test-hashtags", finalHashtags.join(", "));
+    setTestStatus("สร้าง Caption และ Hashtags สำเร็จ", "success");
+  } catch (error) {
+    setTestStatus("สร้างข้อความล้มเหลว: " + (error?.message || error), "error");
+  } finally {
+    if (generateBtn) generateBtn.disabled = false;
   }
 }

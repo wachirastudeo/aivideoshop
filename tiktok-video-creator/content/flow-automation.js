@@ -863,21 +863,10 @@ async function switchToUploadedTab() {
 async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
     await closeFlowPanels({ required: true });
     patchFileInput();
-    const tiles = [];
+    
+    log(`ดาวน์โหลดข้อมูลรูปภาพ ${dataUrls.length} รูป...`);
+    const files = [];
     for (let i = 0; i < dataUrls.length; i++) {
-        await closeFlowPanels({ required: true });
-        log(`อัปโหลดรูป ${i + 1}/${dataUrls.length}...`);
-        const before = snapMediaKeys();
-
-        let inp = document.querySelector('input[type="file"][accept*="image"]')
-            || document.querySelector('input[type="file"]');
-        if (!inp) {
-            const addBtn = byText(["Add Media", "เพิ่มสื่อ", "Upload image", "Upload", "อัปโหลดรูปภาพ", "Reference"]);
-            if (addBtn) { click(addBtn); await sleep(1500); }
-            inp = document.querySelector('input[type="file"]');
-        }
-        if (!inp) throw new Error("หา file input สำหรับอัปโหลดรูปใน Google Flow ไม่เจอ");
-
         const candidates = [dataUrls[i], ...(fallbackUrls[i] || [])].filter(Boolean);
         let blob = null;
         let lastDownloadError = null;
@@ -893,7 +882,6 @@ async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
                 if (!/^image\//i.test(blob.type || "")) {
                     throw new Error(`type=${blob.type || "unknown"}`);
                 }
-                if (candidateIndex > 0) log(`⚠️ URL รูปหลักใช้ไม่ได้ ใช้รูปแสดงผลสำรองแทน`);
                 break;
             } catch (error) {
                 blob = null;
@@ -901,45 +889,60 @@ async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
             }
         }
         if (!blob) {
-            throw new Error(`ดาวน์โหลดรูปแล้วไม่ใช่ไฟล์ภาพ (${lastDownloadError?.message || "unknown"}) — URL อาจถูกบล็อก/หมดอายุ`);
+            throw new Error(`ดาวน์โหลดรูปที่ ${i + 1} ล้มเหลว (${lastDownloadError?.message || "unknown"}) — URL อาจถูกบล็อก/หมดอายุ`);
         }
         let mime = blob.type || "image/jpeg";
         const ext = mimeToImageExt(mime);
-        const file = new File([blob], `${i + 1}.${ext}`, { type: mime });
-        const dt = new DataTransfer(); dt.items.add(file);
-        inp.files = dt.files;
-        inp.dispatchEvent(new Event("change", { bubbles: true }));
-        inp.dispatchEvent(new Event("input", { bubbles: true }));
-
-        // รอ tile ใหม่ปรากฏและ upload เสร็จจริง
-        const secs = Math.max(300, Math.ceil(waitMs / 1000));
-        let mediaCard = null;
-        let lastNewCard = null;
-        let lastStatus = null;
-        for (let s = secs; s > 0; s--) {
-            if (stopRequested) return tiles;
-            log(`รออัปโหลดและรอภาพแสดง ${i + 1}/${dataUrls.length}... ${s}s`);
-            await sleep(1000);
-            for (const card of getMediaCards()) {
-                if (before.has(card.key)) continue;
-                const status = mediaCardStatus(card);
-                lastNewCard = card;
-                lastStatus = status;
-                if (status.ready) {
-                    mediaCard = card;
-                    break;
-                }
-            }
-            if (mediaCard) break;
-        }
-        if (!mediaCard) {
-            const detail = lastStatus?.text ? ` (${lastStatus.text.slice(0, 120)})` : "";
-            const key = lastNewCard?.key ? ` media=${lastNewCard.key.slice(0, 12)}` : "";
-            throw new Error(`รออัปโหลดรูปเข้า Google Flow หมดเวลา แต่ media card ยังไม่พร้อมใช้งาน${key}${detail}`);
-        }
-        tiles.push(mediaCard);
-        log(`✅ อัปโหลดรูป ${i + 1} สำเร็จ (media=${mediaCard.key.slice(0, 12) || "?"})`);
+        files.push(new File([blob], `${i + 1}.${ext}`, { type: mime }));
     }
+
+    await closeFlowPanels({ required: true });
+    log(`กำลังอัปโหลดรูปภาพพร้อมกัน ${files.length} รูป...`);
+    const before = snapMediaKeys();
+
+    let inp = document.querySelector('input[type="file"][accept*="image"]')
+        || document.querySelector('input[type="file"]');
+    if (!inp) {
+        const addBtn = byText(["Add Media", "เพิ่มสื่อ", "Upload image", "Upload", "อัปโหลดรูปภาพ", "Reference"]);
+        if (addBtn) { click(addBtn); await sleep(1500); }
+        inp = document.querySelector('input[type="file"]');
+    }
+    if (!inp) throw new Error("หา file input สำหรับอัปโหลดรูปใน Google Flow ไม่เจอ");
+
+    const dt = new DataTransfer();
+    files.forEach(f => dt.items.add(f));
+    inp.files = dt.files;
+    inp.dispatchEvent(new Event("change", { bubbles: true }));
+    inp.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // รอ tiles ใหม่ทั้งหมดปรากฏและ upload เสร็จจริง
+    const secs = Math.max(300, Math.ceil(waitMs / 1000));
+    const tiles = [];
+    const needed = files.length;
+    
+    for (let s = secs; s > 0; s--) {
+        if (stopRequested) return tiles;
+        
+        // ดึงการ์ดใหม่ที่สร้างขึ้น
+        const currentNewCards = getMediaCards().filter(card => card.key && !before.has(card.key));
+        const readyCards = currentNewCards.filter(card => mediaCardStatus(card).ready);
+        
+        log(`รออัปโหลดรูปภาพ... (${readyCards.length}/${needed} รูปพร้อมใช้งาน) ${s}s`);
+        
+        if (readyCards.length >= needed) {
+            readyCards.forEach(card => {
+                tiles.push(card);
+                log(`✅ อัปโหลดรูปสำเร็จ (media=${card.key.slice(0, 12) || "?"})`);
+            });
+            break;
+        }
+        await sleep(1000);
+    }
+
+    if (tiles.length < needed) {
+        throw new Error(`อัปโหลดรูปเข้า Google Flow สำเร็จเพียง ${tiles.length}/${needed} รูป (หมดเวลา)`);
+    }
+    
     return tiles;
 }
 

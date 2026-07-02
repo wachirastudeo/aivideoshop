@@ -685,17 +685,27 @@ async function processQueue() {
         }
       }
 
-      product.status = "image_generating";
+      const isIngredients = options.videoRefMode === "ingredients";
+      product.status = isIngredients ? "video_generating" : "image_generating";
       product.errorMessage = "";
       await persistState();
       renderQueue();
 
-      helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพ แล้วต่อวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)`, "info");
-      const imgPrompt = buildImagePrompt(product, settings);
-      const vidPrompt = buildVideoPrompt(product, settings);
-      assertNotStopped();
-      helpers.logActivity?.(`สินค้า ${i + 1}: เปิด New Project ใหม่ใน Google Flow`, "info");
-      const result = await openGoogleFlowWithLoginResume("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, getFlowProductImage(product), buildFlowOptions(product), product, i);
+      let result;
+      if (isIngredients) {
+        helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังอัปโหลดรูปและสร้างวิดีโอ (${options.videoCount} คลิป)`, "info");
+        const vidPrompt = buildVideoPrompt(product, settings);
+        assertNotStopped();
+        helpers.logActivity?.(`สินค้า ${i + 1} (Ingredients): เปิด New Project ใน Google Flow เพื่อสร้างวิดีโอโดยตรง`, "info");
+        result = await openGoogleFlowWithLoginResume("video", vidPrompt, getFlowProductImage(product), buildFlowOptions(product), product, i);
+      } else {
+        helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพ แล้วต่อวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)`, "info");
+        const imgPrompt = buildImagePrompt(product, settings);
+        const vidPrompt = buildVideoPrompt(product, settings);
+        assertNotStopped();
+        helpers.logActivity?.(`สินค้า ${i + 1}: เปิด New Project ใหม่ใน Google Flow เพื่อทำ Combined Pipeline`, "info");
+        result = await openGoogleFlowWithLoginResume("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, getFlowProductImage(product), buildFlowOptions(product), product, i);
+      }
       assertNotStopped();
 
       product.approvedImage = result?.imgUrl || product.approvedImage || getFlowProductImage(product) || "";
