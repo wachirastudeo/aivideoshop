@@ -199,28 +199,27 @@ export function sanitizeText(value) {
  * @returns {string} prompt ภาษาอังกฤษ
  */
 export function buildImagePrompt(productInfo, settings) {
-  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
-  const details = compactPromptText(productInfo.highlights || "", 100).replace(/[^\x00-\x7F]/g, "").trim();
-  const analysisDirection = buildAnalysisDirection(productInfo);
+  const hasRealAdvice = productInfo.promptAdvice && !productInfo.promptAdvice.startsWith("Preserve only");
+  const adviceName = hasRealAdvice ? stripStructuralVariantCounts(compactPromptText(productInfo.promptAdvice, 120)) : "";
+  const productName = adviceName || generationProductName(productInfo.name, productInfo.category) || "the attached product";
+  const details = compactPromptText(productInfo.highlights || "", 80).replace(/[^\x00-\x7F]/g, "").trim();
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const isHeavy = isHeavyProduct(productText);
 
   const promptParts = [
     `Create one vertical 9:16 commercial product photo of ${productName}.`,
-    PRODUCT_FIDELITY_DIRECTION,
-    SCALE_FIDELITY_DIRECTION,
-    isHeavy ? "Real scale." : "",
+    "Preserve its exact shape, proportions, materials, colors, and printed text. Do not add any new text or labels.",
+    isHeavy ? "Real scale." : "Close-up scale, product fills most of the frame.",
     PRODUCT_ISOLATION_DIRECTION,
     categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
-    analysisDirection,
-    "Choose a clean, realistic, commercially appealing background that fits this product category.",
-    `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Emphasize: ${details}.` : ""}`,
+    "Clean commercially appealing background. Centered, sharp, uncluttered.",
+    details ? `Emphasize: ${details}.` : "",
     NO_PEOPLE_DIRECTION,
-    TEXT_FREE_DIRECTION
+    "No extra text, captions, watermarks, or UI on the image."
   ];
 
-  return promptParts.filter(Boolean).join("\n");
+  return promptParts.filter(Boolean).join(" ");
 }
 
 function getProductWeightCategory(text = "") {
@@ -273,13 +272,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
   const clipText = compactPromptText(settings?.clipText, 80);
   const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true") && Boolean(clipText);
-  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
-  const analysisDirection = buildAnalysisDirection(productInfo);
-  const categoryDirection = buildCategoryFidelityDirection(productInfo);
-  const overlayText = [
-    clipText,
-    textEnabled ? compactPromptText(settings?.promotionText, 80) : ""
-  ].filter(Boolean);
+  const hasRealAdvice = productInfo.promptAdvice && !productInfo.promptAdvice.startsWith("Preserve only");
+  const adviceName = hasRealAdvice ? stripStructuralVariantCounts(compactPromptText(productInfo.promptAdvice, 120)) : "";
+  const productName = adviceName || generationProductName(productInfo.name, productInfo.category) || "the attached product";
 
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const weightCategory = getProductWeightCategory(productText);
@@ -287,13 +282,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isImmobile = weightCategory === "immobile";
 
   const promptParts = [
-    `Create a ${durationSeconds}-second vertical 9:16 multi-scene product video for ${productName}.`,
+    `Create a ${durationSeconds}-second vertical 9:16 product video for ${productName}.`,
     MATCH_STILL_DIRECTION,
-    PRODUCT_FIDELITY_DIRECTION,
-    REALISM_AND_PHYSICS_DIRECTION,
-    isHeavy ? "Real scale." : "Close-up scale: Show the small product in a large, prominent close-up or medium close-up. It must occupy most of the frame so all packaging text and details remain extremely sharp and readable. Do not show it as a tiny or distant object.",
-    categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
-    analysisDirection,
+    isHeavy ? "Real scale." : "Close-up scale: product fills most of the frame, packaging text remains sharp and readable.",
   ];
 
   const handsOnly = auto.presenter === "hands_only";
@@ -301,7 +292,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
     ? "review"
     : auto.videoStyle;
-  let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
+  let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 80), compactPromptText(auto.mood, 40))
     .replace(/\d+-second\s*/g, "");
   if (noPeople) {
     sceneBreakdown = sceneBreakdown
@@ -309,7 +300,6 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\b(presenter|reviewer|person)\b/gi, "product");
   }
 
-  // Adjust prompt for heavy/large products to prevent unnatural holding/lifting
   if (isImmobile) {
     const escapedName = productName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     sceneBreakdown = sceneBreakdown
@@ -321,54 +311,44 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   promptParts.push(
-    `Use distinct scenes with hard cuts; split the ${durationSeconds}s evenly across the scenes below.`,
+    `Hard cuts between scenes. Split ${durationSeconds}s evenly:`,
     sceneBreakdown,
-    `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep every shot sharp, clearly visible, and stable. Realistic motion only — no morphing, duplication, or impossible action.`
+    `${compactPromptText(auto.cameraMovement, 60)} camera. Realistic physics only — no morphing or duplication.`
   );
+
+  const overlayText = [
+    clipText,
+    textEnabled ? compactPromptText(settings?.promotionText, 60) : ""
+  ].filter(Boolean);
 
   promptParts.push(
     textEnabled && overlayText.length
-      ? `MUST always display these exact Thai text overlays, clearly legible and on-screen in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. Render the Thai script accurately with correct Thai characters, vowels, and tone marks, spelled exactly as written. Style it as eye-catching TikTok-pop kinetic typography: a bold rounded heavy sans-serif, bright punchy colors with a contrasting outline or soft drop shadow / highlight pill behind the words so it stays readable on any background, large and centered in its safe area, with a lively pop-in animation — vibrant and playful but clean, never garbled, fake, or misspelled. The text is required in the final video; do not omit it and do not add any other readable text.`
-      : TEXT_FREE_DIRECTION
+      ? `Display Thai text on-screen: ${overlayText.join(" | ")}. Bold readable style. No other text.`
+      : "No added text, captions, subtitles, or watermarks."
   );
 
-  let handsDir = HANDS_DIRECTION;
   let presenterInstruction = auto.presenter && PRESENTERS[auto.presenter] ? PRESENTERS[auto.presenter] : PRESENTERS.none;
   if (auto.presenter === "กรอกเอง") {
     presenterInstruction = auto.customPresenter || "a presenter";
   }
 
   if (isImmobile) {
-    handsDir = handsDir
-      .replace("holding and presenting", "gesturing towards and interacting with")
-      .replace("holding", "touching or gesturing towards")
-      + " The product is large and heavy, resting stably on a flat surface or floor; do not attempt to lift, carry, or hold it in the air.";
-
     presenterInstruction = presenterInstruction
       .replace("holding and presenting", "standing next to and presenting")
       .replace("holding", "presenting or interacting with")
-      + " The product is large and heavy, resting stably on a flat surface or floor; do not attempt to lift, carry, or hold it in the air.";
+      + " Product rests on a surface; do not lift or carry it.";
   } else if (weightCategory === "medium_heavy") {
-    handsDir = handsDir
-      .replace("holding and presenting", "holding with both hands and presenting")
-      + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the hands, never as a tiny packet or a giant sack.";
-
     presenterInstruction = presenterInstruction
-      .replace("holding and presenting", "holding with both hands and presenting")
-      .replace("holding", "holding with both hands or interacting with")
-      + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the presenter, never as a tiny packet or a giant sack.";
-  } else if (weightCategory === "light") {
-    handsDir = handsDir
-      + " The product is a small item; depict it in a prominent large scale relative to the hands (close-up), ensuring the product packaging, brand name, and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
-
+      .replace("holding and presenting", "holding with both hands and presenting");
+  } else {
     presenterInstruction = presenterInstruction
-      + " The product is a small item; depict it in a prominent large scale (close-up or medium close-up) relative to the presenter, ensuring the product packaging, brand name, and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+      + " Show product in prominent close-up, large and readable.";
   }
 
   if (handsOnly) {
-    promptParts.push(`${handsDir} ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
+    promptParts.push(`Hands only — no face or body. ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
   } else if (auto.presenter && auto.presenter !== "none") {
-    promptParts.push(`Presenter: ${presenterInstruction}. ${THAI_PERSON_DIRECTION} ${SPEECH_DIRECTION}`);
+    promptParts.push(`Presenter: ${presenterInstruction}. Natural Thai person. ${SPEECH_DIRECTION}`);
   } else {
     promptParts.push(`${NO_PEOPLE_DIRECTION} ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
   }
@@ -470,7 +450,8 @@ function compactPromptText(value, maxLength) {
 
 function buildAnalysisDirection(productInfo = {}) {
   const structureAdvice = compactPromptText(productInfo.structureAdvice, 220);
-  const promptAdvice = stripStructuralVariantCounts(compactPromptText(productInfo.promptAdvice, 140));
+  // If promptAdvice was already used as the main product name, we don't repeat it in analysisDirection
+  const promptAdvice = productInfo.promptAdvice ? "" : stripStructuralVariantCounts(compactPromptText(productInfo.promptAdvice, 140));
   const advice = [structureAdvice, promptAdvice].filter(Boolean).join(" ");
   return advice ? `Product analysis: ${advice}` : "";
 }
@@ -492,21 +473,45 @@ function generationProductName(value, category = "") {
   const lowerVal = value.toLowerCase();
   const lowerCat = String(category || "").toLowerCase();
 
-  // Map keywords to clean English generic terms
-  if (lowerVal.includes("กาแฟ") || lowerCat.includes("coffee")) return "coffee package";
-  if (lowerVal.includes("พัดลม") || lowerCat.includes("fan")) return "portable fan";
-  if (lowerVal.includes("เสื้อ") || lowerVal.includes("กางเกง") || lowerVal.includes("ผ้า") || lowerCat.includes("clothe") || lowerCat.includes("apparel")) return "clothing item";
-  if (lowerVal.includes("ครีม") || lowerVal.includes("เซรั่ม") || lowerVal.includes("บำรุง") || lowerVal.includes("สกินแคร์") || lowerCat.includes("skin") || lowerCat.includes("cosmetic")) return "skincare product bottle";
-  if (lowerVal.includes("อาหาร") || lowerVal.includes("ขนม") || lowerCat.includes("food") || lowerCat.includes("snack")) return "food product package";
-  if (lowerVal.includes("แก้ว") || lowerVal.includes("ขวด") || lowerCat.includes("bottle") || lowerCat.includes("cup")) return "cup";
-  if (lowerVal.includes("กระเป๋า") || lowerCat.includes("bag")) return "bag";
-  if (lowerVal.includes("รองเท้า") || lowerCat.includes("shoe")) return "shoe";
+  // 1. Determine the generic English noun
+  let noun = "";
+  if (lowerVal.includes("สายชาร์จ") || lowerVal.includes("สายชาร์จมือถือ") || lowerCat.includes("cable") || lowerCat.includes("charger")) noun = "charging cable";
+  else if (lowerVal.includes("หูฟัง") || lowerCat.includes("earphone") || lowerCat.includes("headphone") || lowerCat.includes("earbuds")) noun = "earphones";
+  else if (lowerVal.includes("พาวเวอร์แบงค์") || lowerVal.includes("แบตสำรอง") || lowerCat.includes("powerbank") || lowerCat.includes("power bank")) noun = "power bank";
+  else if (lowerVal.includes("ขาตั้ง") || lowerCat.includes("tripod") || lowerCat.includes("stand")) noun = "tripod stand";
+  else if (lowerVal.includes("พัดลม") || lowerCat.includes("fan")) noun = "portable fan";
+  else if (lowerVal.includes("กาแฟ") || lowerCat.includes("coffee")) noun = "coffee package";
+  else if (lowerVal.includes("เสื้อ") || lowerVal.includes("กางเกง") || lowerVal.includes("ผ้า") || lowerCat.includes("clothe") || lowerCat.includes("apparel")) noun = "clothing item";
+  else if (lowerVal.includes("ครีม") || lowerVal.includes("เซรั่ม") || lowerVal.includes("บำรุง") || lowerVal.includes("สกินแคร์") || lowerCat.includes("skin") || lowerCat.includes("cosmetic")) noun = "skincare product bottle";
+  else if (lowerVal.includes("อาหาร") || lowerVal.includes("ขนม") || lowerCat.includes("food") || lowerCat.includes("snack")) noun = "food product package";
+  else if (lowerVal.includes("แก้ว") || lowerVal.includes("ขวด") || lowerCat.includes("bottle") || lowerCat.includes("cup")) noun = "cup";
+  else if (lowerVal.includes("กระเป๋า") || lowerCat.includes("bag")) noun = "bag";
+  else if (lowerVal.includes("รองเท้า") || lowerCat.includes("shoe")) noun = "shoe";
+  else if (lowerVal.includes("น้ำหอม") || lowerCat.includes("perfume") || lowerCat.includes("fragrance")) noun = "perfume bottle";
+  else if (lowerVal.includes("สบู่") || lowerCat.includes("soap")) noun = "soap bar";
+  else if (lowerVal.includes("ลิป") || lowerCat.includes("lip")) noun = "lipstick";
+  else if (lowerVal.includes("ยาสระผม") || lowerVal.includes("แชมพู") || lowerVal.includes("ครีมนวด") || lowerCat.includes("shampoo") || lowerCat.includes("hair")) noun = "shampoo bottle";
+  else if (lowerVal.includes("เครื่องประดับ") || lowerVal.includes("สร้อย") || lowerVal.includes("แหวน") || lowerVal.includes("ต่างหู") || lowerCat.includes("jewelry")) noun = "jewelry item";
+  else if (lowerVal.includes("ไฟ") || lowerVal.includes("หลอดไฟ") || lowerVal.includes("โคมไฟ") || lowerCat.includes("light") || lowerCat.includes("lamp")) noun = "lamp";
 
-  // If there are English words in the original name, extract the first few words to identify it
+  // 2. Extract brand name / model if there are English words
   let englishWords = value.replace(/[^\x00-\x7F]/g, " ").replace(/\s+/g, " ").trim();
-  if (englishWords.length > 3) {
-    const words = englishWords.split(" ").slice(0, 4).join(" ");
-    if (words.length > 3) return stripStructuralVariantCounts(words);
+  // Filter out pure specs like "100W", "3A", "1M", "1.5M", "2M", "Type-C"
+  let cleanBrand = englishWords
+    .replace(/\b\d+(?:W|V|A|M|g|kg|ml|oz|mm|cm)\b/gi, "")
+    .replace(/\b(?:Type-C|USB|PD|QC|Fast|Charge|Speed)\b/gi, "")
+    .replace(/\b\d+(?:\.\d+)?\b/g, "") // remove numbers without units
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const words = cleanBrand.split(" ").filter(w => w.length > 1).slice(0, 2).join(" ");
+
+  if (noun) {
+    return words ? `${words} ${noun}` : noun;
+  }
+
+  if (words.length > 3) {
+    return stripStructuralVariantCounts(words);
   }
 
   return "the product packaging";

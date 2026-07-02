@@ -710,19 +710,8 @@ function getTileMediaUrl(el) {
 
 // ── File input patch ─────────────────────────────────────────
 function patchFileInput() {
-    const D = 3000;
-    new MutationObserver(muts => {
-        for (const m of muts) for (const n of m.addedNodes) {
-            if (!(n instanceof HTMLInputElement) || n.type !== "file") continue;
-            const orig = n.remove.bind(n); n.remove = () => setTimeout(orig, D);
-            const p = n.parentNode;
-            if (p) {
-                const oc = p.removeChild.bind(p); p.removeChild = c => {
-                    if (c === n) { setTimeout(() => oc(c), D); return c; } return oc(c);
-                };
-            }
-        }
-    }).observe(document.body, { childList: true, subtree: true });
+    // ปิดการทำงานไว้ชั่วคราว เพราะการแก้ removeChild ทำให้ React ใน Google Flow พัง (จอดำ)
+    // การหน่วงเวลาลบ DOM ทำให้ React state ไม่ตรงกับ DOM จริง
 }
 
 // ── dataUrl → Blob ───────────────────────────────────────────
@@ -787,7 +776,7 @@ async function ensureProjectPage() {
         if (back) {
             log("กลับไปหน้า Flow เพื่อกด New project...");
             back.scrollIntoView({ block: "center", inline: "center" });
-            click(back);
+            pointerClick(back);
             await sleep(2000);
         }
     }
@@ -801,7 +790,7 @@ async function ensureProjectPage() {
         if (action) {
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
             action.scrollIntoView({ block: "center", inline: "center" });
-            click(action);
+            pointerClick(action);
             await sleep(2500);
             if (isProjectUrl(location.href)) return true;
             continue;
@@ -844,7 +833,7 @@ async function prepareFreshProject() {
         if (action) {
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
             action.scrollIntoView({ block: "center", inline: "center" });
-            click(action);
+            pointerClick(action);
             return true;
         }
         await sleep(POLL);
@@ -1483,14 +1472,39 @@ function findAddButton(root, anchor) {
     return candidates[0]?.button || null;
 }
 
-// ── 6. setPrompt (paste → char-by-char fallback) ─────────────
+// ── 6. setPrompt (paste → human word-by-word fallback) ─────────────
+/** Simulate human typing by inserting prompt word-by-word with random pauses */
+async function humanTypeWords(prompt) {
+    // Split on newlines first, then words
+    const segments = prompt.split("\n");
+    for (let s = 0; s < segments.length; s++) {
+        if (stopRequested) return;
+        if (s > 0) {
+            document.execCommand("insertLineBreak", false, null);
+            await sleep(120 + Math.random() * 180);
+        }
+        const words = segments[s].split(" ").filter(Boolean);
+        for (let i = 0; i < words.length; i++) {
+            if (stopRequested) return;
+            const word = words[i] + (i < words.length - 1 ? " " : "");
+            document.execCommand("insertText", false, word);
+            // Short pause after each word (40–130ms)
+            await sleep(40 + Math.random() * 90);
+            // Occasional longer thinking pause every 8-15 words
+            if (i > 0 && i % (8 + Math.floor(Math.random() * 7)) === 0) {
+                await sleep(300 + Math.random() * 500);
+            }
+        }
+    }
+}
+
 async function setPrompt(prompt) {
     const editor = await waitForPromptEditor(15000);
     if (!editor) throw new Error("หาช่องพิมพ์ prompt ไม่เจอ");
     editor.scrollIntoView({ behavior: "smooth", block: "center" });
-    await sleep(500);
+    await sleep(600 + Math.random() * 400);
     await humanClick(editor);
-    await sleep(400);
+    await sleep(500 + Math.random() * 300);
 
     if (editor.matches('[data-slate-editor="true"]')) {
         await typeSlate(editor, prompt);
@@ -1502,7 +1516,8 @@ async function setPrompt(prompt) {
         await typeContentEditable(editor, prompt);
     }
 
-    await sleep(700);
+    // Natural pause after finishing typing before clicking generate
+    await sleep(800 + Math.random() * 600);
     const typed = getPromptText(editor);
     const needle = prompt.replace(/\s+/g, "").slice(0, Math.min(28, prompt.length));
     if (!typed.replace(/\s+/g, "").includes(needle)) {
@@ -1577,54 +1592,52 @@ async function typeContentEditable(editor, prompt) {
 }
 
 async function typeSlate(editor, prompt) {
+    // ── ขั้น 1: execCommand word-by-word (ไม่ต้องใช้ Debugger)
     selectEditableContents(editor);
+    document.execCommand("delete", false, null);
+    editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
+    await sleep(200 + Math.random() * 200);
+
+    await humanTypeWords(prompt);
+    editor.dispatchEvent(new Event("change", { bubbles: true }));
+    editor.blur();
+    await sleep(150 + Math.random() * 100);
+    editor.focus();
+    if (await waitForPromptCommit(editor, prompt, 2000)) {
+        log("✅ กรอก Prompt สำเร็จ (execCommand)");
+        return;
+    }
+
+    // ── ขั้น 2: Clipboard paste
+    try {
+        selectEditableContents(editor);
+        document.execCommand("delete", false, null);
+        await sleep(100 + Math.random() * 100);
+        const dt = new DataTransfer(); dt.setData("text/plain", prompt);
+        editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
+        if (await waitForPromptCommit(editor, prompt, 1500)) {
+            log("✅ กรอก Prompt สำเร็จ (paste)");
+            return;
+        }
+    } catch (e) { console.warn("[FlowAuto] paste failed:", e); }
+
+    // ── ขั้น 3: Debugger (ใช้เฉพาะเมื่อ 2 วิธีข้างบนล้มเหลว)
     try {
         const response = await chrome.runtime.sendMessage({
             type: "FLOW_INSERT_TEXT",
             payload: { text: prompt, clear: true }
         });
         if (response?.ok && response.inserted && await waitForPromptCommit(editor, prompt, 3000)) {
-            log("✅ กรอก Prompt เข้า Slate สำเร็จ");
+            log("✅ กรอก Prompt สำเร็จ (debugger)");
             return;
         }
     } catch (error) {
-        console.warn("[FlowAuto] trusted prompt insert failed:", error);
+        console.warn("[FlowAuto] debugger insert failed:", error);
     }
 
-    selectEditableContents(editor);
-    document.execCommand("delete", false, null);
-    editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
-    await sleep(100);
-
-    document.execCommand("insertText", false, prompt);
-    editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
-    editor.dispatchEvent(new Event("change", { bubbles: true }));
-    editor.blur();
-    await sleep(100);
-    editor.focus();
-    if (await waitForPromptCommit(editor, prompt, 2000)) return;
-
-    try {
-        selectEditableContents(editor);
-        document.execCommand("delete", false, null);
-        const dt = new DataTransfer(); dt.setData("text/plain", prompt);
-        editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
-        if (await waitForPromptCommit(editor, prompt, 1500)) return;
-    } catch (e) { console.warn("[FlowAuto] paste failed:", e); }
-
-    selectEditableContents(editor);
-    document.execCommand("delete", false, null);
-    await sleep(50);
-    for (const ch of prompt) {
-        if (stopRequested) return;
-        document.execCommand(ch === "\n" ? "insertLineBreak" : "insertText", false, ch === "\n" ? null : ch);
-        await sleep(4);
-    }
-    editor.dispatchEvent(new Event("change", { bubbles: true }));
-    if (!await waitForPromptCommit(editor, prompt, 2500)) {
-        throw new Error("กรอก prompt ใน Slate ไม่สำเร็จ");
-    }
+    throw new Error("กรอก prompt ใน Slate ไม่สำเร็จ");
 }
+
 
 function selectEditableContents(editor) {
     editor.focus();
@@ -1651,12 +1664,12 @@ async function waitForPromptCommit(editor, prompt, timeoutMs) {
 }
 
 async function typeDraft(editor, prompt) {
-    editor.focus(); await sleep(100);
+    editor.focus(); await sleep(150 + Math.random() * 100);
     document.execCommand("selectAll", false, null);
     document.execCommand("delete", false, null);
-    await sleep(50);
-    for (const ch of prompt) { document.execCommand("insertText", false, ch); await sleep(10); }
-    await sleepStop(3000);
+    await sleep(100 + Math.random() * 100);
+    await humanTypeWords(prompt);
+    await sleepStop(2000);
 }
 
 // ── 7. clickGenerate ─────────────────────────────────────────

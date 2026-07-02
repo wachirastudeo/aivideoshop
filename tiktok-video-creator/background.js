@@ -146,49 +146,68 @@ async function insertTextWithDebugger(payload, sender) {
   }
 
   const target = { tabId };
+  const delay = (min, max) => new Promise(r => setTimeout(r, min + Math.random() * (max - min)));
+
   try {
     await ensureDebuggerAttached(tabId);
 
     if (payload?.clear !== false) {
       await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
-        type: "keyDown",
-        key: "a",
-        code: "KeyA",
-        windowsVirtualKeyCode: 65,
-        nativeVirtualKeyCode: 65,
-        modifiers: 4
+        type: "keyDown", key: "a", code: "KeyA",
+        windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 4
       });
       await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
-        type: "keyUp",
-        key: "a",
-        code: "KeyA",
-        windowsVirtualKeyCode: 65,
-        nativeVirtualKeyCode: 65,
-        modifiers: 4
+        type: "keyUp", key: "a", code: "KeyA",
+        windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 4
+      });
+      await delay(80, 180);
+      await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+        type: "keyDown", key: "Backspace", code: "Backspace",
+        windowsVirtualKeyCode: 8, nativeVirtualKeyCode: 8
       });
       await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
-        type: "keyDown",
-        key: "Backspace",
-        code: "Backspace",
-        windowsVirtualKeyCode: 8,
-        nativeVirtualKeyCode: 8
+        type: "keyUp", key: "Backspace", code: "Backspace",
+        windowsVirtualKeyCode: 8, nativeVirtualKeyCode: 8
       });
-      await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
-        type: "keyUp",
-        key: "Backspace",
-        code: "Backspace",
-        windowsVirtualKeyCode: 8,
-        nativeVirtualKeyCode: 8
-      });
+      await delay(150, 300);
     }
 
-    await chrome.debugger.sendCommand(target, "Input.insertText", { text });
-    return { inserted: true, method: "Input.insertText" };
+    // พิมพ์ทีละคำเหมือนคนจริง แทนการวางข้อความทั้งก้อน
+    const segments = text.split("\n");
+    let wordIndex = 0;
+    for (let s = 0; s < segments.length; s++) {
+      if (s > 0) {
+        await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+          type: "keyDown", key: "Enter", code: "Enter",
+          windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13
+        });
+        await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+          type: "keyUp", key: "Enter", code: "Enter",
+          windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13
+        });
+        await delay(100, 200);
+      }
+      const words = segments[s].split(" ").filter(Boolean);
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i] + (i < words.length - 1 ? " " : "");
+        await chrome.debugger.sendCommand(target, "Input.insertText", { text: word });
+        // หยุดพักระหว่างคำ 40–120ms
+        await delay(40, 120);
+        wordIndex++;
+        // หยุดพักยาวขึ้นทุกๆ 8–14 คำ (เหมือนคนคิดก่อนพิมพ์ต่อ)
+        if (wordIndex > 0 && wordIndex % (8 + Math.floor(Math.random() * 6)) === 0) {
+          await delay(280, 600);
+        }
+      }
+    }
+
+    return { inserted: true, method: "Input.insertText-word-by-word" };
   } catch (error) {
     await detachDebuggerTab(tabId);
     throw error;
   }
 }
+
 
 async function openCreatorTab() {
   const url = chrome.runtime.getURL("sidepanel.html?mode=tab");

@@ -685,19 +685,21 @@ async function processQueue() {
         }
       }
 
-      const isIngredients = options.videoRefMode === "ingredients";
-      product.status = isIngredients ? "video_generating" : "image_generating";
+      const hasApprovedImage = Boolean(product.approvedImage);
+      product.status = hasApprovedImage ? "video_generating" : "image_generating";
       product.errorMessage = "";
       await persistState();
       renderQueue();
 
       let result;
-      if (isIngredients) {
-        helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังอัปโหลดรูปและสร้างวิดีโอ (${options.videoCount} คลิป)`, "info");
+      if (hasApprovedImage) {
+        helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: มีภาพพร้อมแล้ว กำลังเปิด Google Flow เพื่อสร้างวิดีโอ (${options.videoCount} คลิป)`, "info");
         const vidPrompt = buildVideoPrompt(product, settings);
         assertNotStopped();
-        helpers.logActivity?.(`สินค้า ${i + 1} (Ingredients): เปิด New Project ใน Google Flow เพื่อสร้างวิดีโอโดยตรง`, "info");
-        result = await openGoogleFlowWithLoginResume("video", vidPrompt, getFlowProductImage(product), buildFlowOptions(product), product, i);
+        helpers.logActivity?.(`สินค้า ${i + 1}: เปิด New Project ใน Google Flow เพื่อสร้างวิดีโอโดยตรงจากภาพที่ระบุ`, "info");
+        const flowOptions = buildFlowOptions(product);
+        flowOptions.imageUrls = [product.approvedImage]; // เจนวิดีโอจากภาพที่อนุมัติ/อัปโหลดไว้เท่านั้น
+        result = await openGoogleFlowWithLoginResume("video", vidPrompt, product.approvedImage, flowOptions, product, i);
       } else {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพ แล้วต่อวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)`, "info");
         const imgPrompt = buildImagePrompt(product, settings);
