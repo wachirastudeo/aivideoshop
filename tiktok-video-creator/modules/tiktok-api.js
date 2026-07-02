@@ -125,7 +125,7 @@ function maximizeProductImageUrl(url) {
     url = "https:" + url;
   }
   // TikTok/ByteDance CDN Image Processing Optimization
-  if (url.includes("ibyteimg.com") && url.includes("~tplv-")) {
+  if (url.includes("~tplv-")) {
     const match = url.match(/~tplv-([a-zA-Z0-9-]+?)(?:-resize|-crop|:)/i);
     if (match) {
       const token = match[1];

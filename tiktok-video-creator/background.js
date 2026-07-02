@@ -676,16 +676,32 @@ function delay(ms) {
 }
 
 const pendingDownloads = new Map(); // downloadId -> filename
+const pendingUrlDownloads = new Map(); // url -> filename
 const pendingFilenameQueue = []; // FIFO queue for filenames (handles dynamic redirects/signed URLs)
 
 chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
   if (item.byExtensionId === chrome.runtime.id) {
-    // 1. Try matching by download ID
-    let targetPath = pendingDownloads.get(item.id);
+    // 0. Try matching by exact URL
+    let targetPath = pendingUrlDownloads.get(item.url);
     if (targetPath) {
-      pendingDownloads.delete(item.id);
+      pendingUrlDownloads.delete(item.url);
+      const idx = pendingFilenameQueue.indexOf(targetPath);
+      if (idx > -1) pendingFilenameQueue.splice(idx, 1);
       suggest({
         filename: targetPath,
+        conflictAction: "overwrite"
+      });
+      return;
+    }
+    
+    // 1. Try matching by download ID
+    let targetPathById = pendingDownloads.get(item.id);
+    if (targetPathById) {
+      pendingDownloads.delete(item.id);
+      const idx = pendingFilenameQueue.indexOf(targetPathById);
+      if (idx > -1) pendingFilenameQueue.splice(idx, 1);
+      suggest({
+        filename: targetPathById,
         conflictAction: "overwrite"
       });
       return;
@@ -715,6 +731,9 @@ async function downloadVideo(payload) {
   }
 
   try {
+    if (payload.filename) {
+      pendingUrlDownloads.set(downloadUrl, payload.filename);
+    }
     const id = await chrome.downloads.download({ url: downloadUrl, filename: payload.filename, saveAs: false });
     if (payload.filename) {
       pendingDownloads.set(id, payload.filename);
@@ -729,28 +748,57 @@ async function downloadVideo(payload) {
   }
 }
 
-async function downloadFile(payload) {
-  if (payload.filename) {
-    pendingFilenameQueue.push(payload.filename);
-  }
-  try {
-    const id = await chrome.downloads.download({
+function downloadFile(payload) {
+  return new Promise((resolve) => {
+    if (payload.filename) {
+      pendingUrlDownloads.set(payload.url, payload.filename);
+      pendingFilenameQueue.push(payload.filename);
+    }
+    chrome.downloads.download({
       url: payload.url,
       filename: payload.filename,
       conflictAction: payload.conflictAction || "uniquify",
       saveAs: false
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        if (payload.filename) {
+          pendingUrlDownloads.delete(payload.url);
+          const idx = pendingFilenameQueue.indexOf(payload.filename);
+          if (idx > -1) pendingFilenameQueue.splice(idx, 1);
+        }
+        resolve({ ok: false, error: chrome.runtime.lastError.message });
+        return;
+      }
+      if (payload.filename) {
+        pendingDownloads.set(downloadId, payload.filename);
+      }
+      const checkAndResolve = (state, error) => {
+        if (state === "complete") {
+          chrome.downloads.onChanged.removeListener(listener);
+          resolve({ ok: true, downloadId });
+          return true;
+        } else if (state === "interrupted") {
+          chrome.downloads.onChanged.removeListener(listener);
+          resolve({ ok: false, error: "Download interrupted: " + (error || "") });
+          return true;
+        }
+        return false;
+      };
+      const listener = (delta) => {
+        if (delta.id === downloadId) {
+          checkAndResolve(delta.state?.current, delta.error?.current);
+        }
+      };
+      chrome.downloads.onChanged.addListener(listener);
+      
+      // Check if the download already finished (e.g. from cache)
+      chrome.downloads.search({ id: downloadId }, (results) => {
+        if (results && results[0]) {
+          checkAndResolve(results[0].state, results[0].error);
+        }
+      });
     });
-    if (payload.filename) {
-      pendingDownloads.set(id, payload.filename);
-    }
-    return { ok: true, downloadId: id };
-  } catch (error) {
-    if (payload.filename) {
-      const idx = pendingFilenameQueue.indexOf(payload.filename);
-      if (idx > -1) pendingFilenameQueue.splice(idx, 1);
-    }
-    return { ok: false, error: error.message };
-  }
+  });
 }
 
 async function postToTikTok(payload) {

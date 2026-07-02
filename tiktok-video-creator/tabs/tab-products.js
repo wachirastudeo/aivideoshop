@@ -126,7 +126,6 @@ async function importShopeeCsv(file) {
         currency: "THB",
         displayImageUrl: images[0] || "",
         imageUrls: images,                 // หลายรูป → image picker ใช้งานได้
-        selectedImageUrls: images.slice(0, 1),
         productUrl: row.productUrl || row.offerUrl,
         shopName: row.shopName,
         commission: row.commission,
@@ -288,7 +287,6 @@ async function runShopeePull() {
         ...item,
         displayImageUrl: finalImages[0] || item.displayImageUrl || "",
         imageUrls: finalImages,
-        selectedImageUrls: finalImages.slice(0, 1),
         productUrl: consumerUrl // เก็บลิงก์สินค้าจริง (ฝั่งผู้บริโภค)
       });
     }
@@ -937,27 +935,39 @@ async function downloadProductImages(product) {
   const dateTimeStr = getFormattedDateTime();
   const sanitizedName = sanitizeFolderName(product.name || product.productId);
   let successCount = 0;
+  let errors = [];
+  
   for (let i = 0; i < urlsToDownload.length; i++) {
     const url = urlsToDownload[i];
     const ext = getExtensionFromUrl(url);
     const filename = `aivideoshop/download_${dateTimeStr}/${sanitizedName}_${i + 1}${ext}`;
     
-    const res = await chrome.runtime.sendMessage({
-      type: "DOWNLOAD_FILE",
-      payload: {
-        url: url,
-        filename: filename,
-        conflictAction: "uniquify"
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: "DOWNLOAD_FILE",
+        payload: {
+          url: url,
+          filename: filename,
+          conflictAction: "uniquify"
+        }
+      });
+      if (res?.ok) {
+        successCount++;
+      } else {
+        errors.push(`รูปที่ ${i + 1}: ${res?.error || "ดาวน์โหลดไม่สำเร็จ"}`);
       }
-    });
-    if (res?.ok) {
-      successCount++;
+    } catch (err) {
+      errors.push(`รูปที่ ${i + 1}: ${err.message || "เกิดข้อผิดพลาด"}`);
     }
-    await new Promise(r => setTimeout(r, 50));
   }
   
-  helpers.showStatus(`ดาวน์โหลดรูปภาพสำเร็จ ${successCount}/${urlsToDownload.length} รูป`, "success");
-  helpers.logActivity?.(`ดาวน์โหลดรูปภาพสำหรับ ${product.name} สำเร็จ (${successCount}/${urlsToDownload.length} รูป)`, "success");
+  if (errors.length > 0) {
+    helpers.showStatus(`ดาวน์โหลดสำเร็จ ${successCount}/${urlsToDownload.length} รูป (ล้มเหลว: ${errors.slice(0, 2).join(", ")}${errors.length > 2 ? '...' : ''})`, "error");
+    helpers.logActivity?.(`ดาวน์โหลดรูปภาพสำหรับ ${product.name} สำเร็จ ${successCount}/${urlsToDownload.length} (ล้มเหลว: ${errors.join("; ")})`, "error");
+  } else {
+    helpers.showStatus(`ดาวน์โหลดรูปภาพสำเร็จ ${successCount}/${urlsToDownload.length} รูป`, "success");
+    helpers.logActivity?.(`ดาวน์โหลดรูปภาพสำหรับ ${product.name} สำเร็จทั้งหมด (${successCount}/${urlsToDownload.length} รูป)`, "success");
+  }
 }
 
 function escapeHtml(value) {
