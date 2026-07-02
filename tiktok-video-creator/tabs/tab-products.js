@@ -408,6 +408,57 @@ function bindProductEvents() {
     renderProducts();
   });
 
+  document.querySelector("#download-batch-images")?.addEventListener("click", async () => {
+    if (selectedIds.size === 0) return;
+    const selectedProducts = products.filter(p => selectedIds.has(p.productId));
+    
+    helpers.showStatus(`เริ่มดาวน์โหลดรูปภาพสำหรับ ${selectedProducts.length} สินค้า...`, "success");
+    helpers.logActivity?.(`เริ่มดาวน์โหลดรูปภาพสำหรับ ${selectedProducts.length} สินค้า`, "info");
+    
+    const dateTimeStr = getFormattedDateTime();
+    let totalImages = 0;
+    let successProducts = 0;
+    for (const product of selectedProducts) {
+      let urlsToDownload = [];
+      if (Array.isArray(product.selectedImageUrls) && product.selectedImageUrls.length > 0) {
+        urlsToDownload = product.selectedImageUrls;
+      } else if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
+        urlsToDownload = product.imageUrls;
+      } else if (product.displayImageUrl) {
+        urlsToDownload = [product.displayImageUrl];
+      }
+      urlsToDownload = [...new Set(urlsToDownload.filter(Boolean))].map(url => url.startsWith("//") ? "https:" + url : url);
+      
+      const sanitizedName = sanitizeFolderName(product.name || product.productId);
+      let successCount = 0;
+      for (let i = 0; i < urlsToDownload.length; i++) {
+        const url = urlsToDownload[i];
+        const ext = getExtensionFromUrl(url);
+        const filename = `aivideoshop/download_${dateTimeStr}/${sanitizedName}_${i + 1}${ext}`;
+        
+        const res = await chrome.runtime.sendMessage({
+          type: "DOWNLOAD_FILE",
+          payload: {
+            url: url,
+            filename: filename,
+            conflictAction: "uniquify"
+          }
+        });
+        if (res?.ok) {
+          successCount++;
+          totalImages++;
+        }
+        await new Promise(r => setTimeout(r, 50));
+      }
+      if (successCount > 0) {
+        successProducts++;
+      }
+    }
+    
+    helpers.showStatus(`ดาวน์โหลดรูปภาพสำเร็จ ${totalImages} รูป ของ ${successProducts}/${selectedProducts.length} สินค้า`, "success");
+    helpers.logActivity?.(`ดาวน์โหลดรูปภาพสำเร็จรวม ${totalImages} รูปภาพ ของสินค้า ${successProducts} รายการ`, "success");
+  });
+
   document.querySelector("#create-batch-videos")?.addEventListener("click", async () => {
     if (selectedIds.size === 0) return;
     const selectedArray = products
@@ -522,6 +573,16 @@ function renderProducts() {
     });
   });
 
+  list.querySelectorAll("[data-download-images]").forEach((button) => {
+    button.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const product = products.find((item) => item.productId === button.dataset.downloadImages);
+      if (product) {
+        await downloadProductImages(product);
+      }
+    });
+  });
+
   list.querySelectorAll("[data-create-video]").forEach((button) => {
     button.addEventListener("click", async () => {
       const product = products.find((item) => item.productId === button.dataset.createVideo);
@@ -581,6 +642,7 @@ function updateBatchUI() {
   const visibleProducts = products.filter((p) => p.name.toLowerCase().includes(query));
   const selectAll = document.querySelector("#select-all-products");
   const batchBtn = document.querySelector("#create-batch-videos");
+  const batchDownloadBtn = document.querySelector("#download-batch-images");
   
   if (selectAll && visibleProducts.length > 0) {
     selectAll.checked = visibleProducts.every(p => selectedIds.has(p.productId));
@@ -588,6 +650,10 @@ function updateBatchUI() {
   if (batchBtn) {
     batchBtn.textContent = `สร้างวิดีโอ (${selectedIds.size})`;
     batchBtn.disabled = selectedIds.size === 0;
+  }
+  if (batchDownloadBtn) {
+    batchDownloadBtn.textContent = `ดาวน์โหลดภาพ (${selectedIds.size})`;
+    batchDownloadBtn.disabled = selectedIds.size === 0;
   }
 }
 
@@ -773,6 +839,7 @@ function productMarkup(product) {
           ${stockBadge}
         </p>
       </div>
+      <button class="icon-button" type="button" data-download-images="${escapeHtml(product.productId)}" title="ดาวน์โหลดภาพ" aria-label="ดาวน์โหลดภาพ">${downloadIcon()}</button>
       <button class="icon-button" type="button" data-create-video="${escapeHtml(product.productId)}" title="สร้างวิดีโอ" aria-label="สร้างวิดีโอ">${videoIcon()}</button>
     </article>
   `;
@@ -794,6 +861,73 @@ function videoIcon() {
   return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2.2"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`;
 }
 
+function downloadIcon() {
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+}
+
+function sanitizeFolderName(name) {
+  return String(name || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+}
+
+function getExtensionFromUrl(url) {
+  const cleanUrl = String(url || "").split(/[?#]/)[0];
+  const extMatch = cleanUrl.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i);
+  if (extMatch) return extMatch[0].toLowerCase();
+  
+  const cdnMatch = String(url || "").match(/(jpeg|jpg|png|webp|gif|svg)/i);
+  if (cdnMatch) {
+    const ext = cdnMatch[1].toLowerCase();
+    return ext === "jpeg" ? ".jpg" : `.${ext}`;
+  }
+  return ".jpg";
+}
+
+async function downloadProductImages(product) {
+  let urlsToDownload = [];
+  if (Array.isArray(product.selectedImageUrls) && product.selectedImageUrls.length > 0) {
+    urlsToDownload = product.selectedImageUrls;
+  } else if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
+    urlsToDownload = product.imageUrls;
+  } else if (product.displayImageUrl) {
+    urlsToDownload = [product.displayImageUrl];
+  }
+  
+  urlsToDownload = [...new Set(urlsToDownload.filter(Boolean))].map(url => url.startsWith("//") ? "https:" + url : url);
+  
+  if (urlsToDownload.length === 0) {
+    helpers.showStatus("ไม่พบรูปภาพสินค้าที่จะดาวน์โหลด", "error");
+    return;
+  }
+  
+  helpers.showStatus(`กำลังดาวน์โหลดรูปภาพสำหรับ ${product.name}...`, "success");
+  helpers.logActivity?.(`เริ่มดาวน์โหลดรูปภาพ ${urlsToDownload.length} รูป ของ ${product.name}`, "info");
+  
+  const dateTimeStr = getFormattedDateTime();
+  const sanitizedName = sanitizeFolderName(product.name || product.productId);
+  let successCount = 0;
+  for (let i = 0; i < urlsToDownload.length; i++) {
+    const url = urlsToDownload[i];
+    const ext = getExtensionFromUrl(url);
+    const filename = `aivideoshop/download_${dateTimeStr}/${sanitizedName}_${i + 1}${ext}`;
+    
+    const res = await chrome.runtime.sendMessage({
+      type: "DOWNLOAD_FILE",
+      payload: {
+        url: url,
+        filename: filename,
+        conflictAction: "uniquify"
+      }
+    });
+    if (res?.ok) {
+      successCount++;
+    }
+    await new Promise(r => setTimeout(r, 50));
+  }
+  
+  helpers.showStatus(`ดาวน์โหลดรูปภาพสำเร็จ ${successCount}/${urlsToDownload.length} รูป`, "success");
+  helpers.logActivity?.(`ดาวน์โหลดรูปภาพสำหรับ ${product.name} สำเร็จ (${successCount}/${urlsToDownload.length} รูป)`, "success");
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replaceAll("&", "&amp;")
@@ -801,4 +935,15 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function getFormattedDateTime() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}_${hh}${min}${ss}`;
 }

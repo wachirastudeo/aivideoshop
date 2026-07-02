@@ -116,7 +116,7 @@ function resolveDisplayProductImageUrl(item = {}, imageUrls = []) {
   if (url.startsWith("//")) {
     url = "https:" + url;
   }
-  return url;
+  return normalizeProductImageUrl(url);
 }
 
 function maximizeProductImageUrl(url) {
@@ -126,15 +126,11 @@ function maximizeProductImageUrl(url) {
   }
   // TikTok/ByteDance CDN Image Processing Optimization
   if (url.includes("ibyteimg.com") && url.includes("~tplv-")) {
-    // Replace crop or resize templates with origin-jpeg.jpeg or origin-webp.webp
-    let maximized = url.replace(/-(?:resize|crop)-jpeg:\d+:\d+\.jpeg/gi, "-origin-jpeg.jpeg");
-    maximized = maximized.replace(/-(?:resize|crop)-webp:\d+:\d+\.webp/gi, "-origin-webp.webp");
-    maximized = maximized.replace(/-(?:resize|crop):\d+:\d+\.jpeg/gi, "-origin.jpeg");
-    maximized = maximized.replace(/-(?:resize|crop):\d+:\d+\.webp/gi, "-origin.webp");
-    maximized = maximized.replace(/-(?:resize|crop)(?:-jpeg|-webp)?:\d+:\d+/gi, (match) => {
-      return match.replace(/resize|crop/i, "origin").split(":")[0];
-    });
-    return maximized;
+    const match = url.match(/~tplv-([a-zA-Z0-9-]+?)(?:-resize|-crop|:)/i);
+    if (match) {
+      const token = match[1];
+      return url.replace(/~tplv-.*$/, `~tplv-${token}-origin-jpeg.jpeg`);
+    }
   }
   return url;
 }
