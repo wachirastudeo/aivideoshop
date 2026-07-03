@@ -860,7 +860,7 @@ async function switchToUploadedTab() {
 }
 
 // ── 3. uploadImages ──────────────────────────────────────────
-async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
+async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
     await closeFlowPanels({ required: true });
     patchFileInput();
     
@@ -897,50 +897,67 @@ async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
     }
 
     await closeFlowPanels({ required: true });
-    log(`กำลังอัปโหลดรูปภาพพร้อมกัน ${files.length} รูป...`);
+    log(`กำลังอัปโหลดรูปภาพทีละภาพ จำนวนทั้งหมด ${files.length} รูป...`);
     const before = snapMediaKeys();
-
-    let inp = document.querySelector('input[type="file"][accept*="image"]')
-        || document.querySelector('input[type="file"]');
-    if (!inp) {
-        const addBtn = byText(["Add Media", "เพิ่มสื่อ", "Upload image", "Upload", "อัปโหลดรูปภาพ", "Reference"]);
-        if (addBtn) { click(addBtn); await sleep(1500); }
-        inp = document.querySelector('input[type="file"]');
-    }
-    if (!inp) throw new Error("หา file input สำหรับอัปโหลดรูปใน Google Flow ไม่เจอ");
-
-    const dt = new DataTransfer();
-    files.forEach(f => dt.items.add(f));
-    inp.files = dt.files;
-    inp.dispatchEvent(new Event("change", { bubbles: true }));
-    inp.dispatchEvent(new Event("input", { bubbles: true }));
-
-    // รอ tiles ใหม่ทั้งหมดปรากฏและ upload เสร็จจริง
-    const secs = Math.max(300, Math.ceil(waitMs / 1000));
     const tiles = [];
     const needed = files.length;
-    
-    for (let s = secs; s > 0; s--) {
-        if (stopRequested) return tiles;
-        
-        // ดึงการ์ดใหม่ที่สร้างขึ้น
-        const currentNewCards = getMediaCards().filter(card => card.key && !before.has(card.key));
-        const readyCards = currentNewCards.filter(card => mediaCardStatus(card).ready);
-        
-        log(`รออัปโหลดรูปภาพ... (${readyCards.length}/${needed} รูปพร้อมใช้งาน) ${s}s`);
-        
-        if (readyCards.length >= needed) {
-            readyCards.forEach(card => {
-                tiles.push(card);
-                log(`✅ อัปโหลดรูปสำเร็จ (media=${card.key.slice(0, 12) || "?"})`);
-            });
-            break;
-        }
-        await sleep(1000);
-    }
 
-    if (tiles.length < needed) {
-        throw new Error(`อัปโหลดรูปเข้า Google Flow สำเร็จเพียง ${tiles.length}/${needed} รูป (หมดเวลา)`);
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        log(`กำลังอัปโหลดรูปที่ ${i + 1}/${needed} (${file.name})...`);
+
+        let inp = document.querySelector('input[type="file"][accept*="image"]')
+            || document.querySelector('input[type="file"]');
+        if (!inp) {
+            const addBtn = byText(["Add Media", "เพิ่มสื่อ", "Upload image", "Upload", "อัปโหลดรูปภาพ", "Reference"]);
+            if (addBtn) { click(addBtn); await sleep(1500); }
+            inp = document.querySelector('input[type="file"]');
+        }
+        if (!inp) throw new Error("หา file input สำหรับอัปโหลดรูปใน Google Flow ไม่เจอ");
+
+        // อัปโหลดทีละไฟล์
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        inp.files = dt.files;
+        inp.dispatchEvent(new Event("change", { bubbles: true }));
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+
+        // ดีเลย์หลังอัปโหลดเพื่อเลียนแบบความเร็วคนจริงๆ
+        await sleep(1500 + Math.random() * 1500);
+
+        // รอจนกระทั่งรูปนี้อัปโหลดเสร็จและพร้อมใช้งาน
+        const secs = Math.max(400, Math.ceil(waitMs / 1000));
+        let imageReady = false;
+        
+        for (let s = secs; s > 0; s--) {
+            if (stopRequested) return tiles;
+            
+            // ดึงการ์ดใหม่ที่สร้างขึ้น
+            const currentNewCards = getMediaCards().filter(card => card.key && !before.has(card.key));
+            const newlyReadyCards = currentNewCards.filter(card => 
+                mediaCardStatus(card).ready && !tiles.some(t => t.key === card.key)
+            );
+            
+            if (newlyReadyCards.length > 0) {
+                const card = newlyReadyCards[0];
+                tiles.push(card);
+                log(`✅ อัปโหลดรูปที่ ${i + 1} สำเร็จ (media=${card.key.slice(0, 12) || "?"})`);
+                imageReady = true;
+                break;
+            }
+            await sleep(1000);
+        }
+
+        if (!imageReady) {
+            throw new Error(`อัปโหลดรูปที่ ${i + 1} ล้มเหลว (หมดเวลา)`);
+        }
+
+        // ดีเลย์ระหว่างไฟล์ 2 ถึง 4 วินาที
+        if (i < needed - 1) {
+            const stepDelay = 2000 + Math.random() * 2000;
+            log(`⏳ ดีเลย์สุ่มระหว่างภาพ ${Math.round(stepDelay)}ms...`);
+            await sleep(stepDelay);
+        }
     }
     
     return tiles;
@@ -1812,7 +1829,7 @@ async function waitGenerationStarted(button, timeoutMs = 7000) {
 // ── 8. waitForResult ─────────────────────────────────────────
 async function waitForResult(phase, options = {}) {
     const maxRetryAttempts = 1;
-    const maxMs = phase === "image" ? 180000 : 300000;
+    const maxMs = phase === "image" ? 180000 : 400000;
     const progressGraceMs = 25000;
     // Flow can briefly mark queued Veo jobs as Failed, then replace the same
     // cards with playable videos. Keep waiting long enough for that late result.
@@ -2022,10 +2039,10 @@ async function loadSettings() {
         const r = await chrome.runtime.sendMessage({ type: "GET_FLOW_SETTINGS" });
         if (r && !r.error) return {
             ...r,
-            uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 300)
+            uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 400)
         };
     } catch { }
-    return { videoModel: "veo-3.1-lite", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 300 };
+    return { videoModel: "veo-3.1-lite", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 400 };
 }
 
 // ── Main pipeline ─────────────────────────────────────────────
