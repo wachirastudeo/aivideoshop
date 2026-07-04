@@ -327,7 +327,7 @@ async function getFlowSettings() {
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const media = settings.mediaSettings || {};
   return {
-    videoModel: settings.flow?.videoModel || "veo-3.1-lite",
+    videoModel: settings.flow?.videoModel || "veo-3.1-lite-low-priority",
     imageModel: settings.flow?.imageModel || "nano-banana-pro",
     autoPortrait: settings.flow?.autoPortrait !== false,
     uploadWaitSec: settings.flow?.uploadWaitSec ?? 8,

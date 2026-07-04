@@ -1138,7 +1138,7 @@ async function ensureConfig(phase, options = {}) {
         : (options.videoCount || cfg.videoCount || 1);
     const modelKey = phase === "image"
         ? (options.imageModel || cfg.imageModel || "nano-banana-pro")
-        : (options.videoModel || cfg.videoModel || "veo-3.1-lite");
+        : (options.videoModel || cfg.videoModel || "veo-3.1-lite-low-priority");
 
     log(`ตั้งค่า ${phase === "image" ? "Image" : "Video"} + Aspect Ratio: ${aspectRatio} + Count: ${count}x + Model: ${modelKey}...`);
     let cfgBtn = null;
@@ -2042,7 +2042,7 @@ async function loadSettings() {
             uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 400)
         };
     } catch { }
-    return { videoModel: "veo-3.1-lite", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 400 };
+    return { videoModel: "veo-3.1-lite-low-priority", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 400 };
 }
 
 // ── Main pipeline ─────────────────────────────────────────────
