@@ -522,9 +522,11 @@ function mediaCardStatus(cardInfo) {
         video && (video.currentSrc || video.src || video.querySelector("source")?.src)
     );
     const pendingVideoProgress = Boolean(el.querySelector?.("[role='slider']")) && !hasPlayableVideo;
-    const progress = wordProgress || percentProgress || pendingVideoProgress;
-
+    
     const rendered = hasRenderableMedia(el);
+    // หากมีรูปหรือวิดีโอแสดงผลแล้ว จะไม่ถือว่าอยู่ในระหว่างสร้าง (ป้องกันกรณี Prompt มีคำว่า waiting/creating แล้วติด Loop)
+    const progress = (wordProgress || percentProgress || pendingVideoProgress) && !rendered;
+
     // สัญญาณ fail จริงของ Flow: การ์ดล้มเหลวจะมี icon "delete" โผล่ inline บนการ์ด
     // (การ์ดสำเร็จมีแค่ favorite / redo=Reuse prompt / more_vert ส่วน delete ซ่อนในเมนู)
     // — เชื่อถือกว่าการสแกนคำว่า "Failed" ที่หลุดมาจาก tile ข้างเคียง/disclaimer ท้ายหน้า
@@ -687,7 +689,8 @@ function mediaCardDeepText(el) {
 }
 function hasRenderableMedia(el) {
     const img = el.matches?.("img") ? el : el.querySelector?.("img");
-    if (img && (img.complete || img.naturalWidth > 0) && (img.naturalWidth || img.clientWidth) > 0) return true;
+    // เช็ค src/currentSrc เป็นหลัก เพื่อกันกรณีที่รูปเสร็จแล้วแต่ clientWidth/naturalWidth เป็น 0 เพราะอยู่นอกสายตา (Off-screen)
+    if (img && (img.src || img.currentSrc || img.complete || img.naturalWidth > 0)) return true;
 
     const vid = el.matches?.("video") ? el : el.querySelector?.("video");
     // นับ <source> child ด้วย (วิดีโอเสร็จแล้วแต่ยังไม่ load → readyState 0, src ว่าง)
@@ -875,10 +878,15 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
                 const candidate = candidates[candidateIndex];
                 blob = candidate.startsWith("data:")
                     ? toBlob(candidate)
-                    : await fetch(candidate).then(async response => {
-                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                        return response.blob();
-                    });
+                    : await (async () => {
+                        const res = await chrome.runtime.sendMessage({
+                            type: "FETCH_IMAGE_DATA",
+                            payload: { url: candidate }
+                        });
+                        if (res && res.error) throw new Error(res.error);
+                        if (!res || !res.base64) throw new Error("ไม่ได้รับข้อมูลรูปภาพจาก background script");
+                        return toBlob(`data:${res.mime || "image/jpeg"};base64,${res.base64}`);
+                    })();
                 if (!/^image\//i.test(blob.type || "")) {
                     throw new Error(`type=${blob.type || "unknown"}`);
                 }
@@ -1527,7 +1535,7 @@ async function setPrompt(prompt) {
     }
     log("✅ กรอก Prompt สำเร็จ");
     await detachFlowDebugger();
-    log("รอ 5 วินาที เพื่อความเสถียรของหน้าต่าง...");
+    log("รอ 5 วินาที เพื่อความเสถียรของหน้าต่างและให้เหมือนคน...");
     await sleep(5000); // ดีเลย์ 5 วินาทีก่อนไปทำขั้นตอนถัดไป
 }
 

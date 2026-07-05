@@ -188,8 +188,11 @@ async function insertTextWithDebugger(payload, sender) {
       });
     }
 
-    // กรอก Prompt ทั้งหมดลงไปทันทีเพื่อความรวดเร็ว
-    await chrome.debugger.sendCommand(target, "Input.insertText", { text });
+    // พิมพ์ทีละตัวอักษรแบบเร็วที่สุด (ดีเลย์ 1ms) เพื่อให้เสร็จทันทีแต่ยังคงส่ง event การพิมพ์
+    for (const char of text) {
+      await chrome.debugger.sendCommand(target, "Input.insertText", { text: char });
+      await new Promise((r) => setTimeout(r, 1));
+    }
     return { inserted: true, method: "Input.insertText" };
   } finally {
     await detachDebuggerTab(tabId);

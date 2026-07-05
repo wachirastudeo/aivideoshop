@@ -8,7 +8,12 @@ import { generatePostCopy } from "./image-analyzer.js";
  * @returns {Promise<object>} ผลลัพธ์ download
  */
 export async function downloadVideo(url, productInfo) {
-  if (!url || !/^(https:|blob:|data:)/.test(url)) {
+  let targetUrl = url || "";
+  if (targetUrl.startsWith("//")) {
+    targetUrl = "https:" + targetUrl;
+  }
+
+  if (!targetUrl || !/^(https:|blob:|data:)/.test(targetUrl)) {
     throw new Error("กรุณาใส่ URL วิดีโอแบบ HTTPS, blob หรือ data");
   }
 
@@ -28,7 +33,7 @@ export async function downloadVideo(url, productInfo) {
 
   const response = await chrome.runtime.sendMessage({
     type: "DOWNLOAD_VIDEO",
-    payload: { url, filename }
+    payload: { url: targetUrl, filename }
   });
 
   if (!response?.ok) throw new Error(response?.error || "ดาวน์โหลดวิดีโอไม่สำเร็จ");
