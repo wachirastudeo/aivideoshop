@@ -11,7 +11,7 @@ import {
 } from "../modules/prompt-builder.js";
 import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
-import { downloadVideo, publishVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
+import { downloadVideo, publishVideo, scheduleVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
 
 const MOODS = ["Auto", "สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"];
 const RUNNING_STATUSES = new Set(["image_generating", "video_generating", "flow1", "flow2"]);
@@ -72,7 +72,7 @@ function bindGlobalEvents() {
     "video-style", "presenter", "custom-presenter", "voice-tone", "location", "custom-location",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action",
-    "image-model", "video-model", "video-ref-mode"
+    "post-schedule-date", "post-schedule-time", "image-model", "video-model", "video-ref-mode", "flow-gen-mode"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
     if (!el) return;
@@ -108,13 +108,30 @@ function fillGlobalFormFromState() {
   setValue("video-duration", settings.videoDuration);
   setValue("aspect-ratio", settings.aspectRatio);
   setValue("video-ref-mode", settings.videoRefMode);
+  setValue("flow-gen-mode", settings.flowGenMode);
   setValue("post-action", settings.postAction);
+
+  let dt;
+  if (settings.postScheduleTime) {
+    dt = new Date(settings.postScheduleTime);
+    if (Number.isNaN(dt.getTime())) dt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  } else {
+    dt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  }
+  setValue("post-schedule-date", toInputDate(dt));
+  setValue("post-schedule-time", toInputTime(dt));
+
   syncVideoTextSettingsVisibility();
   syncCustomLocationVisibility();
   syncCustomPresenterVisibility();
+  syncScheduleTimeVisibility();
 }
 
 function syncSettingsForm() {
+  const dateVal = getValue("post-schedule-date");
+  const timeVal = getValue("post-schedule-time") || "00:00";
+  const combinedTime = (dateVal && timeVal) ? `${dateVal}T${timeVal}` : "";
+
   settings = normalizeSettings({
     ...settings,
     videoStyle: getValue("video-style"),
@@ -135,12 +152,15 @@ function syncSettingsForm() {
     videoDuration: parseInt(getValue("video-duration"), 10) || 8,
     aspectRatio: getValue("aspect-ratio") || "9:16",
     videoRefMode: getValue("video-ref-mode") || "frames",
-    postAction: getValue("post-action")
+    flowGenMode: getValue("flow-gen-mode") || "combined",
+    postAction: getValue("post-action"),
+    postScheduleTime: combinedTime
   });
 
   renderQueue();
   syncVideoTextSettingsVisibility();
   syncCustomLocationVisibility();
+  syncScheduleTimeVisibility();
   syncCustomPresenterVisibility();
   persistState();
 }
@@ -225,8 +245,18 @@ function normalizeSettings(value) {
     videoDuration: value.videoDuration || 8,
     aspectRatio: value.aspectRatio || "9:16",
     videoRefMode: value.videoRefMode === "ingredients" ? "ingredients" : "frames",
-    postAction: value.postAction === "both" ? "draft" : (value.postAction || "post")
+    flowGenMode: value.flowGenMode === "video" ? "video" : "combined",
+    postAction: value.postAction === "both" ? "draft" : (value.postAction || "post"),
+    postScheduleTime: value.postScheduleTime || ""
   };
+}
+
+function syncScheduleTimeVisibility() {
+  const action = getValue("post-action");
+  const container = document.querySelector("#schedule-time-container");
+  if (container) {
+    container.style.display = action === "schedule" ? "block" : "none";
+  }
 }
 
 function syncVideoTextSettingsVisibility() {
@@ -302,15 +332,18 @@ function syncPostActionUI() {
   const allShopee = productQueue.length > 0 && productQueue.every(p => p.source === "shopee" || (p.productUrl && /shopee\.co\.th/i.test(p.productUrl)));
   const draftOpt = select.querySelector('option[value="draft"]');
   const postOpt = select.querySelector('option[value="post"]');
+  const scheduleOpt = select.querySelector('option[value="schedule"]');
 
   if (allShopee) {
     if (draftOpt) draftOpt.disabled = true;
     if (postOpt) postOpt.disabled = true;
+    if (scheduleOpt) scheduleOpt.disabled = true;
     select.value = "download";
     settings.postAction = "download";
   } else {
     if (draftOpt) draftOpt.disabled = false;
     if (postOpt) postOpt.disabled = false;
+    if (scheduleOpt) scheduleOpt.disabled = false;
   }
 }
 
@@ -339,7 +372,8 @@ function productMarkup(p, index) {
   const imagePrompt = buildImagePrompt(p, settings);
   const videoPrompt = buildVideoPrompt(p, settings);
   const status = getStatusMeta(p.status);
-  const imageDone = Boolean(approvedImage || p.flowImageTileId || p.status === "done" || p.status === "video_generating");
+  const isVideoOnly = settings.flowGenMode === "video";
+  const imageDone = Boolean(isVideoOnly || approvedImage || p.flowImageTileId || p.status === "done" || p.status === "video_generating");
 
   const postButtonText = getActionButtonText(settings.postAction || "download");
 
@@ -385,7 +419,7 @@ function productMarkup(p, index) {
         <button class="icon-button batch-remove" type="button" title="ลบออกจากคิว" aria-label="ลบออกจากคิว">${xIcon()}</button>
       </header>
 
-      <div class="flow-steps" aria-label="Image generation step">
+      <div class="flow-steps" aria-label="Image generation step" ${isVideoOnly ? 'style="display: none;"' : ''}>
         ${stepMarkup("1", "ภาพ", imageDone, p.status === "image_generating")}
       </div>
 
@@ -405,8 +439,8 @@ function productMarkup(p, index) {
           <textarea class="textarea batch-highlights" rows="2" placeholder="จุดเด่นสินค้า...">${escapeHtml(p.highlights || "")}</textarea>
         </label>
 
-        <div class="prompt-grid">
-          <label class="field">
+        <div class="prompt-grid" ${isVideoOnly ? 'style="grid-template-columns: 1fr;"' : ''}>
+          <label class="field" ${isVideoOnly ? 'style="display: none;"' : ''}>
             <span class="field__label">Prompt ภาพ</span>
             <textarea class="textarea prompt-textarea batch-image-prompt" rows="5" readonly>${escapeHtml(imagePrompt)}</textarea>
           </label>
@@ -417,7 +451,7 @@ function productMarkup(p, index) {
         </div>
 
         <label class="field upload-field">
-          <span class="field__label">ใส่ภาพ Phase 1 เอง</span>
+          <span class="field__label">${isVideoOnly ? "เปลี่ยนภาพอ้างอิงวิดีโอ" : "ใส่ภาพ Phase 1 เอง"}</span>
           <span class="button button--ghost button--full file-button">
             ${imageIcon()} อัพโหลดภาพ
             <input type="file" class="batch-upload-approved" accept="image/png,image/jpeg,image/webp">
@@ -686,17 +720,19 @@ async function processQueue() {
       }
 
       const isIngredients = options.videoRefMode === "ingredients";
-      product.status = isIngredients ? "video_generating" : "image_generating";
+      const isVideoOnly = settings.flowGenMode === "video";
+      product.status = isVideoOnly ? "video_generating" : "image_generating";
       product.errorMessage = "";
       await persistState();
       renderQueue();
 
       let result;
-      if (isIngredients) {
+      if (isVideoOnly) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังอัปโหลดรูปและสร้างวิดีโอ (${options.videoCount} คลิป)`, "info");
         const vidPrompt = buildVideoPrompt(product, settings);
         assertNotStopped();
-        helpers.logActivity?.(`สินค้า ${i + 1} (Ingredients): เปิด New Project ใน Google Flow เพื่อสร้างวิดีโอโดยตรง`, "info");
+        const modeLabel = isIngredients ? "Ingredients" : "Video Only";
+        helpers.logActivity?.(`สินค้า ${i + 1} (${modeLabel}): เปิด New Project ใน Google Flow เพื่อสร้างวิดีโอโดยตรง`, "info");
         result = await openGoogleFlowWithLoginResume("video", vidPrompt, getFlowProductImage(product), buildFlowOptions(product), product, i);
       } else {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพ แล้วต่อวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)`, "info");
@@ -722,7 +758,7 @@ async function processQueue() {
         const isShopee = product.source === "shopee" || (product.productUrl && /shopee\.co\.th/i.test(product.productUrl));
         const action = isShopee ? "download" : await getPostAction();
         let downloadedInfo = null;
-        if (["download", "draft", "post"].includes(action)) {
+        if (["download", "draft", "post", "schedule"].includes(action)) {
           assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังดาวน์โหลดวิดีโออัตโนมัติ...`, "info");
           const downloaded = await runInterruptibly(() => downloadVideo(product.videoUrl, product));
@@ -747,6 +783,12 @@ async function processQueue() {
           assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังอัปโหลดและโพสต์ TikTok อัตโนมัติ...`, "info");
           await retryPostStep(`โพสต์ TikTok สินค้า ${i + 1}`, () => publishVideo(product.preparedVideoUrl || product.videoUrl, product));
+          assertNotStopped();
+        }
+        if (action === "schedule") {
+          assertNotStopped();
+          helpers.logActivity?.(`สินค้า ${i + 1}: กำลังอัปโหลดและตั้งเวลาโพสต์ TikTok อัตโนมัติ...`, "info");
+          await retryPostStep(`ตั้งเวลาโพสต์ TikTok สินค้า ${i + 1}`, () => scheduleVideo(product.preparedVideoUrl || product.videoUrl, product));
           assertNotStopped();
         }
         if (isShopee && downloadedInfo) {
@@ -983,6 +1025,9 @@ async function handlePost(product) {
     return handleSendDraft(product);
   }
 
+  const isSchedule = action === "schedule";
+  const actionLabel = isSchedule ? "ตั้งเวลาโพสต์ TikTok" : "โพสต์ TikTok";
+
   try {
     if (!product.videoUrl) throw new Error("กรุณาวาง URL วิดีโอ");
     helpers.showStatus("กำลังดาวน์โหลดก่อนอัปโหลด TikTok...", "info");
@@ -993,12 +1038,16 @@ async function handlePost(product) {
     product.preparedVideoUrl = downloaded?.videoUrl || product.preparedVideoUrl || "";
     product.preparedVideoMimeType = downloaded?.mimeType || product.preparedVideoMimeType || "";
     await persistState();
-    helpers.showStatus("กำลังส่งไป TikTok...", "info");
-    await retryPostStep("โพสต์ TikTok", () => publishVideo(product.preparedVideoUrl || product.videoUrl, product));
+    helpers.showStatus(`กำลังส่งไป TikTok (${actionLabel})...`, "info");
+    if (isSchedule) {
+      await retryPostStep(actionLabel, () => scheduleVideo(product.preparedVideoUrl || product.videoUrl, product));
+    } else {
+      await retryPostStep(actionLabel, () => publishVideo(product.preparedVideoUrl || product.videoUrl, product));
+    }
     product.status = "done";
     await persistState();
     renderQueue();
-    helpers.showStatus("✅ โพสต์ TikTok สำเร็จ!", "success");
+    helpers.showStatus(`✅ ${actionLabel} สำเร็จ!`, "success");
   } catch (err) {
     helpers.showStatus(err.message, "error");
   }
@@ -1012,6 +1061,7 @@ async function getPostAction() {
 function getActionButtonText(action) {
   if (action === "download") return `${downloadIcon()} Download`;
   if (action === "draft") return `${saveIcon()} บันทึกแบบร่าง`;
+  if (action === "schedule") return `${clockIcon()} ตั้งเวลาโพสต์`;
   return `${sendIcon()} โพสต์ TikTok`;
 }
 
@@ -1180,6 +1230,10 @@ function sendIcon() {
   return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg>`;
 }
 
+function clockIcon() {
+  return `<svg class="svg-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+}
+
 async function saveShopeeProductToCsv(product, videoFilename) {
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const postDefaults = settings.postDefaults || {};
@@ -1246,4 +1300,17 @@ async function saveShopeeProductToCsv(product, videoFilename) {
   } else {
     helpers.showStatus?.("บันทึกข้อมูลสินค้าลง CSV สำเร็จ", "success");
   }
+}
+
+function toInputDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toInputTime(date) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }

@@ -24,7 +24,9 @@ export async function initProductsTab(injectedHelpers) {
   if (products.length > 0) {
     renderProducts();
     const loadMore = document.querySelector("#load-more-products");
+    const loadAll = document.querySelector("#load-all-products");
     if (loadMore) loadMore.hidden = !nextPageToken;
+    if (loadAll) loadAll.hidden = !nextPageToken;
   } else {
     await loadProducts({ reset: true, silent: true });
   }
@@ -390,6 +392,7 @@ function bindProductEvents() {
 
   document.querySelector("#refresh-products")?.addEventListener("click", () => loadProducts({ reset: true }));
   document.querySelector("#load-more-products")?.addEventListener("click", () => loadProducts({ reset: false }));
+  document.querySelector("#load-all-products")?.addEventListener("click", () => loadAllProducts());
   document.querySelector("#product-search")?.addEventListener("input", () => { currentPage = 1; renderProducts(); });
   document.querySelector("#product-sort")?.addEventListener("change", () => { currentPage = 1; renderProducts(); });
 
@@ -485,6 +488,7 @@ function bindProductEvents() {
 async function loadProducts({ reset = false, silent = false } = {}) {
   const list = document.querySelector("#product-list");
   const loadMore = document.querySelector("#load-more-products");
+  const loadAll = document.querySelector("#load-all-products");
 
   if (reset) {
     products = [];
@@ -494,6 +498,7 @@ async function loadProducts({ reset = false, silent = false } = {}) {
 
   if (list) list.innerHTML = skeletonMarkup();
   if (loadMore) loadMore.hidden = true;
+  if (loadAll) loadAll.hidden = true;
   if (!silent) {
     helpers.logActivity?.(reset ? "เริ่มดึงสินค้า TikTok ใหม่" : "กำลังโหลดสินค้าเพิ่ม");
   }
@@ -509,6 +514,7 @@ async function loadProducts({ reset = false, silent = false } = {}) {
     nextPageToken = result.nextPageToken;
     renderProducts();
     if (loadMore) loadMore.hidden = !nextPageToken;
+    if (loadAll) loadAll.hidden = !nextPageToken;
 
     if (result.products.length === 0) {
       const rawStr = JSON.stringify(result.rawData || {}).substring(0, 150);
@@ -521,6 +527,41 @@ async function loadProducts({ reset = false, silent = false } = {}) {
     if (!silent) helpers.showStatus(error.message, "error");
     helpers.logActivity?.(`ดึงสินค้าไม่สำเร็จ: ${error.message}`, "error");
     if (list) list.innerHTML = `<div class="empty-state">ยังไม่มีสินค้าให้แสดง<br>เชื่อมต่อ TikTok หรือเพิ่ม Access Token ใน Options</div>`;
+  }
+}
+
+async function loadAllProducts() {
+  const list = document.querySelector("#product-list");
+  const loadMore = document.querySelector("#load-more-products");
+  const loadAll = document.querySelector("#load-all-products");
+
+  if (loadMore) loadMore.hidden = true;
+  if (loadAll) loadAll.hidden = true;
+
+  helpers.logActivity?.("เริ่มดึงสินค้าทั้งหมดจาก TikTok...");
+
+  let pageCount = 0;
+  try {
+    while (nextPageToken) {
+      pageCount++;
+      helpers.showStatus(`กำลังดึงสินค้า TikTok หน้าที่ ${pageCount}... (ได้แล้ว ${products.length} ชิ้น)`, "info");
+      const response = await chrome.runtime.sendMessage({
+        type: "FETCH_PRODUCTS",
+        payload: { pageToken: nextPageToken, pageSize: 100 }
+      });
+      if (!response?.ok) throw new Error(response?.error || "ไม่สามารถดึงสินค้าได้");
+      products = [...products, ...response.products];
+      nextPageToken = response.nextPageToken;
+      renderProducts();
+    }
+    helpers.showStatus(`ดึงสินค้าเสร็จสิ้นทั้งหมด ${products.length} ชิ้น!`, "success");
+    helpers.logActivity?.(`ดึงสินค้าทั้งหมดเรียบร้อยแล้ว: รวม ${products.length} รายการ`, "success");
+  } catch (error) {
+    helpers.showStatus(error.message, "error");
+    helpers.logActivity?.(`ดึงสินค้าทั้งหมดไม่สำเร็จระหว่างทาง: ${error.message}`, "error");
+  } finally {
+    if (loadMore) loadMore.hidden = !nextPageToken;
+    if (loadAll) loadAll.hidden = !nextPageToken;
   }
 }
 

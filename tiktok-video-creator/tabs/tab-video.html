@@ -53,6 +53,13 @@
                 <option value="ingredients">Ingredients (รูปสินค้าเป็นแนวทางเชิงสไตล์)</option>
               </select>
             </label>
+            <label class="field">
+              <span class="field__label">ขั้นตอนการทำงานของ Flow</span>
+              <select id="flow-gen-mode" class="select select--accent">
+                <option value="combined" selected>สร้างภาพนิ่ง แล้วต่อวิดีโอ (2 ขั้นตอน)</option>
+                <option value="video">สร้างวิดีโอทันที (1 ขั้นตอน)</option>
+              </select>
+            </label>
             <div class="settings-grid">
               <label class="field">
                 <span class="field__label">โมเดลรูปภาพ (Banana)</span>
@@ -232,8 +239,16 @@
               <select id="post-action" class="select select--accent">
                 <option value="download">ดาวน์โหลดอย่างเดียว</option>
                 <option value="draft">ดาวน์โหลด + บันทึกแบบร่าง TikTok</option>
-                <option value="post">ดาวน์โหลด + โพสต์ TikTok</option>
+                <option value="post">ดาวน์โหลด + โพสต์ TikTok ทันที</option>
+                <option value="schedule">ดาวน์โหลด + ตั้งเวลาโพสต์ TikTok</option>
               </select>
+            </label>
+            <label class="field" id="schedule-time-container" style="display: none;">
+              <span class="field__label">เวลาที่ต้องการโพสต์</span>
+              <div class="input-row" style="display: flex; gap: 8px;">
+                <input id="post-schedule-date" class="input" type="date" style="flex: 1.2;">
+                <input id="post-schedule-time" class="input" type="time" style="flex: 0.8;">
+              </div>
             </label>
           </div>
         </div>

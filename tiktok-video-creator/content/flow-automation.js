@@ -1519,13 +1519,16 @@ async function setPrompt(prompt) {
         await typeContentEditable(editor, prompt);
     }
 
-    await sleep(700);
+    await sleep(1200);
     const typed = getPromptText(editor);
     const needle = prompt.replace(/\s+/g, "").slice(0, Math.min(28, prompt.length));
     if (!typed.replace(/\s+/g, "").includes(needle)) {
         throw new Error("กรอก prompt ใน Google Flow ไม่สำเร็จ จึงไม่กด Generate");
     }
     log("✅ กรอก Prompt สำเร็จ");
+    await detachFlowDebugger();
+    log("รอ 5 วินาที เพื่อความเสถียรของหน้าต่าง...");
+    await sleep(5000); // ดีเลย์ 5 วินาทีก่อนไปทำขั้นตอนถัดไป
 }
 
 function findPromptEditor() {
@@ -1679,6 +1682,11 @@ async function typeDraft(editor, prompt) {
 // ── 7. clickGenerate ─────────────────────────────────────────
 async function clickGenerate() {
     log("รอปุ่ม Generate พร้อมกด...");
+    
+    // ปิด debugger ก่อนกดเจนเพื่อให้ infobar หายไปและระดับหน้าจอกลับมาปกติ
+    await detachFlowDebugger();
+    await sleep(1000);
+
     preGenMediaKeys = snapMediaKeys();
     const end = Date.now() + 30000;
     let btn = null;
@@ -1698,32 +1706,38 @@ async function clickGenerate() {
     if (!btn) throw new Error(disabledArrow
         ? "ปุ่ม arrow_forward Create ยัง disabled หลังกรอก prompt/แนบรูป จึงไม่กด Generate"
         : "หาปุ่ม Generate/Create ใน Google Flow ไม่เจอ");
+    
     log("🚀 กด Generate!");
     btn.scrollIntoView({ block: "center", inline: "center" });
     await sleep(400);
+    
     // มีการ์ดใหม่แล้ว = เริ่มเจนแล้ว ห้ามกดซ้ำ (กันเจนภาพ 2 รอบ)
     const generationStarted = () => getMediaCards().some(card => card.key && !preGenMediaKeys.has(card.key));
 
-    if (await clickButtonCenterWithDebugger(btn) && await waitGenerationStarted(btn, 5000)) {
-        return true;
-    }
-    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
-
-    log("Trusted click ยังไม่เริ่มสร้าง → ลอง human click...");
+    // ลองกด Generate แบบปกติ (human click) ก่อนโดยไม่ใช้ debugger เพื่อเลี่ยงการแสดง infobar
+    log("ลองกด Generate แบบปกติ (human click)...");
     await humanClick(btn);
     if (await waitGenerationStarted(btn, 3500)) return true;
     if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
 
-    log("Human click ยังไม่เริ่มสร้าง → ลอง DOM click...");
+    log("ลองกดแบบ DOM click...");
     click(btn);
-    if (await waitGenerationStarted(btn, 2000)) return true;
+    if (await waitGenerationStarted(btn, 2500)) return true;
     if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
 
-    log("DOM click ยังไม่เริ่มสร้าง → ลองกด Enter...");
+    log("ลองกด Enter...");
     btn.focus();
     btn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
     btn.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
-    if (await waitGenerationStarted(btn, 2000)) return true;
+    if (await waitGenerationStarted(btn, 2500)) return true;
+    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
+
+    // หากแบบปกติทั้งหมดไม่ได้ผล ค่อยใช้ debugger click (trusted click) เป็นไม้ตายสุดท้าย
+    log("คลิกปกติยังไม่เริ่มสร้าง → ลองใช้ trusted click (Debugger)...");
+    if (await clickButtonCenterWithDebugger(btn) && await waitGenerationStarted(btn, 5000)) {
+        return true;
+    }
+    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
 
     throw new Error("กด Generate แล้ว แต่ Flow ไม่เริ่มสร้าง จึงไม่รอผลลัพธ์");
 }

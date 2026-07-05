@@ -668,24 +668,29 @@ export function buildCaption(productInfo, defaults = {}) {
     cta: cleanCaptionText(productInfo.cta || "สั่งได้เลย")
   });
 
-  if (!hook) return body.trim();
+  if (!hook) return removeEmojis(body.trim());
   const rest = body.startsWith(hook) ? body.slice(hook.length).trim() : body.trim();
 
-  // สุ่มคำขึ้นต้นสนุกๆ นำหน้า Hook เพื่อไม่ให้ข้อความโพสต์ซ้ำซ้อน
+  // สุ่มคำขึ้นต้นสนุกๆ นำหน้า Hook เพื่อไม่ให้ข้อความโพสต์ซ้ำซ้อน (ไม่มีอิโมจิ)
   const randomOpenings = [
-    "ชี้เป้าความคุ้มวันนี้! ✨",
-    "บอกต่อของดีที่ต้องมี! 🛍️",
-    "ใครยังไม่มีรีบเลย! 🔥",
-    "ไอเทมเด็ดชิ้นนี้ห้ามพลาด! 😍",
-    "ลองหรือยัง? ของดีบอกต่อ 💯",
-    "ตัวช่วยชีวิตดีขึ้นเยอะ! 👍",
-    "หลังจากลองตัวนี้คือปังมาก! 💖",
-    "ส่องด่วน! ดีงามเกินต้าน 🌟"
+    "ชี้เป้าความคุ้มวันนี้!",
+    "บอกต่อของดีที่ต้องมี!",
+    "ใครยังไม่มีรีบเลย!",
+    "ไอเทมเด็ดชิ้นนี้ห้ามพลาด!",
+    "ลองหรือยัง? ของดีบอกต่อ",
+    "ตัวช่วยชีวิตดีขึ้นเยอะ!",
+    "หลังจากลองตัวนี้คือปังมาก!",
+    "ส่องด่วน! ดีงามเกินต้าน"
   ];
   const prefix = randomOpenings[Math.floor(Math.random() * randomOpenings.length)];
   const randomizedHook = `${prefix} ${hook}`;
 
-  return rest ? `${randomizedHook}\n${rest}` : randomizedHook;
+  const finalCaption = rest ? `${randomizedHook}\n${rest}` : randomizedHook;
+  return removeEmojis(finalCaption);
+}
+
+function removeEmojis(str) {
+  return String(str || "").replace(/\p{Extended_Pictographic}/gu, "").replace(/\s+/g, " ").trim();
 }
 
 function renderCaptionTemplate(template, variables) {

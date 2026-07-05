@@ -36,7 +36,7 @@ async function routeMessage(message, sender) {
     case "POST_TO_TIKTOK":           return postToTikTok(message.payload);
     case "GET_FLOW_SETTINGS":        return getFlowSettings();
     case "FLOW_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
-    case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender);
+    case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender, { detachAfter: true });
     case "FLOW_DEBUGGER_DETACH":     return detachDebuggerTab(sender?.tab?.id);
     case "FLOW_PING":                return { pong: true };
     case "FLOW_CONTENT_READY":       return { ok: true };
@@ -81,7 +81,7 @@ chrome.debugger.onDetach?.addListener((source) => {
   if (source?.tabId != null) attachedDebuggerTabs.delete(source.tabId);
 });
 
-async function clickPointWithDebugger(payload, sender) {
+async function clickPointWithDebugger(payload, sender, options = {}) {
   const tabId = sender?.tab?.id;
   const x = Number(payload?.x);
   const y = Number(payload?.y);
@@ -102,30 +102,36 @@ async function clickPointWithDebugger(payload, sender) {
   }
 
   const target = { tabId };
-  await ensureDebuggerAttached(tabId);
-  await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x,
-    y,
-    button: "none"
-  });
-  await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
-    type: "mousePressed",
-    x,
-    y,
-    button: "left",
-    buttons: 1,
-    clickCount: 1
-  });
-  await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
-    type: "mouseReleased",
-    x,
-    y,
-    button: "left",
-    buttons: 0,
-    clickCount: 1
-  });
-  return { clicked: true };
+  try {
+    await ensureDebuggerAttached(tabId);
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x,
+      y,
+      button: "none"
+    });
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x,
+      y,
+      button: "left",
+      buttons: 1,
+      clickCount: 1
+    });
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x,
+      y,
+      button: "left",
+      buttons: 0,
+      clickCount: 1
+    });
+    return { clicked: true };
+  } finally {
+    if (options?.detachAfter) {
+      await detachDebuggerTab(tabId);
+    }
+  }
 }
 
 async function insertTextWithDebugger(payload, sender) {
@@ -182,11 +188,11 @@ async function insertTextWithDebugger(payload, sender) {
       });
     }
 
+    // กรอก Prompt ทั้งหมดลงไปทันทีเพื่อความรวดเร็ว
     await chrome.debugger.sendCommand(target, "Input.insertText", { text });
     return { inserted: true, method: "Input.insertText" };
-  } catch (error) {
+  } finally {
     await detachDebuggerTab(tabId);
-    throw error;
   }
 }
 
