@@ -486,6 +486,49 @@ function buildCategoryFidelityDirection(productInfo = {}) {
   return "";
 }
 
+function cleanEnglishProductName(title) {
+  if (!title) return "";
+  
+  // 1. Remove bracketed text, since brackets often contain metadata like [READY STOCK], [COD]
+  let clean = title.replace(/\[[^\]]*\]/g, " ")
+                   .replace(/\([^)]*\)/g, " ")
+                   .replace(/\{[^}]*\}/g, " ");
+
+  // 2. Remove common promotional and transactional keywords (case-insensitive)
+  const promoKeywords = [
+    /\bready\s*stock\b/gi, /\breadystock\b/gi,
+    /\bhot\s*sale\b/gi, /\bhotsale\b/gi,
+    /\bbest\s*quality\b/gi, /\bbest\s*seller\b/gi,
+    /\bfree\s*shipping\b/gi, /\bfree\s*delivery\b/gi,
+    /\b100%\s*original\b/gi, /\b100%\s*authentic\b/gi,
+    /\boriginal\b/gi, /\bauthentic\b/gi,
+    /\bnew\s*arrival\b/gi, /\bspecial\s*offer\b/gi,
+    /\bpre\s*order\b/gi, /\bpre-order\b/gi,
+    /\bflash\s*sale\b/gi, /\bflashsale\b/gi,
+    /\bfast\s*shipping\b/gi, /\bfast\s*delivery\b/gi,
+    /\blocal\s*stock\b/gi, /\bbrand\s*new\b/gi,
+    /\blimited\s*edition\b/gi, /\blimited\b/gi,
+    /\bpremium\b/gi, /\bhigh\s*quality\b/gi, /\btop\s*quality\b/gi,
+    /\bwarranty\b/gi, /\bguarantee\b/gi,
+    /\bcod\b/gi, /\bfree\b/gi, /\bnew\b/gi, /\bhot\b/gi,
+    /\bdiscount\b/gi, /\bsale\b/gi, /\boff\b/gi, /\bgift\b/gi, /\bgifts\b/gi,
+    /\b\d+\s*pcs\b/gi, /\b\d+\s*pieces\b/gi, /\b\d+\s*piece\b/gi,
+    /\b\d+\s*pack\b/gi, /\b\d+\s*set\b/gi,
+    /\b\d+%\b/g
+  ];
+
+  for (const regex of promoKeywords) {
+    clean = clean.replace(regex, " ");
+  }
+
+  // 3. Keep only English characters, numbers, and basic spaces
+  clean = clean.replace(/[^\x00-\x7F]/g, " "); // Remove non-ASCII
+  clean = clean.replace(/[^a-zA-Z0-9\s]/g, " "); // Remove special punctuation
+  clean = clean.replace(/\s+/g, " ").trim();
+
+  return clean;
+}
+
 function generationProductName(value, category = "") {
   if (!value) return "the product";
 
@@ -503,7 +546,7 @@ function generationProductName(value, category = "") {
   if (lowerVal.includes("รองเท้า") || lowerCat.includes("shoe")) return "shoe";
 
   // If there are English words in the original name, extract the first few words to identify it
-  let englishWords = value.replace(/[^\x00-\x7F]/g, " ").replace(/\s+/g, " ").trim();
+  let englishWords = cleanEnglishProductName(value);
   if (englishWords.length > 3) {
     const words = englishWords.split(" ").slice(0, 4).join(" ");
     if (words.length > 3) return stripStructuralVariantCounts(words);

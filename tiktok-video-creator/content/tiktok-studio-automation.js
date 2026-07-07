@@ -1338,7 +1338,8 @@ function waitForElement(selector, timeoutMs = 10000) {
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  const jitterFactor = ms >= 300 ? (0.7 + Math.random() * 0.6) : 1.0;
+  return new Promise(resolve => setTimeout(resolve, Math.round(ms * jitterFactor)));
 }
 
 function assertNotStopped() {
@@ -1772,21 +1773,50 @@ async function realClick(element) {
   await sleep(100 + Math.random() * 150);
 }
 
-async function simulateMouseTrail(targetX, targetY) {
-  const startX = targetX + (Math.random() - 0.5) * 120;
-  const startY = targetY + (Math.random() - 0.5) * 80;
-  const steps = 3 + Math.floor(Math.random() * 3);
+let currentMouseX = window.innerWidth / 2;
+let currentMouseY = window.innerHeight / 2;
+document.addEventListener("mousemove", (e) => {
+  currentMouseX = e.clientX;
+  currentMouseY = e.clientY;
+}, { passive: true });
 
+function easeInOutQuad(t) {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function getBezierPoints(x0, y0, x3, y3, steps) {
+  const points = [];
+  const dx = x3 - x0;
+  const dy = y3 - y0;
+  const p1x = x0 + dx * 0.25 + (Math.random() - 0.5) * 120;
+  const p1y = y0 + dy * 0.25 + (Math.random() - 0.5) * 120;
+  const p2x = x0 + dx * 0.75 + (Math.random() - 0.5) * 120;
+  const p2y = y0 + dy * 0.75 + (Math.random() - 0.5) * 120;
   for (let i = 1; i <= steps; i++) {
-    const ratio = i / steps;
-    const currentX = startX + (targetX - startX) * ratio + (Math.random() - 0.5) * 4;
-    const currentY = startY + (targetY - startY) * ratio + (Math.random() - 0.5) * 4;
+    const t = easeInOutQuad(i / steps);
+    const mt = 1 - t;
+    const x = mt * mt * mt * x0 + 3 * mt * mt * t * p1x + 3 * mt * t * t * p2x + t * t * t * x3;
+    const y = mt * mt * mt * y0 + 3 * mt * mt * t * p1y + 3 * mt * t * t * p2y + t * t * t * y3;
+    points.push({ x, y });
+  }
+  return points;
+}
+
+async function simulateMouseTrail(targetX, targetY) {
+  const startX = currentMouseX;
+  const startY = currentMouseY;
+  const distance = Math.hypot(targetX - startX, targetY - startY);
+  if (distance < 5) return;
+  const steps = Math.max(8, Math.min(30, Math.floor(distance / 20)));
+  const points = getBezierPoints(startX, startY, targetX, targetY, steps);
+  for (let i = 0; i < points.length; i++) {
+    const { x, y } = points[i];
     const opts = {
       bubbles: true,
-      clientX: currentX,
-      clientY: currentY,
-      screenX: currentX + window.screenX,
-      screenY: currentY + window.screenY,
+      clientX: x,
+      clientY: y,
+      screenX: x + window.screenX,
+      screenY: y + window.screenY,
       pointerId: 1,
       pointerType: "mouse",
       isPrimary: true,
@@ -1795,9 +1825,15 @@ async function simulateMouseTrail(targetX, targetY) {
       view: window,
     };
     document.dispatchEvent(new PointerEvent("pointermove", opts));
-    document.dispatchEvent(new MouseEvent("mousemove", { ...opts, movementX: 1, movementY: 1 }));
-    await sleep(10 + Math.random() * 15);
+    document.dispatchEvent(new MouseEvent("mousemove", {
+      ...opts,
+      movementX: i > 0 ? x - points[i - 1].x : 0,
+      movementY: i > 0 ? y - points[i - 1].y : 0
+    }));
+    await sleep(6 + Math.random() * 8);
   }
+  currentMouseX = targetX;
+  currentMouseY = targetY;
 }
 
 let logSeq = 0;

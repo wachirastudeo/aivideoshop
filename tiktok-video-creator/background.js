@@ -26,7 +26,7 @@ async function routeMessage(message, sender) {
   switch (message?.type) {
     case "FETCH_PRODUCTS":          return fetchShowcaseProducts(message.payload);
     case "PULL_SHOPEE_PRODUCTS":     return pullShopeeProducts(message.payload);
-    case "SHOPEE_CLICK_POINT":       return clickPointWithDebugger(message.payload, sender);
+    case "SHOPEE_CLICK_POINT":       return clickPointWithDebugger(message.payload, sender, { detachAfter: true });
     case "SHOPEE_FETCH_IMAGES":      return fetchShopeeImages(message.payload);
     case "SHOPEE_CLOSE_SCRAPE_TAB":  return closeShopeeScrapeTab();
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
@@ -37,6 +37,7 @@ async function routeMessage(message, sender) {
     case "GET_FLOW_SETTINGS":        return getFlowSettings();
     case "FLOW_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
     case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender, { detachAfter: true });
+    case "FLOW_DEBUGGER_ATTACH":     return ensureDebuggerAttached(sender?.tab?.id).then(() => ({ ok: true }));
     case "FLOW_DEBUGGER_DETACH":     return detachDebuggerTab(sender?.tab?.id);
     case "FLOW_PING":                return { pong: true };
     case "FLOW_CONTENT_READY":       return { ok: true };
@@ -59,7 +60,6 @@ let flowStopVersion = 0;
 let tiktokStopVersion = 0;
 
 async function ensureDebuggerAttached(tabId) {
-  if (attachedDebuggerTabs.has(tabId)) return;
   try {
     await chrome.debugger.attach({ tabId }, "1.3");
   } catch (error) {
@@ -70,16 +70,44 @@ async function ensureDebuggerAttached(tabId) {
 }
 
 async function detachDebuggerTab(tabId) {
-  if (tabId == null || !attachedDebuggerTabs.has(tabId)) return { detached: false };
+  if (tabId == null) return { detached: false };
   attachedDebuggerTabs.delete(tabId);
-  await chrome.debugger.detach({ tabId }).catch(() => { });
-  return { detached: true };
+  try {
+    await chrome.debugger.detach({ tabId });
+    return { detached: true };
+  } catch (error) {
+    return { detached: false };
+  }
 }
 
 // detach อัตโนมัติถ้า tab ปิด หรือ debugger หลุด
 chrome.debugger.onDetach?.addListener((source) => {
   if (source?.tabId != null) attachedDebuggerTabs.delete(source.tabId);
 });
+
+const lastDebuggerPositions = new Map();
+
+function easeInOutQuad(t) {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function getBezierPoints(x0, y0, x3, y3, steps) {
+  const points = [];
+  const dx = x3 - x0;
+  const dy = y3 - y0;
+  const p1x = x0 + dx * 0.25 + (Math.random() - 0.5) * 120;
+  const p1y = y0 + dy * 0.25 + (Math.random() - 0.5) * 120;
+  const p2x = x0 + dx * 0.75 + (Math.random() - 0.5) * 120;
+  const p2y = y0 + dy * 0.75 + (Math.random() - 0.5) * 120;
+  for (let i = 1; i <= steps; i++) {
+    const t = easeInOutQuad(i / steps);
+    const mt = 1 - t;
+    const x = mt * mt * mt * x0 + 3 * mt * mt * t * p1x + 3 * mt * t * t * p2x + t * t * t * x3;
+    const y = mt * mt * mt * y0 + 3 * mt * mt * t * p1y + 3 * mt * t * t * p2y + t * t * t * y3;
+    points.push({ x, y });
+  }
+  return points;
+}
 
 async function clickPointWithDebugger(payload, sender, options = {}) {
   const tabId = sender?.tab?.id;
@@ -104,12 +132,34 @@ async function clickPointWithDebugger(payload, sender, options = {}) {
   const target = { tabId };
   try {
     await ensureDebuggerAttached(tabId);
+
+    // เลียนแบบวิถีการขยับเมาส์ลากเป็นเส้นโค้ง Bezier ไปยังจุดคลิก
+    const start = lastDebuggerPositions.get(tabId) || { x: 500, y: 400 };
+    const distance = Math.hypot(x - start.x, y - start.y);
+    if (distance > 5) {
+      const steps = Math.max(8, Math.min(30, Math.floor(distance / 20)));
+      const points = getBezierPoints(start.x, start.y, x, y, steps);
+      for (const pt of points) {
+        await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+          type: "mouseMoved",
+          x: pt.x,
+          y: pt.y,
+          button: "none"
+        });
+        await new Promise((r) => setTimeout(r, 6 + Math.random() * 8));
+      }
+    }
+
+    // เลื่อนเมาส์ไปยังตำแหน่งเป้าหมายปลายทางตัวจริง
     await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
       type: "mouseMoved",
       x,
       y,
       button: "none"
     });
+    lastDebuggerPositions.set(tabId, { x, y });
+
+    // คลิกเมาส์
     await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
       type: "mousePressed",
       x,
@@ -624,11 +674,6 @@ async function pullShopeeProducts({ keyword, count, mode, minCommission, minSale
 
   // โหมด export: ปุ่ม "เอา ลิงก์" ไม่ยอม generate/download จาก synthetic click
   // ต้องเป็น trusted click ผ่าน chrome.debugger (เหมือนปุ่ม Generate ของ Flow)
-  // attach ก่อนให้ infobar "extension started debugging" ดันหน้าลงให้เสร็จ
-  // แล้วค่อยให้ content script วัดพิกัดปุ่ม — พิกัดจะตรงกับตอน debugger click
-  await ensureDebuggerAttached(tab.id);
-  await delay(700);
-
   try {
     const result = await chrome.tabs.sendMessage(tab.id, { type: "SHOPEE_RUN", keyword, count: want, mode, minCommission: minComm, minSales: minS, sortBy });
     if (!result?.ok) throw new Error(result?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
@@ -688,7 +733,8 @@ async function waitForTabComplete(tabId) {
 }
 
 function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  const jitterFactor = ms >= 300 ? (0.7 + Math.random() * 0.6) : 1.0;
+  return new Promise((resolve) => setTimeout(resolve, Math.round(ms * jitterFactor)));
 }
 
 chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {

@@ -86,7 +86,10 @@ function log(msg) {
 function removeOverlay() { _overlay?.remove(); _overlay = null; }
 
 // ── Timing ───────────────────────────────────────────────────
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const sleep = (ms) => {
+    const jitterFactor = ms >= 300 ? (0.7 + Math.random() * 0.6) : 1.0;
+    return new Promise(r => setTimeout(r, Math.round(ms * jitterFactor)));
+};
 function jitter(min, max) { return sleep(min + Math.random() * (max - min)); }
 async function sleepStop(ms) {
     const end = Date.now() + ms;
@@ -128,19 +131,59 @@ function pointerClick(el) {
     const r = el.getBoundingClientRect();
     fireAt(el, r.left + r.width / 2, r.top + r.height / 2);
 }
+let currentMouseX = window.innerWidth / 2;
+let currentMouseY = window.innerHeight / 2;
+document.addEventListener("mousemove", (e) => {
+    currentMouseX = e.clientX;
+    currentMouseY = e.clientY;
+}, { passive: true });
+
+function easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function getBezierPoints(x0, y0, x3, y3, steps) {
+    const points = [];
+    const dx = x3 - x0;
+    const dy = y3 - y0;
+    const p1x = x0 + dx * 0.25 + (Math.random() - 0.5) * 120;
+    const p1y = y0 + dy * 0.25 + (Math.random() - 0.5) * 120;
+    const p2x = x0 + dx * 0.75 + (Math.random() - 0.5) * 120;
+    const p2y = y0 + dy * 0.75 + (Math.random() - 0.5) * 120;
+    for (let i = 1; i <= steps; i++) {
+        const t = easeInOutQuad(i / steps);
+        const mt = 1 - t;
+        const x = mt * mt * mt * x0 + 3 * mt * mt * t * p1x + 3 * mt * t * t * p2x + t * t * t * x3;
+        const y = mt * mt * mt * y0 + 3 * mt * mt * t * p1y + 3 * mt * t * t * p2y + t * t * t * y3;
+        points.push({ x, y });
+    }
+    return points;
+}
+
 async function trail(tx, ty) {
-    const sx = tx + (Math.random() - .5) * 100, sy = ty + (Math.random() - .5) * 70;
-    const n = 3 + Math.floor(Math.random() * 3);
-    for (let i = 1; i <= n; i++) {
-        const t = i / n, x = sx + (tx - sx) * t + (Math.random() - .5) * 3, y = sy + (ty - sy) * t + (Math.random() - .5) * 3;
+    const startX = currentMouseX;
+    const startY = currentMouseY;
+    const distance = Math.hypot(tx - startX, ty - startY);
+    if (distance < 5) return;
+    const steps = Math.max(8, Math.min(30, Math.floor(distance / 20)));
+    const points = getBezierPoints(startX, startY, tx, ty, steps);
+    for (let i = 0; i < points.length; i++) {
+        const { x, y } = points[i];
         const o = {
-            bubbles: true, clientX: x, clientY: y, screenX: x + window.screenX, screenY: y + window.screenY,
+            bubbles: true, cancelable: true, clientX: x, clientY: y,
+            screenX: x + window.screenX, screenY: y + window.screenY,
             pointerId: 1, pointerType: "mouse", isPrimary: true, buttons: 0, pressure: 0, view: window
         };
         document.dispatchEvent(new PointerEvent("pointermove", o));
-        document.dispatchEvent(new MouseEvent("mousemove", { ...o, movementX: 2, movementY: 1 }));
-        await sleep(15 + Math.random() * 25);
+        document.dispatchEvent(new MouseEvent("mousemove", {
+            ...o,
+            movementX: i > 0 ? x - points[i - 1].x : 0,
+            movementY: i > 0 ? y - points[i - 1].y : 0
+        }));
+        await sleep(6 + Math.random() * 8);
     }
+    currentMouseX = tx;
+    currentMouseY = ty;
 }
 async function humanClick(el) {
     await jitter(800, 2000);
@@ -1161,8 +1204,12 @@ async function ensureConfig(phase, options = {}) {
     if (!menu) { log("⚠️ เมนู config ไม่เปิด"); return; }
     
     await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO"); await sleep(800);
-    // เลือก sub-tab วิดีโอ: Ingredients (VIDEO_REFERENCES) หรือ Frames (VIDEO_FRAMES)
-    if (phase !== "image") {
+    if (phase === "image") {
+        // บังคับเลือกแท็บ Subject สำหรับรูปภาพนิ่ง เพื่อให้ใช้สินค้าต้นฉบับเป็นแค่อ้างอิงวัตถุ ไม่ใช้โครงภาพเดิม
+        const picked = await clickMenuTab("Subject");
+        if (picked) log("เลือกแท็บรูปภาพ: Subject");
+        await sleep(600);
+    } else {
         const refMode = (options.videoRefMode || "ingredients") === "frames" ? "VIDEO_FRAMES" : "VIDEO_REFERENCES";
         const picked = await clickMenuTab(refMode);
         if (picked) log(`เลือกแท็บวิดีโอ: ${refMode === "VIDEO_FRAMES" ? "Frames" : "Ingredients"}`);
@@ -1751,10 +1798,17 @@ async function clickGenerate() {
 }
 
 async function clickButtonCenterWithDebugger(button) {
-    const rect = button.getBoundingClientRect();
-    const x = Math.round(rect.left + rect.width / 2);
-    const y = Math.round(rect.top + rect.height / 2);
     try {
+        await chrome.runtime.sendMessage({ type: "FLOW_DEBUGGER_ATTACH" });
+        await sleep(800); // รอให้แถบ "Extension started debugging" ดันหน้าจอลงมาให้เรียบร้อยก่อนวัดพิกัด
+    } catch (e) {
+        console.warn("[FlowAuto] failed to attach debugger beforehand:", e);
+    }
+
+    try {
+        const rect = button.getBoundingClientRect();
+        const x = Math.round(rect.left + rect.width / 2);
+        const y = Math.round(rect.top + rect.height / 2);
         const response = await chrome.runtime.sendMessage({
             type: "FLOW_CLICK_POINT",
             payload: { x, y }
@@ -1763,6 +1817,8 @@ async function clickButtonCenterWithDebugger(button) {
         console.warn("[FlowAuto] trusted click failed response:", response);
     } catch (error) {
         console.warn("[FlowAuto] trusted click failed:", error);
+    } finally {
+        await detachFlowDebugger();
     }
     return false;
 }
