@@ -1022,15 +1022,27 @@ async function fillScheduleTime(scheduleTime) {
   const yyyyMmDd = toInputDate(date);
   const hhMm = toInputTime(date);
 
-  const readonlyDateSet = setReadonlyInputValue(/^\d{4}-\d{2}-\d{2}$/, yyyyMmDd);
-  const readonlyTimeSet = setReadonlyInputValue(/^\d{2}:\d{2}$/, hhMm);
-  if (readonlyDateSet || readonlyTimeSet) {
-    await sleep(300);
-    return;
-  }
+  log(`กำลังกรอกค่าเวลา: Date=${yyyyMmDd}, Time=${hhMm}`);
 
-  setInputValue(dateInput, yyyyMmDd);
-  if (timeInput) setInputValue(timeInput, hhMm);
+  if (dateInput) {
+    setReadonlyInputValueDirect(dateInput, yyyyMmDd);
+  }
+  if (timeInput) {
+    setReadonlyInputValueDirect(timeInput, hhMm);
+  }
+  await sleep(500);
+}
+
+function setReadonlyInputValueDirect(input, value) {
+  if (!input) return;
+  const isReadonly = input.hasAttribute("readonly");
+  if (isReadonly) {
+    input.removeAttribute("readonly");
+  }
+  setInputValue(input, value);
+  if (isReadonly) {
+    input.setAttribute("readonly", "readonly");
+  }
 }
 
 function toInputDate(date) {
