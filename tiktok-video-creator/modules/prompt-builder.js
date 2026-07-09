@@ -800,8 +800,7 @@ export function buildCaption(productInfo, defaults = {}) {
     "ไอเทมเด็ดชิ้นนี้ห้ามพลาด!",
     "ลองหรือยัง? ของดีบอกต่อ",
     "ตัวช่วยชีวิตดีขึ้นเยอะ!",
-    "หลังจากลองตัวนี้คือปังมาก!",
-    "ส่องด่วน! ดีงามเกินต้าน"
+    "หลังจากลองตัวนี้คือปังมาก!"
   ];
   const prefix = randomOpenings[Math.floor(Math.random() * randomOpenings.length)];
   const randomizedHook = `${prefix} ${hook}`;
