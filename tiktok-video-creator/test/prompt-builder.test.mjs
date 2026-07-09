@@ -243,18 +243,18 @@ check("light product soap 100g not detected as heavy", !/Real scale./i.test(ligh
 // --- image prompt presenter tests ---
 const imgPresenterWoman = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "woman" });
 check("image prompt with woman presenter includes female reviewer", /young Thai woman reviewer/i.test(imgPresenterWoman), imgPresenterWoman);
-check("image prompt with woman presenter changes intro layout text", /โดยมีผู้พรีเซนต์ร่วมแสดงสินค้าอยู่ในเฟรม/i.test(imgPresenterWoman), imgPresenterWoman);
+check("image prompt with woman presenter changes intro layout text", /with a presenter shown in the frame/i.test(imgPresenterWoman), imgPresenterWoman);
 
 const imgPresenterNone = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("image prompt with no presenter forbids people", /No people, faces/i.test(imgPresenterNone), imgPresenterNone);
-check("image prompt with no presenter maintains grid layout text", /คมชัด สวยงาม แบบภาพเดี่ยวในอัตราส่วนแนวตั้ง 9:16/i.test(imgPresenterNone), imgPresenterNone);
+check("image prompt with no presenter maintains grid layout text", /single high-fidelity clean product/i.test(imgPresenterNone), imgPresenterNone);
 
 const imgPresenterCustom = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "กรอกเอง", customPresenter: "ชายสูงวัยใจดีสวมแว่นตา" });
 check("image prompt with custom presenter injects custom presenter text", /ชายสูงวัยใจดีสวมแว่นตา/i.test(imgPresenterCustom), imgPresenterCustom);
 
 const imgPresenterHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("image prompt with hands_only presenter shows hands", /Show realistic human hands holding the product/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only presenter uses hands intro", /โดยมีมือคนร่วมถือหรือแสดงสินค้าอยู่ในเฟรม/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only presenter uses hands intro", /with realistic human hands holding the product/i.test(imgPresenterHands), imgPresenterHands);
 
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);
