@@ -1,9 +1,5 @@
-/.DS_Store
-
-# Temporary Chrome profile used for testing
-/tiktok-video-creator/temp_chrome_profile/
-
-# Log files and debugging artifacts
-/tiktok-video-creator/scripts/captured-endpoints.json
-/tiktok-video-creator/scripts/tiktok-studio-playwright-inspect.json
-/tiktok-video-creator/scripts/tiktok-studio-playwright-inspect.png
+# Ignore local temporary folder and playwright browser profiles
+tiktok-video-creator/tmp/
+tmp/
+.DS_Store
+*.log
