@@ -28,6 +28,7 @@ async function loadOptions() {
   setSelectValue("flow-image-model", flow.imageModel || "nano-banana-pro");
   setChecked("flow-auto-portrait", flow.autoPortrait !== false);
   setChecked("flow-reuse-tab", flow.reuseTab !== false);
+  setChecked("flow-reuse-project", flow.reuseProject === true);
   const uploadWait = flow.uploadWaitSec ?? 8;
   setValue("flow-upload-wait", uploadWait);
   document.querySelector("#flow-upload-wait-label").textContent = uploadWait + "s";
@@ -95,6 +96,7 @@ async function saveSettings() {
       imageModel: getSelectValue("flow-image-model") || "nano-banana-pro",
       autoPortrait: getChecked("flow-auto-portrait"),
       reuseTab: getChecked("flow-reuse-tab"),
+      reuseProject: getChecked("flow-reuse-project"),
       uploadWaitSec: parseInt(getValue("flow-upload-wait"), 10) || 8
     },
 
