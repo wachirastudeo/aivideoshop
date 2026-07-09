@@ -1019,16 +1019,20 @@ async function fillScheduleTime(scheduleTime) {
 
   const dateInput = inputs.find((input) => input.type === "date") || inputs[0];
   const timeInput = inputs.find((input) => input.type === "time") || inputs[1];
-  const yyyyMmDd = toInputDate(date);
-  const hhMm = toInputTime(date);
 
-  log(`กำลังกรอกค่าเวลา: Date=${yyyyMmDd}, Time=${hhMm}`);
+  const defaultDateStr = dateInput ? dateInput.value : "";
+  const defaultTimeStr = timeInput ? timeInput.value : "";
+
+  const formattedDate = formatLikeDefault(defaultDateStr, date);
+  const formattedTime = formatTimeLikeDefault(defaultTimeStr, date);
+
+  log(`กำลังกรอกค่าเวลา: Date=${formattedDate} (เดิม=${defaultDateStr}), Time=${formattedTime} (เดิม=${defaultTimeStr})`);
 
   if (dateInput) {
-    setReadonlyInputValueDirect(dateInput, yyyyMmDd);
+    setReadonlyInputValueDirect(dateInput, formattedDate);
   }
   if (timeInput) {
-    setReadonlyInputValueDirect(timeInput, hhMm);
+    setReadonlyInputValueDirect(timeInput, formattedTime);
   }
   await sleep(500);
 }
@@ -1045,17 +1049,102 @@ function setReadonlyInputValueDirect(input, value) {
   }
 }
 
-function toInputDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function formatLikeDefault(defaultStr, targetDate) {
+  if (!defaultStr || typeof defaultStr !== "string") {
+    const y = targetDate.getFullYear();
+    const m = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const d = String(targetDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  let separator = "-";
+  if (defaultStr.includes("/")) separator = "/";
+  else if (defaultStr.includes(".")) separator = ".";
+
+  const parts = defaultStr.split(separator);
+  if (parts.length !== 3) {
+    const y = targetDate.getFullYear();
+    const m = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const d = String(targetDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  let yearIdx = -1;
+  let dayIdx = -1;
+  let monthIdx = -1;
+
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const tomYear = tomorrow.getFullYear();
+  const tomBYear = tomYear + 543;
+  const tomMonth = tomorrow.getMonth() + 1;
+  const tomDay = tomorrow.getDate();
+
+  for (let i = 0; i < 3; i++) {
+    const num = parseInt(parts[i], 10);
+    if (num === tomYear || num === tomBYear || parts[i].length === 4) {
+      yearIdx = i;
+    }
+  }
+
+  if (yearIdx === -1) {
+    yearIdx = parts.findIndex(p => p.length === 4);
+    if (yearIdx === -1) yearIdx = 2;
+  }
+
+  const remaining = [0, 1, 2].filter(idx => idx !== yearIdx);
+  const p0 = parseInt(parts[remaining[0]], 10);
+  const p1 = parseInt(parts[remaining[1]], 10);
+
+  if (p0 === tomDay && p1 === tomMonth) {
+    dayIdx = remaining[0];
+    monthIdx = remaining[1];
+  } else if (p1 === tomDay && p0 === tomMonth) {
+    dayIdx = remaining[1];
+    monthIdx = remaining[0];
+  } else {
+    dayIdx = remaining[0];
+    monthIdx = remaining[1];
+  }
+
+  const defaultYearNum = parseInt(parts[yearIdx], 10);
+  const isBuddhist = defaultYearNum > 2400;
+
+  const targetYear = targetDate.getFullYear() + (isBuddhist ? 543 : 0);
+  const targetMonth = targetDate.getMonth() + 1;
+  const targetDay = targetDate.getDate();
+
+  const formattedParts = [];
+  formattedParts[yearIdx] = String(targetYear);
+  formattedParts[monthIdx] = String(targetMonth).padStart(parts[monthIdx].length, "0");
+  formattedParts[dayIdx] = String(targetDay).padStart(parts[dayIdx].length, "0");
+
+  return formattedParts.join(separator);
 }
 
-function toInputTime(date) {
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
+function formatTimeLikeDefault(defaultStr, targetDate) {
+  if (!defaultStr || typeof defaultStr !== "string") {
+    const hh = String(targetDate.getHours()).padStart(2, "0");
+    const mm = String(targetDate.getMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
+  }
+
+  const hasAmPm = /am|pm/i.test(defaultStr);
+  const hh = targetDate.getHours();
+  const mm = String(targetDate.getMinutes()).padStart(2, "0");
+
+  if (hasAmPm) {
+    const isPm = hh >= 12;
+    const displayH = hh % 12 === 0 ? 12 : hh % 12;
+    const amPmStr = isPm ? (defaultStr.includes("PM") ? "PM" : "pm") : (defaultStr.includes("AM") ? "AM" : "am");
+    return `${String(displayH).padStart(2, "0")}:${mm} ${amPmStr}`;
+  }
+
+  if (defaultStr.includes("น.")) {
+    const displayH = String(hh).padStart(2, "0");
+    return `${displayH}:${mm} น.`;
+  }
+
+  return `${String(hh).padStart(2, "0")}:${mm}`;
 }
 
 function setInputValue(input, value) {
