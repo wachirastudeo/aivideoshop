@@ -116,6 +116,8 @@ const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (
 
 const TEXT_FREE_DIRECTION = "STRICT: No added text, words, or characters. Do not render promotional copy, price tags, banners, watermarks, captions, subtitles, CTA, sale labels, or signs. Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, add, or remove them. Do not add any extra readable text onto the scene.";
 
+const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT RULE: Do not add, invent, or write any new text, labels, brand names, slogans, numbers, or gibberish text on the product surface or packaging. If the original reference product is blank or has no text, the generated product must be completely clean and blank without any text. Do not generate fake branding or mock text on the product.";
+
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
 
 const VOICE_TONES = {
@@ -240,6 +242,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     peopleDirection,
     "ข้อความบนภาพสินค้าและบรรจุภัณฑ์ต้องเหมือนกับในภาพต้นฉบับทุกประการ ห้ามเติมข้อความโฆษณาหรือคิดคำขึ้นมาใหม่เองโดยเด็ดขาด (Strictest rule: any text, labels, brand names, or writing on the product and packaging must match the reference image exactly; do NOT invent new words or add any extra text or promotional overlays).",
+    NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     TEXT_FREE_DIRECTION,
     "Final check: ensure no added text or numbers exist in the output."
   ];
@@ -342,6 +345,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     PRODUCT_STRUCTURE_DIRECTION,
     categoryDirection,
     analysisDirection,
+    NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
   ];
 
   const handsOnly = auto.presenter === "hands_only";
