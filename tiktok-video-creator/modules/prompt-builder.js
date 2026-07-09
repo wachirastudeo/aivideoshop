@@ -93,7 +93,7 @@ const THAI_PERSON_DIRECTION = "Natural Thai reviewer. The product must remain ri
 
 const HANDS_DIRECTION = "Show only realistic human hands holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand. The product itself must remain rigid and unchanged; do not cover, bend, warp, or deform it.";
 
-const PRODUCT_FIDELITY_DIRECTION = "Reproduce product exactly as in reference image: preserve its exact shape, form, color, material, and labels. Do not add packaging not visible in reference image. Do not substitute parts.";
+const PRODUCT_FIDELITY_DIRECTION = "Reproduce the product EXACTLY as shown in the reference image: preserve its exact shape, form, color, material, labels, and parts. STRICT RULE: Do not add any extra items, objects, parts, accessories, or decorations that are not in the reference image. Do not add packaging, boxes, bags, or cases unless they are clearly visible in the reference image. Do not substitute, modify, or add parts to the product. It must look 100% identical to the uploaded product image. ห้ามเพิ่มสิ่งของ บรรจุภัณฑ์ กล่อง กล่องกระดาษ อุปกรณ์เสริม หรือของตกแต่งใดๆ ที่ไม่มีอยู่ในรูปภาพต้นฉบับโดยเด็ดขาด ให้สร้างเฉพาะตัวสินค้าที่เหมือนกับรูปที่อัปโหลดให้ 100%";
 
 const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
 
