@@ -107,7 +107,7 @@ const REALISM_AND_PHYSICS_DIRECTION = "Realistic motion only. The product must r
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 
-const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork EXACTLY as in the reference: identical motif, illustration, layout, and colors. Copy it pixel-faithfully; never redraw, restyle, simplify, or replace it.";
+const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork, motif, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement of the design. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace the pattern. For videos, this pattern must remain completely static and unchanged on the product's surface as the camera moves or the presenter holds it.";
 
 const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
@@ -231,7 +231,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
     "Depict the product from a diverse mix of camera angles and shot distances: wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively. ภาพปะติด (collage) นี้ต้องแสดงมุมมองที่แตกต่างกันหลากหลาย ทั้งภาพมุมกว้าง (wide shot) แสดงสินค้าในสภาพแวดล้อมจริงหรือคู่กับคนรีวิว, ภาพมุมปานกลาง (medium shot), และภาพมุมแคบซูมรายละเอียดสินค้า (close-up shot) เพื่อให้เห็นตราสินค้าและเนื้อวัสดุชัดเจน และต้องมีมุมมองจากหลายองศาที่แตกต่างกัน (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage).",
     isHeavy ? "Real scale." : "Small consumer product scale: The product is a small, lightweight item. Depict it in a realistic small scale relative to the environment, hands, or presenter. Do not make it look abnormally large or giant. ขนาดจริงของสินค้าเป็นของชิ้นเล็ก (เช่น ถุง/ขวดขนาดเล็กปกติ) ต้องวาดให้มีขนาดเล็กสมจริงตามอัตราส่วนจริงเมื่อเทียบกับมือคนหรือฉากหลัง ห้ามวาดให้ใหญ่โตเกินจริงเด็ดขาด (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).",
     PRODUCT_ISOLATION_DIRECTION,
-    categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
+    PRODUCT_STRUCTURE_DIRECTION,
+    categoryDirection,
     analysisDirection,
     "Choose a clean, realistic, commercially appealing background that fits this product category.",
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
@@ -336,7 +337,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     PRODUCT_FIDELITY_DIRECTION,
     REALISM_AND_PHYSICS_DIRECTION,
     isHeavy ? "Real scale." : "Close-up scale: Show the product in a prominent close-up so all details remain sharp and readable.",
-    categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
+    PRODUCT_STRUCTURE_DIRECTION,
+    categoryDirection,
     analysisDirection,
   ];
 
@@ -544,7 +546,7 @@ function buildCategoryFidelityDirection(productInfo = {}) {
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
     return SHOE_FIDELITY_DIRECTION;
   }
-  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|กรอบ|กรอบโทรศัพท์|เสื้อลาย|เสื้อยืดลาย|แก้ว|เมือก|พวงกุญแจ|สติกเกอร์|โปสเตอร์|case|cover|skin|sticker|decal|poster|mug|tumbler|tee|printed|graphic|pattern|ลาย|ลายพิมพ์|พิมพ์ลาย)/i.test(text)) {
+  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|กรอบ|กรอบโทรศัพท์|เสื้อ|เสื้อยืด|เสื้อลาย|เสื้อยืดลาย|กางเกง|หมวก|กระเป๋า|หมอน|แก้ว|ถ้วย|เมือก|พวงกุญแจ|สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ของแต่งบ้าน|ผ้า|case|cover|skin|sticker|decal|poster|mug|tumbler|tee|tshirt|hoodie|cap|hat|bag|pillow|canvas|printed|graphic|pattern|illustration|ลาย|ลายพิมพ์|พิมพ์ลาย)/i.test(text)) {
     return PRINTED_GRAPHIC_FIDELITY_DIRECTION;
   }
   return "";
