@@ -207,12 +207,12 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const handsOnly = auto.presenter === "hands_only";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
 
-  // Determine introductory description/layout advice based on presenter settings (always keep multiple angles grid/collage)
+  // Determine introductory description/layout advice based on presenter settings (single product shot)
   const intro = (auto.presenter && auto.presenter !== "none" && auto.presenter !== "hands_only")
-    ? `ทำภาพโฆษณารีวิวสินค้า ${productName} ที่แสดงรายละเอียดสินค้าจากหลากหลายมุมมอง (multiple angles product photography grid/collage in one vertical 9:16 layout) โดยมีผู้พรีเซนต์ร่วมแสดงสินค้าอยู่ในมุมมองต่าง ๆ.`
+    ? `ทำภาพโฆษณารีวิวสินค้า ${productName} คมชัด สวยงาม แบบภาพเดี่ยวในอัตราส่วนแนวตั้ง 9:16 (single high-fidelity clean product photography shot in one vertical 9:16 layout) โดยมีผู้พรีเซนต์ร่วมแสดงสินค้าอยู่ในเฟรม.`
     : (auto.presenter === "hands_only")
-      ? `ทำภาพโฆษณารีวิวสินค้า ${productName} ที่แสดงรายละเอียดสินค้าจากหลากหลายมุมมอง (multiple angles product photography grid/collage in one vertical 9:16 layout) โดยมีมือคนร่วมถือหรือแสดงสินค้าอยู่ในมุมมองต่าง ๆ.`
-      : `ทำภาพโฆษณารีวิวสินค้า ${productName} ที่แสดงรายละเอียดสินค้าจากหลากหลายมุมมอง (multiple angles product photography grid/collage in one vertical 9:16 layout).`;
+      ? `ทำภาพโฆษณารีวิวสินค้า ${productName} คมชัด สวยงาม แบบภาพเดี่ยวในอัตราส่วนแนวตั้ง 9:16 (single high-fidelity clean product photography shot in one vertical 9:16 layout) โดยมีมือคนร่วมถือหรือแสดงสินค้าอยู่ในเฟรม.`
+      : `ทำภาพโฆษณารีวิวสินค้า ${productName} คมชัด สวยงาม แบบภาพเดี่ยวในอัตราส่วนแนวตั้ง 9:16 (single high-fidelity clean product photography shot in one vertical 9:16 layout).`;
 
   let peopleDirection = "";
   if (handsOnly) {
@@ -232,7 +232,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     PRODUCT_FIDELITY_DIRECTION,
     SCALE_FIDELITY_DIRECTION,
     "ผลลัพธ์ในภาพที่สร้างขึ้นใหม่ต้องรักษาความถูกต้องของตัวสินค้าให้เหมือนกับภาพอ้างอิงต้นฉบับทุกประการ ทั้งรูปทรง ลายเส้น สี วัสดุ ตราสินค้า และข้อความต่างๆ ห้ามดัดแปลงหรือบิดเบือนโครงสร้างของตัวสินค้าเด็ดขาด (Critical: The generated image must maintain absolute fidelity to the original product in the reference image. The product's shape, curves, outlines, colors, materials, branding, labels, and text must be 100% identical and unchanged. Do not redesign, warp, or modify the product's structure).",
-    "Depict the product from a diverse mix of camera angles and shot distances: wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively. ภาพปะติด (collage) นี้ต้องแสดงมุมมองที่แตกต่างกันหลากหลาย ทั้งภาพมุมกว้าง (wide shot) แสดงสินค้าในสภาพแวดล้อมจริงหรือคู่กับคนรีวิว, ภาพมุมปานกลาง (medium shot), และภาพมุมแคบซูมรายละเอียดสินค้า (close-up shot) เพื่อให้เห็นตราสินค้าและเนื้อวัสดุชัดเจน และต้องมีมุมมองจากหลายองศาที่แตกต่างกัน (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage).",
+    "Depict the product in a single clean camera angle (such as eye-level front view or 45-degree beauty shot) at a medium close-up distance that highlights the product's textures, branding, and labels clearly. Do not create a collage, grid, split-screen, or multiple frames in the image. ภาพนี้ต้องแสดงสินค้าเดี่ยวๆ เพียงรูปเดียวในมุมกล้องปกติ เช่น มุมตรง หรือมุมเฉียง 45 องศาที่สวยงาม ซูมระยะปานกลางเพื่อให้เห็นโลโก้ แบรนด์ และเนื้อสัมผัสวัสดุชัดเจนที่สุด ห้ามปะติดหลายภาพ ห้ามแบ่งช่องภาพ ห้ามทำเป็นภาพโมเสก หรือแสดงหลายช็อตในเฟรมเดียวโดยเด็ดขาด (Strictest rule: render a single clean image only; strictly forbid any collage, grids, split-screens, or multi-frame layouts).",
     isHeavy ? "Real scale." : "Small consumer product scale: The product is a small, lightweight item. Depict it in a realistic small scale relative to the environment, hands, or presenter. Do not make it look abnormally large or giant. ขนาดจริงของสินค้าเป็นของชิ้นเล็ก (เช่น ถุง/ขวดขนาดเล็กปกติ) ต้องวาดให้มีขนาดเล็กสมจริงตามอัตราส่วนจริงเมื่อเทียบกับมือคนหรือฉากหลัง ห้ามวาดให้ใหญ่โตเกินจริงเด็ดขาด (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).",
     PRODUCT_ISOLATION_DIRECTION,
     PRODUCT_STRUCTURE_DIRECTION,
@@ -379,6 +379,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   promptParts.push(
     `Use distinct scenes with hard cuts; split the ${durationSeconds}s evenly across the scenes below.`,
+    `STRICT LIMIT: The video must contain AT MOST 3 to 4 sequential scenes/shots. Do not generate too many scenes, cuts, or edits. Keep the storytelling simple and clean. (กฎเหล็ก: ห้ามมีฉากตัดต่อยิบย่อยเยอะเกินไป ให้มีฉากหลักเพียง 3-4 ฉากแบบชัดเจนเท่านั้น)`,
     sceneBreakdown,
     `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep every shot sharp, clearly visible, and stable. Realistic motion only — no morphing, duplication, or impossible action.`
   );
