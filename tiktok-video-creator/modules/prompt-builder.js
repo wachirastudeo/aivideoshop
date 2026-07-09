@@ -109,6 +109,8 @@ const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pa
 
 const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork, motif, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement of the design. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace the pattern. For videos, this pattern must remain completely static and unchanged on the product's surface as the camera moves or the presenter holds it.";
 
+const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glasses must be perfectly proportioned to a human face, head, or hands. Do not make the glasses abnormally large, tiny, or out-of-scale relative to the presenter. Maintain the exact frame shape, lens color/transparency, bridge width, and temple length. ขนาดและสัดส่วนของแว่นตาในวิดีโอต้องได้สัดส่วนจริงและพอดีกับใบหน้าศีรษะหรือมือคนรีวิว ห้ามวาดแว่นตาให้ใหญ่หรือเล็กเกินจริงโดยเด็ดขาด";
+
 const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
@@ -409,11 +411,20 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace("holding", "holding with both hands or interacting with")
       + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the presenter, never as a tiny packet or a giant sack.";
   } else if (weightCategory === "light") {
-    handsDir = handsDir
-      + " The product is a small item; depict it in a prominent large scale relative to the hands (close-up), ensuring the product's brand name and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+    const isEyewear = /(แว่นตา|แว่นกันแดด|แว่นสายตา|แว่น|glasses|sunglasses|eyewear|spectacles)/i.test(productText);
+    if (isEyewear) {
+      handsDir = handsDir
+        + " The product is eyewear; depict the glasses in a realistic natural scale relative to the hands or face, ensuring it fits perfectly without looking abnormally large or tiny.";
 
-    presenterInstruction = presenterInstruction
-      + " The product is a small item; depict it in a prominent large scale (close-up or medium close-up) relative to the presenter, ensuring the product's brand name and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+      presenterInstruction = presenterInstruction
+        + " The product is eyewear; depict the glasses in a realistic natural scale relative to the presenter's face or head, ensuring it fits perfectly on the face without looking abnormally large or tiny.";
+    } else {
+      handsDir = handsDir
+        + " The product is a small item; depict it in a prominent large scale relative to the hands (close-up), ensuring the product's brand name and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+
+      presenterInstruction = presenterInstruction
+        + " The product is a small item; depict it in a prominent large scale (close-up or medium close-up) relative to the presenter, ensuring the product's brand name and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+    }
   }
 
   // รวมข้อมูลสินค้าทั้งหมดมาประกบรวมกันสำหรับส่งให้ AI วิเคราะห์ทำบทพูด
@@ -545,6 +556,9 @@ function buildCategoryFidelityDirection(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.category || ""}`.toLowerCase();
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
     return SHOE_FIDELITY_DIRECTION;
+  }
+  if (/(แว่นตา|แว่นกันแดด|แว่นสายตา|แว่น|glasses|sunglasses|eyewear|spectacles)/i.test(text)) {
+    return EYEWEAR_FIDELITY_DIRECTION;
   }
   if (/(เคส|เคสโทรศัพท์|เคสมือถือ|กรอบ|กรอบโทรศัพท์|เสื้อ|เสื้อยืด|เสื้อลาย|เสื้อยืดลาย|กางเกง|หมวก|กระเป๋า|หมอน|แก้ว|ถ้วย|เมือก|พวงกุญแจ|สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ของแต่งบ้าน|ผ้า|case|cover|skin|sticker|decal|poster|mug|tumbler|tee|tshirt|hoodie|cap|hat|bag|pillow|canvas|printed|graphic|pattern|illustration|ลาย|ลายพิมพ์|พิมพ์ลาย)/i.test(text)) {
     return PRINTED_GRAPHIC_FIDELITY_DIRECTION;
