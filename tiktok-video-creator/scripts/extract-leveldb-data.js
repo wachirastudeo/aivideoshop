@@ -1,7 +1,53 @@
 const fs = require('fs');
 const path = require('path');
 
-const dbDir = '/Users/pae/Library/Application Support/Google/Chrome/Default/Local Extension Settings/gghniflcfbkadcmmbcciaoofifpfinbd';
+// ─── Auto-detect Chrome Extension Local Storage Directory (supports OS auto-detection & custom overrides) ───
+function resolveDbDir() {
+  const argv = process.argv;
+  const args = {};
+  for (let i = 2; i < argv.length; i += 1) {
+    if (argv[i].startsWith("--")) {
+      const key = argv[i].slice(2);
+      const next = argv[i + 1];
+      if (next && !next.startsWith("--")) {
+        args[key] = next;
+        i += 1;
+      } else {
+        args[key] = true;
+      }
+    }
+  }
+
+  if (args.dir) {
+    return path.resolve(args.dir);
+  }
+  if (process.env.EXTENSION_DIR) {
+    return path.resolve(process.env.EXTENSION_DIR);
+  }
+
+  const extensionId = args.id || process.env.EXTENSION_ID || 'gghniflcfbkadcmmbcciaoofifpfinbd';
+  let chromeBase = '';
+
+  if (process.platform === 'win32') {
+    chromeBase = path.join(process.env.LOCALAPPDATA || '', 'Google/Chrome/User Data');
+  } else if (process.platform === 'darwin') {
+    chromeBase = path.join(process.env.HOME || '', 'Library/Application Support/Google/Chrome');
+  } else {
+    chromeBase = path.join(process.env.HOME || '', '.config/google-chrome');
+  }
+
+  const profiles = ['Default', 'Profile 1', 'Profile 2', 'Profile 3', 'Profile 4', 'Profile 5'];
+  for (const profile of profiles) {
+    const candidate = path.join(chromeBase, profile, 'Local Extension Settings', extensionId);
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return path.join(chromeBase, 'Default', 'Local Extension Settings', extensionId);
+}
+
+const dbDir = resolveDbDir();
 let logFilePath = '';
 
 try {
