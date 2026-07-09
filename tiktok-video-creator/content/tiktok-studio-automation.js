@@ -547,32 +547,18 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   document.execCommand("delete", false);
   await sleep(150 + Math.random() * 100);
 
-  if (caption) {
-    for (let i = 0; i < caption.length; i++) {
-      document.execCommand("insertText", false, caption[i]);
-      await sleep(15 + Math.random() * 35);
-    }
+  // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
+  const fullText = [
+    caption,
+    ...normalizeHashtags(hashtags)
+  ].filter(Boolean).join(" ");
+
+  if (fullText) {
+    document.execCommand("insertText", false, fullText);
   }
   await sleep(200 + Math.random() * 150);
 
-  for (const rawTag of normalizeHashtags(hashtags)) {
-    assertNotStopped();
-    const tag = String(rawTag || "").replace(/^#/, "").trim();
-    if (!tag) continue;
-    
-    const tagString = ` #${tag}`;
-    for (let i = 0; i < tagString.length; i++) {
-      document.execCommand("insertText", false, tagString[i]);
-      await sleep(15 + Math.random() * 35);
-    }
-    
-    await sleep(200 + Math.random() * 150);
-    // ปิด popup แนะนำแฮชแท็ก ไม่งั้นพอ focus หลุด (กดโพส) TikTok จะ commit suggestion ทับ
-    dismissCaptionSuggestion(editor);
-    await sleep(100 + Math.random() * 100);
-  }
-
-  // เคาะ popup ที่อาจค้างเป็นรอบสุดท้าย แล้วค่อยยิง input/change ให้ DraftJS อัปเดต state
+  // ปิด popup แนะนำแฮชแท็ก ไม่งั้นพอ focus หลุด (กดโพส) TikTok จะ commit suggestion ทับ
   dismissCaptionSuggestion(editor);
   await sleep(150);
   editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: " " }));
@@ -978,44 +964,14 @@ function pressEnter(el) {
   }
 }
 
-// พิมพ์ลง input แบบ React-aware เลียนแบบการกดทีละปุ่มของมนุษย์พร้อมดีเลย์สุ่ม
+// วางข้อความลง input แบบ React-aware ทันทีโดยไม่ต้องพิมพ์ทีละตัวอักษร
 async function typeIntoInput(input, value) {
   input.focus();
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-  if (setter) setter.call(input, "");
-  else input.value = "";
-  input.dispatchEvent(new InputEvent("input", { bubbles: true, data: "", inputType: "deleteContentBackward" }));
+  if (setter) setter.call(input, value);
+  else input.value = value;
 
-  if (!value) {
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    return;
-  }
-
-  let currentValue = "";
-  for (let i = 0; i < value.length; i++) {
-    const char = value[i];
-    currentValue += char;
-
-    const keyOpts = {
-      key: char,
-      code: char.charCodeAt(0) ? `Key${char.toUpperCase()}` : "",
-      bubbles: true,
-      cancelable: true,
-    };
-
-    input.dispatchEvent(new KeyboardEvent("keydown", keyOpts));
-    input.dispatchEvent(new KeyboardEvent("keypress", keyOpts));
-
-    if (setter) setter.call(input, currentValue);
-    else input.value = currentValue;
-
-    input.dispatchEvent(new InputEvent("input", { bubbles: true, data: char, inputType: "insertText" }));
-    input.dispatchEvent(new KeyboardEvent("keyup", keyOpts));
-
-    // ดีเลย์สุ่มระหว่าง 40ms ถึง 120ms ต่อหนึ่งตัวอักษร
-    await sleep(40 + Math.random() * 80);
-  }
-
+  input.dispatchEvent(new InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
   await sleep(150 + Math.random() * 150);
 }
@@ -1256,25 +1212,16 @@ async function fillCaption(caption, hashtags) {
   document.execCommand("delete");
   await sleep(150 + Math.random() * 100);
 
-  // พิมพ์ caption แบบทีละตัวอักษรเพื่อความสมจริง
-  if (caption) {
-    for (let i = 0; i < caption.length; i++) {
-      document.execCommand("insertText", false, caption[i]);
-      await sleep(15 + Math.random() * 35);
-    }
+  // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
+  const fullText = [
+    caption,
+    ...normalizeHashtags(hashtags)
+  ].filter(Boolean).join(" ");
+
+  if (fullText) {
+    document.execCommand("insertText", false, fullText);
   }
   await sleep(200 + Math.random() * 150);
-
-  // เพิ่ม hashtags
-  for (const tag of normalizeHashtags(hashtags)) {
-    const normalized = tag.startsWith("#") ? tag : `#${tag}`;
-    const tagString = ` ${normalized}`;
-    for (let i = 0; i < tagString.length; i++) {
-      document.execCommand("insertText", false, tagString[i]);
-      await sleep(15 + Math.random() * 35);
-    }
-    await sleep(200 + Math.random() * 150);
-  }
 
   captionEl.dispatchEvent(new Event("input", { bubbles: true }));
   captionEl.dispatchEvent(new Event("change", { bubbles: true }));

@@ -59,7 +59,23 @@ function normalizeHashtags(value) {
     .join(" ");
 }
 
-async function fillEditable(page, text) {
+async function findFileInput(page) {
+  // Check main page
+  const mainInput = page.locator('input[type="file"][accept*="video"], input[type="file"]').first();
+  if (await mainInput.count() > 0) {
+    return { input: mainInput, context: page };
+  }
+  // Check frames
+  for (const frame of page.frames()) {
+    const input = frame.locator('input[type="file"][accept*="video"], input[type="file"]').first();
+    if (await input.count() > 0) {
+      return { input, context: frame };
+    }
+  }
+  return null;
+}
+
+async function fillEditable(context, page, text) {
   if (!text) return;
 
   const candidates = [
@@ -72,17 +88,21 @@ async function fillEditable(page, text) {
   ];
 
   for (const selector of candidates) {
-    const locator = page.locator(selector).first();
+    const locator = context.locator(selector).first();
     if (!(await locator.count())) continue;
     try {
       await locator.waitFor({ state: "visible", timeout: 3000 });
       await locator.click({ timeout: 3000 });
-      await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-      await page.keyboard.press("Backspace");
-      await page.keyboard.type(text, { delay: 12 });
+      try {
+        await locator.fill(text, { timeout: 3000 });
+      } catch (_) {
+        await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type(text);
+      }
       return;
     } catch (_) {
-      // Try the next selector; TikTok changes this editor often.
+      // Try the next selector
     }
   }
 
@@ -98,9 +118,9 @@ function parseOptionalBool(value) {
   throw new Error(`Invalid boolean value: ${value}`);
 }
 
-async function setCheckboxLike(page, selector, desired, label) {
+async function setCheckboxLike(context, selector, desired, label) {
   if (desired === undefined) return;
-  const input = page.locator(selector).first();
+  const input = context.locator(selector).first();
   if (!(await input.count())) {
     console.log(`Skipping ${label}: selector not found.`);
     return;
@@ -115,24 +135,24 @@ async function setCheckboxLike(page, selector, desired, label) {
   }
 }
 
-async function setPrivacy(page, privacy) {
+async function setPrivacy(context, privacy) {
   if (!privacy) return;
-  const combo = page.locator('[data-e2e="video_visibility_container"] button[role="combobox"]').first();
+  const combo = context.locator('[data-e2e="video_visibility_container"] button[role="combobox"]').first();
   if (!(await combo.count())) {
     console.log("Skipping privacy: visibility combobox not found.");
     return;
   }
   await combo.scrollIntoViewIfNeeded().catch(() => {});
   await combo.click();
-  const option = page.getByText(privacy, { exact: true }).first();
+  const option = context.getByText(privacy, { exact: true }).first();
   await option.waitFor({ state: "visible", timeout: 10000 });
   await option.click();
   console.log(`Set privacy: ${privacy}`);
 }
 
-async function setLocation(page, location) {
+async function setLocation(context, location) {
   if (!location) return;
-  const input = page.locator('[data-e2e="poi_container"] input[placeholder="Search locations"]').first();
+  const input = context.locator('[data-e2e="poi_container"] input[placeholder="Search locations"]').first();
   if (!(await input.count())) {
     console.log("Skipping location: location search input not found.");
     return;
@@ -140,7 +160,7 @@ async function setLocation(page, location) {
   await input.scrollIntoViewIfNeeded().catch(() => {});
   await input.click();
   await input.fill(location);
-  const option = page.getByText(location, { exact: false }).first();
+  const option = context.getByText(location, { exact: false }).first();
   await option.waitFor({ state: "visible", timeout: 15000 }).catch(() => {});
   if (await option.count()) {
     await option.click().catch(() => {});
@@ -148,14 +168,14 @@ async function setLocation(page, location) {
   console.log(`Set location search: ${location}`);
 }
 
-async function applyPostSettings(page, settings) {
-  await setLocation(page, settings.location);
-  await setPrivacy(page, settings.privacy);
-  await setCheckboxLike(page, '[data-e2e="aigc_container"] input[type="checkbox"]', settings.aiGenerated, "AI-generated");
-  await setCheckboxLike(page, '[data-e2e="user_perm_container"] input[type="checkbox"]', settings.allowComment, "allow comment");
+async function applyPostSettings(context, settings) {
+  await setLocation(context, settings.location);
+  await setPrivacy(context, settings.privacy);
+  await setCheckboxLike(context, '[data-e2e="aigc_container"] input[type="checkbox"]', settings.aiGenerated, "AI-generated");
+  await setCheckboxLike(context, '[data-e2e="user_perm_container"] input[type="checkbox"]', settings.allowComment, "allow comment");
 
   if (settings.allowReuse !== undefined) {
-    const reuse = page.locator('[data-e2e="user_perm_container"] input[type="checkbox"]').nth(1);
+    const reuse = context.locator('[data-e2e="user_perm_container"] input[type="checkbox"]').nth(1);
     if (await reuse.count()) {
       await reuse.scrollIntoViewIfNeeded().catch(() => {});
       const checked = await reuse.isChecked().catch(async () => reuse.evaluate((el) => Boolean(el.checked)));
@@ -167,12 +187,12 @@ async function applyPostSettings(page, settings) {
   }
 }
 
-async function waitForUploadReady(page) {
+async function waitForUploadReady(context) {
   const readySignals = [
-    page.locator('[contenteditable="true"]').first().waitFor({ state: "visible", timeout: 120000 }),
-    page.locator('button:has-text("Draft")').first().waitFor({ state: "visible", timeout: 120000 }),
-    page.locator('button:has-text("Post")').first().waitFor({ state: "visible", timeout: 120000 }),
-    page.locator("text=/cover|caption|draft|post/i").first().waitFor({ state: "visible", timeout: 120000 }),
+    context.locator('[contenteditable="true"]').first().waitFor({ state: "visible", timeout: 120000 }),
+    context.locator('button:has-text("Draft")').first().waitFor({ state: "visible", timeout: 120000 }),
+    context.locator('button:has-text("Post")').first().waitFor({ state: "visible", timeout: 120000 }),
+    context.locator("text=/cover|caption|draft|post/i").first().waitFor({ state: "visible", timeout: 120000 }),
   ];
 
   await Promise.race(readySignals).catch(() => {
@@ -180,7 +200,7 @@ async function waitForUploadReady(page) {
   });
 }
 
-async function clickSaveDraft(page) {
+async function clickSaveDraft(context) {
   const selectors = [
     'button:has-text("Save draft")',
     'button:has-text("Save as draft")',
@@ -189,7 +209,7 @@ async function clickSaveDraft(page) {
   ];
 
   for (const selector of selectors) {
-    const button = page.locator(selector).filter({ hasNotText: /discard/i }).first();
+    const button = context.locator(selector).filter({ hasNotText: /discard/i }).first();
     if (!(await button.count())) continue;
     try {
       await button.waitFor({ state: "visible", timeout: 5000 });
@@ -203,16 +223,16 @@ async function clickSaveDraft(page) {
   throw new Error("Could not find a visible Save Draft button.");
 }
 
-async function clickFinalAction(page, action) {
+async function clickFinalAction(context, action) {
   if (action === "post") {
-    const postButton = page.locator('button[data-e2e="post_video_button"]').first();
+    const postButton = context.locator('button[data-e2e="post_video_button"]').first();
     await postButton.scrollIntoViewIfNeeded().catch(() => {});
     await postButton.click();
     console.log("Post button clicked.");
     return;
   }
 
-  const draftButton = page.locator('button[data-e2e="save_draft_button"]').first();
+  const draftButton = context.locator('button[data-e2e="save_draft_button"]').first();
   if (await draftButton.count()) {
     await draftButton.scrollIntoViewIfNeeded().catch(() => {});
     await draftButton.click();
@@ -220,7 +240,7 @@ async function clickFinalAction(page, action) {
     return;
   }
 
-  await clickSaveDraft(page);
+  await clickSaveDraft(context);
 }
 
 async function run() {
@@ -258,8 +278,20 @@ async function run() {
     headless: false,
     viewport: null,
     acceptDownloads: true,
-    args: ["--start-maximized"],
+    ignoreDefaultArgs: ["--enable-automation"],
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--start-maximized"
+    ],
   });
+
+  // Inject Script เพื่อพรางสถานะบอท
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "webdriver", {
+      get: () => undefined,
+    });
+  });
+
 
   try {
     const page = context.pages()[0] || (await context.newPage());
@@ -269,25 +301,23 @@ async function run() {
     await page.goto(STUDIO_UPLOAD_URL, { waitUntil: "domcontentloaded", timeout: 90000 });
     await waitForTikTokStudioOrLogin(page);
 
-    await waitForUploadPage(page);
+    const { input: fileInput, context } = await waitForUploadPage(page);
 
-    const fileInput = page.locator('input[type="file"][accept*="video"], input[type="file"]').first();
-    await fileInput.waitFor({ state: "attached", timeout: 120000 });
     console.log(`Uploading video: ${videoPath}`);
     await fileInput.setInputFiles(videoPath);
 
     console.log("Waiting for TikTok Studio to finish preparing the upload form...");
-    await waitForUploadReady(page);
+    await waitForUploadReady(context);
 
     if (caption) {
       console.log("Filling caption.");
-      await fillEditable(page, caption);
+      await fillEditable(context, page, caption);
     }
 
-    await applyPostSettings(page, settings);
+    await applyPostSettings(context, settings);
 
     console.log(`Running final action: ${action}`);
-    await clickFinalAction(page, action);
+    await clickFinalAction(context, action);
 
     await page
       .locator('text=/draft|saved|success|ร่าง|สำเร็จ/i')
@@ -329,8 +359,6 @@ async function waitForTikTokStudioOrLogin(page) {
 }
 
 async function waitForUploadPage(page) {
-  const fileInput = page.locator('input[type="file"][accept*="video"], input[type="file"]').first();
-
   for (;;) {
     if (/\/login|\/signup/i.test(page.url())) {
       console.log("TikTok login is required in this Chrome profile. Log in there; the script will continue.");
@@ -338,16 +366,13 @@ async function waitForUploadPage(page) {
       await page.waitForLoadState("domcontentloaded", { timeout: 60000 }).catch(() => {});
     }
 
-    const result = await Promise.race([
-      fileInput.waitFor({ state: "attached", timeout: 10000 }).then(() => "ready").catch(() => null),
-      page.waitForURL(/tiktok\.com\/login|tiktok\.com\/signup/i, { timeout: 10000 }).then(() => "login").catch(() => null),
-    ]);
-
-    if (result === "ready") return;
-    if (result === "login") continue;
+    const fileInputInfo = await findFileInput(page);
+    if (fileInputInfo) return fileInputInfo;
 
     if (/\/login|\/signup/i.test(page.url())) continue;
-    throw new Error(`Could not find TikTok upload input at ${page.url()}`);
+
+    // Wait a bit before checking again
+    await page.waitForTimeout(1000);
   }
 }
 

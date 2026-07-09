@@ -12,9 +12,9 @@ async function run() {
       headless: false,
       channel: 'chrome', 
       viewport: null, // ใช้หน้าจอปกติ
+      ignoreDefaultArgs: ['--enable-automation'],
       args: [
         '--disable-blink-features=AutomationControlled',
-        '--excludeSwitches=enable-automation',
         '--start-maximized'
       ]
     });
