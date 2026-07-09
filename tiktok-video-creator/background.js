@@ -259,6 +259,8 @@ async function openCreatorTab() {
 
 async function openGoogleFlow(payload) {
   const runVersion = flowStopVersion;
+  const flowSettings = await getFlowSettings();
+  const reuseProject = flowSettings.reuseProject === true;
   const FLOW_URL = "https://labs.google/fx/tools/flow";
   const existingTabs = await queryFlowTabs();
   let tab;
@@ -270,7 +272,12 @@ async function openGoogleFlow(payload) {
     try {
       await chrome.windows.update(tab.windowId, { focused: true });
     } catch { }
-    needNavigate = true;
+    
+    if (reuseProject && isFlowProjectUrl(tab.url || "")) {
+      needNavigate = false;
+    } else {
+      needNavigate = true;
+    }
   } else {
     tab = await chrome.tabs.create({ url: FLOW_URL, active: true });
     needNavigate = false;
@@ -297,9 +304,10 @@ async function openGoogleFlow(payload) {
 
   // รอ content script พร้อม หรือ inject เองถ้า tab เปิดอยู่ก่อน reload extension
   await ensureFlowContentScript(tab.id);
-  // Every product job owns a separate Flow project. Keep this invariant here
-  // even if callers or navigation behavior change later.
-  await prepareFlowProject(tab.id, { forceNew: true });
+  // Every product job owns a separate Flow project, unless the reuseProject setting is enabled.
+  const flowSettingsForProject = await getFlowSettings();
+  const reuseProjectFlag = flowSettingsForProject.reuseProject === true;
+  await prepareFlowProject(tab.id, { forceNew: !reuseProjectFlag });
   await ensureFlowContentScript(tab.id);
   assertRunNotStopped(runVersion, flowStopVersion);
 
@@ -387,6 +395,7 @@ async function getFlowSettings() {
     imageModel: settings.flow?.imageModel || "nano-banana-pro",
     autoPortrait: settings.flow?.autoPortrait !== false,
     uploadWaitSec: settings.flow?.uploadWaitSec ?? 8,
+    reuseProject: settings.flow?.reuseProject === true,
     imageCount: media.imageCount || 1,
     videoCount: media.videoCount || 1,
     videoDuration: media.videoDuration || 8,
