@@ -1,0 +1,312 @@
+[
+{
+  "url": "https://web-sg.tiktok.com/passport/web/store_region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=fYFl8x5rwZYstUSVAC1F3IWgUziq4PkUFVH4gCaU2fG66Dg8ks5Aia1Yet2Lbg2y9uI65AscHU0KoA5mHJjZprT5fEZY_DWXTeCBfTksrjxiKxWOrt2K2Q8-hGYN&X-Bogus=DFSzsIRO9dRuS6gUC5xk1TVxWZy4&X-Gnarly=Ma-plNk8RpTVjIFjAGA9YpYXPDCPrPEEtJjgqgEeCMWiqyns7blFRxoyjOJxUcSByaYvNj62VFkcQ2hkAz/X0YpMqzrJhS0MOY/ff59/9GO7e60dwVXr7-eyDTOEWJDPq0mCflMnM0fRqM47gfL7VCndNlLqf6fozEjLMPMLm4iCMbjD9mp7Sgr4zh0IkuUvG4hi6CeWiKrMTxUodiraUkxKTb5nF3qUdt2qri9RkXuwafZghYt7D23ier3NBqyYvC6ha0XTOfeBw29ltFipD/eu6lDZqfuUY/IyKlL-O4jT7QkZGYOCixwYnOCJyWUCFTjpf8U2Pu==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "sec-ch-ua-mobile": "?0",
+    "tt-ticket-guard-web-version": "1",
+    "tt-ticket-guard-version": "2",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "tt-ticket-guard-public-key": "BFC/qIpvkp0O6Xk455G4e3OhDZoziEG+D0DY4VRiQAwMLImkzNSaJ/8jxa4fo7iMuzVRyrxN2O5wGP2bHzoM/xI=",
+    "content-type": "application/x-www-form-urlencoded",
+    "tt-ticket-guard-iteration-version": "0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "data": {
+      "enabled_region_option": true,
+      "localized_country_name": "Thailand",
+      "store_region": "th"
+    },
+    "message": "success"
+  },
+  "capturedAt": "2026-05-29T12:23:14.124Z"
+},
+{
+  "url": "https://us.tiktok.com/passport/web/store_region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=fYFl8x5rwZYstUSVAC1F3IWgUziq4PkUFVH4gCaU2fG66Dg8ks5Aia1Yet2Lbg2y9uI65AscHU0KoA5mHJjZprT5fEZY_DWXTeCBfTksrjxiKxWOrt2K2Q8-hGYN&X-Bogus=DFSzsIRO9dRuS6gUC5xk1TVxWZy4&X-Gnarly=MaKGqdnGRLfg07CBqKro94Zf-Llun4y/2XtcE7qz1lk55yTwHb769vLsCK0RAjvluHv0roggkK5YDxwFQo4JwVZq-MQ6f/angAWVEDFpKmgkVF59JL3AO9ytnnF6wxRO2y/YEtWQiyTsB-zbkhYfN2ZpOFySlifmsUCPknK99Iq-MwnPMa/QaQS07WqZCa/d5zczd5zJAakjNmK6vwd0LWKHVxq7ZHq2erpp7LDNW9eoAbz1qIv6-fVbuHe-QfJXJYKf18m0cVaB8txQVA1UvSZ0ElNOfmp5dKmTWn-CKd1HQCnN6yLs6B9c1SPQJOzwya5ziYp7Ou==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "sec-ch-ua-mobile": "?0",
+    "tt-ticket-guard-web-version": "1",
+    "tt-ticket-guard-version": "2",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "tt-ticket-guard-public-key": "BFC/qIpvkp0O6Xk455G4e3OhDZoziEG+D0DY4VRiQAwMLImkzNSaJ/8jxa4fo7iMuzVRyrxN2O5wGP2bHzoM/xI=",
+    "content-type": "application/x-www-form-urlencoded",
+    "tt-ticket-guard-iteration-version": "0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "data": {
+      "enabled_region_option": true,
+      "localized_country_name": "Thailand",
+      "store_region": "th"
+    },
+    "message": "success"
+  },
+  "capturedAt": "2026-05-29T12:23:14.274Z"
+},
+{
+  "url": "https://login-no1a.www.tiktok.com/passport/web/store_region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=fYFl8x5rwZYstUSVAC1F3IWgUziq4PkUFVH4gCaU2fG66Dg8ks5Aia1Yet2Lbg2y9uI65AscHU0KoA5mHJjZprT5fEZY_DWXTeCBfTksrjxiKxWOrt2K2Q8-hGYN&X-Bogus=DFSzsIRO9dRuS6gUC5xk1TVxWZy4&X-Gnarly=MwT3l0gMYTzBIeW4yIN/yRUc1iLTiYmLhsRZGr/8Wu22Upzj5IXdPkA92nOQMa9Eo9XR12utDAQc5Ep9aXcWjI/teJUdJUbT5J-Ttj6jI259lxnvgXv6mOzMBqdNuEosCH4XypnbQsik/nn4iX-GCA38aQbzZIrDYYJQNmL66KFJbncQuhrBn8ExawQDwpMjGXZbvFcmPsUI9Zg935HlRIEbOrPJeCKQvCnoe1ml0--Lx/gevPKr5L5dY24za/wzXcFVrGSpTZuby5HZyMPXzfR-Xt/gTtPvMfesFdiw1gwzp4QEkr2/rFcUvX0HaV-rcNwoy-uINk==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "sec-ch-ua-mobile": "?0",
+    "tt-ticket-guard-web-version": "1",
+    "tt-ticket-guard-version": "2",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "tt-ticket-guard-public-key": "BFC/qIpvkp0O6Xk455G4e3OhDZoziEG+D0DY4VRiQAwMLImkzNSaJ/8jxa4fo7iMuzVRyrxN2O5wGP2bHzoM/xI=",
+    "content-type": "application/x-www-form-urlencoded",
+    "tt-ticket-guard-iteration-version": "0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "data": {
+      "enabled_region_option": true,
+      "localized_country_name": "Thailand",
+      "store_region": "th"
+    },
+    "message": "success"
+  },
+  "capturedAt": "2026-05-29T12:23:14.804Z"
+},
+{
+  "url": "https://www.tiktok.com/shorten/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=3&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&safe_token=true&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=NzoRunsU3UdwdFH04hSoXP41E0N3HS8XtCwjAcTo8BBElXoQ5ajR2E9Fx22MXnlWaEyOKqOSHBSI7Wp20FMt9t3uwIdE1jjhlTSvq-nznrK5HC7Z0jqzUQAECFsJW9Hmy9BjeLrr4o2J&X-Bogus=DFSzsIRuUuicGSDnC5xkXGVxWZ9q&X-Gnarly=MCp1gp/2RBX91L0FEt2HqrBWjLeOjiQGrJBscXA4byEbl0sU4OujpKZIQwRAIm8fSwDLX9NwQAopZzqj54zRH5dvWP3PyhC8plWI3kmBsAeoQjSoTpjck1HQ8CLahuxYInRDbtPshuO0qIRa5PxUIZqRWTZRycHV9NeWL8xcqrYXSeAlTb6dIhAKCkZoMVrgyIMhPjPFghcPU89OBvSxCXYcxSwnbCPR0YA1N6o2b3YjpcEaEvpiankCV6M4MJMoJOGa7vNG-YYENDo/EvXs82HEyJOIIvywo/E0hicrZHcHtnmNsvLwz3554g8qDUiUQ3aZ023NKk==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/login/qrcode",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "content-type": "application/x-www-form-urlencoded",
+    "sec-ch-ua-mobile": "?0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "code": 0,
+    "message": "success",
+    "now": 1780057400,
+    "data": [
+      {
+        "status": "success",
+        "target": "https://www.tiktok.com/passport/web/scan_index/?aid=1459&append_common_params=1&hide_nav_bar=1&qr_source_aid=1459&token=FwPWAlL9jCTRV7ZUGrQXNDDOmzVDx5pwBDkJ8kMc9dY%3D_sg1&app_type=t&next_url=https%3A%2F%2Fwww.tiktok.com%2Fpassport%2Fweb%2Fscan_qrcode%2F%3Fclient_secret%3D2KOF1GA6",
+        "short_url": "https://www.tiktok.com/t/ZS92RHSaY86k3-VMAue/"
+      }
+    ]
+  },
+  "capturedAt": "2026-05-29T12:23:21.109Z"
+},
+{
+  "url": "https://www.tiktok.com/shorten/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=3&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&safe_token=true&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=YdepqgAXwJaAHrFYMejqKw5fO4Dgr67PcWvxVw8rhb_sx0C5OVMFXN02PjQC7_62PSkezJkShF6TP9kfR3XWSO-ZcuAPdoNLQrVvA6it9PL2rbGIeCIa1o0CmkYYm1xaV9Dw89AHAMx9&X-Bogus=DFSzsIRuCrWz38DnC5xk8TVxWZx8&X-Gnarly=Ma2PF1nbpilHWg8nQwGwg416LxGEhwkEi9z5-5FYij8DppElY-iPHUVxEukX3WbPgk0LERw1EF7hr8AabbkHgxugVlLZmHxBBe9pWuDz2XXDbgLcYT7FWp4BTjVgFcFSSnLe79Ue4Ss8NfZveUkvBuf6Bh3VmiMdSC41hreOYC5yJGjoLg/bmu0V9uJmzE6y4qB5SqN0czYdEzEzuZshhRfHuZujGePWTJBvuBKdOTVDjPgO6vtnGyMkx9i499JIbKeIJqd4CZSIW-MHY63PHkI6r0Lt/nc0T-tx0YTnnmkmEhYPRmphUhOeeieUgaWH1IcAXU1b9I==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/login/qrcode",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "content-type": "application/x-www-form-urlencoded",
+    "sec-ch-ua-mobile": "?0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "code": 0,
+    "message": "success",
+    "now": 1780057436,
+    "data": [
+      {
+        "status": "success",
+        "target": "https://www.tiktok.com/passport/web/scan_index/?aid=1459&append_common_params=1&hide_nav_bar=1&qr_source_aid=1459&token=LDjAthJBoI0SV6U-3uMxuya7jAeQptFZ4s_nFd-a_EQ%3D_sg1&app_type=t&next_url=https%3A%2F%2Fwww.tiktok.com%2Fpassport%2Fweb%2Fscan_qrcode%2F%3Fclient_secret%3D3A1YCPFQ",
+        "short_url": "https://www.tiktok.com/t/ZS92RH5FCJxfF-y4WXt/"
+      }
+    ]
+  },
+  "capturedAt": "2026-05-29T12:23:57.404Z"
+},
+{
+  "url": "https://www.tiktok.com/shorten/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=3&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&safe_token=true&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=GKdEtgeCTUNrHiuphwK5sDNZSv6mceMsqTetswPur44jtMRf2P8txHuLlwY27mMBxDroZhhwNd_ft0HU5B7pTvN5nEqnD6rNnHPCABC_b7g2smAMyCOdqiGnbZUoyx1vWfPuHxCVO83O&X-Bogus=DFSzsIRuJhPRjSDnC5xk8TVxWZxL&X-Gnarly=MOxRLL0JNjnYfPGc/w5f8ESuKR7PW6v2xDCz2VkycyaEH3twnYOcJMvUKB7ujIgDqLne9QW3wrOLDkm1pyQUBv33WSwFGChOzMGA9mS6SHlcfh6wAhqO68UZR5tQZ5hp/1eAubWuHZ6Hk9cKxa9EXBMxlpyKfbpY7OvVIezb-1gi55zNF2FGQYLMStrstokwLqKjBnGJX7Qe0v598uYKl57183/xnXcFGtfu6M0SzIHCopuvdw923RfW4UhumgnFs0G-mPzwWgrG6Gtd8elF63pB9MkeAHhiBaGUHdEpX1F7n7FmufSZ8na5QSTlPkZIkbyBEG-gGZ==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/login/qrcode",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "content-type": "application/x-www-form-urlencoded",
+    "sec-ch-ua-mobile": "?0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "code": 0,
+    "message": "success",
+    "now": 1780057436,
+    "data": [
+      {
+        "status": "success",
+        "target": "https://www.tiktok.com/passport/web/scan_index/?aid=1459&append_common_params=1&hide_nav_bar=1&qr_source_aid=1459&token=YhLHx1bQXaJuThSaYMXml0TN3MCjw6uyikPPLYfuyWY%3D_sg1&app_type=t&next_url=https%3A%2F%2Fwww.tiktok.com%2Fpassport%2Fweb%2Fscan_qrcode%2F%3Fclient_secret%3DQLXAK466",
+        "short_url": "https://www.tiktok.com/t/ZS92RH5tu1mC5-mFaEC/"
+      }
+    ]
+  },
+  "capturedAt": "2026-05-29T12:23:57.496Z"
+},
+{
+  "url": "https://www.tiktok.com/passport/web/fido2/begin_discoverable_user_login/?multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=OAI07f1ValzHg-c8MZNdsTUDkNAGt7tSaZwQlOulLxgeSzIUJu_v6P8WGlkzPFfglIEHtBlOMpB-3W5OYRtCaXPENOBAuk-b72mnUpW90zfefHs27j6PbWqyAOA6d2SS-aHCGyMl4E0d&X-Bogus=DFSzsIRuKvSko8DnC5xkSTVxWZ94&X-Gnarly=MkwLqoe48e3ENl32uAzJ8yDuJgTHsDBSiv35szB2fDY5Zco5ZftLPuYmL9RYvqbqoZKBIckmoWpJ0pJPUAN/KSBEhry2BuNWb59n7lMf5NlyHzxAUb7iBfnbnxbfDTSmiqdm-plhjk7mPVIUZ4RVmj1xqQOqRwd4Mw02LO9OkmFtDtPmSM3yn/z5EoFog66-vP6JiZGimHK/1neX/rirxjJvGFLqjYtbeKwAjDgal9NUJncLcBvKW3kl5ybWoU/iA/Q6JIiZrelhmBnhCaegyxQTq5KJPcxZf1X2iIRqA8e3dpSk3dMohqhe9GoYkSkwQW7m1R0sVI==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/login/phone-or-email",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "x-tt-passport-ttwid-ticket": "AbD_R4ufq6Db_of5LpaF8e67460v98Vc1ajMZ7ph7KixHjuFpfEqDaHACvNrbOD-0w==",
+    "sec-ch-ua-mobile": "?0",
+    "x-tt-passport-csrf-token": "",
+    "tt-ticket-guard-web-version": "1",
+    "tt-ticket-guard-version": "2",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "accept": "application/json, text/javascript",
+    "tt-ticket-guard-public-key": "BFC/qIpvkp0O6Xk455G4e3OhDZoziEG+D0DY4VRiQAwMLImkzNSaJ/8jxa4fo7iMuzVRyrxN2O5wGP2bHzoM/xI=",
+    "content-type": "application/x-www-form-urlencoded",
+    "tt-ticket-guard-iteration-version": "0"
+  },
+  "postData": "aid=1459&support_webview=1",
+  "status": 200,
+  "responseBody": {
+    "data": {
+      "challenge": "62NnlSmh94iHSySpqbbAgCehWCY9fpQ5OdfuY4W3sck",
+      "webauthn_ticket": "04647686b0cc1497a1",
+      "rpId": "tiktok.com",
+      "userVerification": "preferred",
+      "timeout": 300000
+    },
+    "message": "success"
+  },
+  "capturedAt": "2026-05-29T12:25:01.783Z"
+},
+{
+  "url": "https://web-sg.tiktok.com/passport/web/region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=3&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=TAmAY7rzjHjz7CMqN_9nvAsa2WFSzOZjQ8iAIZJmoakf5NI7_7rtcYLDez6utbAmjZjiZEviXR4zVgr_e3mNoJGaek_FJPe4UZfRYqRO9vtGlntwTqlxH_6QxkV226YsuBmpBjkEkZWs&X-Bogus=DFSzsIRLnO6EN5rPC5xk9TVxWZx9&X-Gnarly=MCJr/ZaILojxfskTg6dQYp6oWTe/STIlSMrosqIRE-vzhvz0xKLRF7BIRAaKXUOEZoykGlecWdy7ON0IHa6bJ3DLQTAr6bIszWgC3DxZooLX4Kq7muJUjitqZpJcikRMS9ai-KeMbnDk34WCQFIYCnpMkjwHnAweXvcd2rLNcOxdJJuj2BMy5OoIdJPie9EH4Tf82Gb0NvUkfhpnsfykb/LrUMXjWCHtMXLm7oQ/SXoDCaFWt74RZ1aTaCHttZSYoHgs6pHNsy3ZWMW3b0q1RfaQqnL8itmgZw6t4BFMVwrXuD2NyYTaZDCd7IcpVgPDfJZE2JrSqZ==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "sec-ch-ua-mobile": "?0",
+    "x-tt-passport-csrf-token": "2u1gBmZB-P31dQ6-fJwOFzTkKumw1_IHX_Eg",
+    "tt-ticket-guard-web-version": "1",
+    "tt-ticket-guard-version": "2",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "tt-ticket-guard-public-key": "BFC/qIpvkp0O6Xk455G4e3OhDZoziEG+D0DY4VRiQAwMLImkzNSaJ/8jxa4fo7iMuzVRyrxN2O5wGP2bHzoM/xI=",
+    "content-type": "application/x-www-form-urlencoded",
+    "tt-ticket-guard-iteration-version": "0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "data": {
+      "captcha": "",
+      "desc_url": "",
+      "description": "Maximum number of attempts reached. Try again later.",
+      "error_code": 7
+    },
+    "message": "error"
+  },
+  "capturedAt": "2026-05-29T12:25:25.876Z"
+},
+{
+  "url": "https://web-sg.tiktok.com/passport/web/region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=3&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=TAmAY7rzjHjz7CMqN_9nvAsa2WFSzOZjQ8iAIZJmoakf5NI7_7rtcYLDez6utbAmjZjiZEviXR4zVgr_e3mNoJGaek_FJPe4UZfRYqRO9vtGlntwTqlxH_6QxkV226YsuBmpBjkEkZWs&X-Bogus=DFSzsIRLnO6EN5rPC5xkYGVxWZyM&X-Gnarly=MkM7ti2LDPxn8wVZH-PFgnCxZCC7sOZBNLKbmBp4L76n52vzrg2Ux6/LlGAFFeyyQtU26GajY3NShengVG26ol1d/vcOm6qiV5lL2jUyCJYL5r9KA9zsEwaRCNzXp8w/4TLWFXkLlxtykdpeY-c3/Hhg1lMnUXEYqsSSSeRSstWonD8r2d3f6xGncuA6l5ilBKAXMxl3gN/tovuS4NBt1l1jWYY9KvGpcdfXzI-VmvCSGjfN-4lus5P3CNAfWXlXL62HOYa57fLo2SJ4dRW9wUlRX4gYei7IaGXyJRUF8bx7czTS-iQjXNYbyRoc9sjw8zh52x0eLI==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "sec-ch-ua-mobile": "?0",
+    "x-tt-passport-csrf-token": "2u1gBmZB-P31dQ6-fJwOFzTkKumw1_IHX_Eg",
+    "tt-ticket-guard-web-version": "1",
+    "tt-ticket-guard-version": "2",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "tt-ticket-guard-public-key": "BFC/qIpvkp0O6Xk455G4e3OhDZoziEG+D0DY4VRiQAwMLImkzNSaJ/8jxa4fo7iMuzVRyrxN2O5wGP2bHzoM/xI=",
+    "content-type": "application/x-www-form-urlencoded",
+    "tt-ticket-guard-iteration-version": "0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "data": {
+      "captcha": "",
+      "desc_url": "",
+      "description": "Maximum number of attempts reached. Try again later.",
+      "error_code": 7
+    },
+    "message": "error"
+  },
+  "capturedAt": "2026-05-29T12:25:48.792Z"
+},
+{
+  "url": "https://web-sg.tiktok.com/passport/web/region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=3&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=TAmAY7rzjHjz7CMqN_9nvAsa2WFSzOZjQ8iAIZJmoakf5NI7_7rtcYLDez6utbAmjZjiZEviXR4zVgr_e3mNoJGaek_FJPe4UZfRYqRO9vtGlntwTqlxH_6QxkV226YsuBmpBjkEkZWs&X-Bogus=DFSzsIRLnO6EN5rPC5xkmTVxWZyI&X-Gnarly=MRXC04KzLz8EpXHcUBbQlYsVTDXd1kdaOMxpCjHbY6LKHUxQiS5/v5XdOBiDp7jgsw0sv/XVhJeeeHtrcfNhuTHTiAJQ74l5CqQe5zEUvu1Q9RkS6r44CZw5kyjvJqI33a8Eh6CcH9ZNKkM6BROAdks42j0B5184KQ5u2tPBHdrMfSF9j9eCzxg-zus8VdUFxTGzfYEVGpkgxRzeidVtE2eQH4I3cIdP5cZMlmviH4THRyVKhxUSo1QSz-Vqu4/ByR4suLcjCQfFY70uhQOUbGEsK43Jr9Vcyr7pD4X3CP2WvrRaX/Anc/jlhXM6szavsU3MyYfA8Z==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "sec-ch-ua-mobile": "?0",
+    "x-tt-passport-csrf-token": "2u1gBmZB-P31dQ6-fJwOFzTkKumw1_IHX_Eg",
+    "tt-ticket-guard-web-version": "1",
+    "tt-ticket-guard-version": "2",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "tt-ticket-guard-public-key": "BFC/qIpvkp0O6Xk455G4e3OhDZoziEG+D0DY4VRiQAwMLImkzNSaJ/8jxa4fo7iMuzVRyrxN2O5wGP2bHzoM/xI=",
+    "content-type": "application/x-www-form-urlencoded",
+    "tt-ticket-guard-iteration-version": "0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "data": {
+      "captcha": "",
+      "desc_url": "",
+      "description": "Maximum number of attempts reached. Try again later.",
+      "error_code": 7
+    },
+    "message": "error"
+  },
+  "capturedAt": "2026-05-29T12:25:57.533Z"
+},
+{
+  "url": "https://web-sg.tiktok.com/passport/web/region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=4&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqw7m7f_HclgeN2d_Zrr3_4tqQ_96Of_qsMCmbwCGNJl&webcast_language=en&msToken=TAmAY7rzjHjz7CMqN_9nvAsa2WFSzOZjQ8iAIZJmoakf5NI7_7rtcYLDez6utbAmjZjiZEviXR4zVgr_e3mNoJGaek_FJPe4UZfRYqRO9vtGlntwTqlxH_6QxkV226YsuBmpBjkEkZWs&X-Bogus=DFSzsIRLjcyEN5rPC5xkzsVxWZy2&X-Gnarly=MkJhLiyeVSS7az3PnbKecFpszg5G63WWOW9Jvvc7YkmITOH7xzeAGvIa8xzZPAZnGfWu1rG46smhKDJyPieMnvZirKPaZSKRRBp-hNhpx133bZSXl6-eELim7LUEzetVnB-NgQrtLgn8k349mqQiuXTjmHmTMMgkmYHYzVJ5L47j9EL6QVP7vxBSlZAlmuH0LFDTzb6vkNhj5sIukdfzySuRFuwUUjtyjsmtcdbWoEMPqxFtUoq6ZDNg0heA0JHmkBksn2DQgog7CdXRexHHHcC-HeD0UHE2ka5Wxroi6JM5vZM5PrtlOdwXVOlC42m-2QppDBxREk==",
+  "method": "POST",
+  "headers": {
+    "sec-ch-ua-platform": "\"macOS\"",
+    "referer": "https://www.tiktok.com/",
+    "sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+    "sec-ch-ua-mobile": "?0",
+    "x-tt-passport-csrf-token": "2u1gBmZB-P31dQ6-fJwOFzTkKumw1_IHX_Eg",
+    "tt-ticket-guard-web-version": "1",
+    "tt-ticket-guard-version": "2",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "tt-ticket-guard-public-key": "BFC/qIpvkp0O6Xk455G4e3OhDZoziEG+D0DY4VRiQAwMLImkzNSaJ/8jxa4fo7iMuzVRyrxN2O5wGP2bHzoM/xI=",
+    "content-type": "application/x-www-form-urlencoded",
+    "tt-ticket-guard-iteration-version": "0"
+  },
+  "postData": null,
+  "status": 200,
+  "responseBody": {
+    "data": {
+      "captcha": "",
+      "desc_url": "",
+      "description": "Maximum number of attempts reached. Try again later.",
+      "error_code": 7
+    },
+    "message": "error"
+  },
+  "capturedAt": "2026-05-29T12:26:03.598Z"
+}
+]

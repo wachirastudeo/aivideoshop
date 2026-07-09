@@ -1,0 +1,747 @@
+{
+  "inspectedAt": "2026-05-29T13:08:06.196Z",
+  "pageMap": {
+    "title": "Log in | TikTok",
+    "url": "https://www.tiktok.com/login/qrcode",
+    "loginPage": true,
+    "bodySummary": "TikTok Feedback and help Log in with QR code 1. Scan with your mobile device’s camera 2. Confirm login or sign up Go back Don’t have an account? Sign up English (US) Azərbaycan Bahasa Indonesia Bahasa Melayu Basa Jawa Català Cebuano Čeština Dansk Deutsch Eesti English (UK) English (US) Español Español (Latinoamérica) Filipino Français Français (Canada) Gaeilge Hrvatski Íslenska Italiano Kiswahili Latviešu Lietuvių Magyar Nederlands norsk (bokmål) Oʻzbek Polski Português Português (Brasil) Română Shqip Slovenčina Slovenščina Suomi Svenska Tiếng Việt Türkçe Ελληνικά Български Қазақша Русский Українська עברית اردو العربية हिंदी বাংলা ภาษาไทย မြန်မာ ខ្មែរ 日本語 中文 (繁體) 中文 (简体) 한국어 © 2026 TikTok",
+    "fileInputs": [],
+    "dataE2E": [
+      {
+        "index": 0,
+        "dataE2E": "tiktok-logo",
+        "tag": "a",
+        "text": "TikTok",
+        "visible": true,
+        "rect": {
+          "x": 16,
+          "y": 9,
+          "width": 118,
+          "height": 42
+        }
+      },
+      {
+        "index": 1,
+        "dataE2E": "feedback-entrance",
+        "tag": "a",
+        "text": "Feedback and help",
+        "visible": true,
+        "rect": {
+          "x": 1269,
+          "y": 20,
+          "width": 151,
+          "height": 20
+        }
+      },
+      {
+        "index": 2,
+        "dataE2E": "",
+        "tag": "svg",
+        "text": "",
+        "visible": true,
+        "rect": {
+          "x": 1269,
+          "y": 20,
+          "width": 20,
+          "height": 20
+        }
+      },
+      {
+        "index": 3,
+        "dataE2E": "qr-page-title",
+        "tag": "h2",
+        "text": "Log in with QR code",
+        "visible": true,
+        "rect": {
+          "x": 535,
+          "y": 89,
+          "width": 363,
+          "height": 48
+        }
+      },
+      {
+        "index": 4,
+        "dataE2E": "qr-code",
+        "tag": "div",
+        "text": "",
+        "visible": true,
+        "rect": {
+          "x": 535,
+          "y": 185,
+          "width": 363,
+          "height": 208
+        }
+      },
+      {
+        "index": 5,
+        "dataE2E": "qr-body",
+        "tag": "div",
+        "text": "1. Scan with your mobile device’s camera 2. Confirm login or sign up",
+        "visible": true,
+        "rect": {
+          "x": 535,
+          "y": 417,
+          "width": 363,
+          "height": 44
+        }
+      },
+      {
+        "index": 6,
+        "dataE2E": "back-btn",
+        "tag": "div",
+        "text": "Go back",
+        "visible": true,
+        "rect": {
+          "x": 0,
+          "y": 505,
+          "width": 1432,
+          "height": 21
+        }
+      },
+      {
+        "index": 7,
+        "dataE2E": "",
+        "tag": "svg",
+        "text": "",
+        "visible": true,
+        "rect": {
+          "x": 682,
+          "y": 509,
+          "width": 14,
+          "height": 14
+        }
+      },
+      {
+        "index": 8,
+        "dataE2E": "bottom-text",
+        "tag": "div",
+        "text": "Don’t have an account?",
+        "visible": true,
+        "rect": {
+          "x": 609,
+          "y": 549,
+          "width": 163,
+          "height": 18
+        }
+      },
+      {
+        "index": 9,
+        "dataE2E": "bottom-sign-up",
+        "tag": "span",
+        "text": "Sign up",
+        "visible": true,
+        "rect": {
+          "x": 777,
+          "y": 549,
+          "width": 53,
+          "height": 17
+        }
+      }
+    ],
+    "controls": []
+  },
+  "requests": [
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://www.tiktok.com/tiktokstudio/upload?from=creator_center&tab=video",
+      "resourceType": "document",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://www.tiktok.com/tiktokstudio/upload?from=creator_center&tab=video",
+      "status": 200,
+      "resourceType": "document"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/builder-runtime.c6f90153.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-lodash.53ab3704.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-polyfill.9252ee59.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-react.cad72241.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-axios.3f06ef79.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-router.d19c0e90.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/3261.b9f1443a.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/main.ca6bcd0e.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/css/3261.dc556f92.css",
+      "resourceType": "stylesheet",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/css/main.265eb1f2.css",
+      "resourceType": "stylesheet",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/vmok-remote-entry.ef740bf7.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/lib-polyfill.f64efa5c.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/lib-lodash.47454a14.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/lib-react.5a18833c.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/lib-axios.12de9bf0.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/2763.ea5a22a5.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/2186.f91e644d.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/6483.2b428da2.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/5714.6eddb4d4.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/async/__federation_expose_routes.70d2a59c.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/async/UploadPage.3283114c.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/css/3261.dc556f92.css",
+      "status": 200,
+      "resourceType": "stylesheet"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/css/main.265eb1f2.css",
+      "status": 200,
+      "resourceType": "stylesheet"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/slardar/fe/sdk-web/browser.sg.js?bid=tiktok_creator_center&globalName=SlardarWeb",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/lib-axios.12de9bf0.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/vmok-remote-entry.ef740bf7.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/lib-lodash.47454a14.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/lib-react.5a18833c.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/lib-polyfill.f64efa5c.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/6483.2b428da2.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/async/__federation_expose_routes.70d2a59c.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/2763.ea5a22a5.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/async/UploadPage.3283114c.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/builder-runtime.c6f90153.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-axios.3f06ef79.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-router.d19c0e90.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-lodash.53ab3704.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-react.cad72241.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/lib-polyfill.9252ee59.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/5714.6eddb4d4.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/main.ca6bcd0e.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/slardar/fe/sdk-web/browser.sg.js?bid=tiktok_creator_center&globalName=SlardarWeb",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/3261.b9f1443a.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://www.tiktok.com/api/v1/user/profile/upload/?aid=1988&enter_post_page_from=2&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&msToken=z5PA-VUu2WkXsjGkQMAk4vO9DKcEszi72_8tRPs8NR9Lq10KoYRqqlrQqt4-tO_PdTJ694nA4gkg-uLPRpdJkwpwDE4g7Nvl2Ji3X3gLemGPdimQCQFdQql0QW2H2DDnPOrq7j6z1R8tYMypgRAWPShG&X-Bogus=DFSzswROPO0ANaS5C5xBHTVxWZHQ&X-Gnarly=Mc-wJwjD27QMO8mYYcKoDb0QjAL3kVhOToS2Ke3UBTAwmva8QkBLaqRKaUs023qgIkVohwlCln1Jv4qzmU01eC2YEDmM/A2MQoHWbxgIPYv5zlykgv/IoboI//nCRYCY4u-1qiczqXpAroIsEBIAyaM58rMqNU54NVXqD4bAIfNQng3XXFnZcBRj6V-x-VSdVHqNnVr1IqKGkCudx8u/jRYZWXKj6Imkpkg7PeJgFjvWXKwq/4SJqHgpiIMnTqKSQG5ezebHaUZw",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://www.tiktok.com/api/v1/web/project/get/ab/?browser=chrome&ab_param=[%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_cover_tool%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22pc_video_playlist_test%22,%22second_key%22:%22vid%22,%22ab_type%22:3%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22can_show_podcast_page%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22can_project_y_allow_music%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22ttp2_traffic_split%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22creator_center_reverse%22,%22second_key%22:%22vid%22,%22ab_type%22:3%7D,%7B%22first_key%22:%22tiktok%22,%22second_key%22:%22has_posted_1minplus%22,%22ab_type%22:2%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22opt_v1_new_entrance_v2%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22opt_v1_new_entrance_v3%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22opt_v1_new_upload_ui%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22show_aigc_toggle%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok%22,%22second_key%22:%22use_aligned_copies%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22upload_file_step_optimization%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_version%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_local_draft%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_cloud_draft%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22max_divided_num%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_new_post_api%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22show_content_check%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22content_check_lite%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_edit_post%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_poi%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_local_video_preview%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_support_edit%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22interaction_optimization%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22hashtag_history%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22async_post%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22support_large_file%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22support_large_file_fans_limit%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22music_precheck_extend%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22ui_revamp_version%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22description_reform%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_long_to_short%22%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22not_1k_plus_user%22%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22music_recommend_by_video%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22long_to_short_effect_text%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22long_to_short_effect_caption%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22studio_web_l2s_enhanced_entrance%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_new_editor%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_new_editor_music%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_new_editor_text%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_new_editor_caption%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_user%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_notrow10k_new_editor%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_notrow10k_new_editor_music%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_notrow10k_new_editor_text%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22l2s_editor_music%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_hd_post_button%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22clipforge_use_worker_decoder%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_new_cover_editor%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_auto_expand_music_panel%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22upload_sdk_upload_strategy%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_editor_landscape_template%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_mobile_preview%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_mobile_preview_tooltip%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_photo_posting%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_photo_posting_allowed%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_new_unlimited_music_library%22,%22ab_type%22:1%7D]&aid=1988",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator_center/static/js/2186.f91e644d.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://www.tiktok.com/tiktok/v1/creator/m10n_center/reward_analytics",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://mon.tiktokv.com/monitor_web/settings/browser-settings?bid=tiktok_creator_center&store=1",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://www.tiktok.com/api/v1/web/project/get/ab/?browser=chrome&ab_param=[%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_cover_tool%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22pc_video_playlist_test%22,%22second_key%22:%22vid%22,%22ab_type%22:3%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22can_show_podcast_page%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22can_project_y_allow_music%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22ttp2_traffic_split%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22creator_center_reverse%22,%22second_key%22:%22vid%22,%22ab_type%22:3%7D,%7B%22first_key%22:%22tiktok%22,%22second_key%22:%22has_posted_1minplus%22,%22ab_type%22:2%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22opt_v1_new_entrance_v2%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22opt_v1_new_entrance_v3%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22opt_v1_new_upload_ui%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22show_aigc_toggle%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok%22,%22second_key%22:%22use_aligned_copies%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22upload_file_step_optimization%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_version%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_local_draft%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_cloud_draft%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22max_divided_num%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_new_post_api%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22show_content_check%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22content_check_lite%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_edit_post%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_poi%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_local_video_preview%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_support_edit%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22interaction_optimization%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22hashtag_history%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22async_post%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22support_large_file%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22support_large_file_fans_limit%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22music_precheck_extend%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22ui_revamp_version%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22description_reform%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22enable_long_to_short%22%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22not_1k_plus_user%22%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22music_recommend_by_video%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22long_to_short_effect_text%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22long_to_short_effect_caption%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22studio_web_l2s_enhanced_entrance%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_new_editor%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_new_editor_music%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_new_editor_text%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_new_editor_caption%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_row10k_user%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_notrow10k_new_editor%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_notrow10k_new_editor_music%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_notrow10k_new_editor_text%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22l2s_editor_music%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_hd_post_button%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22clipforge_use_worker_decoder%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_new_cover_editor%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_auto_expand_music_panel%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22upload_sdk_upload_strategy%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_creation_editor_landscape_template%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_mobile_preview%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_mobile_preview_tooltip%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_photo_posting%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_photo_posting_allowed%22,%22ab_type%22:1%7D,%7B%22first_key%22:%22tiktok_web%22,%22second_key%22:%22web_crea_new_unlimited_music_library%22,%22ab_type%22:1%7D]&aid=1988",
+      "status": 200,
+      "resourceType": "xhr"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://www.tiktok.com/tiktok/v1/creator/m10n_center/reward_analytics",
+      "status": 200,
+      "resourceType": "xhr"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/i18n/1.0.0.7750/Webapp/en.json",
+      "resourceType": "fetch",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://www.tiktok.com/tiktokstudio/api/web/validate-bot?locale=en&aid=1988&priority_region=TH&tz_name=Asia%2FBangkok&app_name=tiktok_creator_center&app_language=en&device_platform=web_pc&channel=tiktok_web&device_id=7645288274910807572&os=mac&screen_width=1440&screen_height=900&browser_language=en-US&browser_platform=MacIntel&browser_name=Mozilla&browser_version=5.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/i18n/1.0.0.7750/Webapp/en.json",
+      "status": 200,
+      "resourceType": "fetch"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/async/2203.cff1227b.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/async/2203.cff1227b.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/async/9225.82aeb9b3.js",
+      "resourceType": "script",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://sf16-website-login.neutral.ttwstatic.com/obj/tiktok_web_login_static/ies/creator-center-web/static/js/async/9225.82aeb9b3.js",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://www.tiktok.com/api/v1/user/profile/upload/?aid=1988&enter_post_page_from=2&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&msToken=z5PA-VUu2WkXsjGkQMAk4vO9DKcEszi72_8tRPs8NR9Lq10KoYRqqlrQqt4-tO_PdTJ694nA4gkg-uLPRpdJkwpwDE4g7Nvl2Ji3X3gLemGPdimQCQFdQql0QW2H2DDnPOrq7j6z1R8tYMypgRAWPShG&X-Bogus=DFSzswROPO0ANaS5C5xBHTVxWZHQ&X-Gnarly=Mc-wJwjD27QMO8mYYcKoDb0QjAL3kVhOToS2Ke3UBTAwmva8QkBLaqRKaUs023qgIkVohwlCln1Jv4qzmU01eC2YEDmM/A2MQoHWbxgIPYv5zlykgv/IoboI//nCRYCY4u-1qiczqXpAroIsEBIAyaM58rMqNU54NVXqD4bAIfNQng3XXFnZcBRj6V-x-VSdVHqNnVr1IqKGkCudx8u/jRYZWXKj6Imkpkg7PeJgFjvWXKwq/4SJqHgpiIMnTqKSQG5ezebHaUZw",
+      "status": 200,
+      "resourceType": "xhr"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://www.tiktok.com/tiktokstudio/api/web/validate-bot?locale=en&aid=1988&priority_region=TH&tz_name=Asia%2FBangkok&app_name=tiktok_creator_center&app_language=en&device_platform=web_pc&channel=tiktok_web&device_id=7645288274910807572&os=mac&screen_width=1440&screen_height=900&browser_language=en-US&browser_platform=MacIntel&browser_name=Mozilla&browser_version=5.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36",
+      "status": 200,
+      "resourceType": "xhr"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://www.tiktok.com/login?redirect_url=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&enter_method=redirect&enter_from=tiktokstudio",
+      "resourceType": "document",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://www.tiktok.com/login?redirect_url=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&enter_method=redirect&enter_from=tiktokstudio",
+      "resourceType": "document",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://www.tiktok.com/login?redirect_url=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&enter_method=redirect&enter_from=tiktokstudio",
+      "status": 200,
+      "resourceType": "document"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://www.tiktok.com/api/compliance/settings/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&fromWeb=1&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en",
+      "resourceType": "fetch",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "POST",
+      "url": "https://web-sg.tiktok.com/passport/web/store_region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en&msToken=z5PA-VUu2WkXsjGkQMAk4vO9DKcEszi72_8tRPs8NR9Lq10KoYRqqlrQqt4-tO_PdTJ694nA4gkg-uLPRpdJkwpwDE4g7Nvl2Ji3X3gLemGPdimQCQFdQql0QW2H2DDnPOrq7j6z1R8tYMypgRAWPShG&X-Bogus=DFSzsIROUsKuS6gUC5xBH2VxWZ91&X-Gnarly=MP3V/7sSd8rCtZlnxuuBikXE-60o2KH0oz9MRV4fjv8tGsMHajkPgu0Lho-1nLYMWA7TOWXO5n5PwfQ/V6MUn6fQPSuP8zwIAjLNOTpMydciBuN9BjbgAPEXa986F9V5mj0HXurmIQENOZ5AJzeHeIz0cCtWwIor3abkvb2a278PQzbNRZOGfANPf6mn9FgLxytryy0QmRSkZuBng9wHx4xstpEfqBEr9Ghd-SYi/2BxLkBmDOnYTqABXjvEcwHwF0mgz9siYcBldz0OXsXv1Jqlqqg8ZmXJst9LTGRnn3AUTcZ4XOgPuF26/Qx4tidNpALqTNTEZu==",
+      "resourceType": "fetch",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "POST",
+      "url": "https://us.tiktok.com/passport/web/store_region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en&msToken=z5PA-VUu2WkXsjGkQMAk4vO9DKcEszi72_8tRPs8NR9Lq10KoYRqqlrQqt4-tO_PdTJ694nA4gkg-uLPRpdJkwpwDE4g7Nvl2Ji3X3gLemGPdimQCQFdQql0QW2H2DDnPOrq7j6z1R8tYMypgRAWPShG&X-Bogus=DFSzsIROUsKuS6gUC5xBH2VxWZ91&X-Gnarly=MCv3yx2FbUi5PiJZXiOIOA5C-BCgRhFNNWfq2KJCVywMNayu5-m9SG6dLhk5Ubb2FiRMl6QDiE1Dhsf/0ASKom8iZJjUn39Met5sWyD1eZZrBqb4srLC-KR3MBfKEXmsKMEaGMKRn5jODGBTzdJbiso8ZXUt1wE09m3ZUMtMF50Nod4Z0BL9B5uW8Cm6769Oy/csUl1w8sG4retTrdwtysIYJiugfgcnf-cPZlhulfeNcPvBPDWiumXPTXQWkiDaFRZjg6-tapS0O3dzVRFaIahLlP0v9FJHhbUlUuqSgYW8K4afBxb/lw5yLGaIAzBroT3EPUiCMk==",
+      "resourceType": "fetch",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "POST",
+      "url": "https://login-no1a.www.tiktok.com/passport/web/store_region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en&msToken=z5PA-VUu2WkXsjGkQMAk4vO9DKcEszi72_8tRPs8NR9Lq10KoYRqqlrQqt4-tO_PdTJ694nA4gkg-uLPRpdJkwpwDE4g7Nvl2Ji3X3gLemGPdimQCQFdQql0QW2H2DDnPOrq7j6z1R8tYMypgRAWPShG&X-Bogus=DFSzsIROUsKuS6gUC5xBH2VxWZ91&X-Gnarly=MxnF6DrmsI5iFbHzg6rY9ewnxofMdjXA1MUb9/IvXc6TBqXyHS5UtBhOzULDUEJBsgttyP953ocUDETHitI9T8MtjiY/kKK1oTcKfDOzt8-4G1F8JqaTLxuYhB0KABDvil6LQHSuqeGD2lZSeK0D9Nf6mvkGNMXvgHpPNmLVmZJVLdkTGi-VMiekUIamucSx0geJRpQ7YZGVY8MoicAEcu0ciwLMv2mrKVkAANLtmjEsuZxyTJKfywHWhoRVT3RLRAHtHh9Khxlyqe87vrGIXVAlhYFlR1qd7xh8d0/3MIEGql7W/J9BCxW1Bqhw/h9K1eEmA3o6uZ==",
+      "resourceType": "fetch",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://www.tiktok.com/api/compliance/settings/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&fromWeb=1&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en",
+      "status": 200,
+      "resourceType": "fetch"
+    },
+    {
+      "type": "response",
+      "method": "POST",
+      "url": "https://web-sg.tiktok.com/passport/web/store_region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en&msToken=z5PA-VUu2WkXsjGkQMAk4vO9DKcEszi72_8tRPs8NR9Lq10KoYRqqlrQqt4-tO_PdTJ694nA4gkg-uLPRpdJkwpwDE4g7Nvl2Ji3X3gLemGPdimQCQFdQql0QW2H2DDnPOrq7j6z1R8tYMypgRAWPShG&X-Bogus=DFSzsIROUsKuS6gUC5xBH2VxWZ91&X-Gnarly=MP3V/7sSd8rCtZlnxuuBikXE-60o2KH0oz9MRV4fjv8tGsMHajkPgu0Lho-1nLYMWA7TOWXO5n5PwfQ/V6MUn6fQPSuP8zwIAjLNOTpMydciBuN9BjbgAPEXa986F9V5mj0HXurmIQENOZ5AJzeHeIz0cCtWwIor3abkvb2a278PQzbNRZOGfANPf6mn9FgLxytryy0QmRSkZuBng9wHx4xstpEfqBEr9Ghd-SYi/2BxLkBmDOnYTqABXjvEcwHwF0mgz9siYcBldz0OXsXv1Jqlqqg8ZmXJst9LTGRnn3AUTcZ4XOgPuF26/Qx4tidNpALqTNTEZu==",
+      "status": 200,
+      "resourceType": "fetch"
+    },
+    {
+      "type": "response",
+      "method": "POST",
+      "url": "https://us.tiktok.com/passport/web/store_region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en&msToken=z5PA-VUu2WkXsjGkQMAk4vO9DKcEszi72_8tRPs8NR9Lq10KoYRqqlrQqt4-tO_PdTJ694nA4gkg-uLPRpdJkwpwDE4g7Nvl2Ji3X3gLemGPdimQCQFdQql0QW2H2DDnPOrq7j6z1R8tYMypgRAWPShG&X-Bogus=DFSzsIROUsKuS6gUC5xBH2VxWZ91&X-Gnarly=MCv3yx2FbUi5PiJZXiOIOA5C-BCgRhFNNWfq2KJCVywMNayu5-m9SG6dLhk5Ubb2FiRMl6QDiE1Dhsf/0ASKom8iZJjUn39Met5sWyD1eZZrBqb4srLC-KR3MBfKEXmsKMEaGMKRn5jODGBTzdJbiso8ZXUt1wE09m3ZUMtMF50Nod4Z0BL9B5uW8Cm6769Oy/csUl1w8sG4retTrdwtysIYJiugfgcnf-cPZlhulfeNcPvBPDWiumXPTXQWkiDaFRZjg6-tapS0O3dzVRFaIahLlP0v9FJHhbUlUuqSgYW8K4afBxb/lw5yLGaIAzBroT3EPUiCMk==",
+      "status": 200,
+      "resourceType": "fetch"
+    },
+    {
+      "type": "response",
+      "method": "POST",
+      "url": "https://login-no1a.www.tiktok.com/passport/web/store_region/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=2&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en&msToken=z5PA-VUu2WkXsjGkQMAk4vO9DKcEszi72_8tRPs8NR9Lq10KoYRqqlrQqt4-tO_PdTJ694nA4gkg-uLPRpdJkwpwDE4g7Nvl2Ji3X3gLemGPdimQCQFdQql0QW2H2DDnPOrq7j6z1R8tYMypgRAWPShG&X-Bogus=DFSzsIROUsKuS6gUC5xBH2VxWZ91&X-Gnarly=MxnF6DrmsI5iFbHzg6rY9ewnxofMdjXA1MUb9/IvXc6TBqXyHS5UtBhOzULDUEJBsgttyP953ocUDETHitI9T8MtjiY/kKK1oTcKfDOzt8-4G1F8JqaTLxuYhB0KABDvil6LQHSuqeGD2lZSeK0D9Nf6mvkGNMXvgHpPNmLVmZJVLdkTGi-VMiekUIamucSx0geJRpQ7YZGVY8MoicAEcu0ciwLMv2mrKVkAANLtmjEsuZxyTJKfywHWhoRVT3RLRAHtHh9Khxlyqe87vrGIXVAlhYFlR1qd7xh8d0/3MIEGql7W/J9BCxW1Bqhw/h9K1eEmA3o6uZ==",
+      "status": 200,
+      "resourceType": "fetch"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://www.tiktok.com/passport/web/get_qrcode/?next=https%3A%2F%2Fwww.tiktok.com&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=NpPfSWpZfNiGiC8EhzziZI3NYRoOt-UQGN4KQk2IAR8f4iuF42g4StPDDgN76wXJHGfxhQPY25GQCCBvzkkWNhhYy91zXLhsEJZ3elsbHJpXe04s-IRuC-Ezok5nE4cRKJehEdTv0ufixJdj2NiHeN_W&X-Bogus=DFSzsIRuvJkANSDnC5xBHsVxWZ9p&X-Gnarly=MFvWFa8ROV6n200m5DwUE6qLF88pDJpbiEgYxjAXbrai1NBZAsheBx/YQ4mTO/4I4-23if/YbTMfaup--/FTSf3vlCoFkldsPuhkCWnWYgRz-iBnVpXu-o2Gr1s6KFCg4ryqYXQshbIzEoaOVRj7s1kuZYOzDeRSGGyEji1JHzngwmQMwMQuB8fGdpEdefaFzkLncE9wa641AvOHMzuhT3TLkE1yGczdAb8x7GxqvojAPI3fAT/S15crH6vuezunsgHN8LG3iULZGioWefCrrGQ6O05Q6wlwxb6jjusezE2/yK4JYsQqoyKbSiRo30kqnWCvaXwVsI==",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://www.tiktok.com/passport/web/get_qrcode/?next=https%3A%2F%2Fwww.tiktok.com&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=NpPfSWpZfNiGiC8EhzziZI3NYRoOt-UQGN4KQk2IAR8f4iuF42g4StPDDgN76wXJHGfxhQPY25GQCCBvzkkWNhhYy91zXLhsEJZ3elsbHJpXe04s-IRuC-Ezok5nE4cRKJehEdTv0ufixJdj2NiHeN_W&X-Bogus=DFSzsIRuvJkANSDnC5xBHsVxWZ9p&X-Gnarly=MFvWFa8ROV6n200m5DwUE6qLF88pDJpbiEgYxjAXbrai1NBZAsheBx/YQ4mTO/4I4-23if/YbTMfaup--/FTSf3vlCoFkldsPuhkCWnWYgRz-iBnVpXu-o2Gr1s6KFCg4ryqYXQshbIzEoaOVRj7s1kuZYOzDeRSGGyEji1JHzngwmQMwMQuB8fGdpEdefaFzkLncE9wa641AvOHMzuhT3TLkE1yGczdAb8x7GxqvojAPI3fAT/S15crH6vuezunsgHN8LG3iULZGioWefCrrGQ6O05Q6wlwxb6jjusezE2/yK4JYsQqoyKbSiRo30kqnWCvaXwVsI==",
+      "status": 200,
+      "resourceType": "xhr"
+    },
+    {
+      "type": "request",
+      "method": "POST",
+      "url": "https://www.tiktok.com/shorten/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=3&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&safe_token=true&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en&msToken=gdZDUPS_uXUXEIOVcC6yQ0vU5aAJWct_pG1wuVt3P9r7mq-5jMoe2t-XGQlTpFlmAiVGmOMe24mFO39oboKkrGARM8dokMY1NZ8ngjkuBRcSu93AGnphkkbD0VN4Q-LpLmi-TS9UvIwDJenIuCyRUTmU&X-Bogus=DFSzsIRuCvqMf8DnC5xB9GVxWZxz&X-Gnarly=MF7lWAyyo4-KSUYUZMwE2UUjc6PucLUa4XCLrMloLMmh/k8EomNyUhg983/8jhhPzO3C-luIkHfyOsyK-49SvH3ujAInSLpIUp5i7jAle7dgeUnOn7grmL/aqAHQAv72zSYI3ZnFXp41hn67oM3GKndLclwdkRlBBZ6kwpjRt96II0w8//r8Aghgm2CoJ8XV8ziRmhdb34q66lrVD/cU31fyh/dh0qJ35wrRYpr4jEsGI4zIvD-QkMRkPPW17mE7PQQQpfLiJEHgHS4VBJgo1OJDlBj1uqD5LwRKoGjFvKtTXMuqFbud70ZlD-2hajSOzYXxCeJ7Bu==",
+      "resourceType": "fetch",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "POST",
+      "url": "https://www.tiktok.com/shorten/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F148.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&data_collection_enabled=false&device_id=7645288274910807572&device_platform=web_pc&focus_state=true&from_page=&history_len=3&is_fullscreen=false&is_page_visible=true&os=mac&priority_region=&referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&region=TH&root_referer=https%3A%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo&safe_token=true&screen_height=900&screen_width=1440&tz_name=Asia%2FBangkok&user_is_login=false&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&webcast_language=en&msToken=gdZDUPS_uXUXEIOVcC6yQ0vU5aAJWct_pG1wuVt3P9r7mq-5jMoe2t-XGQlTpFlmAiVGmOMe24mFO39oboKkrGARM8dokMY1NZ8ngjkuBRcSu93AGnphkkbD0VN4Q-LpLmi-TS9UvIwDJenIuCyRUTmU&X-Bogus=DFSzsIRuCvqMf8DnC5xB9GVxWZxz&X-Gnarly=MF7lWAyyo4-KSUYUZMwE2UUjc6PucLUa4XCLrMloLMmh/k8EomNyUhg983/8jhhPzO3C-luIkHfyOsyK-49SvH3ujAInSLpIUp5i7jAle7dgeUnOn7grmL/aqAHQAv72zSYI3ZnFXp41hn67oM3GKndLclwdkRlBBZ6kwpjRt96II0w8//r8Aghgm2CoJ8XV8ziRmhdb34q66lrVD/cU31fyh/dh0qJ35wrRYpr4jEsGI4zIvD-QkMRkPPW17mE7PQQQpfLiJEHgHS4VBJgo1OJDlBj1uqD5LwRKoGjFvKtTXMuqFbud70ZlD-2hajSOzYXxCeJ7Bu==",
+      "status": 200,
+      "resourceType": "fetch"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://web-sg.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=gdZDUPS_uXUXEIOVcC6yQ0vU5aAJWct_pG1wuVt3P9r7mq-5jMoe2t-XGQlTpFlmAiVGmOMe24mFO39oboKkrGARM8dokMY1NZ8ngjkuBRcSu93AGnphkkbD0VN4Q-LpLmi-TS9UvIwDJenIuCyRUTmU&X-Bogus=DFSzsIRuJej4s8DnC5xB9GVxWZy-&X-Gnarly=MPInKTu5Kwuq6in9Mt9cv1IpZnR7rKE4gp6UWA2mVULOTKA5Bnucrd6YjqihFL-nW4hF8srI1SZCvx7ESnMWQm0I7fbuoxeU8/irRcfph-tV4Vo/FtALdC0MZeg39jZYlV1-qsM7S9S-OpmbEX-mg9Bg2rw9/WnTGtaAugvO0AB1NuRCu5/eOs5DuDjEBdaUuUQPRRhrv1-rjF93fEnR3pj7YE51LgYnOK0PY8CwkDB-5WrCMmL5LdcjEBb-hSWnxWMuPVKmsKQNdxO8vzOFY1lk7QRC1aMCzsn5bANGNyYKZ0rnzD4fddj9TjgBHR7p2xRmKWsXgu==",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://us.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=gdZDUPS_uXUXEIOVcC6yQ0vU5aAJWct_pG1wuVt3P9r7mq-5jMoe2t-XGQlTpFlmAiVGmOMe24mFO39oboKkrGARM8dokMY1NZ8ngjkuBRcSu93AGnphkkbD0VN4Q-LpLmi-TS9UvIwDJenIuCyRUTmU&X-Bogus=DFSzsIRuJej4s8DnC5xB9GVxWZy-&X-Gnarly=MCxwiqVYYbhjDV0TdKI-6BAKajHfEMRKLyNQK6OiHKPJoN8G3r8H3RLJllqmjVGumRhbFK6aeOHlZ-8WPy1qdAQakHVGSp8J2nXGrjby30usZ1o4KllzaC5UDqUZvCeIipGIqN2zZjNVfV9Y8IGiTKwtKvgpbkyCGI6HRcHc4H1QBSSZ4nj3dUepu8RuxzopJrCgrWnHJ1FxJAHgJBv8cSbMu8f0qTALqF7HD27v4xBBOqvuPm1h2s3U1fOLdDobp-FU5Krw2hDo1zYP8RRhhDofXaAi3ubDnmGU0KmCXQ6Fx2hjBa458ikVQ-mms8Aa5t1i7MZMvk==",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://login-no1a.www.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=gdZDUPS_uXUXEIOVcC6yQ0vU5aAJWct_pG1wuVt3P9r7mq-5jMoe2t-XGQlTpFlmAiVGmOMe24mFO39oboKkrGARM8dokMY1NZ8ngjkuBRcSu93AGnphkkbD0VN4Q-LpLmi-TS9UvIwDJenIuCyRUTmU&X-Bogus=DFSzsIRuJej4s8DnC5xB9GVxWZy-&X-Gnarly=McoGwFA9S/V1wpyWOtlqc8RNL2OGLrloKWmwmx68GCH1ObI3oXbmQKvn6COuaDvcj1-m09yjsnfXQRszYG8AvU1KLco586wi97TyTI5PhZPL3LkB2Df2Kq2d/5hQh4hxNkcQ7nNTm4/HBTA/EJniPCQftMaeAxVr2lG26ASmdfxq5VPsy7vPo57yCMthOcYBgDS00syHRx8IrO-oOFeJwQh8VhXj8MyvMaGnvRK1jUTLs8moNBYLohP5/MuHrCQLNWziZRo7Y3E6tBJJhXhP3CHvc7-XLC36fOSg7WWmpbxYNnYw8KxNvNyJ1B6SUlbXUSyYNjbCDZ==",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://web-sg.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=gdZDUPS_uXUXEIOVcC6yQ0vU5aAJWct_pG1wuVt3P9r7mq-5jMoe2t-XGQlTpFlmAiVGmOMe24mFO39oboKkrGARM8dokMY1NZ8ngjkuBRcSu93AGnphkkbD0VN4Q-LpLmi-TS9UvIwDJenIuCyRUTmU&X-Bogus=DFSzsIRuJej4s8DnC5xB9GVxWZy-&X-Gnarly=MPInKTu5Kwuq6in9Mt9cv1IpZnR7rKE4gp6UWA2mVULOTKA5Bnucrd6YjqihFL-nW4hF8srI1SZCvx7ESnMWQm0I7fbuoxeU8/irRcfph-tV4Vo/FtALdC0MZeg39jZYlV1-qsM7S9S-OpmbEX-mg9Bg2rw9/WnTGtaAugvO0AB1NuRCu5/eOs5DuDjEBdaUuUQPRRhrv1-rjF93fEnR3pj7YE51LgYnOK0PY8CwkDB-5WrCMmL5LdcjEBb-hSWnxWMuPVKmsKQNdxO8vzOFY1lk7QRC1aMCzsn5bANGNyYKZ0rnzD4fddj9TjgBHR7p2xRmKWsXgu==",
+      "status": 200,
+      "resourceType": "xhr"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://us.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=gdZDUPS_uXUXEIOVcC6yQ0vU5aAJWct_pG1wuVt3P9r7mq-5jMoe2t-XGQlTpFlmAiVGmOMe24mFO39oboKkrGARM8dokMY1NZ8ngjkuBRcSu93AGnphkkbD0VN4Q-LpLmi-TS9UvIwDJenIuCyRUTmU&X-Bogus=DFSzsIRuJej4s8DnC5xB9GVxWZy-&X-Gnarly=MCxwiqVYYbhjDV0TdKI-6BAKajHfEMRKLyNQK6OiHKPJoN8G3r8H3RLJllqmjVGumRhbFK6aeOHlZ-8WPy1qdAQakHVGSp8J2nXGrjby30usZ1o4KllzaC5UDqUZvCeIipGIqN2zZjNVfV9Y8IGiTKwtKvgpbkyCGI6HRcHc4H1QBSSZ4nj3dUepu8RuxzopJrCgrWnHJ1FxJAHgJBv8cSbMu8f0qTALqF7HD27v4xBBOqvuPm1h2s3U1fOLdDobp-FU5Krw2hDo1zYP8RRhhDofXaAi3ubDnmGU0KmCXQ6Fx2hjBa458ikVQ-mms8Aa5t1i7MZMvk==",
+      "status": 200,
+      "resourceType": "xhr"
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://login-no1a.www.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=gdZDUPS_uXUXEIOVcC6yQ0vU5aAJWct_pG1wuVt3P9r7mq-5jMoe2t-XGQlTpFlmAiVGmOMe24mFO39oboKkrGARM8dokMY1NZ8ngjkuBRcSu93AGnphkkbD0VN4Q-LpLmi-TS9UvIwDJenIuCyRUTmU&X-Bogus=DFSzsIRuJej4s8DnC5xB9GVxWZy-&X-Gnarly=McoGwFA9S/V1wpyWOtlqc8RNL2OGLrloKWmwmx68GCH1ObI3oXbmQKvn6COuaDvcj1-m09yjsnfXQRszYG8AvU1KLco586wi97TyTI5PhZPL3LkB2Df2Kq2d/5hQh4hxNkcQ7nNTm4/HBTA/EJniPCQftMaeAxVr2lG26ASmdfxq5VPsy7vPo57yCMthOcYBgDS00syHRx8IrO-oOFeJwQh8VhXj8MyvMaGnvRK1jUTLs8moNBYLohP5/MuHrCQLNWziZRo7Y3E6tBJJhXhP3CHvc7-XLC36fOSg7WWmpbxYNnYw8KxNvNyJ1B6SUlbXUSyYNjbCDZ==",
+      "status": 200,
+      "resourceType": "xhr"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://web-sg.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=ru1hcLTb7Pi_u5vA_wV9Iw5YA2Ra8mTESELTB73vP_BAiIHXqMsVo5uKXKobgvyQQKtERgixYMDWZifesesSWYOEOwpQDL2KbB7iJaPBznDU1vYnVp9dXvg8X7oDrOhAT-kfs7aZJuSWVwd88TcWU5uQ&X-Bogus=DFSzsIRuXEL4s8DnC5xB9TVxWZxC&X-Gnarly=MOc1deJPUEpNmOY8K5gBFPUvuoiRybZifWm1U6FHTG2plP7orXzP3-R1KybzS4IgSl5/i0lBWWjUmRsyQ2Bupo6aHA3VdfBE9mDc9UAEiaVujlw3TGrfSIpsaqQBB34c5gFfpGUp9PLNwts9YVWhHX6YuJQp0OOSTpVixrSmQg4sUIs4h0HgoeU9xInIEtxm6QCAFONtmUbyaCMmo7MevdgosULipqVIMR/Nd-uxOjB0geN1c1uOsoiqjfoOBOSjoj8urg8Lf8yBmOC0erbWNRLL7VFZrmGb9zlSr9hRcaORqVA8cMGUmPJhZg-9PF4cmVKNzgMV5Z==",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://us.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=ru1hcLTb7Pi_u5vA_wV9Iw5YA2Ra8mTESELTB73vP_BAiIHXqMsVo5uKXKobgvyQQKtERgixYMDWZifesesSWYOEOwpQDL2KbB7iJaPBznDU1vYnVp9dXvg8X7oDrOhAT-kfs7aZJuSWVwd88TcWU5uQ&X-Bogus=DFSzsIRuXEL4s8DnC5xB9TVxWZxC&X-Gnarly=M/0Nc91wQldDEmzcimwGkgO2HJ3hmkac-nuftE0VZUg1r6Lk5GPknDNHzoopjOKwb5MIb7khX-WLWyw9D8ZhYYfQb75ha9yTz3WTdkN/vo-EwfH/OlcrIctrj0lvyMzliX4tY-Y8Y8S-Ezbd9UFdsC3-zSww4kOsKGdOwRSBCA6Fuy4Fuc8dH7Fxj6tt85Tekh8CJXy-B8DO0JcCpCBEShy/aOGvTayZbnJAWwVcUdv2OB5Ed5W-iiPFsJlkO3mjYVWnRRHt0ejhF3-L8OYF3yBQYMQQ18SRLUWOp3uUmm1pi30XyAXoZ1Iq3WDZlN3Us5K0XezfUZ==",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "https://login-no1a.www.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=ru1hcLTb7Pi_u5vA_wV9Iw5YA2Ra8mTESELTB73vP_BAiIHXqMsVo5uKXKobgvyQQKtERgixYMDWZifesesSWYOEOwpQDL2KbB7iJaPBznDU1vYnVp9dXvg8X7oDrOhAT-kfs7aZJuSWVwd88TcWU5uQ&X-Bogus=DFSzsIRuXEL4s8DnC5xB9TVxWZxC&X-Gnarly=MJ2pe07WStjv2rg-41-A-XvxuhoItQ9vq44ce0rYGzgmcDT0kpmzpWKNDkSAn72J804JBHwNg1ww4kE1v2ITpIzaDqB18dvt-K66jScG6JQz-tDoC9ju4LmHhX8sp50W7bPbKnnGDXyu6ZIEv7ZBqAreyvLEkRiml/ty2JRULBOZv8i1AKEKTqNXQpqGEE3xxQVEbR1bv6pubgxf4lW0Y0S0hYQPZeBrJeSYG5nQfC-uXGeTWgGHhXU/zD/4QlA69gaLoeIyFeJI5hxAi6nwT3VBfS9WFH5AjMvOfO9yWlAkgn6KDlTpKFoV1Hfln0ZZHA5B9kjTFI==",
+      "resourceType": "xhr",
+      "postData": ""
+    },
+    {
+      "type": "response",
+      "method": "GET",
+      "url": "https://web-sg.tiktok.com/passport/web/check_qrconnect/?next=https%3A%2F%2Fwww.tiktok.com&token=Pr4rP1ZWmXOjrdidJGHgjwQbRo6RmADLCY4Kxq1AbJI%3D_sg1&multi_login=1&did=7645288274910807572&locale=en&app_language=en&aid=1459&account_sdk_source=web&sdk_version=2.1.12-tiktok&language=en&verifyFp=verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj&target_aid=&standalone_aid=&shark_extra=%7B%22aid%22:1459,%22app_name%22:%22Tik_Tok_Login%22,%22channel%22:%22tiktok_web%22,%22device_platform%22:%22web_pc%22,%22device_id%22:%227645288274910807572%22,%22region%22:%22TH%22,%22priority_region%22:%22%22,%22os%22:%22mac%22,%22referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22root_referer%22:%22https:%2F%2Fwww.tiktok.com%2Ftiktokstudio%2Fupload%3Ffrom%3Dcreator_center%26tab%3Dvideo%22,%22cookie_enabled%22:true,%22screen_width%22:1440,%22screen_height%22:900,%22browser_language%22:%22en-US%22,%22browser_platform%22:%22MacIntel%22,%22browser_name%22:%22Mozilla%22,%22browser_version%22:%225.0+(Macintosh%3B+Intel+Mac+OS+X+10_15_7)+AppleWebKit%2F537.36+(KHTML,+like+Gecko)+Chrome%2F148.0.0.0+Safari%2F537.36%22,%22browser_online%22:true,%22verifyFp%22:%22verify_mpqxt8z1_Mawz8dyx_nXod_4pEd_8GK8_50BK0BGrGBsj%22,%22app_language%22:%22en%22,%22webcast_language%22:%22en%22,%22tz_name%22:%22Asia%2FBangkok%22,%22is_page_visible%22:true,%22focus_state%22:true,%22is_fullscreen%22:false,%22history_len%22:3,%22user_is_login%22:false,%22data_collection_enabled%22:false%7D&msToken=ru1hcLTb7Pi_u5vA_wV9Iw5YA2Ra8mTESELTB73vP_BAiIHXqMsVo5uKXKobgvyQQKtERgixYMDWZifesesSWYOEOwpQDL2KbB7iJaPBznDU1vYnVp9dXvg8X7oDrOhAT-kfs7aZJuSWVwd88TcWU5uQ&X-Bogus=DFSzsIRuXEL4s8DnC5xB9TVxWZxC&X-Gnarly=MOc1deJPUEpNmOY8K5gBFPUvuoiRybZifWm1U6FHTG2plP7orXzP3-R1KybzS4IgSl5/i0lBWWjUmRsyQ2Bupo6aHA3VdfBE9mDc9UAEiaVujlw3TGrfSIpsaqQBB34c5gFfpGUp9PLNwts9YVWhHX6YuJQp0OOSTpVixrSmQg4sUIs4h0HgoeU9xInIEtxm6QCAFONtmUbyaCMmo7MevdgosULipqVIMR/Nd-uxOjB0geN1c1uOsoiqjfoOBOSjoj8urg8Lf8yBmOC0erbWNRLL7VFZrmGb9zlSr9hRcaORqVA8cMGUmPJhZg-9PF4cmVKNzgMV5Z==",
+      "status": 200,
+      "resourceType": "xhr"
+    }
+  ]
+}
