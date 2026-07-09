@@ -53,6 +53,13 @@
                 <option value="ingredients">Ingredients (รูปสินค้าเป็นแนวทางเชิงสไตล์)</option>
               </select>
             </label>
+            <label class="field">
+              <span class="field__label">ขั้นตอนการทำงานของ Flow</span>
+              <select id="flow-gen-mode" class="select select--accent">
+                <option value="combined" selected>สร้างภาพนิ่ง แล้วต่อวิดีโอ (2 ขั้นตอน)</option>
+                <option value="video">สร้างวิดีโอทันที (1 ขั้นตอน)</option>
+              </select>
+            </label>
             <div class="settings-grid">
               <label class="field">
                 <span class="field__label">โมเดลรูปภาพ (Banana)</span>
@@ -67,7 +74,7 @@
                   <option value="veo-3.1-fast">Veo 3.1 - Fast</option>
                   <option value="veo-3.1-quality">Veo 3.1 - Quality</option>
                   <option value="veo-3.1-lite">Veo 3.1 - Lite</option>
-                  <option value="veo-3.1-lite-low-priority">Veo 3.1 - Lite [Lower Priority] ⭐ (0 เครดิต)</option>
+                  <option value="veo-3.1-lite-low-priority" selected>Veo 3.1 - Lite [Lower Priority] ⭐ (0 เครดิต)</option>
                   <option value="omni-flash">Omni Flash</option>
                 </select>
               </label>
@@ -232,8 +239,16 @@
               <select id="post-action" class="select select--accent">
                 <option value="download">ดาวน์โหลดอย่างเดียว</option>
                 <option value="draft">ดาวน์โหลด + บันทึกแบบร่าง TikTok</option>
-                <option value="post">ดาวน์โหลด + โพสต์ TikTok</option>
+                <option value="post">ดาวน์โหลด + โพสต์ TikTok ทันที</option>
+                <option value="schedule">ดาวน์โหลด + ตั้งเวลาโพสต์ TikTok</option>
               </select>
+            </label>
+            <label class="field" id="schedule-time-container" style="display: none;">
+              <span class="field__label">เวลาที่ต้องการโพสต์</span>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <input id="post-schedule-date" class="input" type="date" style="width: 100%;">
+                <input id="post-schedule-time" class="input" type="time" style="width: 100%;">
+              </div>
             </label>
           </div>
         </div>

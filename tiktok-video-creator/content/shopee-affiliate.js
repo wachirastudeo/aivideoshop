@@ -8,7 +8,10 @@
   if (window.__shopeeAffiliateBound) return;
   window.__shopeeAffiliateBound = true;
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms) => {
+    const jitterFactor = ms >= 300 ? (0.7 + Math.random() * 0.6) : 1.0;
+    return new Promise((r) => setTimeout(r, Math.round(ms * jitterFactor)));
+  };
 
   function parseSalesNumber(salesText) {
     if (!salesText) return 0;
@@ -163,11 +166,28 @@
       el.scrollIntoView({ block: "center", inline: "center" });
       await sleep(350); // ให้ scroll เข้าที่และปุ่มหยุดนิ่ง
     }
-    const r = el.getBoundingClientRect();
-    const x = Math.round(r.left + r.width / 2);
-    const y = Math.round(r.top + r.height / 2);
-    const res = await chrome.runtime.sendMessage({ type: "SHOPEE_CLICK_POINT", payload: { x, y } });
-    return Boolean(res?.ok && res?.clicked);
+
+    try {
+      await chrome.runtime.sendMessage({ type: "FLOW_DEBUGGER_ATTACH" });
+      await sleep(800); // รอให้แถบ "Extension started debugging" ดันหน้าจอลงมาให้เรียบร้อยก่อนวัดพิกัด
+    } catch (e) {
+      console.warn("[ShopeeAuto] failed to attach debugger beforehand:", e);
+    }
+
+    try {
+      const r = el.getBoundingClientRect();
+      const x = Math.round(r.left + r.width / 2);
+      const y = Math.round(r.top + r.height / 2);
+      const res = await chrome.runtime.sendMessage({ type: "SHOPEE_CLICK_POINT", payload: { x, y } });
+      return Boolean(res?.ok && res?.clicked);
+    } catch (error) {
+      console.warn("[ShopeeAuto] trusted click failed:", error);
+    } finally {
+      try {
+        await chrome.runtime.sendMessage({ type: "FLOW_DEBUGGER_DETACH" });
+      } catch (e) {}
+    }
+    return false;
   }
 
   // checkbox อยู่ใน <a> ของการ์ด → คลิกติ๊กจะเปิดแท็บสินค้าด้วย

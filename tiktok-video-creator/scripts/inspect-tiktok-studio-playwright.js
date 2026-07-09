@@ -15,8 +15,20 @@ async function run() {
     headless: false,
     channel: "chrome",
     viewport: null,
-    args: ["--start-maximized"],
+    ignoreDefaultArgs: ["--enable-automation"],
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--start-maximized"
+    ],
   });
+
+  // Inject Script เพื่อพรางสถานะบอท
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "webdriver", {
+      get: () => undefined,
+    });
+  });
+
 
   const page = context.pages()[0] || (await context.newPage());
   const requests = [];

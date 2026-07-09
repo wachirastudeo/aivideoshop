@@ -8,7 +8,12 @@ import { generatePostCopy } from "./image-analyzer.js";
  * @returns {Promise<object>} ผลลัพธ์ download
  */
 export async function downloadVideo(url, productInfo) {
-  if (!url || !/^(https:|blob:|data:)/.test(url)) {
+  let targetUrl = url || "";
+  if (targetUrl.startsWith("//")) {
+    targetUrl = "https:" + targetUrl;
+  }
+
+  if (!targetUrl || !/^(https:|blob:|data:)/.test(targetUrl)) {
     throw new Error("กรุณาใส่ URL วิดีโอแบบ HTTPS, blob หรือ data");
   }
 
@@ -28,7 +33,7 @@ export async function downloadVideo(url, productInfo) {
 
   const response = await chrome.runtime.sendMessage({
     type: "DOWNLOAD_VIDEO",
-    payload: { url, filename }
+    payload: { url: targetUrl, filename }
   });
 
   if (!response?.ok) throw new Error(response?.error || "ดาวน์โหลดวิดีโอไม่สำเร็จ");
@@ -50,13 +55,22 @@ export async function publishVideo(videoUrl, productInfo) {
   return sendVideoToTikTokStudio(videoUrl, productInfo, "post");
 }
 
+export async function scheduleVideo(videoUrl, productInfo) {
+  return sendVideoToTikTokStudio(videoUrl, productInfo, "schedule");
+}
+
 export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "post") {
   const { settings = {} } = await chrome.storage.sync.get("settings");
+  const { creatorState = {} } = await chrome.storage.local.get("creatorState");
+  const localSettings = creatorState.settings || {};
   const postDefaults = settings.postDefaults || {};
-  const postMode = mode === "draft" ? "draft" : "post";
-  const postType = postMode === "draft"
+  const postMode = (mode === "draft") ? "draft" : "post";
+  const postType = (mode === "draft")
     ? "draft"
-    : (postDefaults.defaultMode === "schedule" ? "schedule" : "now");
+    : ((mode === "schedule" || postDefaults.defaultMode === "schedule") ? "schedule" : "now");
+  const scheduleTime = (mode === "schedule")
+    ? (localSettings.postScheduleTime || postDefaults.scheduleTime || "")
+    : (postDefaults.defaultMode === "schedule" ? (postDefaults.scheduleTime || "") : "");
   const productUrl = resolveProductUrl(productInfo);
   productInfo.productUrl = productUrl;
   const postCopy = (productInfo.caption !== undefined && productInfo.caption !== null)
@@ -90,7 +104,7 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
       hashtags,
       mode: postMode,
       postType,
-      scheduleTime: postDefaults.scheduleTime || "",
+      scheduleTime,
       location: postDefaults.location || "",
       privacy: postDefaults.privacy || "Public",
       aiGenerated: true,

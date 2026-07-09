@@ -86,7 +86,10 @@ function log(msg) {
 function removeOverlay() { _overlay?.remove(); _overlay = null; }
 
 // ── Timing ───────────────────────────────────────────────────
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const sleep = (ms) => {
+    const jitterFactor = ms >= 300 ? (0.7 + Math.random() * 0.6) : 1.0;
+    return new Promise(r => setTimeout(r, Math.round(ms * jitterFactor)));
+};
 function jitter(min, max) { return sleep(min + Math.random() * (max - min)); }
 async function sleepStop(ms) {
     const end = Date.now() + ms;
@@ -128,19 +131,59 @@ function pointerClick(el) {
     const r = el.getBoundingClientRect();
     fireAt(el, r.left + r.width / 2, r.top + r.height / 2);
 }
+let currentMouseX = window.innerWidth / 2;
+let currentMouseY = window.innerHeight / 2;
+document.addEventListener("mousemove", (e) => {
+    currentMouseX = e.clientX;
+    currentMouseY = e.clientY;
+}, { passive: true });
+
+function easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function getBezierPoints(x0, y0, x3, y3, steps) {
+    const points = [];
+    const dx = x3 - x0;
+    const dy = y3 - y0;
+    const p1x = x0 + dx * 0.25 + (Math.random() - 0.5) * 120;
+    const p1y = y0 + dy * 0.25 + (Math.random() - 0.5) * 120;
+    const p2x = x0 + dx * 0.75 + (Math.random() - 0.5) * 120;
+    const p2y = y0 + dy * 0.75 + (Math.random() - 0.5) * 120;
+    for (let i = 1; i <= steps; i++) {
+        const t = easeInOutQuad(i / steps);
+        const mt = 1 - t;
+        const x = mt * mt * mt * x0 + 3 * mt * mt * t * p1x + 3 * mt * t * t * p2x + t * t * t * x3;
+        const y = mt * mt * mt * y0 + 3 * mt * mt * t * p1y + 3 * mt * t * t * p2y + t * t * t * y3;
+        points.push({ x, y });
+    }
+    return points;
+}
+
 async function trail(tx, ty) {
-    const sx = tx + (Math.random() - .5) * 100, sy = ty + (Math.random() - .5) * 70;
-    const n = 3 + Math.floor(Math.random() * 3);
-    for (let i = 1; i <= n; i++) {
-        const t = i / n, x = sx + (tx - sx) * t + (Math.random() - .5) * 3, y = sy + (ty - sy) * t + (Math.random() - .5) * 3;
+    const startX = currentMouseX;
+    const startY = currentMouseY;
+    const distance = Math.hypot(tx - startX, ty - startY);
+    if (distance < 5) return;
+    const steps = Math.max(8, Math.min(30, Math.floor(distance / 20)));
+    const points = getBezierPoints(startX, startY, tx, ty, steps);
+    for (let i = 0; i < points.length; i++) {
+        const { x, y } = points[i];
         const o = {
-            bubbles: true, clientX: x, clientY: y, screenX: x + window.screenX, screenY: y + window.screenY,
+            bubbles: true, cancelable: true, clientX: x, clientY: y,
+            screenX: x + window.screenX, screenY: y + window.screenY,
             pointerId: 1, pointerType: "mouse", isPrimary: true, buttons: 0, pressure: 0, view: window
         };
         document.dispatchEvent(new PointerEvent("pointermove", o));
-        document.dispatchEvent(new MouseEvent("mousemove", { ...o, movementX: 2, movementY: 1 }));
-        await sleep(15 + Math.random() * 25);
+        document.dispatchEvent(new MouseEvent("mousemove", {
+            ...o,
+            movementX: i > 0 ? x - points[i - 1].x : 0,
+            movementY: i > 0 ? y - points[i - 1].y : 0
+        }));
+        await sleep(6 + Math.random() * 8);
     }
+    currentMouseX = tx;
+    currentMouseY = ty;
 }
 async function humanClick(el) {
     await jitter(800, 2000);
@@ -510,10 +553,18 @@ function mediaCardStatus(cardInfo) {
     if (!el) return { ready: false, failed: false, progress: true, rendered: false, text: "" };
     const text = mediaCardDeepText(el).toLowerCase();
 
-    const wordProgress = text.includes("uploading") || text.includes("processing") ||
-        text.includes("generating") || text.includes("rendering") || text.includes("creating") ||
+    // ตรวจสอบ spinner และสถานะอัปโหลด/ประมวลผล ซึ่งระบุการทำงานของระบบภายนอกที่ไม่ใช่การเจนจาก prompt
+    const hasSpinner = Boolean(
+        el.querySelector("[role='progressbar'],progress,[aria-busy='true'],.spinner,[class*='spinner'],.loading,[class*='loading'],.loader,[class*='loader']")
+    );
+    const isUploadingOrProcessing = text.includes("uploading") || text.includes("processing") ||
+        text.includes("กำลังอัปโหลด") || text.includes("กำลังประมวลผล");
+
+    // คำค้นหาความคืบหน้าในการเจนภาพ/วิดีโอ (อาจซ้ำกับข้อความใน prompt)
+    const promptProgressWord = text.includes("generating") || text.includes("rendering") || text.includes("creating") ||
         text.includes("queued") || text.includes("pending") || text.includes("waiting") ||
-        text.includes("กำลังสร้าง") || text.includes("กำลังเรนเดอร์") || text.includes("กำลังประมวลผล") || text.includes("กำลังอัปโหลด") || text.includes("รอคิว") || text.includes("กำลังรอ");
+        text.includes("กำลังสร้าง") || text.includes("กำลังเรนเดอร์") || text.includes("รอคิว") || text.includes("กำลังรอ");
+
     // การ์ดที่โชว์ % (1–99) = กำลังเจนจริงเสมอ; การ์ดที่ fail จริงจะแทน % ด้วยคำว่า
     // Failed ไม่ใช่โชว์ % คู่กัน → ไม่ต้องพึ่ง loading indicator (บางที DOM ไม่ match)
     const percentProgress = /(?:^|\W)(?:\d{1,2})\s*%/.test(text);
@@ -522,9 +573,13 @@ function mediaCardStatus(cardInfo) {
         video && (video.currentSrc || video.src || video.querySelector("source")?.src)
     );
     const pendingVideoProgress = Boolean(el.querySelector?.("[role='slider']")) && !hasPlayableVideo;
-    const progress = wordProgress || percentProgress || pendingVideoProgress;
-
+    
     const rendered = hasRenderableMedia(el);
+    // หากมีรูปหรือวิดีโอแสดงผลแล้ว จะไม่ถือว่าอยู่ในระหว่างเจน (ป้องกันกรณี Prompt มีคำว่า waiting/creating แล้วติด Loop)
+    // แต่ถ้ายังมี spinner หรือข้อความระบุว่ากำลังอัปโหลด/ประมวลผล จะถือว่ายังอยู่ในกระบวนการทำงานเสมอ (ห้าม bypass ด้วย rendered)
+    const progress = isUploadingOrProcessing || hasSpinner ||
+        ((promptProgressWord || percentProgress || pendingVideoProgress) && !rendered);
+
     // สัญญาณ fail จริงของ Flow: การ์ดล้มเหลวจะมี icon "delete" โผล่ inline บนการ์ด
     // (การ์ดสำเร็จมีแค่ favorite / redo=Reuse prompt / more_vert ส่วน delete ซ่อนในเมนู)
     // — เชื่อถือกว่าการสแกนคำว่า "Failed" ที่หลุดมาจาก tile ข้างเคียง/disclaimer ท้ายหน้า
@@ -687,7 +742,9 @@ function mediaCardDeepText(el) {
 }
 function hasRenderableMedia(el) {
     const img = el.matches?.("img") ? el : el.querySelector?.("img");
-    if (img && (img.complete || img.naturalWidth > 0) && (img.naturalWidth || img.clientWidth) > 0) return true;
+    // เช็คว่ารูปภาพโหลดเสร็จสิ้นสมบูรณ์และแสดงผลชัดเจน (complete และ naturalWidth > 0)
+    // แต่ถ้าอยู่นอกสายตา (Off-screen) naturalWidth ก็จะมากกว่า 0 อยู่ดีเมื่อโหลดเสร็จ
+    if (img && img.src && img.complete && img.naturalWidth > 0) return true;
 
     const vid = el.matches?.("video") ? el : el.querySelector?.("video");
     // นับ <source> child ด้วย (วิดีโอเสร็จแล้วแต่ยังไม่ load → readyState 0, src ว่าง)
@@ -738,6 +795,61 @@ function watchNotice() {
 }
 
 // ── 1. ensureProjectPage ─────────────────────────────────────
+function findNewProjectButton() {
+    const createLabels = [
+        "Create with Google Flow",
+        "Create with Flow",
+        "Try in Google Flow",
+        "New project",
+        "Create project",
+        "Start a new project",
+        "Create",
+        "New",
+        "โปรเจ็กต์ใหม่",
+        "สร้างโปรเจ็กต์",
+        "สร้าง"
+    ];
+    
+    // 1. Try standard labels first
+    let btn = findAction(createLabels);
+    if (btn) return btn;
+
+    // 2. Try looking for any button/link/div with role="button" containing the word "project" or "new" or "สร้าง" and an "add" icon or "+"
+    const candidates = [...document.querySelectorAll("button, [role='button'], a, [tabindex]")]
+        .filter(isVisible);
+
+    for (const el of candidates) {
+        const text = elementText(el).toLowerCase();
+        const isProjectRelated = text.includes("project") || text.includes("flow") || text.includes("new") || text.includes("สร้าง") || text.includes("ใหม่");
+        
+        const icons = [...el.querySelectorAll("i, .google-symbols, .material-icons, .material-symbols-outlined, [class*='icon']")]
+            .map(i => i.textContent.trim().toLowerCase());
+        
+        const hasAddIcon = icons.some(name => name === "add" || name === "create" || name === "plus" || name.includes("add"));
+        const hasPlusText = el.textContent.includes("+");
+
+        if (isProjectRelated && (hasAddIcon || hasPlusText)) {
+            return el;
+        }
+    }
+
+    // 3. Fallback: find any visible button/link/div that has an "add" or "+" icon (not for upload)
+    for (const el of candidates) {
+        const icons = [...el.querySelectorAll("i, .google-symbols, .material-icons, .material-symbols-outlined, [class*='icon']")]
+            .map(i => i.textContent.trim().toLowerCase());
+        const hasAddIcon = icons.some(name => name === "add" || name === "create" || name === "plus" || name.includes("add"));
+        const hasPlusText = el.textContent.includes("+");
+        if (hasAddIcon || hasPlusText) {
+            const text = el.textContent.toLowerCase();
+            if (!text.includes("upload") && !text.includes("media") && !text.includes("drive")) {
+                return el;
+            }
+        }
+    }
+
+    return null;
+}
+
 async function ensureProjectPage() {
     await sleep(1000);
     if (location.hostname.includes("accounts.google")) {
@@ -754,20 +866,6 @@ async function ensureProjectPage() {
         log("❌ หน้า project เปิดแล้ว แต่ prompt editor ยังไม่พร้อม");
         return false;
     }
-
-    const createLabels = [
-        "Create with Google Flow",
-        "Create with Flow",
-        "Try in Google Flow",
-        "New project",
-        "Create project",
-        "Start a new project",
-        "Create",
-        "New",
-        "โปรเจ็กต์ใหม่",
-        "สร้างโปรเจ็กต์",
-        "สร้าง"
-    ];
 
     // Every run must start from a fresh Flow project. If we are already in
     // Flow, avoid reloading the site; use the visible app controls instead.
@@ -786,7 +884,7 @@ async function ensureProjectPage() {
             log("❌ Google Flow ต้อง login Google ก่อน");
             return false;
         }
-        const action = findAction(createLabels);
+        const action = findNewProjectButton();
         if (action) {
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
             action.scrollIntoView({ block: "center", inline: "center" });
@@ -814,22 +912,8 @@ async function prepareFreshProject() {
     }
     if (isProjectUrl(location.href)) return true;
 
-    const createLabels = [
-        "Create with Google Flow",
-        "Create with Flow",
-        "Try in Google Flow",
-        "New project",
-        "Create project",
-        "Start a new project",
-        "Create",
-        "New",
-        "โปรเจ็กต์ใหม่",
-        "สร้างโปรเจ็กต์",
-        "สร้าง"
-    ];
-
     for (let i = 0; i < 40; i++) {
-        const action = findAction(createLabels);
+        const action = findNewProjectButton();
         if (action) {
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
             action.scrollIntoView({ block: "center", inline: "center" });
@@ -848,8 +932,22 @@ async function switchToUploadedTab() {
     if (btn) { await humanClick(btn); log("✅ สลับไป Uploaded tab"); await sleep(1000); }
 }
 
+async function refreshMediaList() {
+    log("🔄 รีเฟรชรายการสื่อ (คลิกสลับหมวดหมู่)...");
+    const uploadsBtn = byText(["Uploads", "อัปโหลด"]);
+    const allMediaBtn = byText(["All Media", "สื่อทั้งหมด"]);
+    if (uploadsBtn) {
+        click(uploadsBtn);
+        await sleep(800);
+    }
+    if (allMediaBtn) {
+        click(allMediaBtn);
+        await sleep(800);
+    }
+}
+
 // ── 3. uploadImages ──────────────────────────────────────────
-async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
+async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
     await closeFlowPanels({ required: true });
     patchFileInput();
     
@@ -864,10 +962,15 @@ async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
                 const candidate = candidates[candidateIndex];
                 blob = candidate.startsWith("data:")
                     ? toBlob(candidate)
-                    : await fetch(candidate).then(async response => {
-                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                        return response.blob();
-                    });
+                    : await (async () => {
+                        const res = await chrome.runtime.sendMessage({
+                            type: "FETCH_IMAGE_DATA",
+                            payload: { url: candidate }
+                        });
+                        if (res && res.error) throw new Error(res.error);
+                        if (!res || !res.base64) throw new Error("ไม่ได้รับข้อมูลรูปภาพจาก background script");
+                        return toBlob(`data:${res.mime || "image/jpeg"};base64,${res.base64}`);
+                    })();
                 if (!/^image\//i.test(blob.type || "")) {
                     throw new Error(`type=${blob.type || "unknown"}`);
                 }
@@ -886,50 +989,74 @@ async function uploadImages(dataUrls, waitMs = 300000, fallbackUrls = []) {
     }
 
     await closeFlowPanels({ required: true });
-    log(`กำลังอัปโหลดรูปภาพพร้อมกัน ${files.length} รูป...`);
+    log(`กำลังอัปโหลดรูปภาพทีละภาพ จำนวนทั้งหมด ${files.length} รูป...`);
     const before = snapMediaKeys();
-
-    let inp = document.querySelector('input[type="file"][accept*="image"]')
-        || document.querySelector('input[type="file"]');
-    if (!inp) {
-        const addBtn = byText(["Add Media", "เพิ่มสื่อ", "Upload image", "Upload", "อัปโหลดรูปภาพ", "Reference"]);
-        if (addBtn) { click(addBtn); await sleep(1500); }
-        inp = document.querySelector('input[type="file"]');
-    }
-    if (!inp) throw new Error("หา file input สำหรับอัปโหลดรูปใน Google Flow ไม่เจอ");
-
-    const dt = new DataTransfer();
-    files.forEach(f => dt.items.add(f));
-    inp.files = dt.files;
-    inp.dispatchEvent(new Event("change", { bubbles: true }));
-    inp.dispatchEvent(new Event("input", { bubbles: true }));
-
-    // รอ tiles ใหม่ทั้งหมดปรากฏและ upload เสร็จจริง
-    const secs = Math.max(300, Math.ceil(waitMs / 1000));
     const tiles = [];
     const needed = files.length;
-    
-    for (let s = secs; s > 0; s--) {
-        if (stopRequested) return tiles;
-        
-        // ดึงการ์ดใหม่ที่สร้างขึ้น
-        const currentNewCards = getMediaCards().filter(card => card.key && !before.has(card.key));
-        const readyCards = currentNewCards.filter(card => mediaCardStatus(card).ready);
-        
-        log(`รออัปโหลดรูปภาพ... (${readyCards.length}/${needed} รูปพร้อมใช้งาน) ${s}s`);
-        
-        if (readyCards.length >= needed) {
-            readyCards.forEach(card => {
-                tiles.push(card);
-                log(`✅ อัปโหลดรูปสำเร็จ (media=${card.key.slice(0, 12) || "?"})`);
-            });
-            break;
-        }
-        await sleep(1000);
-    }
 
-    if (tiles.length < needed) {
-        throw new Error(`อัปโหลดรูปเข้า Google Flow สำเร็จเพียง ${tiles.length}/${needed} รูป (หมดเวลา)`);
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        log(`กำลังอัปโหลดรูปที่ ${i + 1}/${needed} (${file.name})...`);
+
+        let inp = document.querySelector('input[type="file"][accept*="image"]')
+            || document.querySelector('input[type="file"]');
+        if (!inp) {
+            const addBtn = byText(["Add Media", "เพิ่มสื่อ", "Upload image", "Upload", "อัปโหลดรูปภาพ", "Reference"]);
+            if (addBtn) { click(addBtn); await sleep(1500); }
+            inp = document.querySelector('input[type="file"]');
+        }
+        if (!inp) throw new Error("หา file input สำหรับอัปโหลดรูปใน Google Flow ไม่เจอ");
+
+        // อัปโหลดทีละไฟล์
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        inp.files = dt.files;
+        inp.dispatchEvent(new Event("change", { bubbles: true }));
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+
+        // ดีเลย์หลังอัปโหลดเพื่อเลียนแบบความเร็วคนจริงๆ
+        await sleep(1500 + Math.random() * 1500);
+
+        // รอจนกระทั่งรูปนี้อัปโหลดเสร็จและพร้อมใช้งาน
+        const secs = Math.max(400, Math.ceil(waitMs / 1000));
+        let imageReady = false;
+        let elapsed = 0;
+        
+        for (let s = secs; s > 0; s--) {
+            if (stopRequested) return tiles;
+            
+            // ดึงการ์ดใหม่ที่สร้างขึ้น
+            const currentNewCards = getMediaCards().filter(card => card.key && !before.has(card.key));
+            const newlyReadyCards = currentNewCards.filter(card => 
+                mediaCardStatus(card).ready && !tiles.some(t => t.key === card.key)
+            );
+            
+            if (newlyReadyCards.length > 0) {
+                const card = newlyReadyCards[0];
+                tiles.push(card);
+                log(`✅ อัปโหลดรูปที่ ${i + 1} สำเร็จ (media=${card.key.slice(0, 12) || "?"})`);
+                imageReady = true;
+                break;
+            }
+            
+            elapsed++;
+            if (elapsed > 0 && elapsed % 8 === 0) {
+                await refreshMediaList();
+            } else {
+                await sleep(1000);
+            }
+        }
+
+        if (!imageReady) {
+            throw new Error(`อัปโหลดรูปที่ ${i + 1} ล้มเหลว (หมดเวลา)`);
+        }
+
+        // ดีเลย์ระหว่างไฟล์ 2 ถึง 4 วินาที
+        if (i < needed - 1) {
+            const stepDelay = 2000 + Math.random() * 2000;
+            log(`⏳ ดีเลย์สุ่มระหว่างภาพ ${Math.round(stepDelay)}ms...`);
+            await sleep(stepDelay);
+        }
     }
     
     return tiles;
@@ -1110,7 +1237,7 @@ async function ensureConfig(phase, options = {}) {
         : (options.videoCount || cfg.videoCount || 1);
     const modelKey = phase === "image"
         ? (options.imageModel || cfg.imageModel || "nano-banana-pro")
-        : (options.videoModel || cfg.videoModel || "veo-3.1-lite");
+        : (options.videoModel || cfg.videoModel || "veo-3.1-lite-low-priority");
 
     log(`ตั้งค่า ${phase === "image" ? "Image" : "Video"} + Aspect Ratio: ${aspectRatio} + Count: ${count}x + Model: ${modelKey}...`);
     let cfgBtn = null;
@@ -1125,8 +1252,12 @@ async function ensureConfig(phase, options = {}) {
     if (!menu) { log("⚠️ เมนู config ไม่เปิด"); return; }
     
     await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO"); await sleep(800);
-    // เลือก sub-tab วิดีโอ: Ingredients (VIDEO_REFERENCES) หรือ Frames (VIDEO_FRAMES)
-    if (phase !== "image") {
+    if (phase === "image") {
+        // บังคับเลือกแท็บ Subject สำหรับรูปภาพนิ่ง เพื่อให้ใช้สินค้าต้นฉบับเป็นแค่อ้างอิงวัตถุ ไม่ใช้โครงภาพเดิม
+        const picked = await clickMenuTab("Subject");
+        if (picked) log("เลือกแท็บรูปภาพ: Subject");
+        await sleep(600);
+    } else {
         const refMode = (options.videoRefMode || "ingredients") === "frames" ? "VIDEO_FRAMES" : "VIDEO_REFERENCES";
         const picked = await clickMenuTab(refMode);
         if (picked) log(`เลือกแท็บวิดีโอ: ${refMode === "VIDEO_FRAMES" ? "Frames" : "Ingredients"}`);
@@ -1501,6 +1632,11 @@ async function humanTypeWords(prompt) {
 async function setPrompt(prompt) {
     const editor = await waitForPromptEditor(15000);
     if (!editor) throw new Error("หาช่องพิมพ์ prompt ไม่เจอ");
+
+    // ปิด debugger ก่อนคลิกช่องกรอก เพื่อเคลียร์แถบเหลืองแจ้งเตือน (infobar) ไม่ให้ดันหน้าต่างขยับ
+    await detachFlowDebugger();
+    await sleep(400);
+
     editor.scrollIntoView({ behavior: "smooth", block: "center" });
     await sleep(600 + Math.random() * 400);
     await humanClick(editor);
@@ -1516,14 +1652,16 @@ async function setPrompt(prompt) {
         await typeContentEditable(editor, prompt);
     }
 
-    // Natural pause after finishing typing before clicking generate
-    await sleep(800 + Math.random() * 600);
+    await sleep(1200);
     const typed = getPromptText(editor);
     const needle = prompt.replace(/\s+/g, "").slice(0, Math.min(28, prompt.length));
     if (!typed.replace(/\s+/g, "").includes(needle)) {
         throw new Error("กรอก prompt ใน Google Flow ไม่สำเร็จ จึงไม่กด Generate");
     }
     log("✅ กรอก Prompt สำเร็จ");
+    await detachFlowDebugger();
+    log("รอ 5 วินาที เพื่อความเสถียรของหน้าต่างและให้เหมือนคน...");
+    await sleep(5000); // ดีเลย์ 5 วินาทีก่อนไปทำขั้นตอนถัดไป
 }
 
 function findPromptEditor() {
@@ -1591,8 +1729,88 @@ async function typeContentEditable(editor, prompt) {
     editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
 }
 
+function getTextNodes(node) {
+    const textNodes = [];
+    if (node.nodeType === Node.TEXT_NODE) {
+        textNodes.push(node);
+    } else {
+        for (const child of node.childNodes) {
+            textNodes.push(...getTextNodes(child));
+        }
+    }
+    return textNodes;
+}
+
+function focusAndPlaceCursor(editor) {
+    try {
+        editor.focus();
+        editor.click();
+    } catch (e) {}
+    const selection = window.getSelection();
+    const range = document.createRange();
+    
+    const p = editor.querySelector('p, [data-slate-node="element"], [data-slate-leaf="true"]') || editor;
+    try {
+        range.selectNodeContents(p);
+        range.collapse(true); // places cursor at the beginning
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        return true;
+    } catch (e) {
+        console.warn("[FlowAuto] failed to set cursor selection:", e);
+    }
+    return false;
+}
+
 async function typeSlate(editor, prompt) {
-    // ── ขั้น 1: execCommand word-by-word (ไม่ต้องใช้ Debugger)
+    // 1. วางเคอร์เซอร์ในโหนดของ Slate
+    focusAndPlaceCursor(editor);
+    await sleep(250);
+
+    const textNodes = getTextNodes(editor);
+    const isEmpty = textNodes.length === 0 || editor.textContent.trim() === "";
+
+    if (!isEmpty) {
+        // Select all text nodes safely without selecting or deleting paragraph element containers
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.setStart(textNodes[0], 0);
+        const lastNode = textNodes[textNodes.length - 1];
+        range.setEnd(lastNode, lastNode.length);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        await sleep(50);
+    } else {
+        focusAndPlaceCursor(editor);
+        await sleep(50);
+    }
+
+    // วิธีที่ 1: ลองใช้ execCommand แทรกข้อความธรรมดา (แบบไร้ Debugger)
+    try {
+        document.execCommand("insertText", false, prompt);
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
+        editor.dispatchEvent(new Event("change", { bubbles: true }));
+        await sleep(500);
+        if (await waitForPromptCommit(editor, prompt, 2500)) {
+            log("✅ กรอก Prompt สำเร็จ (DOM execCommand)");
+            return;
+        }
+    } catch (e) { console.warn("[FlowAuto] execCommand failed:", e); }
+
+    // วิธีที่ 2: ลองใช้ Clipboard Paste event จำลองการวางข้อความ (แบบไร้ Debugger)
+    try {
+        focusAndPlaceCursor(editor);
+        const dt = new DataTransfer(); dt.setData("text/plain", prompt);
+        editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
+        await sleep(500);
+        if (await waitForPromptCommit(editor, prompt, 2500)) {
+            log("✅ กรอก Prompt สำเร็จ (Paste Event)");
+            return;
+        }
+    } catch (e) { console.warn("[FlowAuto] paste failed:", e); }
+
+    // วิธีที่ 3: ใช้ Debugger เป็นไม้ตายสุดท้ายถ้าวิธีแบบไร้ Debugger ล้มเหลวทั้งหมด
+    log("วิธีพิมพ์ปกติไม่ได้ผล → เปิดใช้ระบบ Debugger เพื่อกรอกข้อความ...");
     selectEditableContents(editor);
     document.execCommand("delete", false, null);
     editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
@@ -1627,15 +1845,41 @@ async function typeSlate(editor, prompt) {
             type: "FLOW_INSERT_TEXT",
             payload: { text: prompt, clear: true }
         });
-        if (response?.ok && response.inserted && await waitForPromptCommit(editor, prompt, 3000)) {
-            log("✅ กรอก Prompt สำเร็จ (debugger)");
+        if (response?.ok && response.inserted && await waitForPromptCommit(editor, prompt, 3500)) {
+            log("✅ กรอก Prompt เข้า Slate สำเร็จ (Debugger)");
+            // ปลด debugger ทันทีหลังพิมพ์เสร็จเพื่อไม่ให้ค้างแถบเตือนสีเหลืองตอนรันงานขั้นต่อไป
+            await detachFlowDebugger();
+            await sleep(500);
             return;
         }
     } catch (error) {
         console.warn("[FlowAuto] debugger insert failed:", error);
     }
 
-    throw new Error("กรอก prompt ใน Slate ไม่สำเร็จ");
+    focusAndPlaceCursor(editor);
+    if (!isEmpty) {
+        const nodes = getTextNodes(editor);
+        if (nodes.length > 0) {
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.setStart(nodes[0], 0);
+            const lastNode = nodes[nodes.length - 1];
+            range.setEnd(lastNode, lastNode.length);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+            document.execCommand("insertText", false, ""); // clear selection
+            await sleep(50);
+        }
+    }
+    for (const ch of prompt) {
+        if (stopRequested) return;
+        document.execCommand(ch === "\n" ? "insertLineBreak" : "insertText", false, ch === "\n" ? null : ch);
+        await sleep(4);
+    }
+    editor.dispatchEvent(new Event("change", { bubbles: true }));
+    if (!await waitForPromptCommit(editor, prompt, 2500)) {
+        throw new Error("กรอก prompt ใน Slate ไม่สำเร็จ");
+    }
 }
 
 
@@ -1653,8 +1897,7 @@ async function waitForPromptCommit(editor, prompt, timeoutMs) {
     const end = Date.now() + timeoutMs;
     while (Date.now() < end) {
         const inserted = (editor.textContent || "").replace(/\s+/g, "");
-        const submitReady = !promptHasMediaAttachment() || Boolean(findGenerateButton());
-        if (inserted.includes(needle) && submitReady) {
+        if (inserted.includes(needle)) {
             await sleepStop(250);
             return true;
         }
@@ -1675,6 +1918,11 @@ async function typeDraft(editor, prompt) {
 // ── 7. clickGenerate ─────────────────────────────────────────
 async function clickGenerate() {
     log("รอปุ่ม Generate พร้อมกด...");
+    
+    // ปิด debugger ก่อนกดเจนเพื่อให้ infobar หายไปและระดับหน้าจอกลับมาปกติ
+    await detachFlowDebugger();
+    await sleep(1000);
+
     preGenMediaKeys = snapMediaKeys();
     const end = Date.now() + 30000;
     let btn = null;
@@ -1694,41 +1942,54 @@ async function clickGenerate() {
     if (!btn) throw new Error(disabledArrow
         ? "ปุ่ม arrow_forward Create ยัง disabled หลังกรอก prompt/แนบรูป จึงไม่กด Generate"
         : "หาปุ่ม Generate/Create ใน Google Flow ไม่เจอ");
+    
     log("🚀 กด Generate!");
     btn.scrollIntoView({ block: "center", inline: "center" });
     await sleep(400);
-    // มีการ์ดใหม่แล้ว = เริ่มเจนแล้ว ห้ามกดซ้ำ (กันเจนภาพ 2 รอบ)
+    
+    // มีการ์ดใหม่แล้ว = เริ่มเจนแล้ว ห้ามกดซ้ำ (กันเจนภาพ 2รอบ)
     const generationStarted = () => getMediaCards().some(card => card.key && !preGenMediaKeys.has(card.key));
 
+    // ลองกด Generate แบบปกติ (human click) ก่อนโดยไม่ใช้ debugger เพื่อเลี่ยงการแสดง infobar
+    log("ลองกด Generate แบบปกติ (human click)...");
+    await humanClick(btn);
+    if (await waitGenerationStarted(btn, 3500)) return true;
+    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
+
+    log("ลองกดแบบ DOM click...");
+    click(btn);
+    if (await waitGenerationStarted(btn, 2500)) return true;
+    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
+
+    log("ลองกด Enter...");
+    btn.focus();
+    btn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+    btn.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+    if (await waitGenerationStarted(btn, 2500)) return true;
+    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
+
+    // หากแบบปกติทั้งหมดไม่ได้ผล ค่อยใช้ debugger click (trusted click) เป็นไม้ตายสุดท้าย
+    log("คลิกปกติยังไม่เริ่มสร้าง → ลองใช้ trusted click (Debugger)...");
     if (await clickButtonCenterWithDebugger(btn) && await waitGenerationStarted(btn, 5000)) {
         return true;
     }
     if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
 
-    log("Trusted click ยังไม่เริ่มสร้าง → ลอง human click...");
-    await humanClick(btn);
-    if (await waitGenerationStarted(btn, 3500)) return true;
-    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
-
-    log("Human click ยังไม่เริ่มสร้าง → ลอง DOM click...");
-    click(btn);
-    if (await waitGenerationStarted(btn, 2000)) return true;
-    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
-
-    log("DOM click ยังไม่เริ่มสร้าง → ลองกด Enter...");
-    btn.focus();
-    btn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
-    btn.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
-    if (await waitGenerationStarted(btn, 2000)) return true;
-
     throw new Error("กด Generate แล้ว แต่ Flow ไม่เริ่มสร้าง จึงไม่รอผลลัพธ์");
 }
 
 async function clickButtonCenterWithDebugger(button) {
-    const rect = button.getBoundingClientRect();
-    const x = Math.round(rect.left + rect.width / 2);
-    const y = Math.round(rect.top + rect.height / 2);
     try {
+        await chrome.runtime.sendMessage({ type: "FLOW_DEBUGGER_ATTACH" });
+        await sleep(800); // รอให้แถบ "Extension started debugging" ดันหน้าจอลงมาให้เรียบร้อยก่อนวัดพิกัด
+    } catch (e) {
+        console.warn("[FlowAuto] failed to attach debugger beforehand:", e);
+    }
+
+    try {
+        const rect = button.getBoundingClientRect();
+        const x = Math.round(rect.left + rect.width / 2);
+        const y = Math.round(rect.top + rect.height / 2);
         const response = await chrome.runtime.sendMessage({
             type: "FLOW_CLICK_POINT",
             payload: { x, y }
@@ -1737,6 +1998,8 @@ async function clickButtonCenterWithDebugger(button) {
         console.warn("[FlowAuto] trusted click failed response:", response);
     } catch (error) {
         console.warn("[FlowAuto] trusted click failed:", error);
+    } finally {
+        await detachFlowDebugger();
     }
     return false;
 }
@@ -1825,7 +2088,7 @@ async function waitGenerationStarted(button, timeoutMs = 7000) {
 // ── 8. waitForResult ─────────────────────────────────────────
 async function waitForResult(phase, options = {}) {
     const maxRetryAttempts = 1;
-    const maxMs = phase === "image" ? 180000 : 300000;
+    const maxMs = phase === "image" ? 180000 : 400000;
     const progressGraceMs = 25000;
     // Flow can briefly mark queued Veo jobs as Failed, then replace the same
     // cards with playable videos. Keep waiting long enough for that late result.
@@ -1858,7 +2121,7 @@ async function waitForResult(phase, options = {}) {
 
         let failedResult = null;
         let failedCard = null;
-        let hasActiveGeneration = hasVisibleGenerationIndicator();
+        let hasActiveGeneration = false;
 
         for (const { card, status } of newCards) {
             if (status.progress) hasActiveGeneration = true;
@@ -2035,19 +2298,21 @@ async function loadSettings() {
         const r = await chrome.runtime.sendMessage({ type: "GET_FLOW_SETTINGS" });
         if (r && !r.error) return {
             ...r,
-            uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 300)
+            uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 400)
         };
     } catch { }
-    return { videoModel: "veo-3.1-lite", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 300 };
+    return { videoModel: "veo-3.1-lite-low-priority", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 400 };
 }
 
 // ── Main pipeline ─────────────────────────────────────────────
-async function runPipeline(payload) {
+async function runPipeline(payload, runOptions = {}) {
     const { phase, prompt, imageUrl, options = {} } = payload;
+    const resumeState = runOptions.resumeState;
+    const jobId = runOptions.jobId || "";
     stopRequested = false;
     let imageResult = null;
     try {
-        log("เริ่ม Auto Flow...");
+        log(resumeState ? "ดำเนินการ Auto Flow ต่อหลังรีเฟรช..." : "เริ่ม Auto Flow...");
         watchNotice();
         await closeFlowPanels();
         const cfg = await loadSettings();
@@ -2056,69 +2321,101 @@ async function runPipeline(payload) {
         log("ตรวจหน้าโปรเจกต์ Google Flow...");
         const ok = await ensureProjectPage();
         if (!ok) throw new Error("ไม่สามารถเปิดหน้า project ได้ (ตรวจสอบว่า login Google แล้ว)");
-        await sleep(300);
+        await sleep(5000); // หน่วงเวลา 5 วินาทีหลังเข้าหน้าโปรเจกต์
         dismissIAgree();
         log("ตรวจหน้าต่างที่บังพื้นที่อัปโหลด...");
         await closeFlowPanels({ required: true });
+        await sleep(5000); // หน่วงเวลา 5 วินาที
 
         // 2. ไม่กด filter ใดๆ ในแถบซ้าย (All Media เห็นทุกอย่าง) — อัปโหลดผ่านปุ่ม + ในช่อง prompt
         await closeFlowPanels({ required: true });
+        await sleep(5000); // หน่วงเวลา 5 วินาที
 
-        // 3. อัปโหลดรูป (รองรับหลายรูปจาก options.imageUrls สำหรับ Ingredients)
         let uploadedTiles = [];
-        const rawList = (Array.isArray(options.imageUrls) && options.imageUrls.length)
-            ? options.imageUrls
-            : (imageUrl ? [imageUrl] : []);
-        const dataUrls = rawList
-            .map(normalizeImageUrlForUpload)
-            .filter((u) => u && (u.startsWith("data:") || u.startsWith("http")));
-        // ตัดซ้ำ + จำกัดสูงสุด 6 รูป
-        const uniqueUrls = [...new Set(dataUrls)].slice(0, 6);
-        if (uniqueUrls.length === 0) {
-            throw new Error(`ไม่มี URL รูปภาพสินค้าที่ใช้ได้สำหรับอัปโหลด (imageUrl=${imageUrl || "ว่าง"})`);
-        }
-        await closeFlowPanels({ required: true });
-        log(`เตรียมอัปโหลด ${uniqueUrls.length} รูป`);
-        const normalizedFallback = normalizeImageUrlForUpload(imageUrl);
-        const fallbackUrls = uniqueUrls.map((url, index) =>
-            index === 0 && normalizedFallback && normalizedFallback !== url ? [normalizedFallback] : []
-        );
-        uploadedTiles = await uploadImages(uniqueUrls, cfg.uploadWaitSec * 1000, fallbackUrls);
-        if (uploadedTiles.length === 0) {
-            throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
+        if (resumeState) {
+            uploadedTiles = resumeState.uploadedTiles || [];
+            log(`🔄 ใช้รูปภาพสินค้าที่อัปโหลดเสร็จแล้วจากการรีเฟรชหน้าเพจ (${uploadedTiles.length} รูป)`);
+            await sleep(5000); // หน่วงเวลา 5 วินาที
+        } else {
+            // 3. อัปโหลดรูป (รองรับหลายรูปจาก options.imageUrls สำหรับ Ingredients)
+            const rawList = (Array.isArray(options.imageUrls) && options.imageUrls.length)
+                ? options.imageUrls
+                : (imageUrl ? [imageUrl] : []);
+            const dataUrls = rawList
+                .map(normalizeImageUrlForUpload)
+                .filter((u) => u && (u.startsWith("data:") || u.startsWith("http")));
+            // ตัดซ้ำ + จำกัดสูงสุด 6 รูป
+            const uniqueUrls = [...new Set(dataUrls)].slice(0, 6);
+            if (uniqueUrls.length === 0) {
+                throw new Error(`ไม่มี URL รูปภาพสินค้าที่ใช้ได้สำหรับอัปโหลด (imageUrl=${imageUrl || "ว่าง"})`);
+            }
+            await closeFlowPanels({ required: true });
+            log(`เตรียมอัปโหลด ${uniqueUrls.length} รูป`);
+            const normalizedFallback = normalizeImageUrlForUpload(imageUrl);
+            const fallbackUrls = uniqueUrls.map((url, index) =>
+                index === 0 && normalizedFallback && normalizedFallback !== url ? [normalizedFallback] : []
+            );
+            uploadedTiles = await uploadImages(uniqueUrls, cfg.uploadWaitSec * 1000, fallbackUrls);
+            if (uploadedTiles.length === 0) {
+                throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
+            }
+
+            // บันทึกสถานะเพื่อรีเฟรชหน้าเว็บ 1 ครั้งตามความต้องการของผู้ใช้ เพื่อความสม่ำเสมอของสถานะหน้าเพจ Google Flow
+            const stateToSave = {
+                jobId,
+                payload: { phase, prompt, imageUrl, options },
+                step: "AFTER_UPLOAD",
+                uploadedTiles: uploadedTiles.map(t => ({ key: t.key, tileId: t.tileId || t.key, mediaUrl: t.mediaUrl, href: t.href }))
+            };
+            await chrome.storage.local.set({ flowActiveJobResume: stateToSave });
+            log("🔄 อัปโหลดเสร็จสิ้นและแสดงรูปภาพชัดเจนแล้ว! รอ 4 วินาทีเพื่อให้คุณตรวจสอบก่อนทำการรีเฟรชหน้าเว็บ...");
+            await sleep(4000);
+            window.location.reload();
+            return new Promise(() => {}); // หยุดเธรดเพื่อรอการรีเฟรช
         }
 
         const initialPrompt = typeof prompt === "object" ? prompt.imagePrompt : prompt;
         if (!initialPrompt) throw new Error("ไม่มี prompt สำหรับสร้างภาพ/วิดีโอ");
 
         // 4. ตั้งค่า mode + ratio
-        if (cfg.autoPortrait) await ensureConfig(phase === "combined" ? "image" : phase, options);
+        if (cfg.autoPortrait) {
+            await ensureConfig(phase === "combined" ? "image" : phase, options);
+            await sleep(5000); // หน่วงเวลา 5 วินาที
+        }
 
         // 5. แนบรูปเข้า prompt — ไม่กด filter, หาในวิวปัจจุบัน (รูปเพิ่งอัปโหลดอยู่ใน DOM แล้ว)
         if (uploadedTiles.length > 0) {
             const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
             if (attached.length !== uploadedTiles.length) throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบ จึงไม่กด Generate");
+            await sleep(5000); // หน่วงเวลา 5 วินาที
         }
 
         // 6. กรอก prompt
         log("กรอก Prompt...");
         await setPrompt(initialPrompt);
+        await sleep(5000); // หน่วงเวลา 5 วินาที
 
         // 7. กด Generate
         await clickGenerate();
+        await sleep(5000); // หน่วงเวลา 5 วินาที
 
         // 8. รอผลลัพธ์
         const resultPhase = phase === "combined" ? "image" : phase;
         const restartInitialGeneration = async (context = {}) => {
-            if (cfg.autoPortrait) await ensureConfig(resultPhase, options);
+            if (cfg.autoPortrait) {
+                await ensureConfig(resultPhase, options);
+                await sleep(5000);
+            }
             const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
             if (attached.length !== uploadedTiles.length) {
                 throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบระหว่าง Retry");
             }
+            await sleep(5000);
             const retryPrompt = context.policyFallback === "no-people"
                 ? buildPeopleSafePrompt(initialPrompt)
                 : initialPrompt;
             await setPrompt(retryPrompt);
+            await sleep(5000);
             await clickGenerate();
         };
         const result = await waitForResult(resultPhase, {
@@ -2130,27 +2427,34 @@ async function runPipeline(payload) {
 
         if (phase === "combined" && result.tileId) {
             if (!prompt?.videoPrompt) throw new Error("ไม่มี prompt สำหรับสร้างวิดีโอ Phase 2");
-            log("🎯 ได้รูปภาพแล้ว! กำลังนำรูปไปสร้างวิดีโอต่อทันที...");
-            await sleep(2000); // รอให้ระบบบันทึกรูปสักพัก
+            log("🎯 ได้รูปภาพแล้ว! รอก่อนสัก 5-10 วินาทีตามที่กำหนด (เพื่อเลี่ยงการส่งคำสั่งเร็วเกินไป)...");
+            await sleep(8000 + Math.random() * 2000); // รอ 8-10 วินาที
 
             // 4b. เปลี่ยน config เป็น VIDEO mode + portrait
-            if (cfg.autoPortrait) await ensureConfig("video", options);
+            if (cfg.autoPortrait) {
+                await ensureConfig("video", options);
+                await sleep(5000); // หน่วงเวลา 5 วินาที
+            }
 
             // ล้างรูป listing ที่แนบไว้ตอนสร้างภาพออกก่อน ไม่งั้นวิดีโอจะอ้างอิง
             // รูปสินค้าเดิมแทนภาพที่เจนเสร็จใน Phase 1
             await clearPromptAttachments();
+            await sleep(5000); // หน่วงเวลา 5 วินาที
 
             // 5b. ภาพที่เจนเสร็จอยู่ในผลลัพธ์แล้ว → คลิกขวา Add to prompt ตรงๆ
             //     ไม่สลับแท็บ/filter (panel ค้าง Upload ก็ไม่เกี่ยว เพราะ add จากผลลัพธ์โดยตรง)
             await addGeneratedStillToPrompt(result);
             log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
+            await sleep(5000); // หน่วงเวลา 5 วินาที
 
             // 6b. กรอก prompt สำหรับวิดีโอ
             log("กรอก Prompt วิดีโอ...");
             await setPrompt(prompt.videoPrompt);
+            await sleep(5000); // หน่วงเวลา 5 วินาที
 
             // 7b. กด Generate
             await clickGenerate();
+            await sleep(5000); // หน่วงเวลา 5 วินาที
 
             // 8b. รอผลลัพธ์วิดีโอ
             const restartVideoGeneration = async (context = {}) => {
@@ -2173,7 +2477,8 @@ async function runPipeline(payload) {
             return { ok: true, resultUrl: vidResult.mediaUrl, tileId: vidResult.tileId, imgUrl: result.mediaUrl, imgTileId: result.tileId };
         }
 
-        await sleep(1500);
+        log("🎯 บันทึกภาพเสร็จสิ้น! รอก่อนสัก 5-10 วินาที...");
+        await sleep(8000 + Math.random() * 2000); // รอ 8-10 วินาที
         await detachFlowDebugger();
         removeOverlay();
         return { ok: true, resultUrl: result.mediaUrl, tileId: result.tileId };
@@ -2371,8 +2676,16 @@ async function finishFlowJob(jobId, result) {
         result,
         completedAt: new Date().toISOString()
     };
-    await chrome.storage.local.set({ [`flowJob:${jobId}`]: payload });
-    await chrome.runtime.sendMessage({ type: "FLOW_PIPELINE_DONE", payload }).catch(() => { });
+    try {
+        await chrome.storage.local.set({ [`flowJob:${jobId}`]: payload });
+    } catch (error) {
+        console.warn("[FlowAuto] storage set failed (possibly context invalidated):", error);
+    }
+    try {
+        await chrome.runtime.sendMessage({ type: "FLOW_PIPELINE_DONE", payload });
+    } catch (error) {
+        console.warn("[FlowAuto] runtime message send failed (possibly context invalidated):", error);
+    }
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
@@ -2390,7 +2703,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
             return false;
         }
         reply({ accepted: true, jobId });
-        runPipeline(msg.payload)
+        runPipeline(msg.payload, { jobId })
             .then(result => finishFlowJob(jobId, result))
             .catch(error => finishFlowJob(jobId, { ok: false, error: error.message || "Flow automation ล้มเหลว" }));
         return false;
@@ -2421,6 +2734,33 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     }
     return false;
 });
+
+// ตรวจสอบงานค้างเพื่อทำต่อหลังรีเฟรชหน้าเว็บ (Resume pipeline after F5 refresh)
+(async function checkResumeJob() {
+    try {
+        const data = await chrome.storage.local.get("flowActiveJobResume");
+        const state = data?.flowActiveJobResume;
+        if (state && state.jobId) {
+            if (state.step === "AFTER_UPLOAD") {
+                log("🔄 รีเฟรชรอบที่ 1 สำเร็จ! กำลังเริ่มรีเฟรชรอบที่ 2 เพื่อความเสถียรสูงสุด...");
+                state.step = "AFTER_FIRST_REFRESH";
+                await chrome.storage.local.set({ flowActiveJobResume: state });
+                await sleep(2000);
+                window.location.reload();
+            } else if (state.step === "AFTER_FIRST_REFRESH") {
+                log("🔄 รีเฟรชครบ 2 รอบแล้ว! รอ 5 วินาทีก่อนเริ่มดำเนินการกรอกข้อความต่อไป...");
+                await chrome.storage.local.remove("flowActiveJobResume");
+                // รอ 5 วินาทีเพื่อให้หน้าเว็บและองค์ประกอบต่างๆ โหลดเสร็จสิ้นสมบูรณ์
+                await sleep(5000);
+                runPipeline(state.payload, { resumeState: state, jobId: state.jobId })
+                    .then(result => finishFlowJob(state.jobId, result))
+                    .catch(error => finishFlowJob(state.jobId, { ok: false, error: error.message || "Flow automation ล้มเหลวหลังรีเฟรช" }));
+            }
+        }
+    } catch (e) {
+        console.error("[FlowAuto] Failed to resume job:", e);
+    }
+})();
 
 chrome.runtime.sendMessage({ type: "FLOW_CONTENT_READY" }).catch(() => { });
 console.log("[FlowAuto] loaded on", location.href);

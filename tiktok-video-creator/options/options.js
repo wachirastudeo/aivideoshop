@@ -24,7 +24,7 @@ async function loadOptions() {
 
   // Google Flow
   const flow = settings.flow || {};
-  setRadio("flow-video-model", flow.videoModel || "veo-3.1-lite");
+  setRadio("flow-video-model", flow.videoModel || "veo-3.1-lite-low-priority");
   setSelectValue("flow-image-model", flow.imageModel || "nano-banana-pro");
   setChecked("flow-auto-portrait", flow.autoPortrait !== false);
   setChecked("flow-reuse-tab", flow.reuseTab !== false);
@@ -91,7 +91,7 @@ async function saveSettings() {
     openaiModel: getSelectValue("openai-model") || DEFAULT_OPENAI_MODEL,
 
     flow: {
-      videoModel: getRadio("flow-video-model") || "veo-3.1-lite",
+      videoModel: getRadio("flow-video-model") || "veo-3.1-lite-low-priority",
       imageModel: getSelectValue("flow-image-model") || "nano-banana-pro",
       autoPortrait: getChecked("flow-auto-portrait"),
       reuseTab: getChecked("flow-reuse-tab"),

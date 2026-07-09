@@ -160,16 +160,21 @@ async function handleVideoUpload(payload = {}) {
 
     assertNotStopped();
     await discardRecoveryDraftIfNeeded();
+    await sleep(1500 + Math.random() * 1500);
     assertNotStopped();
     sendPipelineLog("info", "กำลังอัปโหลดวิดีโอ...");
     await uploadVideoFromUrl(videoUrl, filename || buildVideoFilename({ productId }));
+    await sleep(2000 + Math.random() * 1500);
     assertNotStopped();
     sendPipelineLog("info", "รอ TikTok ประมวลผลวิดีโอ...");
     await waitForUploadFinished();
+    await sleep(2500 + Math.random() * 2000);
     assertNotStopped();
     await fillCaptionAndHashtags(caption, hashtags);
+    await sleep(2000 + Math.random() * 1500);
     assertNotStopped();
     const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, aiGenerated, allowComment, allowReuse });
+    await sleep(2000 + Math.random() * 1500);
     assertNotStopped();
 
     if (mode === "post") {
@@ -389,7 +394,7 @@ async function findUploadInput(timeoutMs = 60000) {
     }
 
     // กดปุ่มเปิด upload ซ้ำทุกครั้งที่วน (กันเน็ตช้า/หน้ายังไม่พร้อม)
-    clickUploadEntryPoint();
+    await clickUploadEntryPoint();
     const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
     if (remain !== lastTick) {
       lastTick = remain;
@@ -414,7 +419,7 @@ function sameOriginFrameDocuments() {
   return docs;
 }
 
-function clickUploadEntryPoint() {
+async function clickUploadEntryPoint() {
   const labels = [
     "select video",
     "select file",
@@ -427,7 +432,7 @@ function clickUploadEntryPoint() {
   ];
   const button = findButtonByText(labels);
   if (button) {
-    realClick(button);
+    await realClick(button);
     return;
   }
 
@@ -437,7 +442,7 @@ function clickUploadEntryPoint() {
       const text = normalizeText(el.textContent);
       return text.includes("upload") || text.includes("select video") || text.includes("เลือกวิดีโอ") || text.includes("อัปโหลด");
     });
-  if (dropzone) realClick(dropzone);
+  if (dropzone) await realClick(dropzone);
 }
 
 function dispatchFileDrop(input, file) {
@@ -481,7 +486,7 @@ async function verifyFileAccepted(input, file) {
   throw new Error("TikTok Studio ไม่รับไฟล์วิดีโอหลังใส่เข้า input");
 }
 
-async function waitForUploadFinished(timeoutMs = 300000) {
+async function waitForUploadFinished(timeoutMs = 400000) {
   const deadline = Date.now() + timeoutMs;
   let lastLog = 0;
 
@@ -536,26 +541,24 @@ async function fillCaptionAndHashtags(caption, hashtags) {
     throw new Error("ไม่พบช่อง Caption หลังหมดเวลา");
   }
   editor.focus();
-  editor.click();
+  await realClick(editor);
+  await sleep(150 + Math.random() * 150);
   selectAllEditable(editor);
   document.execCommand("delete", false);
+  await sleep(150 + Math.random() * 100);
 
-  if (caption) {
-    document.execCommand("insertText", false, caption);
+  // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
+  const fullText = [
+    caption,
+    ...normalizeHashtags(hashtags)
+  ].filter(Boolean).join(" ");
+
+  if (fullText) {
+    document.execCommand("insertText", false, fullText);
   }
+  await sleep(200 + Math.random() * 150);
 
-  for (const rawTag of normalizeHashtags(hashtags)) {
-    assertNotStopped();
-    const tag = String(rawTag || "").replace(/^#/, "").trim();
-    if (!tag) continue;
-    document.execCommand("insertText", false, ` #${tag}`);
-    await sleep(250);
-    // ปิด popup แนะนำแฮชแท็ก ไม่งั้นพอ focus หลุด (กดโพส) TikTok จะ commit suggestion ทับ
-    dismissCaptionSuggestion(editor);
-    await sleep(150);
-  }
-
-  // เคาะ popup ที่อาจค้างเป็นรอบสุดท้าย แล้วค่อยยิง input/change ให้ DraftJS อัปเดต state
+  // ปิด popup แนะนำแฮชแท็ก ไม่งั้นพอ focus หลุด (กดโพส) TikTok จะ commit suggestion ทับ
   dismissCaptionSuggestion(editor);
   await sleep(150);
   editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: " " }));
@@ -572,9 +575,12 @@ function dismissCaptionSuggestion(editor) {
 async function applyUploadSettings(settings) {
   assertNotStopped();
   await applyScheduleSettings(settings.postType, settings.scheduleTime);
+  await sleep(1500 + Math.random() * 1500);
   assertNotStopped();
+  
   const productRequired = Boolean(String(settings.productId || settings.productUrl || "").trim());
   const productAdded = await applyProductLink(settings.productId, settings.productUrl, settings.productName);
+  await sleep(2000 + Math.random() * 2000);
   assertNotStopped();
   if (productRequired && !productAdded) {
     throw new Error("เพิ่มลิงก์สินค้าไม่สำเร็จ");
@@ -588,23 +594,26 @@ async function applyUploadSettings(settings) {
       locationInput.dispatchEvent(new Event("input", { bubbles: true }));
       locationInput.value = settings.location;
       locationInput.dispatchEvent(new Event("input", { bubbles: true }));
-      await sleep(1200);
+      await sleep(1200 + Math.random() * 1000);
       const option = findButtonByText([settings.location]);
-      if (isClickable(option)) realClick(option);
+      if (isClickable(option)) await realClick(option);
+      await sleep(1500 + Math.random() * 1500);
     }
   }
 
   if (settings.privacy) {
     const combo = document.querySelector(TIKTOK_SELECTORS.visibilityCombo);
     if (isClickable(combo)) {
-      realClick(combo);
-      await sleep(500);
+      await realClick(combo);
+      await sleep(800 + Math.random() * 800);
       const option = findButtonByText([settings.privacy]);
-      if (isClickable(option)) realClick(option);
+      if (isClickable(option)) await realClick(option);
+      await sleep(1500 + Math.random() * 1500);
     }
   }
 
   const aigcOk = await setAigcSwitch(settings.aiGenerated);
+  await sleep(1500 + Math.random() * 1500);
   assertNotStopped();
   if (!aigcOk) {
     throw new Error("ตั้ง AI-generated ไม่สำเร็จ");
@@ -612,7 +621,9 @@ async function applyUploadSettings(settings) {
 
   const permissionChecks = [...document.querySelectorAll(TIKTOK_SELECTORS.userPermChecks)];
   await setCheckboxState(permissionChecks[0], settings.allowComment);
+  await sleep(800 + Math.random() * 800);
   await setCheckboxState(permissionChecks[1], settings.allowReuse);
+  await sleep(1500 + Math.random() * 1500);
 
   return { productRequired, productAdded, aigcOk };
 }
@@ -646,7 +657,7 @@ async function applyProductLink(productId, productUrl, productName) {
   });
   if (!addBtn) { log("❌ ไม่พบปุ่ม Add link"); return false; }
   await sleep(600);
-  realClick(addBtn);
+  await realClick(addBtn);
   try { addBtn.click(); } catch (_) {}
   log("STEP1 คลิก Add link (ครั้งเดียว) — รอ modal");
   const opened = await retryUntil("STEP1b รอ modal เปิด", () =>
@@ -666,7 +677,7 @@ async function applyProductLink(productId, productUrl, productName) {
     }, 20000, 1500, () => diagPrimaryButton(["next", "ถัดไป"]));
     if (ltNext && ltNext !== "skip") {
       await sleep(500);
-      realClick(ltNext);
+      await realClick(ltNext);
       try { ltNext.click(); } catch (_) {}
       log("STEP2 คลิก Next (ครั้งเดียว) — รอหน้าเลือกสินค้า");
     }
@@ -680,17 +691,19 @@ async function applyProductLink(productId, productUrl, productName) {
   const searchInput = await retryUntil("STEP4 เลือก Showcase + รอช่องค้นหา", () => {
     const tab = findButtonByText(["showcase products", "นำเสนอสินค้า"]);
     // คลิกแท็บ Showcase ถ้ายังไม่ active — รองรับทั้ง data-active="false", aria-selected, class
-    if (isClickable(tab) && !isTabActive(tab)) realClick(tab);
+    if (isClickable(tab) && !isTabActive(tab)) {
+      realClick(tab).catch(() => {});
+    }
     return document.querySelector('input[placeholder="Search products"], .product-search-input input, .product-selector-modal input[placeholder*="Search product"]');
   }, 30000);
   if (!searchInput) return false;
 
   // STEP 5: กรอก ID + กดค้นหา วนจนเจอแถวสินค้า
   const row = await retryUntil(`STEP5 ค้นหาสินค้า ${productKey}`, async () => {
-    typeIntoInput(searchInput, "");
+    await typeIntoInput(searchInput, "");
     await sleep(200);
-    typeIntoInput(searchInput, productKey);
-    triggerSearch(searchInput);
+    await typeIntoInput(searchInput, productKey);
+    await triggerSearch(searchInput);
     await sleep(1500);
     return findProductRow(productKey);
   }, 40000, 2000, () => {
@@ -732,7 +745,7 @@ async function applyProductLink(productId, productUrl, productName) {
   const freshNext = productSelectorNext();
   const btnToClick = isClickable(freshNext) ? freshNext : nextBtn;
   log(`STEP6b คลิก Next (clickable=${isClickable(btnToClick)})`);
-  realClick(btnToClick);
+  await realClick(btnToClick);
   try { btnToClick.click(); } catch (_) {}
   let advanced = await retryUntil("STEP6b รอเข้าหน้าตั้งชื่อ", () =>
     (findProductNameInput() || !document.querySelector(".product-table")) ? true : null,
@@ -740,7 +753,7 @@ async function applyProductLink(productId, productUrl, productName) {
   if (!advanced) {
     log("STEP6b ยังไม่เปลี่ยนหน้า — กด Next ซ้ำอีกครั้ง");
     const b = productSelectorNext();
-    if (isClickable(b)) { realClick(b); try { b.click(); } catch (_) {} }
+    if (isClickable(b)) { await realClick(b); try { b.click(); } catch (_) {} }
     advanced = await retryUntil("STEP6b รอเข้าหน้าตั้งชื่อ (รอบ2)", () =>
       (findProductNameInput() || !document.querySelector(".product-table")) ? true : null,
       10000, 1500);
@@ -759,7 +772,7 @@ async function applyProductLink(productId, productUrl, productName) {
     const finalTitle = await buildProductLinkTitle(selectedRowTitle || productName, existingTitle);
     titleInput.focus();
     try { titleInput.select(); } catch (_) {}
-    typeIntoInput(titleInput, finalTitle);
+    await typeIntoInput(titleInput, finalTitle);
     log(`[Product Link] 🎯 STEP8 ตั้งชื่อสินค้าสำเร็จ: "${finalTitle}" (ชื่อเดิม: "${existingTitle}")`);
     await sleep(500);
   } else {
@@ -779,14 +792,14 @@ async function applyProductLink(productId, productUrl, productName) {
   let added = false;
   if (addBtn9) {
     await sleep(500);
-    realClick(addBtn9);
+    await realClick(addBtn9);
     try { addBtn9.click(); } catch (_) {}
     log("STEP9 กด Add (ครั้งเดียว) — รอ modal ปิด");
     added = await retryUntil("STEP9 รอ modal ปิด", () => findProductNameInput() ? null : true, 10000, 1500);
     if (!added) {
       log("STEP9 ยังไม่ปิด — กด Add ซ้ำอีกครั้ง");
       const b = findAddBtn();
-      if (isClickable(b)) { realClick(b); try { b.click(); } catch (_) {} }
+      if (isClickable(b)) { await realClick(b); try { b.click(); } catch (_) {} }
       added = await retryUntil("STEP9 รอ modal ปิด (รอบ2)", () => findProductNameInput() ? null : true, 10000, 1500);
     }
   }
@@ -951,14 +964,16 @@ function pressEnter(el) {
   }
 }
 
-// พิมพ์ลง input แบบ React-aware (native setter + input/change) ไม่ blur
-function typeIntoInput(input, value) {
+// วางข้อความลง input แบบ React-aware ทันทีโดยไม่ต้องพิมพ์ทีละตัวอักษร
+async function typeIntoInput(input, value) {
   input.focus();
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
   if (setter) setter.call(input, value);
   else input.value = value;
+
   input.dispatchEvent(new InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
+  await sleep(150 + Math.random() * 150);
 }
 
 async function applyScheduleSettings(postType, scheduleTime) {
@@ -985,7 +1000,7 @@ async function applyScheduleSettings(postType, scheduleTime) {
 async function setRadioState(input, desired) {
   if (!input) return;
   if (Boolean(input.checked) === Boolean(desired)) return;
-  realClick(input);
+  await realClick(input);
   await sleep(350);
 }
 
@@ -1085,7 +1100,7 @@ async function setAigcSwitch(desired) {
   // คลิก + verify หลายรอบ จนกว่าจะได้สถานะที่ต้องการ
   for (let attempt = 1; attempt <= 4; attempt += 1) {
     const target = attempt % 2 === 1 ? (clickTarget || input) : (input || clickTarget);
-    if (target) realClick(target);
+    if (target) await realClick(target);
     await sleep(400);
     if (isChecked() === Boolean(desired)) {
       log(`ตั้ง AI-generated content = ${desired} สำเร็จ (รอบ ${attempt})`);
@@ -1100,7 +1115,7 @@ async function setAigcSwitch(desired) {
 async function setCheckboxState(input, desired) {
   if (desired === undefined || !input) return;
   if (Boolean(input.checked) === Boolean(desired)) return;
-  realClick(input);
+  await realClick(input);
   await sleep(250);
 }
 
@@ -1115,7 +1130,7 @@ async function clickSaveDraftV2() {
   await sleep(800);
   assertNotStopped();
   finalSubmitInProgress = true;
-  realClick(button);
+  await realClick(button);
   await clickConfirmIfNeeded();
 }
 
@@ -1130,7 +1145,7 @@ async function clickPost() {
   await sleep(800);
   assertNotStopped();
   finalSubmitInProgress = true;
-  realClick(button);
+  await realClick(button);
   await clickConfirmIfNeeded();
 }
 
@@ -1138,7 +1153,7 @@ async function clickConfirmIfNeeded() {
   await sleep(1500);
   const confirmButton = findButtonByText(TIKTOK_TEXT.confirm);
   if (isClickable(confirmButton)) {
-    realClick(confirmButton);
+    await realClick(confirmButton);
   }
 }
 
@@ -1154,7 +1169,7 @@ async function discardRecoveryDraftIfNeeded() {
 
   const discardButton = findButtonByText(["discard", "start over", "reset", "ทิ้ง", "เริ่มใหม่", "ล้าง"]);
   if (isClickable(discardButton)) {
-    realClick(discardButton);
+    await realClick(discardButton);
     await sleep(1000);
   }
 }
@@ -1189,24 +1204,24 @@ async function fillCaption(caption, hashtags) {
   );
 
   captionEl.focus();
-  captionEl.click();
-  await sleep(300);
+  await realClick(captionEl);
+  await sleep(150 + Math.random() * 150);
 
   // ล้างข้อความเก่า
   document.execCommand("selectAll");
   document.execCommand("delete");
-  await sleep(200);
+  await sleep(150 + Math.random() * 100);
 
-  // พิมพ์ caption
-  document.execCommand("insertText", false, caption);
-  await sleep(300);
+  // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
+  const fullText = [
+    caption,
+    ...normalizeHashtags(hashtags)
+  ].filter(Boolean).join(" ");
 
-  // เพิ่ม hashtags
-  for (const tag of normalizeHashtags(hashtags)) {
-    const normalized = tag.startsWith("#") ? tag : `#${tag}`;
-    document.execCommand("insertText", false, ` ${normalized}`);
-    await sleep(150);
+  if (fullText) {
+    document.execCommand("insertText", false, fullText);
   }
+  await sleep(200 + Math.random() * 150);
 
   captionEl.dispatchEvent(new Event("input", { bubbles: true }));
   captionEl.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1226,7 +1241,7 @@ async function clickSaveDraft() {
       /draft|ร่าง/i.test(btn.textContent)
     );
     if (draftBtn) {
-      draftBtn.click();
+      await realClick(draftBtn);
       return;
     }
   }
@@ -1235,7 +1250,7 @@ async function clickSaveDraft() {
   const xpath = "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'draft') or contains(., 'ร่าง')]";
   const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
   if (result.singleNodeValue) {
-    result.singleNodeValue.click();
+    await realClick(result.singleNodeValue);
     return;
   }
 
@@ -1270,7 +1285,8 @@ function waitForElement(selector, timeoutMs = 10000) {
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  const jitterFactor = ms >= 300 ? (0.7 + Math.random() * 0.6) : 1.0;
+  return new Promise(resolve => setTimeout(resolve, Math.round(ms * jitterFactor)));
 }
 
 function assertNotStopped() {
@@ -1638,26 +1654,133 @@ function selectAllEditable(element) {
   selection.addRange(range);
 }
 
-function realClick(element) {
-  element.scrollIntoView({ block: "center", inline: "center" });
+async function realClick(element) {
+  element.scrollIntoView({ block: "nearest", inline: "nearest" });
+
+  // 1) Jitter delay before clicking (mimicking human reaction time)
+  await sleep(150 + Math.random() * 250);
 
   const rect = element.getBoundingClientRect();
-  const x = rect.left + rect.width / 2;
-  const y = rect.top + rect.height / 2;
-  const options = {
+  const px = rect.width * 0.2;
+  const py = rect.height * 0.2;
+  const clickX = rect.left + px + Math.random() * (rect.width - px * 2);
+  const clickY = rect.top + py + Math.random() * (rect.height - py * 2);
+
+  // 2) Simulates mouse movement trail to the click coordinate
+  await simulateMouseTrail(clickX, clickY);
+
+  const sx = clickX + window.screenX;
+  const sy = clickY + window.screenY;
+  const baseOpts = () => ({
     bubbles: true,
     cancelable: true,
-    view: window,
-    clientX: x,
-    clientY: y,
+    clientX: clickX,
+    clientY: clickY,
+    screenX: sx,
+    screenY: sy,
     button: 0,
-  };
+    buttons: 0,
+    movementX: Math.floor(Math.random() * 5) - 2,
+    movementY: Math.floor(Math.random() * 5) - 2,
+    view: window,
+  });
 
-  element.dispatchEvent(new PointerEvent("pointerdown", { ...options, pointerId: 1, pointerType: "mouse" }));
-  element.dispatchEvent(new MouseEvent("mousedown", options));
-  element.dispatchEvent(new PointerEvent("pointerup", { ...options, pointerId: 1, pointerType: "mouse" }));
-  element.dispatchEvent(new MouseEvent("mouseup", options));
-  element.dispatchEvent(new MouseEvent("click", options));
+  const pointerOpts = () => ({
+    ...baseOpts(),
+    pointerId: 1,
+    pointerType: "mouse",
+    isPrimary: true,
+    pressure: 0,
+    width: 1,
+    height: 1,
+  });
+
+  // Hover events
+  element.dispatchEvent(new PointerEvent("pointerover", pointerOpts()));
+  element.dispatchEvent(new MouseEvent("mouseover", baseOpts()));
+  element.dispatchEvent(new PointerEvent("pointermove", pointerOpts()));
+  element.dispatchEvent(new MouseEvent("mousemove", baseOpts()));
+
+  // Small delay before mouse down
+  await sleep(30 + Math.random() * 50);
+
+  // Press down
+  element.dispatchEvent(new PointerEvent("pointerdown", { ...pointerOpts(), pressure: 0.5, buttons: 1 }));
+  element.dispatchEvent(new MouseEvent("mousedown", { ...baseOpts(), buttons: 1 }));
+
+  // Hold mouse press for 40-90ms
+  await sleep(40 + Math.random() * 50);
+
+  // Release
+  element.dispatchEvent(new PointerEvent("pointerup", pointerOpts()));
+  element.dispatchEvent(new MouseEvent("mouseup", baseOpts()));
+  element.dispatchEvent(new MouseEvent("click", baseOpts()));
+
+  // Jitter after click finishes
+  await sleep(100 + Math.random() * 150);
+}
+
+let currentMouseX = window.innerWidth / 2;
+let currentMouseY = window.innerHeight / 2;
+document.addEventListener("mousemove", (e) => {
+  currentMouseX = e.clientX;
+  currentMouseY = e.clientY;
+}, { passive: true });
+
+function easeInOutQuad(t) {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+function getBezierPoints(x0, y0, x3, y3, steps) {
+  const points = [];
+  const dx = x3 - x0;
+  const dy = y3 - y0;
+  const p1x = x0 + dx * 0.25 + (Math.random() - 0.5) * 120;
+  const p1y = y0 + dy * 0.25 + (Math.random() - 0.5) * 120;
+  const p2x = x0 + dx * 0.75 + (Math.random() - 0.5) * 120;
+  const p2y = y0 + dy * 0.75 + (Math.random() - 0.5) * 120;
+  for (let i = 1; i <= steps; i++) {
+    const t = easeInOutQuad(i / steps);
+    const mt = 1 - t;
+    const x = mt * mt * mt * x0 + 3 * mt * mt * t * p1x + 3 * mt * t * t * p2x + t * t * t * x3;
+    const y = mt * mt * mt * y0 + 3 * mt * mt * t * p1y + 3 * mt * t * t * p2y + t * t * t * y3;
+    points.push({ x, y });
+  }
+  return points;
+}
+
+async function simulateMouseTrail(targetX, targetY) {
+  const startX = currentMouseX;
+  const startY = currentMouseY;
+  const distance = Math.hypot(targetX - startX, targetY - startY);
+  if (distance < 5) return;
+  const steps = Math.max(8, Math.min(30, Math.floor(distance / 20)));
+  const points = getBezierPoints(startX, startY, targetX, targetY, steps);
+  for (let i = 0; i < points.length; i++) {
+    const { x, y } = points[i];
+    const opts = {
+      bubbles: true,
+      clientX: x,
+      clientY: y,
+      screenX: x + window.screenX,
+      screenY: y + window.screenY,
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+      buttons: 0,
+      pressure: 0,
+      view: window,
+    };
+    document.dispatchEvent(new PointerEvent("pointermove", opts));
+    document.dispatchEvent(new MouseEvent("mousemove", {
+      ...opts,
+      movementX: i > 0 ? x - points[i - 1].x : 0,
+      movementY: i > 0 ? y - points[i - 1].y : 0
+    }));
+    await sleep(6 + Math.random() * 8);
+  }
+  currentMouseX = targetX;
+  currentMouseY = targetY;
 }
 
 let logSeq = 0;

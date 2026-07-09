@@ -89,33 +89,32 @@ const PRESENTERS = {
   living_product: "The product itself becomes a living character with cute 3D eyes and personality"
 };
 
-const THAI_PERSON_DIRECTION = "Natural Thai reviewer. Keep the product visible and unchanged; do not wear, cover, bend, or deform it.";
+const THAI_PERSON_DIRECTION = "Natural Thai reviewer. The product must remain rigid, static, and completely unchanged; the reviewer stands next to it or holds it gently without covering, bending, or deforming it.";
 
-const HANDS_DIRECTION = "Show only realistic human hands holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand; never add, merge, distort, or remove fingers. Keep the product fully visible and unchanged.";
+const HANDS_DIRECTION = "Show only realistic human hands holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand. The product itself must remain rigid and unchanged; do not cover, bend, warp, or deform it.";
 
-const PRODUCT_FIDELITY_DIRECTION = "Use the title to identify the product. Preserve its exact shape, proportions, materials, colors, and original printed details. Do not write, print, or generate any new text, labels, or letters on the product package. Keep the original text layout from the reference image exactly as it is, without drawing or spelling any words from the text prompt onto the product packaging. Do not redesign it.";
+const PRODUCT_FIDELITY_DIRECTION = "Reproduce product exactly as in reference image: preserve its exact shape, form, color, material, and labels. Do not add packaging not visible in reference image. Do not substitute parts.";
 
 const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
 
-const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangement of drawers, shelves, doors, compartments, handles, legs, and other product parts. Never add, remove, merge, or rearrange them.";
+const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Never add, remove, or rearrange them.";
 
-const SCALE_FIDELITY_DIRECTION = "Keep the product's proportions and real-world scale identical to the uploaded reference: same width-to-height ratio and part dimensions; never stretch, squash, elongate, enlarge, or shrink it.";
+const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to reference: never stretch, squash, enlarge, or shrink it. The physical size of the product must be realistic and true-to-life compared to the environment, hands, or presenter. Do not make the product abnormally large or out-of-scale relative to the surroundings. ขนาดจริงของสินค้าในรูปทรงต้องได้สัดส่วนจริงเหมือนของจริงเมื่อเทียบกับมือคน พรีเซนเตอร์ หรือสภาพแวดล้อม ห้ามวาดสินค้าให้ใหญ่เกินจริงหรือผิดเพี้ยนไปจากขนาดของจริงโดยเด็ดขาด (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
 
-const MATCH_STILL_DIRECTION = "CRITICAL: treat the attached reference image as the exact product. Keep its shape, proportions, colors, materials, and all printed text, logos, and graphics identical in every scene. Do not write, print, or generate any new text, labels, or letters on the product package. Copy the original text layout from the reference image exactly as it is, without drawing or spelling any words from the text prompt onto the product packaging. Animate only camera, lighting, and scene action around it; never redraw, restyle, swap, warp, or distort the product or its text.";
+const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product and the presenter across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the presenter and background; do not enlarge, shrink, stretch, or warp it. ขนาดและอัตราส่วนสัดส่วนของตัวสินค้าในวิดีโอต้องเท่ากับภาพอ้างอิงต้นฉบับทุกประการ ห้ามปรับขนาดสินค้าย่อขยายให้เล็กหรือใหญ่ขึ้นเด็ดขาด (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). If a presenter is visible in the reference image, the presenter in the video (including their face, hair, clothing, gender, age, and overall appearance) must look exactly identical and consistent with the presenter depicted in the reference image across all scenes. ใบหน้า รูปลักษณ์ ทรงผม เสื้อผ้า และหน้าตาของคนรีวิวในวิดีโอต้องเหมือนกับคนรีวิวในภาพอ้างอิงต้นฉบับทุกประการและต้องเหมือนเดิมตลอดทั้งวิดีโอ (Strictest rule: The face, hair, clothing, and overall appearance of the presenter in the video must match the presenter in the reference image exactly and remain identical throughout the entire video). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). ห้ามสร้างวิดีโอที่มีลักษณะเป็นตารางภาพต่อกัน (collage) หรือแบ่งช่องหน้าจอหลายๆ ช่องในเฟรมเดียวโดยเด็ดขาด ทุกฉากในวิดีโอต้องเป็นภาพเดี่ยวเต็มหน้าจอ (single full-frame shot) เสมอ โดยให้นำภาพมุมย่อยแต่ละภาพจากรูปอ้างอิงมาสร้างและขยับเป็น 1 ซีนเต็มหน้าจอตามลำดับ (1 ภาพเล็กย่อย = 1 ซีนเต็มเฟรม) Animate each scene with smooth camera movement and transition between them with clean cuts.";
 
-const REALISM_AND_PHYSICS_DIRECTION = "Realistic motion and physics only. No product morphing, warping, bending, or melting. No floating objects or levitation; the product and all props must rest firmly on a solid surface and obey gravity naturally. Hands or people must interact naturally without distorting the product. Camera movement must be smooth, cinematic, and stable (slow pans or zooms), with no shaky motion.";
+const REALISM_AND_PHYSICS_DIRECTION = "Realistic motion only. The product must remain rigid and static: no morphing, warping, bending, melting, opening, or closing. No floating. Camera movement must be smooth and stable.";
 
+const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 
-const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, side and viewing angle, toe shape, sole thickness and tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, and color blocking. Do not turn it into another shoe model.";
-
-const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork/pattern EXACTLY as in the reference: identical motif, characters, illustration, layout, composition, scale, position, orientation, and all colors. Treat the printed graphic as fixed image data — copy it pixel-faithfully, never reinterpret, redraw, restyle, simplify, mirror, shift, recolor, or replace it with a different design. Keep camera cutout, buttons, and ports placement unchanged.";
+const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork, motif, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement of the design. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace the pattern. For videos, this pattern must remain completely static and unchanged on the product's surface as the camera moves or the presenter holds it.";
 
 const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
-const TEXT_FREE_DIRECTION = "Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, garble, add, or remove them. Do not write or print any new text, letters, or words on the product packaging. Do not add any extra readable text onto the scene: no captions, subtitles, CTA, promotions, stickers, badges, watermarks, signs, or UI.";
+const TEXT_FREE_DIRECTION = "STRICT: No added text, words, or characters. Do not render promotional copy, price tags, banners, watermarks, captions, subtitles, CTA, sale labels, or signs. Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, add, or remove them. Do not add any extra readable text onto the scene.";
 
-const NO_PEOPLE_DIRECTION = "Product-only scene. No people, faces, presenters, reviewers, characters, celebrities, or public figures.";
+const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
 
 const VOICE_TONES = {
   Auto: "Let AI choose the most suitable voice tone for the product and audience",
@@ -192,31 +191,55 @@ export function sanitizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, 1200);
 }
 
-/**
- * @description สร้าง prompt สำหรับ Phase 1 เพื่อทำภาพสินค้าใหม่
- * @param {object} productInfo - ข้อมูลสินค้า
- * @param {object} settings - settings ของวิดีโอ
- * @returns {string} prompt ภาษาอังกฤษ
- */
-export function buildImagePrompt(productInfo, settings) {
-  const hasRealAdvice = productInfo.promptAdvice && !productInfo.promptAdvice.startsWith("Preserve only");
-  const adviceName = hasRealAdvice ? stripStructuralVariantCounts(compactPromptText(productInfo.promptAdvice, 120)) : "";
-  const productName = adviceName || generationProductName(productInfo.name, productInfo.category) || "the attached product";
-  const details = compactPromptText(productInfo.highlights || "", 80).replace(/[^\x00-\x7F]/g, "").trim();
+export function buildImagePrompt(productInfo, settings = {}) {
+  const auto = resolveAutoSettings(productInfo, settings);
+  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
+  const details = compactPromptText(productInfo.highlights || "", 100).replace(/[^\x00-\x7F]/g, "").trim();
+  const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const isHeavy = isHeavyProduct(productText);
 
+  const handsOnly = auto.presenter === "hands_only";
+  const noPeople = !(auto.presenter && auto.presenter !== "none");
+
+  // Determine introductory description/layout advice based on presenter settings (always keep multiple angles grid/collage)
+  const intro = (auto.presenter && auto.presenter !== "none" && auto.presenter !== "hands_only")
+    ? `ทำภาพโฆษณารีวิวสินค้า ${productName} ที่แสดงรายละเอียดสินค้าจากหลากหลายมุมมอง (multiple angles product photography grid/collage in one vertical 9:16 layout) โดยมีผู้พรีเซนต์ร่วมแสดงสินค้าอยู่ในมุมมองต่าง ๆ.`
+    : (auto.presenter === "hands_only")
+      ? `ทำภาพโฆษณารีวิวสินค้า ${productName} ที่แสดงรายละเอียดสินค้าจากหลากหลายมุมมอง (multiple angles product photography grid/collage in one vertical 9:16 layout) โดยมีมือคนร่วมถือหรือแสดงสินค้าอยู่ในมุมมองต่าง ๆ.`
+      : `ทำภาพโฆษณารีวิวสินค้า ${productName} ที่แสดงรายละเอียดสินค้าจากหลากหลายมุมมอง (multiple angles product photography grid/collage in one vertical 9:16 layout).`;
+
+  let peopleDirection = "";
+  if (handsOnly) {
+    peopleDirection = "Show realistic human hands holding the product.";
+  } else if (auto.presenter && auto.presenter !== "none") {
+    let presenterInstruction = PRESENTERS[auto.presenter] || PRESENTERS.none;
+    if (auto.presenter === "กรอกเอง") {
+      presenterInstruction = auto.customPresenter || "a presenter";
+    }
+    peopleDirection = `Presenter: ${presenterInstruction}`;
+  } else {
+    peopleDirection = NO_PEOPLE_DIRECTION;
+  }
+
   const promptParts = [
-    `Create one vertical 9:16 commercial product photo of ${productName}.`,
-    "Preserve its exact shape, proportions, materials, colors, and printed text. Do not add any new text or labels.",
-    isHeavy ? "Real scale." : "Close-up scale, product fills most of the frame.",
+    intro,
+    PRODUCT_FIDELITY_DIRECTION,
+    SCALE_FIDELITY_DIRECTION,
+    "ผลลัพธ์ในภาพที่สร้างขึ้นใหม่ต้องรักษาความถูกต้องของตัวสินค้าให้เหมือนกับภาพอ้างอิงต้นฉบับทุกประการ ทั้งรูปทรง ลายเส้น สี วัสดุ ตราสินค้า และข้อความต่างๆ ห้ามดัดแปลงหรือบิดเบือนโครงสร้างของตัวสินค้าเด็ดขาด (Critical: The generated image must maintain absolute fidelity to the original product in the reference image. The product's shape, curves, outlines, colors, materials, branding, labels, and text must be 100% identical and unchanged. Do not redesign, warp, or modify the product's structure).",
+    "Depict the product from a diverse mix of camera angles and shot distances: wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively. ภาพปะติด (collage) นี้ต้องแสดงมุมมองที่แตกต่างกันหลากหลาย ทั้งภาพมุมกว้าง (wide shot) แสดงสินค้าในสภาพแวดล้อมจริงหรือคู่กับคนรีวิว, ภาพมุมปานกลาง (medium shot), และภาพมุมแคบซูมรายละเอียดสินค้า (close-up shot) เพื่อให้เห็นตราสินค้าและเนื้อวัสดุชัดเจน และต้องมีมุมมองจากหลายองศาที่แตกต่างกัน (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage).",
+    isHeavy ? "Real scale." : "Small consumer product scale: The product is a small, lightweight item. Depict it in a realistic small scale relative to the environment, hands, or presenter. Do not make it look abnormally large or giant. ขนาดจริงของสินค้าเป็นของชิ้นเล็ก (เช่น ถุง/ขวดขนาดเล็กปกติ) ต้องวาดให้มีขนาดเล็กสมจริงตามอัตราส่วนจริงเมื่อเทียบกับมือคนหรือฉากหลัง ห้ามวาดให้ใหญ่โตเกินจริงเด็ดขาด (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).",
     PRODUCT_ISOLATION_DIRECTION,
-    categoryDirection || PRODUCT_STRUCTURE_DIRECTION,
-    "Clean commercially appealing background. Centered, sharp, uncluttered.",
-    details ? `Emphasize: ${details}.` : "",
-    NO_PEOPLE_DIRECTION,
-    "No extra text, captions, watermarks, or UI on the image."
+    PRODUCT_STRUCTURE_DIRECTION,
+    categoryDirection,
+    analysisDirection,
+    "Choose a clean, realistic, commercially appealing background that fits this product category.",
+    `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
+    peopleDirection,
+    "ข้อความบนภาพสินค้าและบรรจุภัณฑ์ต้องเหมือนกับในภาพต้นฉบับทุกประการ ห้ามเติมข้อความโฆษณาหรือคิดคำขึ้นมาใหม่เองโดยเด็ดขาด (Strictest rule: any text, labels, brand names, or writing on the product and packaging must match the reference image exactly; do NOT invent new words or add any extra text or promotional overlays).",
+    TEXT_FREE_DIRECTION,
+    "Final check: ensure no added text or numbers exist in the output."
   ];
 
   return promptParts.filter(Boolean).join(" ");
@@ -266,25 +289,57 @@ function isHeavyProduct(text = "") {
  * @param {object} settings - settings ของวิดีโอ
  * @returns {string} prompt ภาษาอังกฤษ
  */
+function generateThaiDialogue(productInfo, settings, auto) {
+  let phrase = "";
+  if (settings?.clipText) {
+    phrase = settings.clipText;
+  } else if (productInfo?.highlights) {
+    const parts = productInfo.highlights.split(/[,\n;]/);
+    phrase = parts[0].trim();
+  } else {
+    phrase = "สินค้าตัวนี้ดีมากๆ";
+  }
+  
+  // ลบอิโมจิและอักขระพิเศษ
+  phrase = phrase.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, '').trim();
+  
+  const isMan = auto?.presenter === "man";
+  const ending = isMan ? "ครับ" : "ค่ะ";
+  
+  if (!phrase.endsWith("ค่ะ") && !phrase.endsWith("ครับ") && !phrase.endsWith("เลย") && !phrase.endsWith("นะ")) {
+    phrase = phrase + ` ดีมากๆ เลย${ending}`;
+  }
+  return phrase;
+}
+
 export function buildVideoPrompt(productInfo, settings = {}) {
   const auto = resolveAutoSettings(productInfo, settings);
   const locationStr = resolvePromptLocation(auto);
   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
   const clipText = compactPromptText(settings?.clipText, 80);
   const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true") && Boolean(clipText);
-  const hasRealAdvice = productInfo.promptAdvice && !productInfo.promptAdvice.startsWith("Preserve only");
-  const adviceName = hasRealAdvice ? stripStructuralVariantCounts(compactPromptText(productInfo.promptAdvice, 120)) : "";
-  const productName = adviceName || generationProductName(productInfo.name, productInfo.category) || "the attached product";
-
+  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
+  const analysisDirection = buildAnalysisDirection(productInfo);
+  const categoryDirection = buildCategoryFidelityDirection(productInfo);
+  const overlayText = [
+    clipText,
+    textEnabled ? compactPromptText(settings?.promotionText, 80) : ""
+  ].filter(Boolean);
+ 
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const weightCategory = getProductWeightCategory(productText);
   const isHeavy = weightCategory !== "light";
   const isImmobile = weightCategory === "immobile";
 
   const promptParts = [
-    `Create a ${durationSeconds}-second vertical 9:16 product video for ${productName}.`,
+    `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
     MATCH_STILL_DIRECTION,
-    isHeavy ? "Real scale." : "Close-up scale: product fills most of the frame, packaging text remains sharp and readable.",
+    PRODUCT_FIDELITY_DIRECTION,
+    REALISM_AND_PHYSICS_DIRECTION,
+    isHeavy ? "Real scale." : "Close-up scale: Show the product in a prominent close-up so all details remain sharp and readable.",
+    PRODUCT_STRUCTURE_DIRECTION,
+    categoryDirection,
+    analysisDirection,
   ];
 
   const handsOnly = auto.presenter === "hands_only";
@@ -297,7 +352,12 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   if (noPeople) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown on its own")
-      .replace(/\b(presenter|reviewer|person)\b/gi, "product");
+      .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b/gi, "the product shown on its own");
+  } else if (handsOnly) {
+    sceneBreakdown = sceneBreakdown
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "hands holding and presenting the product")
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, "hands holding the product")
+      .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
   }
 
   if (isImmobile) {
@@ -339,18 +399,36 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       + " Product rests on a surface; do not lift or carry it.";
   } else if (weightCategory === "medium_heavy") {
     presenterInstruction = presenterInstruction
-      .replace("holding and presenting", "holding with both hands and presenting");
-  } else {
+      .replace("holding and presenting", "holding with both hands and presenting")
+      .replace("holding", "holding with both hands or interacting with")
+      + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the presenter, never as a tiny packet or a giant sack.";
+  } else if (weightCategory === "light") {
+    handsDir = handsDir
+      + " The product is a small item; depict it in a prominent large scale relative to the hands (close-up), ensuring the product's brand name and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+
     presenterInstruction = presenterInstruction
-      + " Show product in prominent close-up, large and readable.";
+      + " The product is a small item; depict it in a prominent large scale (close-up or medium close-up) relative to the presenter, ensuring the product's brand name and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
   }
 
+  // รวมข้อมูลสินค้าทั้งหมดมาประกบรวมกันสำหรับส่งให้ AI วิเคราะห์ทำบทพูด
+  // NOTE: ไม่ส่งราคาและ CTA เข้า speech context เพื่อป้องกัน AI พูดราคาหรือ CTA ออกมา
+  const details = [];
+  if (productInfo.name) details.push(`Product Name: ${productInfo.name}`);
+  if (productInfo.highlights) details.push(`Highlights: ${productInfo.highlights}`);
+  if (settings?.clipText) details.push(`Main Message: ${settings.clipText}`);
+  const combinedProductDetails = details.join(", ");
+
+  const toneDesc = VOICE_TONES[auto.voiceTone] || VOICE_TONES.Auto;
+  
+  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must present the product's value proposition, features, or name naturally in Thai. STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai (ราคา, บาท, ลด, ถูก) nor in English (price, baht, cost, sale). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams (กรัม, g), kilograms (กิโลกรัม, กิโล, กก., kg), milliliters (มล., ml), liters (ลิตร, l), ounces (ออนซ์, oz), or any numerical amount. ห้ามพูดถึงน้ำหนัก ปริมาตร หรือขนาดทางกายภาพของสินค้าในบทพูดโดยเด็ดขาด เช่น กรัม, กิโลกรัม, กก., มิลลิลิตร, มล., ลิตร, ออนซ์, หรือตัวเลขแสดงขนาดใดๆ (Strictest rule: spoken script must never mention any product weight, grams, kilograms, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as สั่งได้เลย, กดลิงก์, ช้อปเลย, รีบซื้อ, order now, click the link, or any buying prompt. Do not speak in English, do not add subtitles, and ensure the voice is a natural Thai speaker talking matching the product identity.`;
+  const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
+
   if (handsOnly) {
-    promptParts.push(`Hands only — no face or body. ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
+    promptParts.push(`${handsDir} ${voiceoverDir} ${speechDir}`);
   } else if (auto.presenter && auto.presenter !== "none") {
-    promptParts.push(`Presenter: ${presenterInstruction}. Natural Thai person. ${SPEECH_DIRECTION}`);
+    promptParts.push(`Presenter: ${presenterInstruction}. ${THAI_PERSON_DIRECTION} ใช้คนรีวิวเพียงคนเดียวเท่านั้นตลอดทั้งวิดีโอ ห้ามมีคนอื่นร่วมเฟรมหรือสลับเปลี่ยนตัวคนรีวิวระหว่างฉากโดยเด็ดขาด (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes). ${speechDir}`);
   } else {
-    promptParts.push(`${NO_PEOPLE_DIRECTION} ${VOICEOVER_DIRECTION} ${SPEECH_DIRECTION}`);
+    promptParts.push(`${NO_PEOPLE_DIRECTION} ${voiceoverDir} ${speechDir}`);
   }
 
   return promptParts.filter(Boolean).join("\n");
@@ -450,10 +528,11 @@ function compactPromptText(value, maxLength) {
 
 function buildAnalysisDirection(productInfo = {}) {
   const structureAdvice = compactPromptText(productInfo.structureAdvice, 220);
-  // If promptAdvice was already used as the main product name, we don't repeat it in analysisDirection
-  const promptAdvice = productInfo.promptAdvice ? "" : stripStructuralVariantCounts(compactPromptText(productInfo.promptAdvice, 140));
-  const advice = [structureAdvice, promptAdvice].filter(Boolean).join(" ");
-  return advice ? `Product analysis: ${advice}` : "";
+  const promptAdvice = stripStructuralVariantCounts(compactPromptText(productInfo.promptAdvice, 140));
+  const parts = [structureAdvice, promptAdvice].filter(Boolean);
+  if (parts.length === 0) return "";
+  // นำ structureAdvice มาใช้เป็นรายละเอียดรูปร่างสินค้าจากภาพจริง เพื่อให้ AI เข้าใจบริบท์รูปบเข้า-ออกเสมอผ่าน prompt
+  return `Image analysis of reference: ${parts.join(" ")} — Reproduce the product exactly as described here; this overrides any general category assumption about its form.`;
 }
 
 function buildCategoryFidelityDirection(productInfo = {}) {
@@ -461,10 +540,53 @@ function buildCategoryFidelityDirection(productInfo = {}) {
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
     return SHOE_FIDELITY_DIRECTION;
   }
-  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|กรอบ|กรอบโทรศัพท์|เสื้อลาย|เสื้อยืดลาย|แก้ว|เมือก|พวงกุญแจ|สติกเกอร์|โปสเตอร์|case|cover|skin|sticker|decal|poster|mug|tumbler|tee|printed|graphic|pattern|ลาย|ลายพิมพ์|พิมพ์ลาย)/i.test(text)) {
+  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|กรอบ|กรอบโทรศัพท์|เสื้อ|เสื้อยืด|เสื้อลาย|เสื้อยืดลาย|กางเกง|หมวก|กระเป๋า|หมอน|แก้ว|ถ้วย|เมือก|พวงกุญแจ|สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ของแต่งบ้าน|ผ้า|case|cover|skin|sticker|decal|poster|mug|tumbler|tee|tshirt|hoodie|cap|hat|bag|pillow|canvas|printed|graphic|pattern|illustration|ลาย|ลายพิมพ์|พิมพ์ลาย)/i.test(text)) {
     return PRINTED_GRAPHIC_FIDELITY_DIRECTION;
   }
   return "";
+}
+
+function cleanEnglishProductName(title) {
+  if (!title) return "";
+  
+  // 1. Remove bracketed text, since brackets often contain metadata like [READY STOCK], [COD]
+  let clean = title.replace(/\[[^\]]*\]/g, " ")
+                   .replace(/\([^)]*\)/g, " ")
+                   .replace(/\{[^}]*\}/g, " ");
+
+  // 2. Remove common promotional and transactional keywords (case-insensitive)
+  const promoKeywords = [
+    /\bready\s*stock\b/gi, /\breadystock\b/gi,
+    /\bhot\s*sale\b/gi, /\bhotsale\b/gi,
+    /\bbest\s*quality\b/gi, /\bbest\s*seller\b/gi,
+    /\bfree\s*shipping\b/gi, /\bfree\s*delivery\b/gi,
+    /\b100%\s*original\b/gi, /\b100%\s*authentic\b/gi,
+    /\boriginal\b/gi, /\bauthentic\b/gi,
+    /\bnew\s*arrival\b/gi, /\bspecial\s*offer\b/gi,
+    /\bpre\s*order\b/gi, /\bpre-order\b/gi,
+    /\bflash\s*sale\b/gi, /\bflashsale\b/gi,
+    /\bfast\s*shipping\b/gi, /\bfast\s*delivery\b/gi,
+    /\blocal\s*stock\b/gi, /\bbrand\s*new\b/gi,
+    /\blimited\s*edition\b/gi, /\blimited\b/gi,
+    /\bpremium\b/gi, /\bhigh\s*quality\b/gi, /\btop\s*quality\b/gi,
+    /\bwarranty\b/gi, /\bguarantee\b/gi,
+    /\bcod\b/gi, /\bfree\b/gi, /\bnew\b/gi, /\bhot\b/gi,
+    /\bdiscount\b/gi, /\bsale\b/gi, /\boff\b/gi, /\bgift\b/gi, /\bgifts\b/gi,
+    /\b\d+\s*pcs\b/gi, /\b\d+\s*pieces\b/gi, /\b\d+\s*piece\b/gi,
+    /\b\d+\s*pack\b/gi, /\b\d+\s*set\b/gi,
+    /\b\d+%\b/g
+  ];
+
+  for (const regex of promoKeywords) {
+    clean = clean.replace(regex, " ");
+  }
+
+  // 3. Keep only English characters, numbers, and basic spaces
+  clean = clean.replace(/[^\x00-\x7F]/g, " "); // Remove non-ASCII
+  clean = clean.replace(/[^a-zA-Z0-9\s]/g, " "); // Remove special punctuation
+  clean = clean.replace(/\s+/g, " ").trim();
+
+  return clean;
 }
 
 function generationProductName(value, category = "") {
@@ -473,48 +595,24 @@ function generationProductName(value, category = "") {
   const lowerVal = value.toLowerCase();
   const lowerCat = String(category || "").toLowerCase();
 
-  // 1. Determine the generic English noun
-  let noun = "";
-  if (lowerVal.includes("สายชาร์จ") || lowerVal.includes("สายชาร์จมือถือ") || lowerCat.includes("cable") || lowerCat.includes("charger")) noun = "charging cable";
-  else if (lowerVal.includes("หูฟัง") || lowerCat.includes("earphone") || lowerCat.includes("headphone") || lowerCat.includes("earbuds")) noun = "earphones";
-  else if (lowerVal.includes("พาวเวอร์แบงค์") || lowerVal.includes("แบตสำรอง") || lowerCat.includes("powerbank") || lowerCat.includes("power bank")) noun = "power bank";
-  else if (lowerVal.includes("ขาตั้ง") || lowerCat.includes("tripod") || lowerCat.includes("stand")) noun = "tripod stand";
-  else if (lowerVal.includes("พัดลม") || lowerCat.includes("fan")) noun = "portable fan";
-  else if (lowerVal.includes("กาแฟ") || lowerCat.includes("coffee")) noun = "coffee package";
-  else if (lowerVal.includes("เสื้อ") || lowerVal.includes("กางเกง") || lowerVal.includes("ผ้า") || lowerCat.includes("clothe") || lowerCat.includes("apparel")) noun = "clothing item";
-  else if (lowerVal.includes("ครีม") || lowerVal.includes("เซรั่ม") || lowerVal.includes("บำรุง") || lowerVal.includes("สกินแคร์") || lowerCat.includes("skin") || lowerCat.includes("cosmetic")) noun = "skincare product bottle";
-  else if (lowerVal.includes("อาหาร") || lowerVal.includes("ขนม") || lowerCat.includes("food") || lowerCat.includes("snack")) noun = "food product package";
-  else if (lowerVal.includes("แก้ว") || lowerVal.includes("ขวด") || lowerCat.includes("bottle") || lowerCat.includes("cup")) noun = "cup";
-  else if (lowerVal.includes("กระเป๋า") || lowerCat.includes("bag")) noun = "bag";
-  else if (lowerVal.includes("รองเท้า") || lowerCat.includes("shoe")) noun = "shoe";
-  else if (lowerVal.includes("น้ำหอม") || lowerCat.includes("perfume") || lowerCat.includes("fragrance")) noun = "perfume bottle";
-  else if (lowerVal.includes("สบู่") || lowerCat.includes("soap")) noun = "soap bar";
-  else if (lowerVal.includes("ลิป") || lowerCat.includes("lip")) noun = "lipstick";
-  else if (lowerVal.includes("ยาสระผม") || lowerVal.includes("แชมพู") || lowerVal.includes("ครีมนวด") || lowerCat.includes("shampoo") || lowerCat.includes("hair")) noun = "shampoo bottle";
-  else if (lowerVal.includes("เครื่องประดับ") || lowerVal.includes("สร้อย") || lowerVal.includes("แหวน") || lowerVal.includes("ต่างหู") || lowerCat.includes("jewelry")) noun = "jewelry item";
-  else if (lowerVal.includes("ไฟ") || lowerVal.includes("หลอดไฟ") || lowerVal.includes("โคมไฟ") || lowerCat.includes("light") || lowerCat.includes("lamp")) noun = "lamp";
+  // Map keywords to clean English generic terms
+  if (lowerVal.includes("กาแฟ") || lowerCat.includes("coffee")) return "coffee product";
+  if (lowerVal.includes("พัดลม") || lowerCat.includes("fan")) return "portable fan";
+  if (lowerVal.includes("เสื้อ") || lowerVal.includes("กางเกง") || lowerVal.includes("ผ้า") || lowerCat.includes("clothe") || lowerCat.includes("apparel")) return "clothing item";
+  if (lowerVal.includes("ครีม") || lowerVal.includes("เซรั่ม") || lowerVal.includes("บำรุง") || lowerVal.includes("สกินแคร์") || lowerCat.includes("skin") || lowerCat.includes("cosmetic")) return "skincare product bottle";
+  if (lowerVal.includes("อาหาร") || lowerVal.includes("ขนม") || lowerCat.includes("food") || lowerCat.includes("snack")) return "food product";
+  if (lowerVal.includes("แก้ว") || lowerVal.includes("ขวด") || lowerCat.includes("bottle") || lowerCat.includes("cup")) return "cup";
+  if (lowerVal.includes("กระเป๋า") || lowerCat.includes("bag")) return "bag";
+  if (lowerVal.includes("รองเท้า") || lowerCat.includes("shoe")) return "shoe";
 
-  // 2. Extract brand name / model if there are English words
-  let englishWords = value.replace(/[^\x00-\x7F]/g, " ").replace(/\s+/g, " ").trim();
-  // Filter out pure specs like "100W", "3A", "1M", "1.5M", "2M", "Type-C"
-  let cleanBrand = englishWords
-    .replace(/\b\d+(?:W|V|A|M|g|kg|ml|oz|mm|cm)\b/gi, "")
-    .replace(/\b(?:Type-C|USB|PD|QC|Fast|Charge|Speed)\b/gi, "")
-    .replace(/\b\d+(?:\.\d+)?\b/g, "") // remove numbers without units
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const words = cleanBrand.split(" ").filter(w => w.length > 1).slice(0, 2).join(" ");
-
-  if (noun) {
-    return words ? `${words} ${noun}` : noun;
+  // If there are English words in the original name, extract the first few words to identify it
+  let englishWords = cleanEnglishProductName(value);
+  if (englishWords.length > 3) {
+    const words = englishWords.split(" ").slice(0, 4).join(" ");
+    if (words.length > 3) return stripStructuralVariantCounts(words);
   }
 
-  if (words.length > 3) {
-    return stripStructuralVariantCounts(words);
-  }
-
-  return "the product packaging";
+  return "the product";
 }
 
 function stripStructuralVariantCounts(value) {
@@ -586,7 +684,7 @@ function inferPromptAutoOptions(productInfo = {}) {
     return promptAutoOptions("before-after", "none", "professional", "Professional", "Modern Living Room", "Pan Left to Right", "Swipe", "Home utility product, optimized to show the problem and result clearly");
   }
   if (/(กล่อง|แพ็ค|package|เซ็ต|bundle|gift)/i.test(text)) {
-    return promptAutoOptions("unboxing", "none", "kind", "มินิมัล", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "Bundle or packaged product, optimized for reveal and detail shots");
+    return promptAutoOptions("review", "none", "kind", "มินิมัล", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "Product with set or bundle, use reference image to determine actual form");
   }
 
   return promptAutoOptions("review", "woman", "professional", "Professional", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "General product review focused on clear details and realistic use");
@@ -673,24 +771,29 @@ export function buildCaption(productInfo, defaults = {}) {
     cta: cleanCaptionText(productInfo.cta || "สั่งได้เลย")
   });
 
-  if (!hook) return body.trim();
+  if (!hook) return removeEmojis(body.trim());
   const rest = body.startsWith(hook) ? body.slice(hook.length).trim() : body.trim();
 
-  // สุ่มคำขึ้นต้นสนุกๆ นำหน้า Hook เพื่อไม่ให้ข้อความโพสต์ซ้ำซ้อน
+  // สุ่มคำขึ้นต้นสนุกๆ นำหน้า Hook เพื่อไม่ให้ข้อความโพสต์ซ้ำซ้อน (ไม่มีอิโมจิ)
   const randomOpenings = [
-    "ชี้เป้าความคุ้มวันนี้! ✨",
-    "บอกต่อของดีที่ต้องมี! 🛍️",
-    "ใครยังไม่มีรีบเลย! 🔥",
-    "ไอเทมเด็ดชิ้นนี้ห้ามพลาด! 😍",
-    "ลองหรือยัง? ของดีบอกต่อ 💯",
-    "ตัวช่วยชีวิตดีขึ้นเยอะ! 👍",
-    "หลังจากลองตัวนี้คือปังมาก! 💖",
-    "ส่องด่วน! ดีงามเกินต้าน 🌟"
+    "ชี้เป้าความคุ้มวันนี้!",
+    "บอกต่อของดีที่ต้องมี!",
+    "ใครยังไม่มีรีบเลย!",
+    "ไอเทมเด็ดชิ้นนี้ห้ามพลาด!",
+    "ลองหรือยัง? ของดีบอกต่อ",
+    "ตัวช่วยชีวิตดีขึ้นเยอะ!",
+    "หลังจากลองตัวนี้คือปังมาก!",
+    "ส่องด่วน! ดีงามเกินต้าน"
   ];
   const prefix = randomOpenings[Math.floor(Math.random() * randomOpenings.length)];
   const randomizedHook = `${prefix} ${hook}`;
 
-  return rest ? `${randomizedHook}\n${rest}` : randomizedHook;
+  const finalCaption = rest ? `${randomizedHook}\n${rest}` : randomizedHook;
+  return removeEmojis(finalCaption);
+}
+
+function removeEmojis(str) {
+  return String(str || "").replace(/\p{Extended_Pictographic}/gu, "").replace(/\s+/g, " ").trim();
 }
 
 function renderCaptionTemplate(template, variables) {
