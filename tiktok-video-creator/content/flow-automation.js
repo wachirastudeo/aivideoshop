@@ -2441,8 +2441,11 @@ async function runPipeline(payload, runOptions = {}) {
             await clearPromptAttachments();
             await sleep(5000); // หน่วงเวลา 5 วินาที
 
-            // 5b. ภาพที่เจนเสร็จอยู่ในผลลัพธ์แล้ว → คลิกขวา Add to prompt ตรงๆ
-            //     ไม่สลับแท็บ/filter (panel ค้าง Upload ก็ไม่เกี่ยว เพราะ add จากผลลัพธ์โดยตรง)
+            // 5b. สลับแถบไลบรารีทางด้านซ้ายกลับมาที่แท็บ IMAGE เพื่อให้ภาพที่สร้างใน Phase 1 แสดงผลและสามารถเลือกได้
+            await switchMediaTab("image");
+            await sleep(2000);
+
+            // ภาพที่เจนเสร็จอยู่ในผลลัพธ์แล้ว → คลิกขวา Add to prompt ตรงๆ
             await addGeneratedStillToPrompt(result);
             log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
             await sleep(5000); // หน่วงเวลา 5 วินาที
