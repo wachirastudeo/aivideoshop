@@ -53,6 +53,7 @@ async function loadOptions() {
   setValue("caption-template", post.captionTemplate || "{product_name}\n{product_details}\n{cta}");
   setValue("default-hashtags", normalizeHashtags(post.hashtags || ["#TikTokShop", "#ของดีบอกต่อ"], 4).join(", "));
   setChecked("auto-add-product-link", post.autoAddProductLink !== false);
+  setChecked("caption-random-opening", post.randomOpening !== false);
   setValue("shopee-csv-folder", post.shopeeCsvFolder || "shopee_exports");
   setValue("shopee-csv-filename", post.shopeeCsvFilename || "shopee_products.csv");
 
@@ -119,6 +120,7 @@ async function saveSettings() {
       captionTemplate: getValue("caption-template"),
       hashtags: normalizeHashtags(getValue("default-hashtags"), 4),
       autoAddProductLink: getChecked("auto-add-product-link"),
+      randomOpening: getChecked("caption-random-opening"),
       afterCreateAction: existingSettings.postDefaults?.afterCreateAction || "post",
       defaultMode: existingSettings.postDefaults?.defaultMode || "now",
       shopeeCsvFolder: getValue("shopee-csv-folder") || "shopee_exports",

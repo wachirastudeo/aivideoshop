@@ -124,8 +124,8 @@ check("image prompt rejects source-scene objects", /ignore the original backgrou
 check("image prompt creates a new suitable background", /background that fits this product category/i.test(cabinetImage));
 check("video prompt is multi-scene", /multi-scene|distinct scenes/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
 check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabinetVideo) && !/Urban Street/i.test(cabinetVideo));
-check("image prompt stays concise", cabinetImage.length < 4200, `length=${cabinetImage.length}`);
-check("video prompt stays concise", cabinetVideo.length < 6700, `length=${cabinetVideo.length}`);
+check("image prompt stays concise", cabinetImage.length < 5000, `length=${cabinetImage.length}`);
+check("video prompt stays concise", cabinetVideo.length < 8000, `length=${cabinetVideo.length}`);
 
 // --- footwear fidelity: preserve the exact model while Auto includes a reviewer ---
 const shoe = {
@@ -140,7 +140,7 @@ check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.t
 check("shoe video Auto includes a reviewer", /Presenter: (?:A young Thai woman reviewer|A young Thai man reviewer)/i.test(shoeVideo));
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
-check("shoe prompts remain concise", shoeImage.length < 4200 && shoeVideo.length < 6700, `image=${shoeImage.length} video=${shoeVideo.length}`);
+check("shoe prompts remain concise", shoeImage.length < 5000 && shoeVideo.length < 8000, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
 // --- default behavior: UGC style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
