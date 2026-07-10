@@ -1064,9 +1064,12 @@ async function fillScheduleTime(scheduleTime) {
   log(`กำลังกรอกค่าเวลา: Date=${formattedDate} (เดิม=${defaultDateStr}), Time=${formattedTime} (เดิม=${defaultTimeStr})`);
 
   if (dateInput) {
+    log(`กำลังกรอกวันที่: ${formattedDate}`);
     await setTuxInputValue(dateInput, formattedDate);
+    await sleep(1000); // พักรอให้ระบบตรวจสอบความถูกต้องของวันและเวลา
   }
   if (timeInput) {
+    log(`กำลังกรอกเวลา: ${formattedTime}`);
     await setTuxTimePickerValue(timeInput, formattedTime);
   }
   await sleep(500);
@@ -1127,6 +1130,11 @@ async function setTuxTimePickerValue(input, targetTime) {
   input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
   await sleep(200);
 
+  // ส่งปุ่ม Escape เพื่อให้มั่นใจว่าป๊อปอัปเวลาปิดลงเรียบร้อย
+  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
+  input.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
+  await sleep(200);
+
   if (isReadonly) {
     input.setAttribute("readonly", "readonly");
   }
@@ -1166,6 +1174,11 @@ async function setTuxInputValue(input, value) {
   input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
   input.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
   input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+  await sleep(200);
+
+  // ส่งปุ่ม Escape เพื่อปิดหน้าต่างปฏิทินให้เคลียร์ฉากหน้า
+  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
+  input.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
   await sleep(200);
 
   if (isReadonly) {
