@@ -188,7 +188,7 @@ async function insertTextWithDebugger(payload, sender) {
   const tabId = sender?.tab?.id;
   const text = String(payload?.text || "");
   if (!tabId) throw new Error("ไม่พบ tab สำหรับกรอก prompt");
-  if (!text) return { inserted: false };
+  if (!text && payload?.clear !== true) return { inserted: false };
 
   // ดึงข้อมูล tab เพื่อเอา windowId มาขยาย/โฟกัสหน้าต่างก่อนกรอกข้อมูล
   try {
@@ -233,7 +233,9 @@ async function insertTextWithDebugger(payload, sender) {
     }
 
     // ส่งข้อความทั้งหมดทีเดียวเพื่อเลียนแบบการ Paste (ลดความเสี่ยงโดนตรวจจับความเร็วแป้นพิมพ์)
-    await chrome.debugger.sendCommand(target, "Input.insertText", { text: text });
+    if (text) {
+      await chrome.debugger.sendCommand(target, "Input.insertText", { text: text });
+    }
     return { inserted: true, method: "Input.insertText" };
   } finally {
     await detachDebuggerTab(tabId);

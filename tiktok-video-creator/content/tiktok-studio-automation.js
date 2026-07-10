@@ -550,20 +550,20 @@ async function fillCaptionAndHashtags(caption, hashtags) {
     ...normalizeHashtags(hashtags)
   ].filter(Boolean).join(" ");
 
-  if (fullText) {
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: "FLOW_INSERT_TEXT",
-        payload: { text: fullText, clear: true }
-      });
-      if (!response?.inserted) {
-        throw new Error("Debugger typing returned false");
-      }
-    } catch (err) {
-      console.warn("Debugger typing failed, falling back to execCommand:", err);
-      selectAllEditable(editor);
-      document.execCommand("delete", false);
-      await sleep(150);
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "FLOW_INSERT_TEXT",
+      payload: { text: fullText, clear: true }
+    });
+    if (!response?.inserted) {
+      throw new Error("Debugger typing returned false");
+    }
+  } catch (err) {
+    console.warn("Debugger typing failed, falling back to execCommand:", err);
+    selectAllEditable(editor);
+    document.execCommand("delete", false);
+    await sleep(150);
+    if (fullText) {
       document.execCommand("insertText", false, fullText);
     }
   }
@@ -1022,7 +1022,12 @@ async function fillScheduleTime(scheduleTime) {
   }
 
   const container = document.querySelector(TIKTOK_SELECTORS.scheduleContainer) || document;
-  const inputs = [...container.querySelectorAll("input")].filter(isVisible);
+  let inputs = [...container.querySelectorAll("input")];
+  
+  if (!inputs.length) {
+    inputs = [...document.querySelectorAll("input")].filter(isVisible);
+  }
+
   if (!inputs.length) {
     log("ไม่พบช่องตั้งเวลา จะปล่อยให้ TikTok ใช้ค่าเดิมหลังเลือก Schedule");
     return;
@@ -1341,20 +1346,20 @@ async function fillCaption(caption, hashtags) {
     ...normalizeHashtags(hashtags)
   ].filter(Boolean).join(" ");
 
-  if (fullText) {
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: "FLOW_INSERT_TEXT",
-        payload: { text: fullText, clear: true }
-      });
-      if (!response?.inserted) {
-        throw new Error("Debugger typing returned false");
-      }
-    } catch (err) {
-      console.warn("Debugger typing failed, falling back to execCommand:", err);
-      document.execCommand("selectAll");
-      document.execCommand("delete");
-      await sleep(150);
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "FLOW_INSERT_TEXT",
+      payload: { text: fullText, clear: true }
+    });
+    if (!response?.inserted) {
+      throw new Error("Debugger typing returned false");
+    }
+  } catch (err) {
+    console.warn("Debugger typing failed, falling back to execCommand:", err);
+    document.execCommand("selectAll");
+    document.execCommand("delete");
+    await sleep(150);
+    if (fullText) {
       document.execCommand("insertText", false, fullText);
     }
   }
