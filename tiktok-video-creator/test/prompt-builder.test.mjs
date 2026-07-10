@@ -269,8 +269,8 @@ check("image prompt with text disabled uses TEXT_FREE_DIRECTION", /No added text
 const coffeeProduct = { name: "ถุงกาแฟ 200 กรัม" };
 const coffeeImage = buildImagePrompt(coffeeProduct, settings);
 const coffeeVideo = buildVideoPrompt(coffeeProduct, settings);
-check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /tiny, slender, compact hand-sized packet/i.test(coffeeImage), coffeeImage);
-check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /tiny, slender, compact hand-sized packet/i.test(coffeeVideo), coffeeVideo);
+check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeImage), coffeeImage);
+check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeVideo), coffeeVideo);
 
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);

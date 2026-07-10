@@ -311,7 +311,7 @@ function getProductSpecificScaleInstruction(text = "") {
   // Detect coffee bags, pouches, sachets, packets (ถุงกาแฟ, ซองกาแฟ, 200g, 250g, 500g)
   const isSmallPouch = /(กาแฟ|ชา|ผง|ถุง|ซอง|ห่อ|เมล็ด|coffee|tea|powder|pouch|bag|sachet|pack|packet|200\s*g|250\s*g|500\s*g|gr?a?m|กรัม)/i.test(clean);
   if (isSmallPouch && !/(กระสอบ|25\s*kg|50\s*kg|10\s*kg|5\s*kg)/i.test(clean)) {
-    return "STRICT PRODUCT-SPECIFIC SIZE RULE: This product is a very small, pocket-sized, lightweight pouch or bag (e.g., 200 grams). It must be depicted as a tiny, slender, compact hand-sized packet that fits easily in a single hand. Never make it look like a large bag, giant sack, or big package. Relative to the presenter's hands or the surroundings, the bag/pouch must be small, compact, and slender.";
+    return "STRICT PRODUCT-SPECIFIC SIZE RULE: This product is a standard hand-sized 200-500g pouch or bag. It must be depicted in a realistic hand-sized scale, easily held in one or both hands (height of the pouch is about 15-20cm). It must not be depicted as a tiny pocket sachet, nor as a giant sack or massive bag. Keep it perfectly proportional as a standard coffee/tea bag.";
   }
   
   return "";
