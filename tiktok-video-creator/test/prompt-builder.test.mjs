@@ -247,7 +247,7 @@ check("image prompt with woman presenter changes intro layout text", /with a pre
 
 const imgPresenterNone = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("image prompt with no presenter forbids people", /No people, faces/i.test(imgPresenterNone), imgPresenterNone);
-check("image prompt with no presenter maintains grid layout text", /single high-fidelity clean product/i.test(imgPresenterNone), imgPresenterNone);
+check("image prompt with no presenter maintains grid layout text", /collage grid/i.test(imgPresenterNone), imgPresenterNone);
 
 const imgPresenterCustom = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "กรอกเอง", customPresenter: "ชายสูงวัยใจดีสวมแว่นตา" });
 check("image prompt with custom presenter injects custom presenter text", /ชายสูงวัยใจดีสวมแว่นตา/i.test(imgPresenterCustom), imgPresenterCustom);

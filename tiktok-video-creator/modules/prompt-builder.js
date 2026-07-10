@@ -207,12 +207,12 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const handsOnly = auto.presenter === "hands_only";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
 
-  // Determine introductory description/layout advice based on presenter settings (single product shot)
+  // Determine introductory description/layout advice based on presenter settings (always keep multiple angles grid/collage)
   const intro = (auto.presenter && auto.presenter !== "none" && auto.presenter !== "hands_only")
-    ? `A single high-fidelity clean product photography shot of ${productName} in one vertical 9:16 layout with a presenter shown in the frame.`
+    ? `A high-fidelity product photography collage grid in one vertical 9:16 layout, showing ${productName} from multiple angles and scenes with a presenter shown in the frame.`
     : (auto.presenter === "hands_only")
-      ? `A single high-fidelity clean product photography shot of ${productName} in one vertical 9:16 layout with realistic human hands holding the product in the frame.`
-      : `A single high-fidelity clean product photography shot of ${productName} in one vertical 9:16 layout.`;
+      ? `A high-fidelity product photography collage grid in one vertical 9:16 layout, showing ${productName} from multiple angles and scenes with realistic human hands holding the product in the frame.`
+      : `A high-fidelity product photography collage grid in one vertical 9:16 layout, showing ${productName} from multiple angles and scenes.`;
 
   let peopleDirection = "";
   if (handsOnly) {
@@ -232,7 +232,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     PRODUCT_FIDELITY_DIRECTION,
     SCALE_FIDELITY_DIRECTION,
     "Critical: The generated image must maintain absolute fidelity to the original product in the reference image. The product's shape, curves, outlines, colors, materials, branding, labels, and text must be 100% identical and unchanged. Do not redesign, warp, or modify the product's structure.",
-    "Depict the product in a single clean camera angle (such as eye-level front view or 45-degree beauty shot) at a medium close-up distance that highlights the product's textures, branding, and labels clearly. Do not create a collage, grid, split-screen, or multiple frames in the image (Strictest rule: render a single clean image only; strictly forbid any collage, grids, split-screens, or multi-frame layouts).",
+    "Depict the product from a diverse mix of camera angles and shot distances in a collage grid: wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively across the collage panels (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage).",
     isHeavy ? "Real scale." : "Small consumer product scale: The product is a small, lightweight item. Depict it in a realistic small scale relative to the environment, hands, or presenter. Do not make it look abnormally large or giant (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).",
     PRODUCT_ISOLATION_DIRECTION,
     PRODUCT_STRUCTURE_DIRECTION,
