@@ -1785,8 +1785,36 @@ async function typeSlate(editor, prompt) {
         await sleep(50);
     }
 
-    // วิธีที่ 1: ลองใช้ execCommand แทรกข้อความธรรมดา (แบบไร้ Debugger)
+    // วิธีที่ 1: ใช้ Debugger เป็นวิธีหลักเพื่ออัปเดต React State ของ Slate แน่นอน
     try {
+        log("กรอก Prompt ด้วยระบบ Debugger (เพื่อความเสถียรและให้ React State อัปเดต)...");
+        // ล้างค่าเก่าออกก่อน
+        selectEditableContents(editor);
+        document.execCommand("delete", false, null);
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
+        await sleep(200);
+
+        const response = await chrome.runtime.sendMessage({
+            type: "FLOW_INSERT_TEXT",
+            payload: { text: prompt, clear: true }
+        });
+        if (response?.ok && response.inserted && await waitForPromptCommit(editor, prompt, 3500)) {
+            log("✅ กรอก Prompt เข้า Slate สำเร็จ (Debugger)");
+            editor.dispatchEvent(new Event("change", { bubbles: true }));
+            await detachFlowDebugger();
+            await sleep(500);
+            return;
+        }
+    } catch (e) {
+        console.warn("[FlowAuto] Debugger insert failed, falling back to other methods:", e);
+    }
+
+    // วิธีที่ 2: ลองใช้ execCommand แทรกข้อความธรรมดา (กรณีตัวตรวจจับ Debugger พลาด)
+    try {
+        log("ใช้ execCommand แทรกข้อความธรรมดา...");
+        selectEditableContents(editor);
+        document.execCommand("delete", false, null);
+        await sleep(100);
         document.execCommand("insertText", false, prompt);
         editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
         editor.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1797,9 +1825,12 @@ async function typeSlate(editor, prompt) {
         }
     } catch (e) { console.warn("[FlowAuto] execCommand failed:", e); }
 
-    // วิธีที่ 2: ลองใช้ Clipboard Paste event จำลองการวางข้อความ (แบบไร้ Debugger)
+    // วิธีที่ 3: ลองใช้ Clipboard Paste event จำลองการวางข้อความ
     try {
-        focusAndPlaceCursor(editor);
+        log("ใช้ Clipboard Paste event...");
+        selectEditableContents(editor);
+        document.execCommand("delete", false, null);
+        await sleep(100);
         const dt = new DataTransfer(); dt.setData("text/plain", prompt);
         editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
         await sleep(500);
@@ -1808,53 +1839,6 @@ async function typeSlate(editor, prompt) {
             return;
         }
     } catch (e) { console.warn("[FlowAuto] paste failed:", e); }
-
-    // วิธีที่ 3: ใช้ Debugger เป็นไม้ตายสุดท้ายถ้าวิธีแบบไร้ Debugger ล้มเหลวทั้งหมด
-    log("วิธีพิมพ์ปกติไม่ได้ผล → เปิดใช้ระบบ Debugger เพื่อกรอกข้อความ...");
-    selectEditableContents(editor);
-    document.execCommand("delete", false, null);
-    editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
-    await sleep(200 + Math.random() * 200);
-
-    await humanTypeWords(prompt);
-    editor.dispatchEvent(new Event("change", { bubbles: true }));
-    editor.blur();
-    await sleep(150 + Math.random() * 100);
-    editor.focus();
-    if (await waitForPromptCommit(editor, prompt, 2000)) {
-        log("✅ กรอก Prompt สำเร็จ (execCommand)");
-        return;
-    }
-
-    // ── ขั้น 2: Clipboard paste
-    try {
-        selectEditableContents(editor);
-        document.execCommand("delete", false, null);
-        await sleep(100 + Math.random() * 100);
-        const dt = new DataTransfer(); dt.setData("text/plain", prompt);
-        editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
-        if (await waitForPromptCommit(editor, prompt, 1500)) {
-            log("✅ กรอก Prompt สำเร็จ (paste)");
-            return;
-        }
-    } catch (e) { console.warn("[FlowAuto] paste failed:", e); }
-
-    // ── ขั้น 3: Debugger (ใช้เฉพาะเมื่อ 2 วิธีข้างบนล้มเหลว)
-    try {
-        const response = await chrome.runtime.sendMessage({
-            type: "FLOW_INSERT_TEXT",
-            payload: { text: prompt, clear: true }
-        });
-        if (response?.ok && response.inserted && await waitForPromptCommit(editor, prompt, 3500)) {
-            log("✅ กรอก Prompt เข้า Slate สำเร็จ (Debugger)");
-            // ปลด debugger ทันทีหลังพิมพ์เสร็จเพื่อไม่ให้ค้างแถบเตือนสีเหลืองตอนรันงานขั้นต่อไป
-            await detachFlowDebugger();
-            await sleep(500);
-            return;
-        }
-    } catch (error) {
-        console.warn("[FlowAuto] debugger insert failed:", error);
-    }
 
     focusAndPlaceCursor(editor);
     if (!isEmpty) {
