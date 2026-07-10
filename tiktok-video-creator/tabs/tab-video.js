@@ -41,7 +41,7 @@ export async function initVideoTab(injectedHelpers) {
     imageCount: savedOptions.flow?.imageCount || 1,
     videoCount: savedOptions.flow?.videoCount || 1,
     postAction: savedOptions.postDefaults?.afterCreateAction || "post",
-    videoRefMode: "frames",
+    videoRefMode: "ingredients",
     ...(savedOptions.mediaSettings || {})
   };
 

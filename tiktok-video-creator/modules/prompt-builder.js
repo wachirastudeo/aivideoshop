@@ -456,10 +456,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
         + " The product is eyewear; depict the glasses in a realistic natural scale relative to the presenter's face or head, ensuring it fits perfectly on the face without looking abnormally large or tiny.";
     } else {
       handsDir = handsDir
-        + " The product is a small item; depict it in a prominent large scale relative to the hands (close-up), ensuring the product's brand name and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+        + " The product is a small item; depict it in a realistic small hand-sized scale relative to the hands. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized.";
 
       presenterInstruction = presenterInstruction
-        + " The product is a small item; depict it in a prominent large scale (close-up or medium close-up) relative to the presenter, ensuring the product's brand name and labels are large, clear, and easy to read. Never show it as a tiny or insignificant object.";
+        + " The product is a small item; depict it in a realistic small hand-sized scale relative to the presenter. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized.";
     }
   }
 
