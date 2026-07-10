@@ -1220,45 +1220,44 @@ function formatLikeDefault(defaultStr, targetDate) {
     return `${y}-${m}-${d}`;
   }
 
-  let yearIdx = -1;
-  let dayIdx = -1;
-  let monthIdx = -1;
-
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  const tomYear = tomorrow.getFullYear();
-  const tomBYear = tomYear + 543;
-  const tomMonth = tomorrow.getMonth() + 1;
-  const tomDay = tomorrow.getDate();
-
-  for (let i = 0; i < 3; i++) {
-    const num = parseInt(parts[i], 10);
-    if (num === tomYear || num === tomBYear || parts[i].length === 4) {
-      yearIdx = i;
-    }
-  }
-
+  // ค้นหาตำแหน่งของปี 4 หลัก
+  let yearIdx = parts.findIndex(p => p.length === 4);
   if (yearIdx === -1) {
-    yearIdx = parts.findIndex(p => p.length === 4);
+    const nums = parts.map(p => parseInt(p, 10));
+    yearIdx = nums.findIndex(n => n > 1900);
     if (yearIdx === -1) yearIdx = 2;
-  }
-
-  const remaining = [0, 1, 2].filter(idx => idx !== yearIdx);
-  const p0 = parseInt(parts[remaining[0]], 10);
-  const p1 = parseInt(parts[remaining[1]], 10);
-
-  if (p0 === tomDay && p1 === tomMonth) {
-    dayIdx = remaining[0];
-    monthIdx = remaining[1];
-  } else if (p1 === tomDay && p0 === tomMonth) {
-    dayIdx = remaining[1];
-    monthIdx = remaining[0];
-  } else {
-    dayIdx = remaining[0];
-    monthIdx = remaining[1];
   }
 
   const defaultYearNum = parseInt(parts[yearIdx], 10);
   const isBuddhist = defaultYearNum > 2400;
+
+  let dayIdx = -1;
+  let monthIdx = -1;
+
+  if (yearIdx === 0) {
+    // รูปแบบ YYYY-MM-DD
+    monthIdx = 1;
+    dayIdx = 2;
+  } else {
+    // รูปแบบ DD/MM/YYYY หรือ MM/DD/YYYY
+    const today = new Date();
+    const curDay = today.getDate();
+    const curMonth = today.getMonth() + 1;
+
+    const p0 = parseInt(parts[0], 10);
+    const p1 = parseInt(parts[1], 10);
+
+    if (p0 === curDay || p1 === curMonth) {
+      dayIdx = 0;
+      monthIdx = 1;
+    } else if (p0 === curMonth || p1 === curDay) {
+      monthIdx = 0;
+      dayIdx = 1;
+    } else {
+      dayIdx = 0;
+      monthIdx = 1;
+    }
+  }
 
   const targetYear = targetDate.getFullYear() + (isBuddhist ? 543 : 0);
   const targetMonth = targetDate.getMonth() + 1;
