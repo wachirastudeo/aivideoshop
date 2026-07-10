@@ -1026,7 +1026,7 @@ async function fillScheduleTime(scheduleTime) {
   }
 
   const container = document.querySelector(TIKTOK_SELECTORS.scheduleContainer) || document;
-  let inputs = [...container.querySelectorAll("input")];
+  let inputs = [...container.querySelectorAll("input")].filter(isVisible);
   
   if (!inputs.length) {
     inputs = [...document.querySelectorAll("input")].filter(isVisible);
@@ -1037,8 +1037,11 @@ async function fillScheduleTime(scheduleTime) {
     return;
   }
 
-  const dateInput = inputs.find((input) => input.type === "date") || inputs[0];
-  const timeInput = inputs.find((input) => input.type === "time") || inputs[1];
+  let dateInput = inputs.find((input) => input.type === "date" || input.placeholder?.toLowerCase().includes("date") || input.value?.includes("/") || input.value?.includes("-"));
+  let timeInput = inputs.find((input) => input.type === "time" || input.placeholder?.toLowerCase().includes("time") || input.value?.includes(":") || input.value?.includes("น."));
+
+  if (!dateInput) dateInput = inputs[0];
+  if (!timeInput) timeInput = inputs[1];
 
   const defaultDateStr = dateInput ? dateInput.value : "";
   const defaultTimeStr = timeInput ? timeInput.value : "";
@@ -1049,32 +1052,71 @@ async function fillScheduleTime(scheduleTime) {
   log(`กำลังกรอกค่าเวลา: Date=${formattedDate} (เดิม=${defaultDateStr}), Time=${formattedTime} (เดิม=${defaultTimeStr})`);
 
   if (dateInput) {
-    setReadonlyInputValueDirect(dateInput, formattedDate);
+    await setTuxInputValue(dateInput, formattedDate);
   }
   if (timeInput) {
-    setReadonlyInputValueDirect(timeInput, formattedTime);
+    await setTuxInputValue(timeInput, formattedTime);
   }
   await sleep(500);
 }
 
-function setReadonlyInputValueDirect(input, value) {
+async function setTuxInputValue(input, value) {
   if (!input) return;
+  
+  input.focus();
+  await realClick(input);
+  await sleep(300);
+
   const isReadonly = input.hasAttribute("readonly");
   if (isReadonly) {
     input.removeAttribute("readonly");
   }
-  setInputValue(input, value);
+
+  input.select();
+  input.setSelectionRange(0, input.value.length);
+  await sleep(100);
+
+  try {
+    document.execCommand('insertText', false, value);
+  } catch (e) {
+    console.warn("execCommand failed, falling back to direct value set:", e);
+    input.value = value;
+  }
+  await sleep(100);
+
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+
+  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+  input.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+  input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+  await sleep(200);
+
   if (isReadonly) {
     input.setAttribute("readonly", "readonly");
   }
+  
+  input.dispatchEvent(new Event("blur", { bubbles: true }));
+  input.blur();
+  await sleep(300);
 }
 
 function formatLikeDefault(defaultStr, targetDate) {
   if (!defaultStr || typeof defaultStr !== "string") {
-    const y = targetDate.getFullYear();
-    const m = String(targetDate.getMonth() + 1).padStart(2, "0");
-    const d = String(targetDate.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
+    try {
+      const locale = navigator.language || "th-TH";
+      const formatted = new Intl.DateTimeFormat(locale, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(targetDate);
+      return formatted;
+    } catch (e) {
+      const y = targetDate.getFullYear();
+      const m = String(targetDate.getMonth() + 1).padStart(2, "0");
+      const d = String(targetDate.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
   }
 
   let separator = "-";
