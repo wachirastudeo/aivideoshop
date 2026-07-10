@@ -543,9 +543,6 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   editor.focus();
   await realClick(editor);
   await sleep(150 + Math.random() * 150);
-  selectAllEditable(editor);
-  document.execCommand("delete", false);
-  await sleep(150 + Math.random() * 100);
 
   // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
   const fullText = [
@@ -554,7 +551,21 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   ].filter(Boolean).join(" ");
 
   if (fullText) {
-    document.execCommand("insertText", false, fullText);
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "FLOW_INSERT_TEXT",
+        payload: { text: fullText, clear: true }
+      });
+      if (!response?.inserted) {
+        throw new Error("Debugger typing returned false");
+      }
+    } catch (err) {
+      console.warn("Debugger typing failed, falling back to execCommand:", err);
+      selectAllEditable(editor);
+      document.execCommand("delete", false);
+      await sleep(150);
+      document.execCommand("insertText", false, fullText);
+    }
   }
   await sleep(200 + Math.random() * 150);
 
@@ -1308,11 +1319,6 @@ async function fillCaption(caption, hashtags) {
   await realClick(captionEl);
   await sleep(150 + Math.random() * 150);
 
-  // ล้างข้อความเก่า
-  document.execCommand("selectAll");
-  document.execCommand("delete");
-  await sleep(150 + Math.random() * 100);
-
   // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
   const fullText = [
     caption,
@@ -1320,7 +1326,21 @@ async function fillCaption(caption, hashtags) {
   ].filter(Boolean).join(" ");
 
   if (fullText) {
-    document.execCommand("insertText", false, fullText);
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "FLOW_INSERT_TEXT",
+        payload: { text: fullText, clear: true }
+      });
+      if (!response?.inserted) {
+        throw new Error("Debugger typing returned false");
+      }
+    } catch (err) {
+      console.warn("Debugger typing failed, falling back to execCommand:", err);
+      document.execCommand("selectAll");
+      document.execCommand("delete");
+      await sleep(150);
+      document.execCommand("insertText", false, fullText);
+    }
   }
   await sleep(200 + Math.random() * 150);
 
