@@ -239,6 +239,7 @@ function scheduleAutoSave() {
 function readForm(existingPostDefaults = {}) {
   const existing = normalizePostSettings(existingPostDefaults);
   return normalizePostSettings({
+    ...existing,
     captionTemplate: hasField("post-caption-template") ? getValue("post-caption-template") : existing.captionTemplate,
     hashtags: hasField("post-hashtags")
       ? getValue("post-hashtags")

@@ -113,7 +113,7 @@ async function generatePostCopyWithGemini(productInfo, defaults, settings, fallb
     if (!response.ok) throw new Error(await getGeminiErrorMessage(response, "Gemini สร้าง caption/hashtag ไม่สำเร็จ"));
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text || "{}";
-    return normalizeGeneratedPostCopy(JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}"), fallback, productInfo);
+    return normalizeGeneratedPostCopy(JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}"), fallback, productInfo, defaults);
   } finally {
     clearTimeout(timeout);
   }
@@ -151,7 +151,7 @@ async function generatePostCopyWithOpenAI(productInfo, defaults, settings, fallb
     }
 
     const data = await response.json();
-    return normalizeGeneratedPostCopy(JSON.parse(data.choices?.[0]?.message?.content || "{}"), fallback, productInfo);
+    return normalizeGeneratedPostCopy(JSON.parse(data.choices?.[0]?.message?.content || "{}"), fallback, productInfo, defaults);
   } finally {
     clearTimeout(timeout);
   }
@@ -197,19 +197,19 @@ function resolveFullProductNameForAi(productInfo = {}) {
     productInfo.rawProduct?.product_name,
     productInfo.rawProduct?.name,
     productInfo.name
-  ].find((value) => String(value || "").trim()) || "";
+  ].map(v => String(v || "").trim()).find(Boolean) || "the product";
 }
 
 function sanitizeLongText(value) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, POST_CAPTION_MAX_LENGTH);
 }
 
-function normalizeGeneratedPostCopy(value, fallback, productInfo = {}) {
+function normalizeGeneratedPostCopy(value, fallback, productInfo = {}, defaults = {}) {
   const isShopee = productInfo.source === "shopee" || (productInfo.productUrl && /shopee\.co\.th/i.test(productInfo.productUrl));
   const maxLen = isShopee ? 100 : POST_CAPTION_MAX_LENGTH;
   const maxTags = isShopee ? 3 : 5;
   const rawCaption = cleanGeneratedCaption(value?.caption) || fallback.caption;
-  const caption = truncatePostCaption(ensureCaptionLeadsWithHook(rawCaption, productInfo), maxLen);
+  const caption = truncatePostCaption(ensureCaptionLeadsWithHook(rawCaption, productInfo, defaults), maxLen);
   const hashtags = normalizeHashtags(cleanGeneratedHashtags(value?.hashtags?.length ? value.hashtags : fallback.hashtags), maxTags);
   return {
     caption,
@@ -218,9 +218,40 @@ function normalizeGeneratedPostCopy(value, fallback, productInfo = {}) {
   };
 }
 
-// caption แบบสุ่มขึ้นต้น ไม่บังคับตาม Hook อีกต่อไปเพื่อไม่ให้เกิดความซ้ำซ้อน
-function ensureCaptionLeadsWithHook(caption, productInfo = {}) {
-  return String(caption || "").trim();
+// caption ต้องขึ้นต้นด้วยช่อง "ชื่อสินค้า / Hook" และมีสุ่มคำขึ้นต้นสนุกๆ เสมอ
+function ensureCaptionLeadsWithHook(caption, productInfo = {}, defaults = {}) {
+  const hook = resolveCaptionProductName(productInfo);
+  const text = String(caption || "").trim();
+  if (!hook) return text;
+
+  if (defaults.randomOpening === false) {
+    const normalizedHook = hook.toLowerCase();
+    if (text.toLowerCase().startsWith(normalizedHook)) return text;
+    return text ? `${hook}\n${text}` : hook;
+  }
+
+  const randomOpenings = [
+    "ชี้เป้าความคุ้มวันนี้! ✨",
+    "บอกต่อของดีที่ต้องมี! 🛍️",
+    "ใครยังไม่มีรีบเลย! 🔥",
+    "ไอเทมเด็ดชิ้นนี้ห้ามพลาด! 😍",
+    "ลองหรือยัง? ของดีบอกต่อ 💯",
+    "ตัวช่วยชีวิตดีขึ้นเยอะ! 👍",
+    "หลังจากลองตัวนี้คือปังมาก! 💖",
+    "ส่องด่วน! ดีงามเกินต้าน 🌟"
+  ];
+
+  const hasRandomOpening = randomOpenings.some(op => text.startsWith(op));
+  if (hasRandomOpening) return text;
+
+  const prefix = randomOpenings[Math.floor(Math.random() * randomOpenings.length)];
+  const randomizedHook = `${prefix} ${hook}`;
+
+  const normalizedHook = hook.toLowerCase();
+  if (text.toLowerCase().startsWith(normalizedHook)) {
+    return `${prefix} ${text}`;
+  }
+  return text ? `${randomizedHook}\n${text}` : randomizedHook;
 }
 
 function cleanGeneratedHashtags(value) {
