@@ -2337,6 +2337,11 @@ async function runPipeline(payload, runOptions = {}) {
             log(`🔄 ใช้รูปภาพสินค้าที่อัปโหลดเสร็จแล้วจากการรีเฟรชหน้าเพจ (${uploadedTiles.length} รูป)`);
             await sleep(5000); // หน่วงเวลา 5 วินาที
         } else {
+            // ล้างรูปแนบเดิมที่อาจค้างอยู่จากการรันครั้งก่อน (กรณีเปิดใช้ โปรเจคเดียวตลอด / reuseProject)
+            log("ล้างรูปแนบเดิมที่ค้างอยู่ในช่อง Prompt...");
+            await clearPromptAttachments();
+            await sleep(2000);
+
             // 3. อัปโหลดรูป (รองรับหลายรูปจาก options.imageUrls สำหรับ Ingredients)
             const rawList = (Array.isArray(options.imageUrls) && options.imageUrls.length)
                 ? options.imageUrls

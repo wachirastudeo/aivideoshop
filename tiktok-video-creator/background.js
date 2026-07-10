@@ -254,9 +254,7 @@ async function openGoogleFlow(payload) {
   const reuseProject = flowSettings.reuseProject === true;
   const FLOW_URL = "https://labs.google/fx/tools/flow";
   const existingTabs = await queryFlowTabs();
-  let tab;
-  let needNavigate = true;
-
+  let needReload = false;
   if (existingTabs.length > 0) {
     tab = existingTabs[0];
     await chrome.tabs.update(tab.id, { active: true });
@@ -266,16 +264,22 @@ async function openGoogleFlow(payload) {
     
     if (reuseProject && isFlowProjectUrl(tab.url || "")) {
       needNavigate = false;
+      needReload = true;
     } else {
       needNavigate = true;
+      needReload = false;
     }
   } else {
     tab = await chrome.tabs.create({ url: FLOW_URL, active: true });
     needNavigate = false;
+    needReload = false;
   }
 
   if (needNavigate) {
     await chrome.tabs.update(tab.id, { url: FLOW_URL });
+    await waitForTabComplete(tab.id);
+  } else if (needReload) {
+    await chrome.tabs.reload(tab.id);
     await waitForTabComplete(tab.id);
   } else {
     const currentTab = await chrome.tabs.get(tab.id);

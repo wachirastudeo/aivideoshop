@@ -697,6 +697,10 @@ async function processQueue() {
     for (let i = 0; i < productQueue.length; i += 1) {
     if (stopRequested) break;
     const product = productQueue[i];
+    if (product.status === "done") {
+      helpers.logActivity?.(`สินค้า ${i + 1} (${product.name || "ไม่มีชื่อ"}): ข้ามการทำรายการเนื่องจากสถานะเป็น done แล้ว`, "info");
+      continue;
+    }
 
     try {
       assertNotStopped();
