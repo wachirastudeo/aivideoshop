@@ -1161,11 +1161,27 @@ function formatTimeLikeDefault(defaultStr, targetDate) {
 function setInputValue(input, value) {
   if (!input) return;
   input.focus();
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-  if (setter) setter.call(input, value);
-  else input.value = value;
+
+  // React 15+ value tracker to ensure React detects the programmatic value change
+  const tracker = input._valueTracker;
+  if (tracker) {
+    tracker.setValue(value);
+  }
+
+  const prototype = Object.getPrototypeOf(input);
+  const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set || 
+                 Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set ||
+                 Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+
+  if (setter) {
+    setter.call(input, value);
+  } else {
+    input.value = value;
+  }
+
   input.dispatchEvent(new Event("input", { bubbles: true }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
+  input.dispatchEvent(new Event("blur", { bubbles: true }));
   input.blur();
 }
 
