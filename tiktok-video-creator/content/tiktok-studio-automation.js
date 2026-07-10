@@ -544,27 +544,31 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   await realClick(editor);
   await sleep(150 + Math.random() * 150);
 
+  // 1. ลบข้อความที่ค้างอยู่ในช่องทั้งหมดเสมอ (ป้องกันชื่อไฟล์ตกค้าง)
+  selectAllEditable(editor);
+  document.execCommand("delete", false);
+  await sleep(200);
+
   // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
   const fullText = [
     caption,
     ...normalizeHashtags(hashtags)
   ].filter(Boolean).join(" ");
 
-  try {
-    const response = await chrome.runtime.sendMessage({
-      type: "FLOW_INSERT_TEXT",
-      payload: { text: fullText, clear: true }
-    });
-    if (!response?.inserted) {
-      throw new Error("Debugger typing returned false");
-    }
-  } catch (err) {
-    console.warn("Debugger typing failed, falling back to execCommand:", err);
-    selectAllEditable(editor);
-    document.execCommand("delete", false);
-    await sleep(150);
-    if (fullText) {
-      document.execCommand("insertText", false, fullText);
+  if (fullText) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "FLOW_INSERT_TEXT",
+        payload: { text: fullText, clear: false }
+      });
+      if (!response?.inserted) {
+        throw new Error("Debugger typing returned false");
+      }
+    } catch (err) {
+      console.warn("Debugger typing failed, falling back to execCommand:", err);
+      if (fullText) {
+        document.execCommand("insertText", false, fullText);
+      }
     }
   }
   await sleep(200 + Math.random() * 150);
@@ -1340,27 +1344,31 @@ async function fillCaption(caption, hashtags) {
   await realClick(captionEl);
   await sleep(150 + Math.random() * 150);
 
+  // 1. ลบข้อความที่ค้างอยู่ในช่องทั้งหมดเสมอ (ป้องกันชื่อไฟล์ตกค้าง)
+  selectAllEditable(captionEl);
+  document.execCommand("delete", false);
+  await sleep(200);
+
   // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
   const fullText = [
     caption,
     ...normalizeHashtags(hashtags)
   ].filter(Boolean).join(" ");
 
-  try {
-    const response = await chrome.runtime.sendMessage({
-      type: "FLOW_INSERT_TEXT",
-      payload: { text: fullText, clear: true }
-    });
-    if (!response?.inserted) {
-      throw new Error("Debugger typing returned false");
-    }
-  } catch (err) {
-    console.warn("Debugger typing failed, falling back to execCommand:", err);
-    document.execCommand("selectAll");
-    document.execCommand("delete");
-    await sleep(150);
-    if (fullText) {
-      document.execCommand("insertText", false, fullText);
+  if (fullText) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "FLOW_INSERT_TEXT",
+        payload: { text: fullText, clear: false }
+      });
+      if (!response?.inserted) {
+        throw new Error("Debugger typing returned false");
+      }
+    } catch (err) {
+      console.warn("Debugger typing failed, falling back to execCommand:", err);
+      if (fullText) {
+        document.execCommand("insertText", false, fullText);
+      }
     }
   }
   await sleep(200 + Math.random() * 150);
