@@ -792,7 +792,9 @@ async function processQueue() {
         if (action === "schedule") {
           assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังอัปโหลดและตั้งเวลาโพสต์ TikTok อัตโนมัติ...`, "info");
-          await retryPostStep(`ตั้งเวลาโพสต์ TikTok สินค้า ${i + 1}`, () => scheduleVideo(product.preparedVideoUrl || product.videoUrl, product));
+          const scheduledCount = productQueue.slice(0, i).filter(p => p.status === "done").length;
+          const minutesOffset = scheduledCount * 120;
+          await retryPostStep(`ตั้งเวลาโพสต์ TikTok สินค้า ${i + 1}`, () => scheduleVideo(product.preparedVideoUrl || product.videoUrl, product, minutesOffset));
           assertNotStopped();
         }
         if (isShopee && downloadedInfo) {

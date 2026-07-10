@@ -55,11 +55,11 @@ export async function publishVideo(videoUrl, productInfo) {
   return sendVideoToTikTokStudio(videoUrl, productInfo, "post");
 }
 
-export async function scheduleVideo(videoUrl, productInfo) {
-  return sendVideoToTikTokStudio(videoUrl, productInfo, "schedule");
+export async function scheduleVideo(videoUrl, productInfo, minutesOffset = 0) {
+  return sendVideoToTikTokStudio(videoUrl, productInfo, "schedule", minutesOffset);
 }
 
-export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "post") {
+export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "post", minutesOffset = 0) {
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const { creatorState = {} } = await chrome.storage.local.get("creatorState");
   const localSettings = creatorState.settings || {};
@@ -68,9 +68,22 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
   const postType = (mode === "draft")
     ? "draft"
     : ((mode === "schedule" || postDefaults.defaultMode === "schedule") ? "schedule" : "now");
-  const scheduleTime = (mode === "schedule")
+  let scheduleTime = (mode === "schedule")
     ? (localSettings.postScheduleTime || postDefaults.scheduleTime || "")
     : (postDefaults.defaultMode === "schedule" ? (postDefaults.scheduleTime || "") : "");
+
+  if (scheduleTime && minutesOffset > 0) {
+    const dt = new Date(scheduleTime);
+    if (!Number.isNaN(dt.getTime())) {
+      dt.setMinutes(dt.getMinutes() + minutesOffset);
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      const d = String(dt.getDate()).padStart(2, "0");
+      const hh = String(dt.getHours()).padStart(2, "0");
+      const mm = String(dt.getMinutes()).padStart(2, "0");
+      scheduleTime = `${y}-${m}-${d}T${hh}:${mm}`;
+    }
+  }
   const productUrl = resolveProductUrl(productInfo);
   productInfo.productUrl = productUrl;
   const postCopy = (productInfo.caption !== undefined && productInfo.caption !== null)
