@@ -254,6 +254,8 @@ async function openGoogleFlow(payload) {
   const reuseProject = flowSettings.reuseProject === true;
   const FLOW_URL = "https://labs.google/fx/tools/flow";
   const existingTabs = await queryFlowTabs();
+  let tab;
+  let needNavigate = true;
   let needReload = false;
   if (existingTabs.length > 0) {
     tab = existingTabs[0];
