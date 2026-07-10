@@ -234,8 +234,12 @@ export function buildImagePrompt(productInfo, settings = {}) {
     productInfo.cta || settings?.cta || "สั่งได้เลย"
   ].filter(Boolean);
 
+  const productTextFidelityDirection = textEnabled
+    ? "STRICT PRODUCT FIDELITY: Any text, labels, brand names, logos, or writing printed ON the product surface and packaging itself must match the reference image exactly. Do NOT alter, translate, add, or remove any text on the product surface. Do NOT write or overlay any of the new promotional text onto the product or its packaging directly."
+    : "STRICT PRODUCT FIDELITY: Any text, labels, brand names, logos, or writing printed ON the product surface and packaging itself must match the reference image exactly. Do NOT alter, translate, add, or remove any text on the product surface. Do NOT add any extra text or promotional overlays on the product.";
+
   const textDirection = textEnabled
-    ? `Visible text overlays are enabled. Integrate these exact Thai-language text overlays neatly and professionally onto the image scenes (as advertising headlines, product highlight callouts, or clean typography badges): ${textItems.join(" | ") || "ข้อความภาษาไทย"}. All visible text, labels, titles, and CTA typography must be in clean, correct, natural Thai language only, with perfect spelling and readable typography. Position overlays in ${settings?.textPosition || "Middle"}. STRICTLY FORBIDDEN: do not add any English text, romanized Thai, unconfigured words, or random gibberish labels.`
+    ? `Visible text overlays are enabled. Integrate these exact Thai-language text overlays neatly and professionally onto the image (as advertising headlines, product highlight callouts, or clean typography badges on the background or as a separate graphic overlay): ${textItems.join(" | ") || "ข้อความภาษาไทย"}. All visible text, labels, titles, and CTA typography must be in clean, correct, natural Thai language only, with perfect spelling and readable typography. Position overlays in ${settings?.textPosition || "Middle"}. STRICTLY FORBIDDEN: do not add any English text, romanized Thai, unconfigured words, or random gibberish labels.`
     : `${TEXT_FREE_DIRECTION}\nFinal check: ensure no added text or numbers exist in the output.`;
 
   const promptParts = [
@@ -252,7 +256,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     "Choose a clean, realistic, commercially appealing background that fits this product category.",
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     peopleDirection,
-    "Strictest rule: any text, labels, brand names, or writing on the product and packaging must match the reference image exactly; do NOT invent new words or add any extra text or promotional overlays.",
+    productTextFidelityDirection,
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     textDirection
   ];
