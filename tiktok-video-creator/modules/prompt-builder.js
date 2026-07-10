@@ -203,6 +203,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const isHeavy = isHeavyProduct(productText);
+  const specificScale = getProductSpecificScaleInstruction(productText);
 
   const handsOnly = auto.presenter === "hands_only";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
@@ -250,6 +251,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     "Critical: The generated image must maintain absolute fidelity to the original product in the reference image. The product's shape, curves, outlines, colors, materials, branding, labels, and text must be 100% identical and unchanged. Do not redesign, warp, or modify the product's structure.",
     "Depict the product from a diverse mix of camera angles and shot distances in a collage grid: wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively across the collage panels (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage).",
     isHeavy ? "Real scale." : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment, hands, or presenter in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).",
+    specificScale,
     PRODUCT_ISOLATION_DIRECTION,
     PRODUCT_STRUCTURE_DIRECTION,
     categoryDirection,
@@ -303,6 +305,18 @@ function isHeavyProduct(text = "") {
   return getProductWeightCategory(text) !== "light";
 }
 
+function getProductSpecificScaleInstruction(text = "") {
+  const clean = text.toLowerCase();
+  
+  // Detect coffee bags, pouches, sachets, packets (ถุงกาแฟ, ซองกาแฟ, 200g, 250g, 500g)
+  const isSmallPouch = /(กาแฟ|ชา|ผง|ถุง|ซอง|ห่อ|เมล็ด|coffee|tea|powder|pouch|bag|sachet|pack|packet|200\s*g|250\s*g|500\s*g|gr?a?m|กรัม)/i.test(clean);
+  if (isSmallPouch && !/(กระสอบ|25\s*kg|50\s*kg|10\s*kg|5\s*kg)/i.test(clean)) {
+    return "STRICT PRODUCT-SPECIFIC SIZE RULE: This product is a very small, pocket-sized, lightweight pouch or bag (e.g., 200 grams). It must be depicted as a tiny, slender, compact hand-sized packet that fits easily in a single hand. Never make it look like a large bag, giant sack, or big package. Relative to the presenter's hands or the surroundings, the bag/pouch must be small, compact, and slender.";
+  }
+  
+  return "";
+}
+
 /**
  * @description สร้าง prompt วิดีโอสำหรับ Phase 2
  * @param {object} productInfo - ข้อมูลสินค้า
@@ -350,6 +364,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const weightCategory = getProductWeightCategory(productText);
   const isHeavy = weightCategory !== "light";
   const isImmobile = weightCategory === "immobile";
+  const specificScale = getProductSpecificScaleInstruction(productText);
 
   const promptParts = [
     `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
@@ -357,6 +372,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     PRODUCT_FIDELITY_DIRECTION,
     REALISM_AND_PHYSICS_DIRECTION,
     isHeavy ? "Real scale." : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the presenter or surroundings.",
+    specificScale,
     PRODUCT_STRUCTURE_DIRECTION,
     categoryDirection,
     analysisDirection,

@@ -265,6 +265,14 @@ check("image prompt with text enabled using name has Thai name", /Integrate thes
 const imgTextDisabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: false });
 check("image prompt with text disabled uses TEXT_FREE_DIRECTION", /No added text, words, or characters/i.test(imgTextDisabled), imgTextDisabled);
 
+// --- small bag/coffee pouch scale tests ---
+const coffeeProduct = { name: "ถุงกาแฟ 200 กรัม" };
+const coffeeImage = buildImagePrompt(coffeeProduct, settings);
+const coffeeVideo = buildVideoPrompt(coffeeProduct, settings);
+check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /tiny, slender, compact hand-sized packet/i.test(coffeeImage), coffeeImage);
+check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /tiny, slender, compact hand-sized packet/i.test(coffeeVideo), coffeeVideo);
+
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
+
