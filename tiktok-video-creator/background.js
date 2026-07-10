@@ -201,6 +201,10 @@ async function insertTextWithDebugger(payload, sender) {
     console.error("โฟกัสหน้าต่างล้มเหลว:", err);
   }
 
+  const platform = await chrome.runtime.getPlatformInfo();
+  const isMac = platform.os === "mac";
+  const selectAllModifier = isMac ? 4 : 2; // Meta (4) for Mac Cmd+A, Control (2) for Windows/Linux Ctrl+A
+
   const target = { tabId };
   const delay = (min, max) => new Promise(r => setTimeout(r, min + Math.random() * (max - min)));
 
@@ -210,11 +214,11 @@ async function insertTextWithDebugger(payload, sender) {
     if (payload?.clear !== false) {
       await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
         type: "keyDown", key: "a", code: "KeyA",
-        windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 4
+        windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: selectAllModifier
       });
       await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
         type: "keyUp", key: "a", code: "KeyA",
-        windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 4
+        windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: selectAllModifier
       });
       await delay(80, 180);
       await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
