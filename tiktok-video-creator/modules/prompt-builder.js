@@ -801,25 +801,25 @@ export function buildCaption(productInfo, defaults = {}) {
   });
 
   if (!hook || defaults.randomOpening === false) {
-    return removeEmojis(body.trim());
+    return body.trim();
   }
   const rest = body.startsWith(hook) ? body.slice(hook.length).trim() : body.trim();
 
-  // สุ่มหัวข้อ/พิกัดสินค้าแบบกระชับ สมเหตุสมผล ไม่โฆษณาเกินจริง (ไม่มีอิโมจิ)
+  // สุ่มคำขึ้นต้นสนุกๆ นำหน้า Hook เพื่อไม่ให้ข้อความโพสต์ซ้ำซ้อน
   const randomOpenings = [
-    "แนะนำข้อมูลสินค้าชิ้นนี้:",
-    "พิกัดรายละเอียดของใช้สำหรับวันนี้:",
-    "ส่องรายละเอียดของใช้ตัวเลือกนี้:",
-    "ข้อมูลรีวิวของใช้ชิ้นนี้น่าสนใจ:",
-    "พิกัดไอเทมที่นำมารีวิววันนี้:",
-    "แนะนำสินค้าและรายละเอียดการใช้งาน:",
-    "ข้อมูลคุณสมบัติของสินค้าชิ้นนี้:"
+    "ชี้เป้าความคุ้มวันนี้! ✨",
+    "บอกต่อของดีที่ต้องมี! 🛍️",
+    "ใครยังไม่มีรีบเลย! 🔥",
+    "ไอเทมเด็ดชิ้นนี้ห้ามพลาด! 😍",
+    "ลองหรือยัง? ของดีบอกต่อ 💯",
+    "ตัวช่วยชีวิตดีขึ้นเยอะ! 👍",
+    "หลังจากลองตัวนี้คือปังมาก! 💖",
+    "ส่องด่วน! ดีงามเกินต้าน 🌟"
   ];
   const prefix = randomOpenings[Math.floor(Math.random() * randomOpenings.length)];
   const randomizedHook = `${prefix} ${hook}`;
 
-  const finalCaption = rest ? `${randomizedHook}\n${rest}` : randomizedHook;
-  return removeEmojis(finalCaption);
+  return rest ? `${randomizedHook}\n${rest}` : randomizedHook;
 }
 
 function removeEmojis(str) {
