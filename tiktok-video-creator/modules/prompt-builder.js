@@ -227,6 +227,17 @@ export function buildImagePrompt(productInfo, settings = {}) {
     peopleDirection = NO_PEOPLE_DIRECTION;
   }
 
+  const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true") && Boolean(settings?.clipText || productInfo.name);
+  const textItems = [
+    settings?.clipText ? sanitizeText(settings.clipText) : (productInfo.name ? sanitizeText(productInfo.name) : ""),
+    settings?.promotionText ? sanitizeText(settings.promotionText) : "",
+    productInfo.cta || settings?.cta || "สั่งได้เลย"
+  ].filter(Boolean);
+
+  const textDirection = textEnabled
+    ? `Visible text overlays are enabled. Integrate these exact Thai-language text overlays neatly and professionally onto the image scenes (as advertising headlines, product highlight callouts, or clean typography badges): ${textItems.join(" | ") || "ข้อความภาษาไทย"}. All visible text, labels, titles, and CTA typography must be in clean, correct, natural Thai language only, with perfect spelling and readable typography. Position overlays in ${settings?.textPosition || "Middle"}. STRICTLY FORBIDDEN: do not add any English text, romanized Thai, unconfigured words, or random gibberish labels.`
+    : `${TEXT_FREE_DIRECTION}\nFinal check: ensure no added text or numbers exist in the output.`;
+
   const promptParts = [
     intro,
     PRODUCT_FIDELITY_DIRECTION,
@@ -243,8 +254,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     peopleDirection,
     "Strictest rule: any text, labels, brand names, or writing on the product and packaging must match the reference image exactly; do NOT invent new words or add any extra text or promotional overlays.",
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
-    TEXT_FREE_DIRECTION,
-    "Final check: ensure no added text or numbers exist in the output."
+    textDirection
   ];
 
   return promptParts.filter(Boolean).join("\n");

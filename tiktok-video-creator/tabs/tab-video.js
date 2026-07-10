@@ -737,7 +737,14 @@ async function processQueue() {
         assertNotStopped();
         const modeLabel = isIngredients ? "Ingredients" : "Video Only";
         helpers.logActivity?.(`สินค้า ${i + 1} (${modeLabel}): เปิด New Project ใน Google Flow เพื่อสร้างวิดีโอโดยตรง`, "info");
-        result = await openGoogleFlowWithLoginResume("video", vidPrompt, getFlowProductImage(product), buildFlowOptions(product), product, i);
+        
+        const referenceImage = product.approvedImage || getFlowProductImage(product);
+        const flowOptions = buildFlowOptions(product);
+        if (product.approvedImage) {
+          flowOptions.imageUrls = [product.approvedImage];
+        }
+        
+        result = await openGoogleFlowWithLoginResume("video", vidPrompt, referenceImage, flowOptions, product, i);
       } else {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพ แล้วต่อวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)`, "info");
         const imgPrompt = buildImagePrompt(product, settings);
