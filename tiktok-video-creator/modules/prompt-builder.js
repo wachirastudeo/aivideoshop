@@ -229,7 +229,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true") && Boolean(settings?.clipText || productInfo.name);
   const textItems = [
-    settings?.clipText ? sanitizeText(settings.clipText) : (productInfo.name ? sanitizeText(productInfo.name) : ""),
+    productInfo.name ? sanitizeText(productInfo.name) : "",
+    settings?.clipText ? sanitizeText(settings.clipText) : "",
     settings?.promotionText ? sanitizeText(settings.promotionText) : "",
     productInfo.cta || settings?.cta || "สั่งได้เลย"
   ].filter(Boolean);

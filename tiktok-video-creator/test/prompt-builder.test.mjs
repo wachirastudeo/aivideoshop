@@ -257,10 +257,10 @@ check("image prompt with hands_only presenter shows hands", /Show realistic huma
 check("image prompt with hands_only presenter uses hands intro", /with realistic human hands holding the product/i.test(imgPresenterHands), imgPresenterHands);
 
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
-check("image prompt with text enabled includes configured overlays", /Integrate these exact Thai-language text overlays/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled) && /ลด 50%/i.test(imgTextEnabled), imgTextEnabled);
+check("image prompt with text enabled includes name, clipText, and promotionText", /Integrate these exact Thai-language text overlays/i.test(imgTextEnabled) && /พัดลมไร้สาย/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled) && /ลด 50%/i.test(imgTextEnabled), imgTextEnabled);
 
 const imgTextEnabledName = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "", promotionText: "ลด 50%" });
-check("image prompt with text enabled using name translates to portable fan", /Integrate these exact Thai-language text overlays/i.test(imgTextEnabledName) && /portable fan/i.test(imgTextEnabledName) && /ลด 50%/i.test(imgTextEnabledName), imgTextEnabledName);
+check("image prompt with text enabled using name has Thai name", /Integrate these exact Thai-language text overlays/i.test(imgTextEnabledName) && /พัดลมไร้สาย/i.test(imgTextEnabledName) && /ลด 50%/i.test(imgTextEnabledName), imgTextEnabledName);
 
 const imgTextDisabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: false });
 check("image prompt with text disabled uses TEXT_FREE_DIRECTION", /No added text, words, or characters/i.test(imgTextDisabled), imgTextDisabled);
