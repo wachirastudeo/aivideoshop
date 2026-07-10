@@ -1037,11 +1037,23 @@ async function fillScheduleTime(scheduleTime) {
     return;
   }
 
-  let dateInput = inputs.find((input) => input.type === "date" || input.placeholder?.toLowerCase().includes("date") || input.value?.includes("/") || input.value?.includes("-"));
-  let timeInput = inputs.find((input) => input.type === "time" || input.placeholder?.toLowerCase().includes("time") || input.value?.includes(":") || input.value?.includes("น."));
+  let dateInput = inputs.find((input) => input.value?.includes("-") || input.value?.includes("/") || input.placeholder?.toLowerCase().includes("date"));
+  let timeInput = inputs.find((input) => input.value?.includes(":") || input.value?.includes("น.") || input.placeholder?.toLowerCase().includes("time"));
 
-  if (!dateInput) dateInput = inputs[0];
-  if (!timeInput) timeInput = inputs[1];
+  if (!dateInput) {
+    if (inputs[0]?.value?.includes(":") || inputs[0]?.placeholder?.toLowerCase().includes("time")) {
+      dateInput = inputs[1];
+    } else {
+      dateInput = inputs[0];
+    }
+  }
+  if (!timeInput) {
+    if (inputs[0]?.value?.includes(":") || inputs[0]?.placeholder?.toLowerCase().includes("time")) {
+      timeInput = inputs[0];
+    } else {
+      timeInput = inputs[1];
+    }
+  }
 
   const defaultDateStr = dateInput ? dateInput.value : "";
   const defaultTimeStr = timeInput ? timeInput.value : "";
@@ -1055,9 +1067,73 @@ async function fillScheduleTime(scheduleTime) {
     await setTuxInputValue(dateInput, formattedDate);
   }
   if (timeInput) {
-    await setTuxInputValue(timeInput, formattedTime);
+    await setTuxTimePickerValue(timeInput, formattedTime);
   }
   await sleep(500);
+}
+
+async function setTuxTimePickerValue(input, targetTime) {
+  if (!input) return;
+
+  const parts = targetTime.split(":");
+  if (parts.length !== 2) return;
+  const hr = String(parseInt(parts[0], 10)).padStart(2, "0");
+  const minVal = parseInt(parts[1], 10);
+  const roundedMin = Math.round(minVal / 5) * 5;
+  const clampedMin = Math.min(55, Math.max(0, roundedMin));
+  const min = String(clampedMin).padStart(2, "0");
+
+  input.focus();
+  await realClick(input);
+  await sleep(400);
+
+  const hourOption = [...document.querySelectorAll(".tiktok-timepicker-left")].find(
+    el => el.textContent.trim() === hr
+  );
+  if (hourOption) {
+    await realClick(hourOption);
+    await sleep(200);
+  }
+
+  const minuteOption = [...document.querySelectorAll(".tiktok-timepicker-right")].find(
+    el => el.textContent.trim() === min
+  );
+  if (minuteOption) {
+    await realClick(minuteOption);
+    await sleep(200);
+  }
+
+  const isReadonly = input.hasAttribute("readonly");
+  if (isReadonly) {
+    input.removeAttribute("readonly");
+  }
+
+  input.select();
+  input.setSelectionRange(0, input.value.length);
+  await sleep(100);
+
+  try {
+    document.execCommand('insertText', false, `${hr}:${min}`);
+  } catch (e) {
+    input.value = `${hr}:${min}`;
+  }
+  await sleep(100);
+
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+
+  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+  input.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+  input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+  await sleep(200);
+
+  if (isReadonly) {
+    input.setAttribute("readonly", "readonly");
+  }
+  
+  input.dispatchEvent(new Event("blur", { bubbles: true }));
+  input.blur();
+  await sleep(300);
 }
 
 async function setTuxInputValue(input, value) {
