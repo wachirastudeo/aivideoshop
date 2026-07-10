@@ -50,7 +50,13 @@ async function loadOptions() {
 
   // Post defaults
   const post = settings.postDefaults || {};
-  setValue("caption-template", post.captionTemplate || "{product_name}\n{product_details}\n{cta}");
+  let template = post.captionTemplate;
+  if (template === "{product_name}\n{product_details}\n{cta}") {
+    template = "{product_name}\n{cta}";
+    post.captionTemplate = template;
+    chrome.storage.sync.set({ settings }).catch(() => {});
+  }
+  setValue("caption-template", template || "{product_name}\n{cta}");
   setValue("default-hashtags", normalizeHashtags(post.hashtags || ["#TikTokShop", "#ของดีบอกต่อ"], 4).join(", "));
   setChecked("auto-add-product-link", post.autoAddProductLink !== false);
   setChecked("caption-random-opening", post.randomOpening !== false);

@@ -778,7 +778,11 @@ function promptAutoOptions(videoStyle, presenter, voiceTone, mood, location, cam
  * @returns {string} caption
  */
 export function buildCaption(productInfo, defaults = {}) {
-  const template = defaults.captionTemplate !== undefined ? defaults.captionTemplate : "{product_name}";
+  let template = defaults.captionTemplate !== undefined ? defaults.captionTemplate : "{product_name}";
+  // If template is the old default which included {product_details}, clean it up by omitting {product_details}
+  if (template === "{product_name}\n{product_details}\n{cta}") {
+    template = "{product_name}\n{cta}";
+  }
   if (typeof template === "string" && template.trim() === "") {
     return "";
   }
