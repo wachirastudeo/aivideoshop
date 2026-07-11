@@ -272,6 +272,10 @@ const coffeeVideo = buildVideoPrompt(coffeeProduct, settings);
 check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeImage), coffeeImage);
 check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeVideo), coffeeVideo);
 
+// --- image prompt 4-scene limit test ---
+const imgLimit = buildImagePrompt({ name: "พัดลมไร้สาย" }, settings);
+check("image prompt limits collage grid to at most 4 scenes", /strictly containing at most 4 scenes\/panels/i.test(imgLimit) && /at most 4 different angles and scenes/i.test(imgLimit), imgLimit);
+
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

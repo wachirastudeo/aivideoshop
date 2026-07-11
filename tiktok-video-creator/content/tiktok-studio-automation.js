@@ -16,7 +16,7 @@ const TIKTOK_SELECTORS = {
   captionEditor: '[data-e2e="caption_container"] .public-DraftEditor-content[contenteditable="true"], .notranslate.public-DraftEditor-content[contenteditable="true"], div[contenteditable="true"]',
   locationSearch: '[data-e2e="poi_container"] input[placeholder="Search locations"]',
   visibilityCombo: '[data-e2e="video_visibility_container"] button[role="combobox"]',
-  scheduleContainer: '[data-e2e="schedule_container"]',
+  scheduleContainer: '[data-e2e="schedule_container"], [class*="scheduled-picker" i], [class*="schedule-picker" i], [class*="scheduled-container" i], [class*="schedule-container" i]',
   postNowRadio: 'input[name="postSchedule"][value="post_now"]',
   scheduleRadio: 'input[name="postSchedule"][value="schedule"]',
   addLinkContainer: '[data-e2e="anchor_container"]',
@@ -30,7 +30,7 @@ const TIKTOK_SELECTORS = {
 
 const TIKTOK_TEXT = {
   saveDraft: ["save draft", "save as draft", "save to drafts", "บันทึกฉบับร่าง", "บันทึกแบบร่าง"],
-  post: ["post", "publish", "โพสต์", "เผยแพร่"],
+  post: ["post", "publish", "schedule", "โพสต์", "เผยแพร่", "ตั้งเวลา", "ตั้งเวลาโพสต์"],
   confirm: ["save anyway", "confirm", "continue", "post now", "ยืนยัน", "บันทึกต่อไป", "โพสต์เลย", "โพสต์ทันที"],
 };
 
@@ -160,21 +160,21 @@ async function handleVideoUpload(payload = {}) {
 
     assertNotStopped();
     await discardRecoveryDraftIfNeeded();
-    await sleep(1500 + Math.random() * 1500);
+    await sleep(1000);
     assertNotStopped();
     sendPipelineLog("info", "กำลังอัปโหลดวิดีโอ...");
     await uploadVideoFromUrl(videoUrl, filename || buildVideoFilename({ productId }));
-    await sleep(2000 + Math.random() * 1500);
+    await sleep(1000);
     assertNotStopped();
     sendPipelineLog("info", "รอ TikTok ประมวลผลวิดีโอ...");
     await waitForUploadFinished();
-    await sleep(2500 + Math.random() * 2000);
+    await sleep(1000);
     assertNotStopped();
     await fillCaptionAndHashtags(caption, hashtags);
-    await sleep(2000 + Math.random() * 1500);
+    await sleep(1000);
     assertNotStopped();
     const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, aiGenerated, allowComment, allowReuse });
-    await sleep(2000 + Math.random() * 1500);
+    await sleep(1000);
     assertNotStopped();
 
     if (mode === "post") {
@@ -549,26 +549,79 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   document.execCommand("delete", false);
   await sleep(200);
 
+  // ป้องกันการใส่แฮชแท็กซ้ำสองรอบ (ถ้าแฮชแท็กนั้นเขียนอยู่ใน caption อยู่แล้ว)
+  const safeCaption = String(caption || "").trim();
+  const normTags = normalizeHashtags(hashtags);
+  const captionHashtags = new Set((safeCaption.match(/#\S+/g) || []).map(tag => tag.toLowerCase()));
+  const uniqueHashtags = normTags.filter(tag => !captionHashtags.has(tag.toLowerCase()));
+
   // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
   const fullText = [
-    caption,
-    ...normalizeHashtags(hashtags)
+    safeCaption,
+    ...uniqueHashtags
   ].filter(Boolean).join(" ");
 
   if (fullText) {
+    let success = false;
+    // วิธีที่ 1: ลองใช้ execCommand แทรกข้อความตรงๆ ทันที
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: "FLOW_INSERT_TEXT",
-        payload: { text: fullText, clear: false }
-      });
-      if (!response?.inserted) {
-        throw new Error("Debugger typing returned false");
+      document.execCommand("insertText", false, fullText);
+      // ส่ง event input และ beforeinput บังคับให้ React สังเคราะห์อัปเดต state
+      editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
+      
+      const inserted = (editor.textContent || "").trim();
+      if (inserted) {
+        success = true;
+        console.log("[TikTokPost] fillCaptionAndHashtags: success using execCommand");
       }
     } catch (err) {
-      console.warn("Debugger typing failed, falling back to execCommand:", err);
-      if (fullText) {
-        document.execCommand("insertText", false, fullText);
+      console.warn("[TikTokPost] execCommand failed:", err);
+    }
+
+    // วิธีที่ 2: ลองใช้ Clipboard Paste event
+    if (!success) {
+      try {
+        const dt = new DataTransfer();
+        dt.setData("text/plain", fullText);
+        editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
+        // ส่ง event input และ beforeinput ร่วมด้วยเพื่อบังคับให้ React ซิงค์โมเดลข้อมูล
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
+        
+        await sleep(400);
+        const inserted = (editor.textContent || "").trim();
+        if (inserted) {
+          success = true;
+          console.log("[TikTokPost] fillCaptionAndHashtags: success using Paste Event");
+        }
+      } catch (err) {
+        console.warn("[TikTokPost] paste failed:", err);
       }
+    }
+
+    // วิธีที่ 3: ใช้ Debugger เป็นไม้ตายสุดท้าย
+    if (!success) {
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: "FLOW_INSERT_TEXT",
+          payload: { text: fullText, clear: false }
+        });
+        if (response?.ok && response.inserted) {
+          success = true;
+          console.log("[TikTokPost] fillCaptionAndHashtags: success using Debugger");
+        }
+      } catch (err) {
+        console.warn("[TikTokPost] Debugger typing failed:", err);
+      }
+    }
+
+    // Fallback: ถ้ายังไม่มีอะไรเกิดขึ้นจริงๆ ให้ลองยัดข้อความผ่าน execCommand อีกครั้ง
+    if (!success) {
+      try {
+        document.execCommand("insertText", false, fullText);
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: fullText }));
+      } catch (e) {}
     }
   }
   await sleep(200 + Math.random() * 150);
@@ -1019,6 +1072,160 @@ async function setRadioState(input, desired) {
   await sleep(350);
 }
 
+async function clickCalendarDay(dateInput, targetDate) {
+  try {
+    log("คลิกที่ช่องวันที่เพื่อเปิดปฏิทิน...");
+    dateInput.focus();
+    await realClick(dateInput);
+    await sleep(600); // รอให้ป๊อปอัปปฏิทินแสดงผล
+
+    const targetDay = targetDate.getDate(); // เช่น 11
+    
+    // ค้นหาคอนเทนเนอร์ของปฏิทินที่กำลังแสดงอยู่ (ต้องเป็นตัวป๊อปอัปจริง ไม่ใช่กล่องครอบช่องกรอกข้อความ)
+    let calendarContainer = null;
+    const candidates = [...document.querySelectorAll('.tiktok-calendar-container, .TUXPopover-content, .TUXCalendar, [class*="calendar" i], [class*="Calendar" i], [class*="popover" i], [class*="Popover" i]')];
+    
+    // คัดกรองเฉพาะตัวที่มองเห็น ไม่ได้ครอบอินพุตต้นทาง และเป็นป๊อปอัปที่มีจำนวนช่องตารางวันอยู่ด้านในจริง
+    const popovers = candidates.filter(el => {
+      if (!isVisible(el)) return false;
+      if (el.contains(dateInput)) return false; // ป้องกันการไปเลือกตัวครอบอินพุต
+      return el.querySelectorAll('button, [role="gridcell"], td, span').length > 15;
+    });
+
+    if (popovers.length > 0) {
+      calendarContainer = popovers[0];
+    } else {
+      // ค้นหาตัวสำรองที่มีจำนวนปุ่มช่องวันที่อยู่ด้านใน โดยต้องไม่ครอบคลุมช่องอินพุตต้นทาง
+      const allDivs = [...document.querySelectorAll('div, [role="dialog"]')];
+      const fallbackPopovers = allDivs.filter(el => {
+        if (!isVisible(el)) return false;
+        if (el.contains(dateInput)) return false;
+        return el.querySelectorAll('button, [role="gridcell"], td, span').length > 15;
+      });
+      if (fallbackPopovers.length > 0) {
+        calendarContainer = fallbackPopovers[0];
+      }
+    }
+
+    if (!calendarContainer) {
+      log("ไม่พบตารางปฏิทินที่แยกอิสระ จะใช้ document.body เป็นตัวเลือกสุดท้าย");
+      calendarContainer = document.body;
+    }
+    
+    // ตรวจสอบและเปลี่ยนเดือนได้สูงสุด 3 ครั้ง (เผื่อต้องข้ามไปเดือนหน้า)
+    for (let m = 0; m < 3; m++) {
+      let headerEl = calendarContainer.querySelector('[class*="header"], [class*="title"], [class*="Header"], [class*="Title"]');
+      if (!headerEl) break;
+      
+      const headerText = headerEl.textContent.toLowerCase();
+      const monthNamesEn = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+      const monthNamesTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+      const monthAbbrsTh = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+      
+      const targetMonthNameEn = monthNamesEn[targetDate.getMonth()];
+      const targetMonthAbbrEn = targetMonthNameEn.slice(0, 3); // e.g. "jul"
+      const targetMonthNameTh = monthNamesTh[targetDate.getMonth()];
+      const targetMonthAbbrTh = monthAbbrsTh[targetDate.getMonth()];
+
+      const hasTargetMonth = headerText.includes(targetMonthNameEn) || 
+                             headerText.includes(targetMonthAbbrEn) || 
+                             headerText.includes(targetMonthNameTh) || 
+                             headerText.includes(targetMonthAbbrTh);
+      if (hasTargetMonth) {
+        break;
+      }
+      
+      log(`เดือนในปฏิทินไม่ตรงกับเป้าหมาย (${targetMonthNameEn}), กำลังพยายามเปลี่ยนเดือน...`);
+      const navButtons = [...calendarContainer.querySelectorAll('button, svg, span, div')].filter(isVisible);
+      const nextButton = navButtons.find(el => {
+        const className = (el.className || "").toLowerCase();
+        const testId = (el.getAttribute("data-testid") || "").toLowerCase();
+        const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
+        const iconName = (el.getAttribute("data-icon") || "").toLowerCase();
+        return className.includes("next") || className.includes("right") || className.includes("forward") || 
+               testId.includes("next") || testId.includes("right") ||
+               ariaLabel.includes("next") || ariaLabel.includes("right") ||
+               iconName.includes("right") || iconName.includes("next") ||
+               (!iconName.includes("arrowdown") && className.includes("arrow-right"));
+      });
+      
+      if (nextButton) {
+        log("พบปุ่มถัดไป คลิกเปลี่ยนเดือน...");
+        await realClick(nextButton);
+        await sleep(800); // พักรอให้แอนิเมชันปฏิทินเปลี่ยนเดือนเสร็จสิ้น
+      } else {
+        break;
+      }
+    }
+
+    log(`ค้นหาปุ่มวันในปฏิทิน: ${targetDay}`);
+    let allElements = [...calendarContainer.querySelectorAll('button, [role="gridcell"], [role="button"], td, span, div')]
+      .filter(el => {
+        if (!isVisible(el)) return false;
+        const text = el.textContent.trim();
+        const num = parseInt(text, 10);
+        return !isNaN(num) && num === targetDay && (text === String(targetDay) || text === "0" + targetDay);
+      });
+
+    // จัดลำดับ: เอาปุ่มหรือช่องตารางไว้ก่อน span/div ทั่วไป เพื่อให้คลิกโดนเป้าหมายจริงๆ ไม่ใช่ตัวหนังสือซ้อนด้านใน
+    allElements.sort((a, b) => {
+      const tagA = a.tagName.toLowerCase();
+      const tagB = b.tagName.toLowerCase();
+      const roleA = a.getAttribute("role") || "";
+      const roleB = b.getAttribute("role") || "";
+      
+      const isInteractiveA = tagA === "button" || tagA === "td" || roleA === "gridcell" || roleA === "button";
+      const isInteractiveB = tagB === "button" || tagB === "td" || roleB === "gridcell" || roleB === "button";
+      
+      if (isInteractiveA && !isInteractiveB) return -1;
+      if (!isInteractiveA && isInteractiveB) return 1;
+      return 0;
+    });
+
+    const activeCandidates = allElements.filter(el => {
+      const className = (el.className || "").toLowerCase();
+      const isOutside = className.includes("outside") || 
+                        className.includes("prev") || 
+                        className.includes("next") || 
+                        className.includes("other") || 
+                        className.includes("disabled") || 
+                        className.includes("muted") ||
+                        className.includes("inactive");
+      
+      const parentClassName = (el.parentElement?.className || "").toLowerCase();
+      const parentIsOutside = parentClassName.includes("outside") || 
+                              parentClassName.includes("prev") || 
+                              parentClassName.includes("next") || 
+                              parentClassName.includes("other") || 
+                              parentClassName.includes("disabled") || 
+                              parentClassName.includes("muted") ||
+                              parentClassName.includes("inactive");
+      
+      const style = window.getComputedStyle(el);
+      const color = style.color || "";
+      const opacity = style.opacity || "";
+      const isMuted = color.includes("rgba") || 
+                      opacity === "0.5" || 
+                      color === "rgb(153, 153, 153)" ||
+                      color === "rgb(187, 187, 187)";
+      
+      return !isOutside && !parentIsOutside && !isMuted;
+    });
+
+    let bestCandidate = activeCandidates.length > 0 ? activeCandidates[0] : allElements[0];
+
+    if (bestCandidate) {
+      log(`พบปุ่มวันในปฏิทินแล้ว คลิกวัน: ${targetDay}`);
+      await realClick(bestCandidate);
+      await sleep(500);
+      return true;
+    }
+  } catch (e) {
+    console.error("error in clickCalendarDay:", e);
+  }
+  return false;
+}
+
 async function fillScheduleTime(scheduleTime) {
   const date = new Date(scheduleTime);
   if (Number.isNaN(date.getTime())) {
@@ -1037,22 +1244,32 @@ async function fillScheduleTime(scheduleTime) {
     return;
   }
 
-  let dateInput = inputs.find((input) => input.value?.includes("-") || input.value?.includes("/") || input.placeholder?.toLowerCase().includes("date"));
-  let timeInput = inputs.find((input) => input.value?.includes(":") || input.value?.includes("น.") || input.placeholder?.toLowerCase().includes("time"));
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$|^\d{2}\.\d{2}\.\d{4}$/;
+  const timeRegex = /^\d{2}:\d{2}$|^\d{2}:\d{2}\s*(?:am|pm)?$/i;
+
+  let dateInput = inputs.find(input => dateRegex.test((input.value || "").trim()));
+  let timeInput = inputs.find(input => timeRegex.test((input.value || "").trim()));
 
   if (!dateInput) {
-    if (inputs[0]?.value?.includes(":") || inputs[0]?.placeholder?.toLowerCase().includes("time")) {
-      dateInput = inputs[1];
-    } else {
-      dateInput = inputs[0];
-    }
+    dateInput = inputs.find(input => 
+      input.placeholder?.toLowerCase().includes("date") || 
+      input.value?.includes("-") || 
+      input.value?.includes("/")
+    );
   }
   if (!timeInput) {
-    if (inputs[0]?.value?.includes(":") || inputs[0]?.placeholder?.toLowerCase().includes("time")) {
-      timeInput = inputs[0];
-    } else {
-      timeInput = inputs[1];
-    }
+    timeInput = inputs.find(input => 
+      input.placeholder?.toLowerCase().includes("time") || 
+      input.value?.includes(":")
+    );
+  }
+
+  // Fallback คัดแยกตามตำแหน่งถ้ายังตรวจหาเจาะจงไม่ครบ
+  if (!dateInput && inputs.length >= 2) {
+    dateInput = inputs[0];
+  }
+  if (!timeInput && inputs.length >= 2) {
+    timeInput = inputs[1];
   }
 
   const defaultDateStr = dateInput ? dateInput.value : "";
@@ -1064,8 +1281,12 @@ async function fillScheduleTime(scheduleTime) {
   log(`กำลังกรอกค่าเวลา: Date=${formattedDate} (เดิม=${defaultDateStr}), Time=${formattedTime} (เดิม=${defaultTimeStr})`);
 
   if (dateInput) {
-    log(`กำลังกรอกวันที่: ${formattedDate}`);
-    await setTuxInputValue(dateInput, formattedDate);
+    log(`กำลังปรับวันที่: ${formattedDate}`);
+    const clicked = await clickCalendarDay(dateInput, date);
+    if (!clicked) {
+      log("ไม่สามารถเลือกจากปฏิทินได้ จะใช้วิธีกรอกข้อความแทน");
+      await setTuxInputValue(dateInput, formattedDate);
+    }
     await sleep(1000); // พักรอให้ระบบตรวจสอบความถูกต้องของวันและเวลา
   }
   if (timeInput) {
@@ -1156,20 +1377,36 @@ async function setTuxInputValue(input, value) {
     input.removeAttribute("readonly");
   }
 
-  input.select();
-  input.setSelectionRange(0, input.value.length);
-  await sleep(100);
-
+  const lastValue = input.value;
+  
+  // 1. วิธีหลัก: เรียกใช้ native setter ของเบราว์เซอร์เพื่อข้ามระบบดักจับของ React
   try {
-    document.execCommand('insertText', false, value);
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    nativeSetter.call(input, value);
   } catch (e) {
-    console.warn("execCommand failed, falling back to direct value set:", e);
+    console.warn("nativeSetter failed, falling back to direct assignment:", e);
     input.value = value;
   }
-  await sleep(100);
 
+  // 2. ซิงค์กับระบบแทร็กเกอร์เฉพาะของ React
+  try {
+    const tracker = input._valueTracker;
+    if (tracker) {
+      tracker.setValue(lastValue);
+    }
+  } catch (e) {}
+
+  // 3. ยิงสัญญาณ event ให้ React ทราบว่าค่าอินพุตเปลี่ยนแปลง
   input.dispatchEvent(new Event("input", { bubbles: true }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
+
+  // 4. ลองรัน execCommand เผื่อกรณีพิเศษเพิ่มเติม
+  try {
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+    document.execCommand('insertText', false, value);
+  } catch (e) {}
+  await sleep(200);
 
   input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
   input.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
@@ -1479,26 +1716,79 @@ async function fillCaption(caption, hashtags) {
   document.execCommand("delete", false);
   await sleep(200);
 
+  // ป้องกันการใส่แฮชแท็กซ้ำสองรอบ (ถ้าแฮชแท็กนั้นเขียนอยู่ใน caption อยู่แล้ว)
+  const safeCaption = String(caption || "").trim();
+  const normTags = normalizeHashtags(hashtags);
+  const captionHashtags = new Set((safeCaption.match(/#\S+/g) || []).map(tag => tag.toLowerCase()));
+  const uniqueHashtags = normTags.filter(tag => !captionHashtags.has(tag.toLowerCase()));
+
   // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
   const fullText = [
-    caption,
-    ...normalizeHashtags(hashtags)
+    safeCaption,
+    ...uniqueHashtags
   ].filter(Boolean).join(" ");
 
   if (fullText) {
+    let success = false;
+    // วิธีที่ 1: ลองใช้ execCommand แทรกข้อความตรงๆ ทันที
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: "FLOW_INSERT_TEXT",
-        payload: { text: fullText, clear: false }
-      });
-      if (!response?.inserted) {
-        throw new Error("Debugger typing returned false");
+      document.execCommand("insertText", false, fullText);
+      // ส่ง event input และ beforeinput บังคับให้ React สังเคราะห์อัปเดต state
+      captionEl.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
+      captionEl.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
+      
+      const inserted = (captionEl.textContent || "").trim();
+      if (inserted) {
+        success = true;
+        console.log("[TikTokPost] fillCaption: success using execCommand");
       }
     } catch (err) {
-      console.warn("Debugger typing failed, falling back to execCommand:", err);
-      if (fullText) {
-        document.execCommand("insertText", false, fullText);
+      console.warn("[TikTokPost] execCommand failed:", err);
+    }
+
+    // วิธีที่ 2: ลองใช้ Clipboard Paste event
+    if (!success) {
+      try {
+        const dt = new DataTransfer();
+        dt.setData("text/plain", fullText);
+        captionEl.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
+        // ส่ง event input และ beforeinput ร่วมด้วยเพื่อบังคับให้ React ซิงค์โมเดลข้อมูล
+        captionEl.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
+        captionEl.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
+        
+        await sleep(400);
+        const inserted = (captionEl.textContent || "").trim();
+        if (inserted) {
+          success = true;
+          console.log("[TikTokPost] fillCaption: success using Paste Event");
+        }
+      } catch (err) {
+        console.warn("[TikTokPost] paste failed:", err);
       }
+    }
+
+    // วิธีที่ 3: ใช้ Debugger เป็นไม้ตายสุดท้าย
+    if (!success) {
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: "FLOW_INSERT_TEXT",
+          payload: { text: fullText, clear: false }
+        });
+        if (response?.ok && response.inserted) {
+          success = true;
+          console.log("[TikTokPost] fillCaption: success using Debugger");
+        }
+      } catch (err) {
+        console.warn("[TikTokPost] Debugger typing failed:", err);
+      }
+    }
+
+    // Fallback: ถ้ายังไม่มีอะไรเกิดขึ้นจริงๆ ให้ลองยัดข้อความผ่าน execCommand อีกครั้ง
+    if (!success) {
+      try {
+        document.execCommand("insertText", false, fullText);
+        captionEl.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: fullText }));
+      } catch (e) {}
     }
   }
   await sleep(200 + Math.random() * 150);
@@ -1565,8 +1855,7 @@ function waitForElement(selector, timeoutMs = 10000) {
 }
 
 function sleep(ms) {
-  const jitterFactor = ms >= 300 ? (0.7 + Math.random() * 0.6) : 1.0;
-  return new Promise(resolve => setTimeout(resolve, Math.round(ms * jitterFactor)));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function assertNotStopped() {

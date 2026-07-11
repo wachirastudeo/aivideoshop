@@ -208,12 +208,12 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const handsOnly = auto.presenter === "hands_only";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
 
-  // Determine introductory description/layout advice based on presenter settings (always keep multiple angles grid/collage)
+  // Determine introductory description/layout advice based on presenter settings (always keep multiple angles grid/collage, strictly at most 4 scenes)
   const intro = (auto.presenter && auto.presenter !== "none" && auto.presenter !== "hands_only")
-    ? `A high-fidelity product photography collage grid in one vertical 9:16 layout, showing ${productName} from multiple angles and scenes with a presenter shown in the frame.`
+    ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with a presenter shown in the frame.`
     : (auto.presenter === "hands_only")
-      ? `A high-fidelity product photography collage grid in one vertical 9:16 layout, showing ${productName} from multiple angles and scenes with realistic human hands holding the product in the frame.`
-      : `A high-fidelity product photography collage grid in one vertical 9:16 layout, showing ${productName} from multiple angles and scenes.`;
+      ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with realistic human hands holding the product in the frame.`
+      : `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes.`;
 
   let peopleDirection = "";
   if (handsOnly) {
@@ -249,7 +249,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     PRODUCT_FIDELITY_DIRECTION,
     SCALE_FIDELITY_DIRECTION,
     "Critical: The generated image must maintain absolute fidelity to the original product in the reference image. The product's shape, curves, outlines, colors, materials, branding, labels, and text must be 100% identical and unchanged. Do not redesign, warp, or modify the product's structure.",
-    "Depict the product from a diverse mix of camera angles and shot distances in a collage grid: wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively across the collage panels (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage).",
+    "Depict the product from a diverse mix of camera angles and shot distances in a collage grid (strictly containing at most 4 scenes/panels): wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively across the collage panels (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage, strictly limited to at most 4 panels/scenes).",
     isHeavy ? "Real scale." : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment, hands, or presenter in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).",
     specificScale,
     PRODUCT_ISOLATION_DIRECTION,

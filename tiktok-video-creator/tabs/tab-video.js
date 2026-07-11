@@ -724,7 +724,7 @@ async function processQueue() {
       }
 
       const isIngredients = options.videoRefMode === "ingredients";
-      const isVideoOnly = settings.flowGenMode === "video";
+      const isVideoOnly = settings.flowGenMode === "video" || product.status === "image_done";
       product.status = isVideoOnly ? "video_generating" : "image_generating";
       product.errorMessage = "";
       await persistState();
@@ -814,6 +814,16 @@ async function processQueue() {
         await persistState();
         renderQueue();
       }
+      // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่มรอบละประมาณ 5 วินาที ค่อยเริ่มสินค้าใหม่
+      if (i < productQueue.length - 1) {
+        const hasNextPending = productQueue.slice(i + 1).some(p => p.status !== "done");
+        if (hasNextPending) {
+          const delaySeconds = 4 + Math.floor(Math.random() * 3); // สุ่ม 4 - 6 วินาที (เฉลี่ย 5 วินาที)
+          helpers.showStatus(`รอจังหวะแบบสุ่ม ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");
+          helpers.logActivity?.(`รอหน่วงเวลาระหว่างรายการชิ้นถัดไป ${delaySeconds} วินาที...`, "info");
+          await interruptibleDelay(delaySeconds * 1000);
+        }
+      }
     } catch (err) {
       if (stopRequested) {
         product.status = product.videoUrl ? "done" : "image_done";
@@ -834,6 +844,18 @@ async function processQueue() {
       renderQueue();
       helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
       helpers.logActivity?.(`ข้ามสินค้า ${i + 1} (ทำต่อรายการถัดไป): ${err.message}`, "error");
+      // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่มรอบละประมาณ 5 วินาที ค่อยเริ่มสินค้าใหม่ (กรณีข้ามจาก error)
+      if (i < productQueue.length - 1) {
+        const hasNextPending = productQueue.slice(i + 1).some(p => p.status !== "done");
+        if (hasNextPending) {
+          const delaySeconds = 4 + Math.floor(Math.random() * 3); // สุ่ม 4 - 6 วินาที (เฉลี่ย 5 วินาที)
+          helpers.showStatus(`รอจังหวะแบบสุ่ม ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");
+          helpers.logActivity?.(`รอหน่วงเวลาระหว่างรายการชิ้นถัดไป ${delaySeconds} วินาที...`, "info");
+          try {
+            await interruptibleDelay(delaySeconds * 1000);
+          } catch (e) {}
+        }
+      }
       continue;
     }
     }
@@ -903,7 +925,13 @@ function isFlowLoginError(error) {
 }
 
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  let finalMs = ms;
+  if (ms >= 1000) {
+    const extraRandom = Math.floor(Math.random() * 2000) - 800; // -800ms to +1200ms
+    finalMs = Math.max(800, ms + extraRandom);
+  }
+  const jitterFactor = finalMs >= 300 ? (0.75 + Math.random() * 0.50) : 1.0; // 0.75 to 1.25
+  return new Promise(resolve => setTimeout(resolve, Math.round(finalMs * jitterFactor)));
 }
 
 async function interruptibleDelay(ms, interval = 500) {

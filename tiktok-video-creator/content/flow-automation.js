@@ -87,9 +87,66 @@ function removeOverlay() { _overlay?.remove(); _overlay = null; }
 
 // ── Timing ───────────────────────────────────────────────────
 const sleep = (ms) => {
-    const jitterFactor = ms >= 300 ? (0.7 + Math.random() * 0.6) : 1.0;
-    return new Promise(r => setTimeout(r, Math.round(ms * jitterFactor)));
+    let finalMs = ms;
+    if (ms >= 1000) {
+        const extraRandom = Math.floor(Math.random() * 2000) - 800; // -800ms to +1200ms
+        finalMs = Math.max(800, ms + extraRandom);
+    }
+    const jitterFactor = finalMs >= 300 ? (0.75 + Math.random() * 0.50) : 1.0; // 0.75 to 1.25
+    const totalMs = Math.min(10000, Math.round(finalMs * jitterFactor)); // จำกัดเพดานสูงสุดไม่เกิน 10 วินาทีตามที่ผู้ใช้กำหนด
+
+    if (totalMs >= 2500) {
+        return new Promise(async (resolve) => {
+            const start = Date.now();
+            const doWiggle = Math.random() > 0.35; // 65% chance of mouse movement
+            const doScroll = Math.random() > 0.60; // 40% chance of screen scroll
+            let wiggleTriggered = false;
+            let scrollTriggered = false;
+            const wiggleDelay = 500 + Math.random() * (totalMs - 1500);
+            const scrollDelay = 800 + Math.random() * (totalMs - 1800);
+            
+            while (Date.now() - start < totalMs) {
+                if (stopRequested) break;
+                const elapsed = Date.now() - start;
+                if (doWiggle && !wiggleTriggered && elapsed > wiggleDelay) {
+                    wiggleTriggered = true;
+                    await wiggleMouse();
+                }
+                if (doScroll && !scrollTriggered && elapsed > scrollDelay) {
+                    scrollTriggered = true;
+                    await nudgeScroll();
+                }
+                await new Promise(r => setTimeout(r, 100));
+            }
+            resolve();
+        });
+    }
+    return new Promise(r => setTimeout(r, totalMs));
 };
+
+async function wiggleMouse() {
+    try {
+        const offsetRange = 40 + Math.random() * 80;
+        const directionX = Math.random() > 0.5 ? 1 : -1;
+        const directionY = Math.random() > 0.5 ? 1 : -1;
+        const targetX = Math.max(10, Math.min(window.innerWidth - 10, currentMouseX + offsetRange * directionX));
+        const targetY = Math.max(10, Math.min(window.innerHeight - 10, currentMouseY + offsetRange * directionY));
+        await trail(targetX, targetY);
+    } catch (e) {}
+}
+
+async function nudgeScroll() {
+    try {
+        const scrollAmount = Math.floor(Math.random() * 90) + 30; // 30-120px
+        const direction = Math.random() > 0.6 ? 1 : -1;
+        window.scrollBy({ top: scrollAmount * direction, behavior: "smooth" });
+        // พักสักครู่แล้วเลื่อนกลับเพื่อไม่ให้เสียมุมมองหลัก
+        const holdTime = 600 + Math.random() * 800;
+        await new Promise(r => setTimeout(r, holdTime));
+        window.scrollBy({ top: -scrollAmount * direction, behavior: "smooth" });
+    } catch (e) {}
+}
+
 function jitter(min, max) { return sleep(min + Math.random() * (max - min)); }
 async function sleepStop(ms) {
     const end = Date.now() + ms;
@@ -850,15 +907,16 @@ function findNewProjectButton() {
     return null;
 }
 
-async function ensureProjectPage() {
+async function ensureProjectPage(isResume = false) {
     await sleep(1000);
     if (location.hostname.includes("accounts.google")) {
         log("❌ Google Flow ต้อง login Google ก่อน");
         return false;
     }
 
-    if (isProjectUrl(location.href)) {
-        const end = Date.now() + 30000;
+    if (isResume || isProjectUrl(location.href)) {
+        log(isResume ? "🔄 กำลังดำเนินโครงการต่อหลังรีเฟรช: รอหน้าต่าง Prompt Editor..." : "กำลังรอให้หน้าโปรเจกต์พร้อม (Prompt Editor)...");
+        const end = Date.now() + 45000; // ขยายเวลารอเป็น 45 วินาที
         while (Date.now() < end) {
             if (hasPromptEditor()) return true;
             await sleep(POLL);
@@ -889,7 +947,7 @@ async function ensureProjectPage() {
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
             action.scrollIntoView({ block: "center", inline: "center" });
             pointerClick(action);
-            await sleep(2500);
+            await sleep(3800); // หน่วงเวลาหลังคลิกเปิดโปรเจกต์
             if (isProjectUrl(location.href)) return true;
             continue;
         }
@@ -918,6 +976,7 @@ async function prepareFreshProject() {
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
             action.scrollIntoView({ block: "center", inline: "center" });
             pointerClick(action);
+            await sleep(3800); // หน่วงเวลาหลังคลิกเปิดโปรเจกต์
             return true;
         }
         await sleep(POLL);
@@ -1067,8 +1126,16 @@ async function clickMenuTab(key) {
     const aliases = {
         IMAGE: ["IMAGE", "IMAGES", "รูปภาพ"],
         VIDEO: ["VIDEO", "VIDEOS", "วิดีโอ"],
-        PORTRAIT: ["PORTRAIT", "9:16", "VERTICAL", "แนวตั้ง"]
-    }[key] || [key];
+        PORTRAIT: ["PORTRAIT", "9:16", "VERTICAL", "แนวตั้ง"],
+        Subject: ["SUBJECT", "วัตถุ", "ตัวแบบ", "หัวข้อ", "สิ่งที่แสดง"],
+        SUBJECT: ["SUBJECT", "วัตถุ", "ตัวแบบ", "หัวข้อ", "สิ่งที่แสดง"],
+        Style: ["STYLE", "สไตล์", "รูปแบบ"],
+        STYLE: ["STYLE", "สไตล์", "รูปแบบ"],
+        Structure: ["STRUCTURE", "โครงสร้าง"],
+        STRUCTURE: ["STRUCTURE", "โครงสร้าง"],
+        VIDEO_REFERENCES: ["VIDEO_REFERENCES", "VIDEO REFERENCES", "INGREDIENTS", "ส่วนผสม", "วัตถุดิบ", "อ้างอิงวิดีโอ"],
+        VIDEO_FRAMES: ["VIDEO_FRAMES", "VIDEO FRAMES", "FRAMES", "เฟรม", "กรอบ", "เฟรมวิดีโอ"]
+    }[key] || [String(key).toUpperCase()];
     for (const tab of document.querySelectorAll('[role="tab"]')) {
         const label = `${tab.id || ""} ${tab.textContent || ""} ${tab.getAttribute("aria-label") || ""}`.toUpperCase();
         if ((tab.id || "").endsWith("-trigger-" + key) || aliases.some(alias => label.includes(alias))) {
@@ -1660,8 +1727,8 @@ async function setPrompt(prompt) {
     }
     log("✅ กรอก Prompt สำเร็จ");
     await detachFlowDebugger();
-    log("รอ 5 วินาที เพื่อความเสถียรของหน้าต่างและให้เหมือนคน...");
-    await sleep(5000); // ดีเลย์ 5 วินาทีก่อนไปทำขั้นตอนถัดไป
+    log("รอสักครู่เพื่อความเสถียรของหน้าต่างและให้เหมือนคน...");
+    await sleep(4800); // ดีเลย์สุ่มรอบการพิมพ์เพื่อให้เหมือนคน
 }
 
 function findPromptEditor() {
@@ -1785,9 +1852,9 @@ async function typeSlate(editor, prompt) {
         await sleep(50);
     }
 
-    // วิธีที่ 1: ใช้ Debugger เป็นวิธีหลักเพื่ออัปเดต React State ของ Slate แน่นอน
+    // วิธีที่ 1: ใช้ Debugger เป็นวิธีหลักเพื่ออัปเดต React State ของ Slate แน่นอนและหลีกเลี่ยงการ unmount/หน้าจอพัง
     try {
-        log("กรอก Prompt ด้วยระบบ Debugger (เพื่อความเสถียรและให้ React State อัปเดต)...");
+        log("กรอก Prompt ด้วยระบบ Debugger (เพื่อความเสถียรของ Slate/React)...");
         // ล้างค่าเก่าออกก่อน
         selectEditableContents(editor);
         document.execCommand("delete", false, null);
@@ -2086,6 +2153,15 @@ async function waitForResult(phase, options = {}) {
     log("รอผลลัพธ์จาก Flow...");
     while (Date.now() < end) {
         if (stopRequested) return { tileId: null, mediaUrl: "" };
+
+        // เลียนแบบคนขยับเมาส์/เลื่อนจอเล็กลงระหว่างรอการเจนของ Flow
+        if (Math.random() < 0.12) { // โอกาสประมาณ 12% ในการรันแต่ละลูป (~8 วินาทีต่อครั้ง)
+            if (Math.random() > 0.5) {
+                await wiggleMouse();
+            } else {
+                await nudgeScroll();
+            }
+        }
         const newCards = getMediaCards()
             .filter(card => card.key && !preGenMediaKeys.has(card.key))
             .map(card => ({ card, status: mediaCardStatus(card) }));
@@ -2303,7 +2379,7 @@ async function runPipeline(payload, runOptions = {}) {
 
         // 1. ไปหน้า project
         log("ตรวจหน้าโปรเจกต์ Google Flow...");
-        const ok = await ensureProjectPage();
+        const ok = await ensureProjectPage(Boolean(resumeState));
         if (!ok) throw new Error("ไม่สามารถเปิดหน้า project ได้ (ตรวจสอบว่า login Google แล้ว)");
         await sleep(5000); // หน่วงเวลา 5 วินาทีหลังเข้าหน้าโปรเจกต์
         dismissIAgree();
@@ -2740,10 +2816,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
                 await sleep(2000);
                 window.location.reload();
             } else if (state.step === "AFTER_FIRST_REFRESH") {
-                log("🔄 รีเฟรชครบ 2 รอบแล้ว! รอ 5 วินาทีก่อนเริ่มดำเนินการกรอกข้อความต่อไป...");
+                log("🔄 รีเฟรชครบ 2 รอบแล้ว! รอสักครู่ให้ข้อมูลโหลดเสร็จก่อนเริ่มดำเนินการกรอกข้อความต่อไป...");
                 await chrome.storage.local.remove("flowActiveJobResume");
-                // รอ 5 วินาทีเพื่อให้หน้าเว็บและองค์ประกอบต่างๆ โหลดเสร็จสิ้นสมบูรณ์
-                await sleep(5000);
+                // รอให้หน้าเว็บและองค์ประกอบต่างๆ โหลดเสร็จสิ้นสมบูรณ์
+                await sleep(4500);
                 runPipeline(state.payload, { resumeState: state, jobId: state.jobId })
                     .then(result => finishFlowJob(state.jobId, result))
                     .catch(error => finishFlowJob(state.jobId, { ok: false, error: error.message || "Flow automation ล้มเหลวหลังรีเฟรช" }));

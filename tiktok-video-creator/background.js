@@ -314,37 +314,43 @@ async function openGoogleFlow(payload) {
   await ensureFlowContentScript(tab.id);
   assertRunNotStopped(runVersion, flowStopVersion);
 
-  const jobId = String(payload.jobId || "");
-  if (!jobId) throw new Error("ไม่พบ Flow job ID");
-
-  // Start the long-running work in the content script and acknowledge it
-  // immediately. Keeping this message channel open across generation causes
-  // Chrome to close it after several minutes.
-  let started;
+  await chrome.storage.local.set({ activeFlowTabId: tab.id });
   try {
-    started = await chrome.tabs.sendMessage(tab.id, {
-      type: "FLOW_RUN_PIPELINE",
-      jobId,
-      payload: {
-        phase: payload.phase,
-        prompt: payload.prompt,
-        imageUrl: payload.imageUrl || "",
-        options: payload.options || {}
-      }
-    });
+    const jobId = String(payload.jobId || "");
+    if (!jobId) throw new Error("ไม่พบ Flow job ID");
+
+    // Start the long-running work in the content script and acknowledge it
+    // immediately. Keeping this message channel open across generation causes
+    // Chrome to close it after several minutes.
+    let started;
+    try {
+      started = await chrome.tabs.sendMessage(tab.id, {
+        type: "FLOW_RUN_PIPELINE",
+        jobId,
+        payload: {
+          phase: payload.phase,
+          prompt: payload.prompt,
+          imageUrl: payload.imageUrl || "",
+          options: payload.options || {}
+        }
+      });
+    } catch (err) {
+      throw new Error("ส่งคำสั่งไปยัง Flow ไม่สำเร็จ: " + err.message);
+    }
+
+    if (!started?.accepted) {
+      throw new Error(started?.error || "Google Flow ไม่รับคำสั่งเริ่มงาน");
+    }
+    if (runVersion !== flowStopVersion) {
+      await chrome.tabs.sendMessage(tab.id, { type: "FLOW_STOP" }).catch(() => {});
+      throw createBackgroundStopError();
+    }
+
+    return { tabId: tab.id, jobId, started: true };
   } catch (err) {
-    throw new Error("ส่งคำสั่งไปยัง Flow ไม่สำเร็จ: " + err.message);
+    await chrome.storage.local.remove("activeFlowTabId");
+    throw err;
   }
-
-  if (!started?.accepted) {
-    throw new Error(started?.error || "Google Flow ไม่รับคำสั่งเริ่มงาน");
-  }
-  if (runVersion !== flowStopVersion) {
-    await chrome.tabs.sendMessage(tab.id, { type: "FLOW_STOP" }).catch(() => {});
-    throw createBackgroundStopError();
-  }
-
-  return { tabId: tab.id, jobId, started: true };
 }
 
 async function handleFlowPipelineDone(payload = {}) {
@@ -410,6 +416,7 @@ async function getFlowSettings() {
 
 async function stopFlowPipeline() {
   flowStopVersion += 1;
+  await chrome.storage.local.remove("activeFlowTabId");
   const tabs = await queryFlowTabs();
   await Promise.allSettled(tabs.map(async (tab) => {
     await chrome.tabs.sendMessage(tab.id, { type: "FLOW_STOP" });
@@ -420,6 +427,7 @@ async function stopFlowPipeline() {
 
 async function stopTikTokStudioPipeline() {
   tiktokStopVersion += 1;
+  await chrome.storage.local.remove("activeTikTokTabId");
   const tabs = [
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/*" })),
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktok-studio/*" })),
@@ -927,7 +935,13 @@ async function blobToBase64(blob) {
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  let finalMs = ms;
+  if (ms >= 1000) {
+    const extraRandom = Math.floor(Math.random() * 2000) - 800; // -800ms to +1200ms
+    finalMs = Math.max(800, ms + extraRandom);
+  }
+  const jitterFactor = finalMs >= 300 ? (0.75 + Math.random() * 0.50) : 1.0; // 0.75 to 1.25
+  return new Promise(resolve => setTimeout(resolve, Math.round(finalMs * jitterFactor)));
 }
 
 const TIKTOK_STUDIO_UPLOAD_URL = "https://www.tiktok.com/tiktokstudio/upload";
@@ -953,6 +967,7 @@ async function sendTikTokDraft(payload) {
   }
 
   const tabId = await openTikTokStudioUploadTab();
+  await chrome.storage.local.set({ activeTikTokTabId: tabId });
 
   // 2. ดึงข้อมูลวิดีโอและแปลงเป็น Base64
   await notify("TikTok Automation", "กำลังดาวน์โหลดไฟล์วิดีโอเพื่อเตรียมกรอกหน้าเว็บ...");
@@ -1027,6 +1042,7 @@ function monitorTikTokSubmission(tabId, { jobId = "", mode = "post" } = {}) {
     finished = true;
     chrome.tabs.onUpdated.removeListener(onUpdated);
     if (timer) clearTimeout(timer);
+    chrome.storage.local.remove("activeTikTokTabId").catch(() => {});
   };
   const complete = async (url) => {
     if (finished || !storageKey) return;
@@ -1290,3 +1306,40 @@ function normalizeHashtags(value) {
 
   return tags;
 }
+
+// ─── Tab Active Watchdog ──────────────────────────────────────────
+setInterval(async () => {
+  try {
+    const data = await chrome.storage.local.get(["activeFlowTabId", "activeTikTokTabId"]);
+    
+    if (data.activeFlowTabId) {
+      try {
+        const tab = await chrome.tabs.get(Number(data.activeFlowTabId));
+        if (!tab.active) {
+          await chrome.tabs.update(tab.id, { active: true });
+          try { await chrome.windows.update(tab.windowId, { focused: true }); } catch (_) {}
+          console.log("[Watchdog] Pulling active Google Flow tab to foreground (ID:", tab.id, ")");
+        }
+      } catch (err) {
+        // Tab no longer exists, clear it
+        await chrome.storage.local.remove("activeFlowTabId");
+      }
+    }
+    
+    if (data.activeTikTokTabId) {
+      try {
+        const tab = await chrome.tabs.get(Number(data.activeTikTokTabId));
+        if (!tab.active) {
+          await chrome.tabs.update(tab.id, { active: true });
+          try { await chrome.windows.update(tab.windowId, { focused: true }); } catch (_) {}
+          console.log("[Watchdog] Pulling active TikTok Studio tab to foreground (ID:", tab.id, ")");
+        }
+      } catch (err) {
+        // Tab no longer exists, clear it
+        await chrome.storage.local.remove("activeTikTokTabId");
+      }
+    }
+  } catch (e) {
+    console.error("[Watchdog] Error in active tab watchdog:", e);
+  }
+}, 5000);

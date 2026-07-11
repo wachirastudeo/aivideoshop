@@ -92,7 +92,9 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
         hashtags: buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags })
       }
     : await generatePostCopy(productInfo, postDefaults);
-  const caption = postCopy.caption !== undefined ? postCopy.caption : buildCaption(productInfo, postDefaults);
+  const caption = (postCopy.caption !== undefined && postCopy.caption !== null && String(postCopy.caption).trim() !== "")
+    ? postCopy.caption
+    : buildCaption(productInfo, postDefaults);
   const hashtags = normalizeHashtags(postCopy.hashtags || buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags }), 5);
   if (postMode === "post") {
     assertPostMetadata({ productInfo, caption, hashtags });
