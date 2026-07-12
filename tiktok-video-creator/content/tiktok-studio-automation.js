@@ -549,74 +549,79 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   document.execCommand("delete", false);
   await sleep(200);
 
-  // ป้องกันการใส่แฮชแท็กซ้ำสองรอบ (ถ้าแฮชแท็กนั้นเขียนอยู่ใน caption อยู่แล้ว)
+  // ป้องกันการใส่แฮชแท็กซ้ำสองรอบ (ทั้งใน caption และ hashtags)
   const safeCaption = String(caption || "").trim();
   const normTags = normalizeHashtags(hashtags);
-  const captionHashtags = new Set((safeCaption.match(/#\S+/g) || []).map(tag => tag.toLowerCase()));
-  const uniqueHashtags = normTags.filter(tag => !captionHashtags.has(tag.toLowerCase()));
-
-  // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
-  const fullText = [
-    safeCaption,
-    ...uniqueHashtags
-  ].filter(Boolean).join(" ");
+  const rawFullText = [safeCaption, ...normTags].filter(Boolean).join(" ");
+  const fullText = deduplicateHashtagsInText(rawFullText);
 
   if (fullText) {
     let success = false;
-    // วิธีที่ 1: ลองใช้ execCommand แทรกข้อความตรงๆ ทันที
-    try {
-      document.execCommand("insertText", false, fullText);
-      // ส่ง event input และ beforeinput บังคับให้ React สังเคราะห์อัปเดต state
-      editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
-      editor.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
-      
+
+    const tryInsertMethod = async (methodFn) => {
+      selectAllEditable(editor);
+      document.execCommand("delete", false);
+      await sleep(200);
+
+      await methodFn();
+      await sleep(400);
+
+      // ลอง blur เพื่อให้ React ทำการ sync/render state
+      editor.blur();
+      await sleep(200);
+      editor.focus();
+
       const inserted = (editor.textContent || "").trim();
-      if (inserted) {
-        success = true;
-        console.log("[TikTokPost] fillCaptionAndHashtags: success using execCommand");
+      // เช็คว่าหลังจาก blur แล้วข้อความยังคงอยู่หรือไม่ (ยอมให้ต่างกันเล็กน้อย)
+      return inserted && inserted.length >= fullText.trim().length - 5;
+    };
+
+    // วิธีที่ 1: ลองใช้ execCommand แทรกข้อความตรงๆ ทันที
+    success = await tryInsertMethod(async () => {
+      try {
+        document.execCommand("insertText", false, fullText);
+        // ส่ง event input และ beforeinput บังคับให้ React สังเคราะห์อัปเดต state
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
+      } catch (err) {
+        console.warn("[TikTokPost] execCommand failed:", err);
       }
-    } catch (err) {
-      console.warn("[TikTokPost] execCommand failed:", err);
-    }
+    });
 
     // วิธีที่ 2: ลองใช้ Clipboard Paste event
     if (!success) {
-      try {
-        const dt = new DataTransfer();
-        dt.setData("text/plain", fullText);
-        editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
-        // ส่ง event input และ beforeinput ร่วมด้วยเพื่อบังคับให้ React ซิงค์โมเดลข้อมูล
-        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
-        editor.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
-        
-        await sleep(400);
-        const inserted = (editor.textContent || "").trim();
-        if (inserted) {
-          success = true;
-          console.log("[TikTokPost] fillCaptionAndHashtags: success using Paste Event");
+      console.log("[TikTokPost] execCommand failed to sync React state, trying Clipboard Paste...");
+      success = await tryInsertMethod(async () => {
+        try {
+          const dt = new DataTransfer();
+          dt.setData("text/plain", fullText);
+          editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
+          // ส่ง event input และ beforeinput ร่วมด้วยเพื่อบังคับให้ React ซิงค์โมเดลข้อมูล
+          editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
+          editor.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
+        } catch (err) {
+          console.warn("[TikTokPost] paste failed:", err);
         }
-      } catch (err) {
-        console.warn("[TikTokPost] paste failed:", err);
-      }
+      });
     }
 
     // วิธีที่ 3: ใช้ Debugger เป็นไม้ตายสุดท้าย
     if (!success) {
-      try {
-        const response = await chrome.runtime.sendMessage({
-          type: "FLOW_INSERT_TEXT",
-          payload: { text: fullText, clear: false }
-        });
-        if (response?.ok && response.inserted) {
-          success = true;
-          console.log("[TikTokPost] fillCaptionAndHashtags: success using Debugger");
+      console.log("[TikTokPost] Clipboard Paste failed to sync React state, trying Debugger typing...");
+      success = await tryInsertMethod(async () => {
+        try {
+          const response = await chrome.runtime.sendMessage({
+            type: "FLOW_INSERT_TEXT",
+            payload: { text: fullText, clear: true }
+          });
+          return response?.ok && response.inserted;
+        } catch (err) {
+          console.warn("[TikTokPost] Debugger typing failed:", err);
         }
-      } catch (err) {
-        console.warn("[TikTokPost] Debugger typing failed:", err);
-      }
+      });
     }
 
-    // Fallback: ถ้ายังไม่มีอะไรเกิดขึ้นจริงๆ ให้ลองยัดข้อความผ่าน execCommand อีกครั้ง
+    // Fallback: ถ้ายังไม่มีอะไรเกิดขึ้นจริงๆ ให้ลองยัดข้อความผ่าน execCommand อีกครั้งโดยไม่ต้องตรวจจับ
     if (!success) {
       try {
         document.execCommand("insertText", false, fullText);
@@ -1716,74 +1721,77 @@ async function fillCaption(caption, hashtags) {
   document.execCommand("delete", false);
   await sleep(200);
 
-  // ป้องกันการใส่แฮชแท็กซ้ำสองรอบ (ถ้าแฮชแท็กนั้นเขียนอยู่ใน caption อยู่แล้ว)
+  // ป้องกันการใส่แฮชแท็กซ้ำสองรอบ (ทั้งใน caption และ hashtags)
   const safeCaption = String(caption || "").trim();
   const normTags = normalizeHashtags(hashtags);
-  const captionHashtags = new Set((safeCaption.match(/#\S+/g) || []).map(tag => tag.toLowerCase()));
-  const uniqueHashtags = normTags.filter(tag => !captionHashtags.has(tag.toLowerCase()));
-
-  // วางข้อความทั้งหมดรวดเดียว ไม่ต้องพิมพ์ทีละตัวอักษร
-  const fullText = [
-    safeCaption,
-    ...uniqueHashtags
-  ].filter(Boolean).join(" ");
+  const rawFullText = [safeCaption, ...normTags].filter(Boolean).join(" ");
+  const fullText = deduplicateHashtagsInText(rawFullText);
 
   if (fullText) {
     let success = false;
-    // วิธีที่ 1: ลองใช้ execCommand แทรกข้อความตรงๆ ทันที
-    try {
-      document.execCommand("insertText", false, fullText);
-      // ส่ง event input และ beforeinput บังคับให้ React สังเคราะห์อัปเดต state
-      captionEl.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
-      captionEl.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
-      
+
+    const tryInsertMethod = async (methodFn) => {
+      selectAllEditable(captionEl);
+      document.execCommand("delete", false);
+      await sleep(200);
+
+      await methodFn();
+      await sleep(400);
+
+      captionEl.blur();
+      await sleep(200);
+      captionEl.focus();
+
       const inserted = (captionEl.textContent || "").trim();
-      if (inserted) {
-        success = true;
-        console.log("[TikTokPost] fillCaption: success using execCommand");
+      return inserted && inserted.length >= fullText.trim().length - 5;
+    };
+
+    // วิธีที่ 1: ลองใช้ execCommand แทรกข้อความตรงๆ ทันที
+    success = await tryInsertMethod(async () => {
+      try {
+        document.execCommand("insertText", false, fullText);
+        // ส่ง event input และ beforeinput บังคับให้ React สังเคราะห์อัปเดต state
+        captionEl.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
+        captionEl.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertText", data: fullText }));
+      } catch (err) {
+        console.warn("[TikTokPost] execCommand failed:", err);
       }
-    } catch (err) {
-      console.warn("[TikTokPost] execCommand failed:", err);
-    }
+    });
 
     // วิธีที่ 2: ลองใช้ Clipboard Paste event
     if (!success) {
-      try {
-        const dt = new DataTransfer();
-        dt.setData("text/plain", fullText);
-        captionEl.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
-        // ส่ง event input และ beforeinput ร่วมด้วยเพื่อบังคับให้ React ซิงค์โมเดลข้อมูล
-        captionEl.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
-        captionEl.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
-        
-        await sleep(400);
-        const inserted = (captionEl.textContent || "").trim();
-        if (inserted) {
-          success = true;
-          console.log("[TikTokPost] fillCaption: success using Paste Event");
+      console.log("[TikTokPost] execCommand failed to sync React state, trying Clipboard Paste...");
+      success = await tryInsertMethod(async () => {
+        try {
+          const dt = new DataTransfer();
+          dt.setData("text/plain", fullText);
+          captionEl.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
+          // ส่ง event input และ beforeinput ร่วมด้วยเพื่อบังคับให้ React ซิงค์โมเดลข้อมูล
+          captionEl.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
+          captionEl.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: fullText }));
+        } catch (err) {
+          console.warn("[TikTokPost] paste failed:", err);
         }
-      } catch (err) {
-        console.warn("[TikTokPost] paste failed:", err);
-      }
+      });
     }
 
     // วิธีที่ 3: ใช้ Debugger เป็นไม้ตายสุดท้าย
     if (!success) {
-      try {
-        const response = await chrome.runtime.sendMessage({
-          type: "FLOW_INSERT_TEXT",
-          payload: { text: fullText, clear: false }
-        });
-        if (response?.ok && response.inserted) {
-          success = true;
-          console.log("[TikTokPost] fillCaption: success using Debugger");
+      console.log("[TikTokPost] Clipboard Paste failed to sync React state, trying Debugger typing...");
+      success = await tryInsertMethod(async () => {
+        try {
+          const response = await chrome.runtime.sendMessage({
+            type: "FLOW_INSERT_TEXT",
+            payload: { text: fullText, clear: true }
+          });
+          return response?.ok && response.inserted;
+        } catch (err) {
+          console.warn("[TikTokPost] Debugger typing failed:", err);
         }
-      } catch (err) {
-        console.warn("[TikTokPost] Debugger typing failed:", err);
-      }
+      });
     }
 
-    // Fallback: ถ้ายังไม่มีอะไรเกิดขึ้นจริงๆ ให้ลองยัดข้อความผ่าน execCommand อีกครั้ง
+    // Fallback: ถ้ายังไม่มีอะไรเกิดขึ้นจริงๆ ให้ลองยัดข้อความผ่าน execCommand อีกครั้งโดยไม่ต้องตรวจจับ
     if (!success) {
       try {
         document.execCommand("insertText", false, fullText);
@@ -1793,7 +1801,9 @@ async function fillCaption(caption, hashtags) {
   }
   await sleep(200 + Math.random() * 150);
 
-  captionEl.dispatchEvent(new Event("input", { bubbles: true }));
+  dismissCaptionSuggestion(captionEl);
+  await sleep(150);
+  captionEl.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: " " }));
   captionEl.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
@@ -2212,6 +2222,24 @@ function normalizeHashtags(value) {
   }
 
   return tags;
+}
+
+function deduplicateHashtagsInText(text) {
+  if (!text) return "";
+  const words = text.split(/\s+/);
+  const seenHashtags = new Set();
+  const cleanWords = [];
+  for (const word of words) {
+    if (word.startsWith("#")) {
+      const cleanTag = word.toLowerCase().replace(/[^a-zA-Z0-9_\u0e00-\u0e7f]/g, "");
+      if (seenHashtags.has(cleanTag)) {
+        continue;
+      }
+      seenHashtags.add(cleanTag);
+    }
+    cleanWords.push(word);
+  }
+  return cleanWords.join(" ");
 }
 
 function selectAllEditable(element) {

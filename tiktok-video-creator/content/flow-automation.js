@@ -1728,7 +1728,7 @@ async function setPrompt(prompt) {
     log("✅ กรอก Prompt สำเร็จ");
     await detachFlowDebugger();
     log("รอสักครู่เพื่อความเสถียรของหน้าต่างและให้เหมือนคน...");
-    await sleep(4800); // ดีเลย์สุ่มรอบการพิมพ์เพื่อให้เหมือนคน
+    await sleep(1000 + Math.random() * 500); // ดีเลย์สุ่มรอบการพิมพ์สั้นๆ ให้สอดคล้องกับคนพิมพ์เสร็จแล้วเตรียมกด
 }
 
 function findPromptEditor() {
@@ -2458,11 +2458,11 @@ async function runPipeline(payload, runOptions = {}) {
         // 6. กรอก prompt
         log("กรอก Prompt...");
         await setPrompt(initialPrompt);
-        await sleep(5000); // หน่วงเวลา 5 วินาที
+        await sleep(800 + Math.random() * 400); // หน่วงเวลาสั้นๆ ก่อนกด Generate
 
         // 7. กด Generate
         await clickGenerate();
-        await sleep(5000); // หน่วงเวลา 5 วินาที
+        await sleep(5000); // หน่วงเวลา 5 วินาทีหลังกด Generate เผื่อหน้าเว็บเริ่มทำงาน
 
         // 8. รอผลลัพธ์
         const resultPhase = phase === "combined" ? "image" : phase;
@@ -2480,7 +2480,7 @@ async function runPipeline(payload, runOptions = {}) {
                 ? buildPeopleSafePrompt(initialPrompt)
                 : initialPrompt;
             await setPrompt(retryPrompt);
-            await sleep(5000);
+            await sleep(800 + Math.random() * 400);
             await clickGenerate();
         };
         const result = await waitForResult(resultPhase, {
@@ -2518,11 +2518,11 @@ async function runPipeline(payload, runOptions = {}) {
             // 6b. กรอก prompt สำหรับวิดีโอ
             log("กรอก Prompt วิดีโอ...");
             await setPrompt(prompt.videoPrompt);
-            await sleep(5000); // หน่วงเวลา 5 วินาที
+            await sleep(800 + Math.random() * 400); // หน่วงเวลาสั้นๆ ก่อนกด Generate
 
             // 7b. กด Generate
             await clickGenerate();
-            await sleep(5000); // หน่วงเวลา 5 วินาที
+            await sleep(5000); // หน่วงเวลา 5 วินาทีหลังกด Generate เผื่อหน้าเว็บเริ่มทำงาน
 
             // 8b. รอผลลัพธ์วิดีโอ
             const restartVideoGeneration = async (context = {}) => {

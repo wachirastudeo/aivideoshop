@@ -754,6 +754,8 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, Math.round(ms * jitterFactor)));
 }
 
+const pendingDownloadPaths = new Set();
+
 chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
   if (item.byExtensionId === chrome.runtime.id) {
     let targetPath = null;
@@ -773,7 +775,19 @@ chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
       }
     }
     
-    // 2. Fallback: if no targetPath in URL, but item.filename already contains our custom path
+    // 2. Fallback: match from our pending download paths registered before chrome.downloads.download
+    if (!targetPath && item.filename) {
+      const cleanFilename = item.filename.replace(/\\/g, "/");
+      for (const pendingPath of pendingDownloadPaths) {
+        if (cleanFilename.endsWith(pendingPath)) {
+          targetPath = pendingPath;
+          pendingDownloadPaths.delete(pendingPath); // Clean up
+          break;
+        }
+      }
+    }
+    
+    // 3. Fallback: if no targetPath in URL, but item.filename already contains our custom path (legacy)
     if (!targetPath && item.filename) {
       const index = item.filename.indexOf("aivideoshop");
       if (index !== -1) {
@@ -782,7 +796,7 @@ chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
     }
     
     if (targetPath) {
-      // 3. Determine conflictAction if not explicitly specified
+      // 4. Determine conflictAction if not explicitly specified
       if (!conflictAction) {
         const lowerPath = targetPath.toLowerCase();
         if (lowerPath.endsWith(".mp4") || lowerPath.endsWith(".webm")) {
@@ -804,6 +818,9 @@ chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
 });
 
 async function downloadVideo(payload) {
+  if (payload.filename) {
+    pendingDownloadPaths.add(payload.filename.replace(/\\/g, "/"));
+  }
   const preparedVideo = await prepareVideoBase64ForTikTok(payload.url);
   const mimeType = preparedVideo.mimeType || "video/mp4";
   const conflict = payload.conflictAction || "overwrite";
@@ -851,6 +868,9 @@ async function fetchImageData(payload) {
 }
 
 async function downloadFile(payload) {
+  if (payload.filename) {
+    pendingDownloadPaths.add(payload.filename.replace(/\\/g, "/"));
+  }
   try {
     let downloadUrl = payload.url;
     const conflict = payload.conflictAction || "overwrite";
@@ -863,9 +883,14 @@ async function downloadFile(payload) {
       }
     } else if (downloadUrl && downloadUrl.startsWith("data:")) {
       const commaIdx = downloadUrl.indexOf(",");
-      const head = downloadUrl.substring(0, commaIdx);
+      let head = downloadUrl.substring(0, commaIdx);
       const base64 = downloadUrl.substring(commaIdx + 1);
-      downloadUrl = `${head};x-filename=${encodeURIComponent(payload.filename)};x-conflict=${conflict},${base64}`;
+      let isBase64 = false;
+      if (head.endsWith(";base64")) {
+        isBase64 = true;
+        head = head.substring(0, head.length - 7);
+      }
+      downloadUrl = `${head};x-filename=${encodeURIComponent(payload.filename)};x-conflict=${conflict}${isBase64 ? ";base64" : ""},${base64}`;
     }
     
     return new Promise((resolve) => {

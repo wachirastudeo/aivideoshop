@@ -690,6 +690,7 @@ async function processQueue() {
 
   const options = buildFlowOptions();
   let errorCount = 0;
+  let processedCount = 0;
   let finalMessage = "";
   let finalLevel = "success";
 
@@ -814,14 +815,21 @@ async function processQueue() {
         await persistState();
         renderQueue();
       }
-      // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่มรอบละประมาณ 5 วินาที ค่อยเริ่มสินค้าใหม่
+      processedCount += 1;
+      // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่ม หรือพักเบรกหากครบ 5 รายการ
       if (i < productQueue.length - 1) {
         const hasNextPending = productQueue.slice(i + 1).some(p => p.status !== "done");
         if (hasNextPending) {
-          const delaySeconds = 4 + Math.floor(Math.random() * 3); // สุ่ม 4 - 6 วินาที (เฉลี่ย 5 วินาที)
-          helpers.showStatus(`รอจังหวะแบบสุ่ม ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");
-          helpers.logActivity?.(`รอหน่วงเวลาระหว่างรายการชิ้นถัดไป ${delaySeconds} วินาที...`, "info");
-          await interruptibleDelay(delaySeconds * 1000);
+          if (processedCount > 0 && processedCount % 5 === 0) {
+            helpers.showStatus(`ทำรายการครบ ${processedCount} รายการแล้ว พักเบรก 2 นาทีเพื่อป้องกันการโดนจำกัดสิทธิ์...`, "info");
+            helpers.logActivity?.(`พักเบรก 2 นาที (120 วินาที) เนื่องจากทำรายการครบ ${processedCount} รายการ...`, "info");
+            await interruptibleDelay(120 * 1000);
+          } else {
+            const delaySeconds = 4 + Math.floor(Math.random() * 3); // สุ่ม 4 - 6 วินาที (เฉลี่ย 5 วินาที)
+            helpers.showStatus(`รอจังหวะแบบสุ่ม ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");
+            helpers.logActivity?.(`รอหน่วงเวลาระหว่างรายการชิ้นถัดไป ${delaySeconds} วินาที...`, "info");
+            await interruptibleDelay(delaySeconds * 1000);
+          }
         }
       }
     } catch (err) {
@@ -844,16 +852,26 @@ async function processQueue() {
       renderQueue();
       helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
       helpers.logActivity?.(`ข้ามสินค้า ${i + 1} (ทำต่อรายการถัดไป): ${err.message}`, "error");
-      // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่มรอบละประมาณ 5 วินาที ค่อยเริ่มสินค้าใหม่ (กรณีข้ามจาก error)
+      
+      processedCount += 1;
+      // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่ม หรือพักเบรกหากครบ 5 รายการ (กรณีข้ามจาก error)
       if (i < productQueue.length - 1) {
         const hasNextPending = productQueue.slice(i + 1).some(p => p.status !== "done");
         if (hasNextPending) {
-          const delaySeconds = 4 + Math.floor(Math.random() * 3); // สุ่ม 4 - 6 วินาที (เฉลี่ย 5 วินาที)
-          helpers.showStatus(`รอจังหวะแบบสุ่ม ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");
-          helpers.logActivity?.(`รอหน่วงเวลาระหว่างรายการชิ้นถัดไป ${delaySeconds} วินาที...`, "info");
-          try {
-            await interruptibleDelay(delaySeconds * 1000);
-          } catch (e) {}
+          if (processedCount > 0 && processedCount % 5 === 0) {
+            helpers.showStatus(`ทำรายการครบ ${processedCount} รายการแล้ว พักเบรก 2 นาทีเพื่อป้องกันการโดนจำกัดสิทธิ์...`, "info");
+            helpers.logActivity?.(`พักเบรก 2 นาที (120 วินาที) เนื่องจากทำรายการครบ ${processedCount} รายการ...`, "info");
+            try {
+              await interruptibleDelay(120 * 1000);
+            } catch (e) {}
+          } else {
+            const delaySeconds = 4 + Math.floor(Math.random() * 3); // สุ่ม 4 - 6 วินาที (เฉลี่ย 5 วินาที)
+            helpers.showStatus(`รอจังหวะแบบสุ่ม ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");
+            helpers.logActivity?.(`รอหน่วงเวลาระหว่างรายการชิ้นถัดไป ${delaySeconds} วินาที...`, "info");
+            try {
+              await interruptibleDelay(delaySeconds * 1000);
+            } catch (e) {}
+          }
         }
       }
       continue;
