@@ -67,10 +67,10 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
   const postMode = (mode === "draft") ? "draft" : "post";
   const postType = (mode === "draft")
     ? "draft"
-    : ((mode === "schedule" || postDefaults.defaultMode === "schedule") ? "schedule" : "now");
+    : (mode === "schedule" ? "schedule" : "now");
   let scheduleTime = (mode === "schedule")
     ? (localSettings.postScheduleTime || postDefaults.scheduleTime || "")
-    : (postDefaults.defaultMode === "schedule" ? (postDefaults.scheduleTime || "") : "");
+    : "";
 
   if (scheduleTime && minutesOffset > 0) {
     const dt = new Date(scheduleTime);

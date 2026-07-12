@@ -2755,6 +2755,12 @@ async function finishFlowJob(jobId, result) {
         console.warn("[FlowAuto] runtime message send failed (possibly context invalidated):", error);
     }
 }
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes.flowStopRequested?.newValue === true) {
+        stopRequested = true;
+        console.log("[FlowAuto] ได้รับคำสั่งหยุดงานผ่าน storage");
+    }
+});
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg?.type === "FLOW_PING") { reply({ pong: true }); return false; }

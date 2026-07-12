@@ -685,6 +685,7 @@ async function processQueue() {
 
   isProcessing = true;
   stopRequested = false;
+  await chrome.storage.local.set({ tiktokStopRequested: false, flowStopRequested: false });
   setBatchButtons(true);
   helpers.showStatus("เริ่มสร้างภาพและวิดีโอแบบ Auto-Flow...", "info");
 
@@ -1001,6 +1002,10 @@ async function requestStop() {
   stopRequested = true;
   for (const stop of [...stopWaiters]) stop();
   helpers.showStatus("กำลังหยุด...", "info");
+  
+  // ตั้งค่าใน storage เพื่อให้ content script ได้รับทราบผ่าน storage listener ทันที
+  await chrome.storage.local.set({ tiktokStopRequested: true, flowStopRequested: true });
+
   await Promise.allSettled([
     chrome.runtime.sendMessage({ type: "FLOW_STOP" }),
     chrome.runtime.sendMessage({ type: "TIKTOK_STOP" })

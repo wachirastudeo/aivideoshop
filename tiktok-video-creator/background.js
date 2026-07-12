@@ -416,6 +416,7 @@ async function getFlowSettings() {
 
 async function stopFlowPipeline() {
   flowStopVersion += 1;
+  await chrome.storage.local.set({ flowStopRequested: true });
   await chrome.storage.local.remove("activeFlowTabId");
   const tabs = await queryFlowTabs();
   await Promise.allSettled(tabs.map(async (tab) => {
@@ -427,6 +428,7 @@ async function stopFlowPipeline() {
 
 async function stopTikTokStudioPipeline() {
   tiktokStopVersion += 1;
+  await chrome.storage.local.set({ tiktokStopRequested: true });
   await chrome.storage.local.remove("activeTikTokTabId");
   const tabs = [
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/*" })),
