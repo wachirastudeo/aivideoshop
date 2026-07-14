@@ -354,6 +354,7 @@ async function openGoogleFlow(payload) {
 }
 
 async function handleFlowPipelineDone(payload = {}) {
+  await chrome.storage.local.remove("activeFlowTabId");
   if (payload.result?.ok) {
     await notify("TikTok Video Creator", "Flow สำเร็จ!");
   } else {
@@ -996,68 +997,73 @@ async function sendTikTokDraft(payload) {
   const tabId = await openTikTokStudioUploadTab();
   await chrome.storage.local.set({ activeTikTokTabId: tabId });
 
-  // 2. ดึงข้อมูลวิดีโอและแปลงเป็น Base64
-  await notify("TikTok Automation", "กำลังดาวน์โหลดไฟล์วิดีโอเพื่อเตรียมกรอกหน้าเว็บ...");
-  const preparedVideo = await retryVideoPreparation(videoUrl);
-  const base64Data = preparedVideo.base64;
-  const mimeType = preparedVideo.mimeType || "video/mp4";
-
-  // 3. ตรวจสอบและ Inject Content Script สำหรับควบคุมหน้าเว็บ
   try {
-    await chrome.tabs.sendMessage(tabId, { type: "TIKTOK_STUDIO_PING" });
-  } catch (_) {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ["content/tiktok-studio-automation.js"]
-    });
-    await sleep(500);
-  }
+    // 2. ดึงข้อมูลวิดีโอและแปลงเป็น Base64
+    await notify("TikTok Automation", "กำลังดาวน์โหลดไฟล์วิดีโอเพื่อเตรียมกรอกหน้าเว็บ...");
+    const preparedVideo = await retryVideoPreparation(videoUrl);
+    const base64Data = preparedVideo.base64;
+    const mimeType = preparedVideo.mimeType || "video/mp4";
 
-  // 4. ส่งข้อมูลไปให้ Content Script ดำเนินการอัปโหลดและกรอกรายละเอียด
-  await notify("TikTok Automation", "กำลังเริ่มขั้นตอนอัปโหลดและกรอกข้อมูลอัตโนมัติ...");
-  
-  const dataUrl = `data:${mimeType || "video/mp4"};base64,${base64Data}`;
-  const videoPayloadUrl = await transferVideoDataUrl(tabId, dataUrl);
-  assertRunNotStopped(runVersion, tiktokStopVersion);
-  const completionMonitor = monitorTikTokSubmission(tabId, {
-    jobId: payload.jobId || "",
-    mode
-  });
-  const response = await chrome.tabs.sendMessage(tabId, {
-    type: "TIKTOK_UPLOAD_VIDEO",
-    payload: {
-      videoUrl: videoPayloadUrl,
-      filename: payload.filename || buildTikTokVideoFilename(payload),
-      productId: payload.productId || "",
-      productUrl,
-      productName: payload.productName || "",
-      caption,
-      hashtags: finalHashtags,
-      mode,
-      postType,
-      scheduleTime: payload.scheduleTime || postDefaults.scheduleTime || "",
-      location: payload.location ?? postDefaults.location ?? "",
-      privacy: payload.privacy ?? postDefaults.privacy ?? "",
-      aiGenerated: true,
-      allowComment: payload.allowComment ?? postDefaults.allowComment ?? true,
-      allowReuse: payload.allowReuse ?? postDefaults.allowReuse ?? true,
-      jobId: payload.jobId || ""
+    // 3. ตรวจสอบและ Inject Content Script สำหรับควบคุมหน้าเว็บ
+    try {
+      await chrome.tabs.sendMessage(tabId, { type: "TIKTOK_STUDIO_PING" });
+    } catch (_) {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content/tiktok-studio-automation.js"]
+      });
+      await sleep(500);
     }
-  });
 
-  if (!response?.ok) {
-    completionMonitor.cancel();
-    throw new Error(response?.error || "การกรอกและอัปโหลดวิดีโอบนหน้าเว็บล้มเหลว");
-  }
-  if (runVersion !== tiktokStopVersion) {
-    completionMonitor.cancel();
-    await chrome.tabs.sendMessage(tabId, { type: "TIKTOK_STOP" }).catch(() => {});
-    throw createBackgroundStopError();
-  }
+    // 4. ส่งข้อมูลไปให้ Content Script ดำเนินการอัปโหลดและกรอกรายละเอียด
+    await notify("TikTok Automation", "กำลังเริ่มขั้นตอนอัปโหลดและกรอกข้อมูลอัตโนมัติ...");
+    
+    const dataUrl = `data:${mimeType || "video/mp4"};base64,${base64Data}`;
+    const videoPayloadUrl = await transferVideoDataUrl(tabId, dataUrl);
+    assertRunNotStopped(runVersion, tiktokStopVersion);
+    const completionMonitor = monitorTikTokSubmission(tabId, {
+      jobId: payload.jobId || "",
+      mode
+    });
+    const response = await chrome.tabs.sendMessage(tabId, {
+      type: "TIKTOK_UPLOAD_VIDEO",
+      payload: {
+        videoUrl: videoPayloadUrl,
+        filename: payload.filename || buildTikTokVideoFilename(payload),
+        productId: payload.productId || "",
+        productUrl,
+        productName: payload.productName || "",
+        caption,
+        hashtags: finalHashtags,
+        mode,
+        postType,
+        scheduleTime: payload.scheduleTime || postDefaults.scheduleTime || "",
+        location: payload.location ?? postDefaults.location ?? "",
+        privacy: payload.privacy ?? postDefaults.privacy ?? "",
+        aiGenerated: true,
+        allowComment: payload.allowComment ?? postDefaults.allowComment ?? true,
+        allowReuse: payload.allowReuse ?? postDefaults.allowReuse ?? true,
+        jobId: payload.jobId || ""
+      }
+    });
 
-  // content รัน pipeline เบื้องหลังและตอบ started ทันที — ผลจริงจะมาทาง TIKTOK_DONE
-  await notify("TikTok Automation", "เริ่มอัปโหลด/กรอกข้อมูลบนหน้า TikTok แล้ว ดูความคืบหน้าที่แท็บ TikTok");
-  return { ok: true, started: true };
+    if (!response?.ok) {
+      completionMonitor.cancel();
+      throw new Error(response?.error || "การกรอกและอัปโหลดวิดีโอบนหน้าเว็บล้มเหลว");
+    }
+    if (runVersion !== tiktokStopVersion) {
+      completionMonitor.cancel();
+      await chrome.tabs.sendMessage(tabId, { type: "TIKTOK_STOP" }).catch(() => {});
+      throw createBackgroundStopError();
+    }
+
+    // content รัน pipeline เบื้องหลังและตอบ started ทันที — ผลจริงจะมาทาง TIKTOK_DONE
+    await notify("TikTok Automation", "เริ่มอัปโหลด/กรอกข้อมูลบนหน้า TikTok แล้ว ดูความคืบหน้าที่แท็บ TikTok");
+    return { ok: true, started: true };
+  } catch (err) {
+    await chrome.storage.local.remove("activeTikTokTabId");
+    throw err;
+  }
 }
 
 function monitorTikTokSubmission(tabId, { jobId = "", mode = "post" } = {}) {
@@ -1291,6 +1297,7 @@ async function openTikTokStudioUploadTab() {
 
 async function handleTikTokDone(payload = {}) {
   console.log("TikTok Done:", payload);
+  await chrome.storage.local.remove("activeTikTokTabId");
   if (payload.jobId) {
     await chrome.storage.local.set({ [`tiktokJob:${payload.jobId}`]: payload });
   }

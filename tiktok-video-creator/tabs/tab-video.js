@@ -892,6 +892,7 @@ async function processQueue() {
   } finally {
     isProcessing = false;
     stopRequested = false;
+    await chrome.storage.local.remove(["activeFlowTabId", "activeTikTokTabId"]);
     setBatchButtons(false);
     helpers.showStatus(finalMessage || "จบการทำงานแล้ว", finalLevel);
   }
