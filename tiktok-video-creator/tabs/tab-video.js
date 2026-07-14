@@ -677,11 +677,7 @@ async function processQueue() {
     return;
   }
   syncSettingsForm();
-  if (settings.textEnabled === "true" && !settings.clipText) {
-    helpers.showStatus("เปิด \"ใส่ข้อความในคลิป\" แล้วต้องกรอกข้อความก่อนเริ่มสร้าง", "error");
-    document.querySelector("#clip-text")?.focus();
-    return;
-  }
+  // clip-text is now optional and will be generated automatically if left empty
 
   isProcessing = true;
   stopRequested = false;

@@ -257,10 +257,11 @@ check("image prompt with hands_only presenter shows hands", /Show realistic huma
 check("image prompt with hands_only presenter uses hands intro", /with realistic human hands holding the product/i.test(imgPresenterHands), imgPresenterHands);
 
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
-check("image prompt with text enabled includes name, clipText, and promotionText", /Integrate these exact Thai-language text overlays/i.test(imgTextEnabled) && /พัดลมไร้สาย/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled) && /ลด 50%/i.test(imgTextEnabled), imgTextEnabled);
+check("image prompt with text enabled shows only clipText phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled), imgTextEnabled);
+check("image prompt with text enabled does NOT include product name or promotion in overlay", !/ลด 50%/i.test(imgTextEnabled) && !/พัดลมไร้สาย.*overlay/i.test(imgTextEnabled), imgTextEnabled);
 
 const imgTextEnabledName = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "", promotionText: "ลด 50%" });
-check("image prompt with text enabled using name has Thai name", /Integrate these exact Thai-language text overlays/i.test(imgTextEnabledName) && /พัดลมไร้สาย/i.test(imgTextEnabledName) && /ลด 50%/i.test(imgTextEnabledName), imgTextEnabledName);
+check("image prompt with text enabled but no clipText falls back to auto phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabledName) || /No added text/i.test(imgTextEnabledName), imgTextEnabledName);
 
 const imgTextDisabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: false });
 check("image prompt with text disabled uses TEXT_FREE_DIRECTION", /No added text, words, or characters/i.test(imgTextDisabled), imgTextDisabled);
@@ -275,6 +276,34 @@ check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRO
 // --- image prompt 4-scene limit test ---
 const imgLimit = buildImagePrompt({ name: "พัดลมไร้สาย" }, settings);
 check("image prompt limits collage grid to at most 4 scenes", /strictly containing at most 4 scenes\/panels/i.test(imgLimit) && /at most 4 different angles and scenes/i.test(imgLimit), imgLimit);
+
+// --- automatic text overlay & styling tests ---
+import { resolveClipText } from "../modules/prompt-builder.js";
+
+// Test 1: resolveClipText uses overlayText (not hooks)
+const clipTextOverlay = resolveClipText({ name: "สินค้า", overlayText: "ดีไซน์สวย", hooks: ["ปังมากแม่ สวยสุดๆ คุ้มมากๆ"] }, { textEnabled: true });
+check("resolveClipText prefers overlayText over hooks", clipTextOverlay === "ดีไซน์สวย", clipTextOverlay);
+
+// Test 2: resolveClipText uses highlights when no overlayText
+const clipTextHighlights = resolveClipText({ name: "สินค้า", highlights: "หอมมาก, สดชื่น" }, { textEnabled: true });
+check("resolveClipText resolves to first highlight if overlayText empty", clipTextHighlights === "หอมมาก", clipTextHighlights);
+
+// Test 3: resolveClipText resolves to natural review fallback if no info
+const clipTextFallback = resolveClipText({ name: "สินค้าทั่วไป" }, { textEnabled: true });
+check("resolveClipText resolves to natural review fallback if no info", ["น่าใช้มาก", "ดีไซน์สวย", "ใช้งานง่าย", "ดูดีมาก", "สะดวกสุดๆ", "รายละเอียดดี", "น่ามีติดบ้าน", "คุ้มค่าน่าใช้"].includes(clipTextFallback), clipTextFallback);
+
+// Test 4: image prompt contains cute handwritten-style styling and doodles
+const imgOverlay = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสุดขั้ว" });
+check("image prompt styling requests cute handwritten-style and doodles", /cute Thai handwritten-style/i.test(imgOverlay) && /doodles/i.test(imgOverlay) && /white with a soft shadow/i.test(imgOverlay), imgOverlay);
+
+// Test 5: video prompt contains cute handwritten-style styling and doodles
+const vidOverlay = buildVideoPrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสุดขั้ว" });
+check("video prompt styling requests cute handwritten-style and doodles", /cute Thai handwritten-style/i.test(vidOverlay) && /doodles/i.test(vidOverlay) && /white with a soft shadow/i.test(vidOverlay), vidOverlay);
+
+// Test 6: resolveClipText truncates long overlayText to <= 20 chars
+const longOverlay = "พัดลมตั้งโต๊ะอเนกประสงค์ไร้สายพลังลมเย็นสุดๆพกพาสะดวก";
+const clipTextTruncated = resolveClipText({ name: "สินค้า", overlayText: longOverlay }, { textEnabled: true });
+check("resolveClipText truncates long overlayText to 20 chars ending with ..", clipTextTruncated.length <= 20 && clipTextTruncated.endsWith(".."), clipTextTruncated);
 
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);
