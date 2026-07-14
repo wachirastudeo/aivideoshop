@@ -77,7 +77,7 @@ const vid = buildVideoPrompt({ name: "ครีมบำรุงผิว", hig
 check("video prompt locks only the product object", /preserve its exact shape/i.test(vid));
 check("video prompt mentions sharp/clear product", /razor-sharp|clearly visible/i.test(vid), "missing sharpness directive");
 check("video prompt is 9:16 vertical", /9:16|vertical/i.test(vid));
-check("default video forbids added scene text", /do not add any extra readable text/i.test(vid), vid);
+check("default video forbids added scene text", /do not add any new, extra, or unnecessary text/i.test(vid), vid);
 check("default video preserves the product's own printed text", /Keep the product's own printed text/i.test(vid), vid);
 check("video prompt starts with Thai advertisement prefix", /^สร้างวิดีโอโฆษณารีวิวสินค้า/i.test(vid), vid);
 
@@ -85,7 +85,7 @@ check("video prompt starts with Thai advertisement prefix", /^สร้างว
 const img = buildImagePrompt({ name: "ครีมบำรุงผิว", highlights: "" }, settings);
 check("image prompt mentions fidelity", /preserve its exact shape/i.test(img));
 check("image prompt sharp focus", /sharp and clearly visible|sharp focus/i.test(img));
-check("reference image keeps product text but forbids added text", /Keep the product's own printed text[\s\S]*do not add any extra readable text/i.test(img), img);
+check("reference image keeps product text but forbids added text", /Keep the product's own printed text[\s\S]*do not add any new, extra, or unnecessary text/i.test(img), img);
 
 const staleTextSettings = {
   ...settings,
@@ -101,7 +101,7 @@ const enabledTextVideo = buildVideoPrompt(
   { name: "รองเท้าทดสอบ" },
   { ...settings, textEnabled: "true", clipText: "รองเท้าทดสอบ", promotionText: "ส่งฟรี", textPosition: "Top third" }
 );
-check("enabled text uses only configured overlays", /รองเท้าทดสอบ \| ส่งฟรี/.test(enabledTextVideo), enabledTextVideo);
+check("enabled text uses only configured overlays", /รองเท้าทดสอบ/.test(enabledTextVideo) && !/ส่งฟรี/.test(enabledTextVideo), enabledTextVideo);
 check("enabled text respects configured position", /at Top third/i.test(enabledTextVideo), enabledTextVideo);
 check("enabled text does not inject default CTA", !/กดสั่งซื้อ|กดซื้อเลย/.test(enabledTextVideo), enabledTextVideo);
 
@@ -261,10 +261,10 @@ check("image prompt with text enabled shows only clipText phrase", /Place ONLY t
 check("image prompt with text enabled does NOT include product name or promotion in overlay", !/ลด 50%/i.test(imgTextEnabled) && !/พัดลมไร้สาย.*overlay/i.test(imgTextEnabled), imgTextEnabled);
 
 const imgTextEnabledName = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "", promotionText: "ลด 50%" });
-check("image prompt with text enabled but no clipText falls back to auto phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabledName) || /No added text/i.test(imgTextEnabledName), imgTextEnabledName);
+check("image prompt with text enabled but no clipText lets Flow choose text", /Creatively add ONE short cute Thai phrase/i.test(imgTextEnabledName) || /No added text/i.test(imgTextEnabledName), imgTextEnabledName);
 
 const imgTextDisabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: false });
-check("image prompt with text disabled uses TEXT_FREE_DIRECTION", /No added text, words, or characters/i.test(imgTextDisabled), imgTextDisabled);
+check("image prompt with text disabled uses TEXT_FREE_DIRECTION", /STRICT NO-TEXT RULE/i.test(imgTextDisabled), imgTextDisabled);
 
 // --- small bag/coffee pouch scale tests ---
 const coffeeProduct = { name: "ถุงกาแฟ 200 กรัม" };

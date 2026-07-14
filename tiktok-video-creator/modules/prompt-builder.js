@@ -114,11 +114,69 @@ const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glass
 const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
-const TEXT_FREE_DIRECTION = "STRICT: No added text, words, or characters. Do not render promotional copy, price tags, banners, watermarks, captions, subtitles, CTA, sale labels, or signs. Keep the product's own printed text, logos, and labels exactly as in the reference — do not alter, translate, add, or remove them. Do not add any extra readable text onto the scene.";
+const TEXT_FREE_DIRECTION = "STRICT NO-TEXT RULE: Do not add any text overlays, subtitles, captions, price tags, banners, promotional copy, watermarks, CTA, or signs onto the video. Absolutely no on-screen text, writing, or numbers should be added. Keep the product's own printed text exactly as in the reference, but do not add any new, extra, or unnecessary text anywhere in the scenes.";
 
 const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT RULE: Do not add, invent, or write any new text, labels, brand names, slogans, numbers, or gibberish text on the product surface or packaging. If the original reference product is blank or has no text, the generated product must be completely clean and blank without any text. Do not generate fake branding or mock text on the product.";
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
+
+/**
+ * @description เลือก doodle style ตามประเภทสินค้าและกลุ่มเป้าหมาย
+ * @param {object} productInfo - ข้อมูลสินค้า (name, category, targetGroup)
+ * @returns {string} คำอธิบาย doodle สำหรับใส่ใน prompt
+ */
+function resolveDoodleStyle(productInfo = {}) {
+  const text = [
+    productInfo.name || "",
+    productInfo.category || "",
+    productInfo.targetGroup || "",
+    productInfo.highlights || ""
+  ].join(" ").toLowerCase();
+
+  // Beauty / Skincare / Cosmetics
+  if (/(ครีม|เซรั่ม|ลิป|แป้ง|มาสก์|สกิน|เมคอัพ|ไลเนอร์|บลัช|กันแดด|น้ำหอม|ของแต่งหน้า|beauty|skincare|cosmetic|perfume|serum|moisturizer|lipstick|makeup|blush|sunscreen)/i.test(text)) {
+    return "small sparkles ✨, tiny flowers 🌸, and delicate hearts 💖";
+  }
+
+  // Food / Snack / Drink / Coffee
+  if (/(อาหาร|ขนม|กาแฟ|ชา|เครื่องดื่ม|น้ำ|ผล|ส้ม|ช็อก|คุก|เค้ก|พิซซ่า|food|snack|drink|coffee|tea|juice|cake|chocolate|cookie|beverage|fruit)/i.test(text)) {
+    return "tiny stars ⭐, small leaf doodles 🍃, and sparkles ✨";
+  }
+
+  // Fashion / Clothing / Shoes / Bags
+  if (/(เสื้อ|กางเกง|กระโปรง|รองเท้า|กระเป๋า|แฟชั่น|เข็มขัด|หมวก|ผ้า|ถุง|fashion|clothing|clothes|shoes|bag|dress|shirt|pants|hat|accessory|accessories)/i.test(text)) {
+    return "tiny hearts 💖, ribbon bow doodles 🎀, and small stars ⭐";
+  }
+
+  // Tech / Electronics / Gadgets
+  if (/(โทรศัพท์|มือถือ|แล็ป|คอม|ลำโพง|หูฟัง|ชาร์จ|สาย|แบต|กล้อง|พัดลม|ไฟ|เครื่อง|ดิจิ|tech|phone|laptop|speaker|earphone|charger|cable|battery|camera|electronic|gadget|device)/i.test(text)) {
+    return "small lightning bolt ⚡ doodles, arrow doodles →, and geometric star shapes ✦";
+  }
+
+  // Home / Furniture / Kitchen
+  if (/(บ้าน|ห้อง|ตู้|เตียง|โซฟา|เก้าอี้|โต๊ะ|ครัว|จาน|ชาม|หม้อ|กระทะ|บ้าน|home|furniture|kitchen|table|chair|sofa|bed|shelf|drawer|cookware|plate|bowl|pot|pan)/i.test(text)) {
+    return "small house doodles 🏠, tiny stars ⭐, and simple arrow doodles";
+  }
+
+  // Health / Supplement / Medicine / Sport
+  if (/(วิตามิน|อาหารเสริม|ยา|สุขภาพ|ออกกำลัง|กีฬา|โปรตีน|vitamin|supplement|health|sport|fitness|protein|medicine|workout|gym)/i.test(text)) {
+    return "small star doodles ⭐, sparkles ✨, and upward arrow doodles ↑";
+  }
+
+  // Baby / Kids / Toys
+  if (/(เด็ก|ทารก|ของเล่น|baby|kid|children|toy|infant|toddler)/i.test(text)) {
+    return "tiny hearts 💖, small star doodles ⭐, and cute sparkles ✨";
+  }
+
+  // Pet
+  if (/(สัตว์เลี้ยง|หมา|แมว|สุนัข|pet|dog|cat|animal)/i.test(text)) {
+    return "tiny paw print doodles 🐾, small hearts 💖, and sparkles ✨";
+  }
+
+  // Default — generic cute doodles
+  return "small hearts 💖, sparkles ✨, and star doodles ⭐";
+}
+
 
 const VOICE_TONES = {
   Auto: "Let AI choose the most suitable voice tone for the product and audience",
@@ -219,11 +277,19 @@ export function resolveClipText(productInfo, settings = {}) {
   }
   // 3. First highlight segment as fallback
   else if (productInfo?.highlights) {
-    const parts = String(productInfo.highlights).split(/[,\n;]/);
-    phrase = parts[0].trim();
+    const parts = Array.isArray(productInfo.highlights)
+      ? productInfo.highlights
+      : String(productInfo.highlights).split(/[,\n;]/);
+    phrase = String(parts[0] || "").trim();
+  }
+  // 4. hooks[0] truncated — for products analyzed before overlayText was added
+  else if (productInfo?.hooks && productInfo.hooks.length > 0) {
+    const h = String(productInfo.hooks[0]).trim();
+    // take first 3 space-separated tokens at most (Thai hooks have no spaces usually, so this is a safety net)
+    phrase = h.split(/\s+/).slice(0, 3).join(" ");
   }
 
-  // 4. Stable natural-language fallback if nothing above resolved
+  // 5. Stable but varied natural-language fallback — hash on full name string for diversity
   if (!phrase) {
     const naturalWordings = [
       "น่าใช้มาก",
@@ -235,9 +301,16 @@ export function resolveClipText(productInfo, settings = {}) {
       "น่ามีติดบ้าน",
       "คุ้มค่าน่าใช้"
     ];
-    const seed = String(productInfo?.name || "").length || 0;
-    phrase = naturalWordings[seed % naturalWordings.length];
+    // djb2-style hash on the product name for stable but varied selection
+    const nameStr = String(productInfo?.name || "x");
+    let hash = 5381;
+    for (let i = 0; i < nameStr.length; i++) {
+      hash = ((hash << 5) + hash) + nameStr.charCodeAt(i);
+      hash = hash & 0x7fffffff; // keep positive 32-bit
+    }
+    phrase = naturalWordings[hash % naturalWordings.length];
   }
+
 
   // Strip emoji/symbols that confuse image generators
   phrase = phrase.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, "").trim();
@@ -286,18 +359,21 @@ export function buildImagePrompt(productInfo, settings = {}) {
     peopleDirection = NO_PEOPLE_DIRECTION;
   }
 
-  const clipText = resolveClipText(productInfo, settings);
-  const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true") && Boolean(clipText || productInfo.name);
+  const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true");
 
-  // On-screen overlay: one short phrase only (≤5 Thai words / ≤20 chars) — no product name, no CTA, no promotion text
-  const overlayPhrase = clipText ? sanitizeText(clipText) : "";
+  // If user typed a specific phrase → pass it; otherwise let Flow decide freely
+  const userPhrase = settings?.clipText ? sanitizeText(String(settings.clipText).trim()) : "";
 
   const productTextFidelityDirection = textEnabled
     ? "STRICT PRODUCT FIDELITY: Any text, labels, brand names, logos, or writing printed ON the product surface and packaging itself must match the reference image exactly. Do NOT alter, translate, add, or remove any text on the product surface. Do NOT write or overlay any of the new promotional text onto the product or its packaging directly."
     : "STRICT PRODUCT FIDELITY: Any text, labels, brand names, logos, or writing printed ON the product surface and packaging itself must match the reference image exactly. Do NOT alter, translate, add, or remove any text on the product surface. Do NOT add any extra text or promotional overlays on the product.";
 
-  const textDirection = textEnabled && overlayPhrase
-    ? `Visible text overlay is enabled. Place ONLY this single short Thai phrase neatly onto the image: "${overlayPhrase}". Style it as cute Thai handwritten-style text in white with a soft shadow. Include 1–2 small doodles nearby (hearts, sparkles, stars, or arrows). Keep text short, readable, cute, and do NOT add any other text, product name, price, CTA, or promotion text. Do not block important parts of the product. Position overlay at ${settings?.textPosition || "Middle"}. STRICTLY FORBIDDEN: do not add any English text, romanized Thai, unconfigured words, or random gibberish.`
+  const doodles = resolveDoodleStyle(productInfo);
+
+  const textDirection = textEnabled
+    ? userPhrase
+      ? `Visible text overlay is enabled. Place ONLY this single short Thai phrase neatly onto the image: "${userPhrase}". Style it as cute Thai handwritten-style text in white with a soft shadow. Include 1–2 small doodles nearby (${doodles}). Do NOT add any other text, product name, price, CTA, or promotion text. Do not block important parts of the product. Position overlay at ${settings?.textPosition || "Middle"}. STRICTLY FORBIDDEN: no English text, romanized Thai, or gibberish.`
+      : `Visible text overlay is enabled. Creatively add ONE short cute Thai phrase (1–5 words, naturally matching this product) as a handwritten-style text overlay in white with a soft shadow. Include 1–2 small doodles nearby (${doodles}). Do NOT add product name, price, CTA, or promotion text. Do not block important parts of the product. Position overlay at ${settings?.textPosition || "Middle"}. Text must be natural Thai — no English, no gibberish.`
     : `${TEXT_FREE_DIRECTION}\nFinal check: ensure no added text or numbers exist in the output.`;
 
 
@@ -408,7 +484,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const locationStr = resolvePromptLocation(auto);
   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
   const clipText = resolveClipText(productInfo, settings);
-  const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true") && Boolean(clipText);
+  const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true");
   const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
@@ -472,9 +548,14 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep every shot sharp, clearly visible, and stable. Realistic motion only — no morphing, duplication, or impossible action.`
   );
 
+  const videoUserPhrase = settings?.clipText ? sanitizeText(String(settings.clipText).trim()) : "";
+  const doodles = resolveDoodleStyle(productInfo);
+
   promptParts.push(
-    textEnabled && overlayText.length
-      ? `MUST always display these exact Thai text overlays, clearly legible and on-screen in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: ${overlayText.join(" | ")}. Render the Thai script accurately with correct Thai characters, vowels, and tone marks, spelled exactly as written. Style it as cute Thai handwritten-style text overlays in white with a soft shadow. Include small doodles such as hearts, sparkles, stars, and arrows. Text must be short, readable, cute, and naturally matched to the product. Do not overcrowd the screen with text, and do not block important parts of the product. Large and centered in its safe area. The text is required in the final video; do not omit it and do not add any other readable text.`
+    textEnabled
+      ? videoUserPhrase
+        ? `MUST display this exact Thai text overlay, clearly legible and on-screen starting immediately from the very first second (first frame / Scene 1) and visible in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: "${videoUserPhrase}". Render Thai script accurately with correct characters, vowels, and tone marks. Style it as cute Thai handwritten-style text in white with a soft shadow. Include 1–2 small doodles (${doodles}). Do not block important parts of the product. The text must appear on top of active, moving video footage right from the start to serve as an automatic video cover (STRICTLY FORBIDDEN: do not render a frozen image, still photo, or static title card with text in the middle).`
+        : `MUST display ONE short cute Thai text overlay (1–5 words, naturally matching this product) starting immediately from the very first second (first frame / Scene 1) and visible in every scene, clearly legible, at ${compactPromptText(settings?.textPosition, 40) || "Auto"}. Render Thai script accurately. Style it as cute Thai handwritten-style text in white with a soft shadow. Include 1–2 small doodles (${doodles}). Do not block important parts of the product. Choose wording that feels natural and matches the product's benefit. The text must appear on top of active, moving video footage right from the start to serve as an automatic video cover (STRICTLY FORBIDDEN: do not render a frozen image, still photo, or static title card with text in the middle).`
       : TEXT_FREE_DIRECTION
   );
 
