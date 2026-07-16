@@ -29,7 +29,7 @@ async function loadOptions() {
   setChecked("flow-auto-portrait", flow.autoPortrait !== false);
   setChecked("flow-reuse-tab", flow.reuseTab !== false);
   setChecked("flow-reuse-project", flow.reuseProject === true);
-  setChecked("focus-tabs", settings.focusTabs !== false);
+  setChecked("focus-tabs", settings.focusTabs === true);
   const uploadWait = flow.uploadWaitSec ?? 8;
   setValue("flow-upload-wait", uploadWait);
   document.querySelector("#flow-upload-wait-label").textContent = uploadWait + "s";

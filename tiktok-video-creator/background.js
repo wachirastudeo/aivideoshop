@@ -123,7 +123,7 @@ async function clickPointWithDebugger(payload, sender, options = {}) {
     const tab = await chrome.tabs.get(tabId);
     if (tab?.windowId) {
       const { settings = {} } = await chrome.storage.sync.get("settings");
-      const focusTabs = settings.focusTabs !== false;
+      const focusTabs = settings.focusTabs === true;
       if (focusTabs) {
         await chrome.windows.update(tab.windowId, { state: "normal", focused: true });
         await new Promise((r) => setTimeout(r, 300)); // รอให้หน้าต่างขยายเสร็จ
@@ -205,7 +205,7 @@ async function insertTextWithDebugger(payload, sender) {
     const tab = await chrome.tabs.get(tabId);
     if (tab?.windowId) {
       const { settings = {} } = await chrome.storage.sync.get("settings");
-      const focusTabs = settings.focusTabs !== false;
+      const focusTabs = settings.focusTabs === true;
       if (focusTabs) {
         await chrome.windows.update(tab.windowId, { state: "normal", focused: true });
         await new Promise((r) => setTimeout(r, 300));
@@ -284,7 +284,7 @@ async function openGoogleFlow(payload) {
   let needNavigate = true;
   let needReload = false;
   const { settings = {} } = await chrome.storage.sync.get("settings");
-  const focusTabs = settings.focusTabs !== false;
+  const focusTabs = settings.focusTabs === true;
 
   if (existingTabs.length > 0) {
     tab = existingTabs[0];
@@ -554,7 +554,7 @@ async function fetchShopeeImages({ productUrl } = {}) {
   let tab;
   try {
     const { settings = {} } = await chrome.storage.sync.get("settings");
-    const focusTabs = settings.focusTabs !== false;
+    const focusTabs = settings.focusTabs === true;
     tab = await chrome.tabs.create({ url: productUrl, active: focusTabs });
     shopeeScrapeTabId = tab.id;
     log(`สร้างแท็บสำเร็จ ID: ${tab.id}`);
@@ -566,7 +566,7 @@ async function fetchShopeeImages({ productUrl } = {}) {
   try {
     if (tab.windowId) {
       const { settings = {} } = await chrome.storage.sync.get("settings");
-      const focusTabs = settings.focusTabs !== false;
+      const focusTabs = settings.focusTabs === true;
       if (focusTabs) {
         chrome.windows.update(tab.windowId, { state: "normal", focused: true }).catch(() => {});
       } else {
@@ -705,7 +705,7 @@ async function pullShopeeProducts({ keyword, count, mode, minCommission, minSale
   const minS = Math.max(0, parseInt(minSales, 10) || 0);
 
   const { settings = {} } = await chrome.storage.sync.get("settings");
-  const focusTabs = settings.focusTabs !== false;
+  const focusTabs = settings.focusTabs === true;
 
   const existing = await chrome.tabs.query({ url: "https://affiliate.shopee.co.th/*" });
   let tab = existing[0];
@@ -1303,7 +1303,7 @@ function buildTikTokVideoFilename(productInfo = {}) {
 
 async function openTikTokStudioUploadTab() {
   const { settings = {} } = await chrome.storage.sync.get("settings");
-  const focusTabs = settings.focusTabs !== false;
+  const focusTabs = settings.focusTabs === true;
 
   const uploadTabs = [
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/upload*" })),
@@ -1397,7 +1397,7 @@ function normalizeHashtags(value) {
 setInterval(async () => {
   try {
     const { settings = {} } = await chrome.storage.sync.get("settings");
-    const focusTabs = settings.focusTabs !== false;
+    const focusTabs = settings.focusTabs === true;
     if (!focusTabs) return;
 
     const data = await chrome.storage.local.get(["activeFlowTabId", "activeTikTokTabId"]);
