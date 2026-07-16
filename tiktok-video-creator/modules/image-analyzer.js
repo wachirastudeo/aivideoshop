@@ -284,7 +284,7 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
     "For overlayText, generate ONE ultra-short Thai phrase (maximum 5 Thai words, ≤20 characters) that describes the product's best benefit in a cute, catchy way. This will appear as on-screen text overlay on the video. Examples: ดีไซน์สวย, ใช้ง่ายมาก, คุ้มสุดๆ, น่ามีมาก.",
     "The recommended location must fit the product's realistic use, not a generic trendy scene. For example, cabinets, drawers, shelves, and indoor furniture belong in a clean appropriate interior, never an urban street.",
     "Recommend creative options for an 8-second vertical TikTok product video.",
-    'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
+    'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product|dog|cat","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
   const parts = [{ text: prompt }];
 
@@ -363,7 +363,7 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
     "For overlayText, generate ONE ultra-short Thai phrase (maximum 5 Thai words, ≤20 characters) that describes the product's best benefit in a cute, catchy way. This will appear as on-screen text overlay on the video. Examples: ดีไซน์สวย, ใช้ง่ายมาก, คุ้มสุดๆ, น่ามีมาก.",
     "The recommended location must fit the product's realistic use, not a generic trendy scene. For example, cabinets, drawers, shelves, and indoor furniture belong in a clean appropriate interior, never an urban street.",
     "Recommend creative options for an 8-second vertical TikTok product video.",
-    'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
+    'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|trending-hook","presenter":"none|woman|man|cartoon3d|living_product|dog|cat","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace","cameraMovement":"Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
 
   const content = [{ type: "text", text: prompt }];
@@ -574,7 +574,7 @@ function normalizeAutoOptions(value, productInfo = {}) {
   const raw = value && typeof value === "object" ? value : {};
   return {
     videoStyle: pickAllowed(raw.videoStyle, ["sales", "review", "lifestyle", "flash-sale", "unboxing", "before-after", "testimonial", "cinematic", "trending-hook"], inferred.videoStyle),
-    presenter: pickAllowed(raw.presenter, ["none", "woman", "man", "cartoon3d", "living_product"], inferred.presenter),
+    presenter: pickAllowed(raw.presenter, ["none", "woman", "man", "cartoon3d", "living_product", "dog", "cat"], inferred.presenter),
     voiceTone: pickAllowed(raw.voiceTone, ["kind", "fun", "complain", "professional", "hype"], inferred.voiceTone),
     mood: pickAllowed(raw.mood, ["สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"], inferred.mood),
     location: pickAllowed(raw.location, ["Modern Living Room", "Studio Minimal", "Warehouse / Stockroom", "Urban Street", "Nature / Outdoor", "Luxury Showroom", "Cafe / Coffee Shop", "Office / Workspace"], inferred.location),
@@ -602,7 +602,11 @@ function inferAutoOptionsFromProduct(productInfo = {}) {
   if (/(เสื้อ|กางเกง|กระเป๋า|แฟชั่น|wear|shirt|dress|bag)/i.test(text)) {
     return buildAutoOptions("lifestyle", "woman", "fun", "Trendy", "Urban Street", "Handheld Shake", "Swipe", "สินค้าแฟชั่นเหมาะกับการเห็นการใช้งานจริง");
   }
-  if (/(ของเล่น|เด็ก|น่ารัก|cute|toy|kid|pet|สัตว์เลี้ยง)/i.test(text)) {
+  if (/(แมว|หมา|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|cat|dog|pet|kitten|puppy)/i.test(text)) {
+    const isCat = /(แมว|cat|kitten)/i.test(text);
+    return buildAutoOptions("review", isCat ? "cat" : "dog", "fun", "น่ารัก", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "สินค้าสัตว์เลี้ยงแนะนำพรีเซนเตอร์เป็นสัตว์เลี้ยงสุดน่ารัก");
+  }
+  if (/(ของเล่น|เด็ก|น่ารัก|cute|toy|kid)/i.test(text)) {
     return buildAutoOptions("trending-hook", "cartoon3d", "fun", "น่ารัก", "Modern Living Room", "Push In Fast", "Zoom Transition", "สินค้าน่ารักควรเปิดด้วย hook สนุกและภาพจำง่าย");
   }
   if (/(ครัว|บ้าน|เครื่องใช้|organizer|storage|clean|ทำความสะอาด)/i.test(text)) {

@@ -86,12 +86,15 @@ const PRESENTERS = {
   woman: "A young Thai woman reviewer presenting the product. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   man: "A young Thai man reviewer presenting the product. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
-  living_product: "The product itself becomes a living character with cute 3D eyes and personality"
+  living_product: "The product itself becomes a living character with cute 3D eyes and personality",
+  dog: "A cute friendly dog (e.g., golden retriever or corgi) interacting with or sitting next to the product in a bright, clean indoor setting.",
+  cat: "A cute fluffy cat interacting with or sitting next to the product in a cozy, warm indoor setting."
 };
 
 const THAI_PERSON_DIRECTION = "Natural Thai reviewer. The product must remain rigid, static, and completely unchanged; the reviewer stands next to it or holds it gently without covering, bending, or deforming it.";
 
 const HANDS_DIRECTION = "Show only realistic human hands holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand. The product itself must remain rigid and unchanged; do not cover, bend, warp, or deform it.";
+const ANIMAL_PRESENTER_DIRECTION = "No humans in the video. Show a cute consistent animal (cat or dog as specified) as the main character interacting with or sitting next to the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
 
 const PRODUCT_FIDELITY_DIRECTION = "Reproduce the product EXACTLY as shown in the reference image: preserve its exact shape, form, color, material, labels, and parts. STRICT RULE: Do not add any extra items, objects, parts, accessories, or decorations that are not in the reference image. Do not add packaging, boxes, bags, or cases unless they are clearly visible in the reference image. Do not substitute, modify, or add parts to the product. It must look 100% identical to the uploaded product image.";
 
@@ -339,9 +342,11 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const handsOnly = auto.presenter === "hands_only";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
 
+  const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
+
   // Determine introductory description/layout advice based on presenter settings (always keep multiple angles grid/collage, strictly at most 4 scenes)
   const intro = (auto.presenter && auto.presenter !== "none" && auto.presenter !== "hands_only")
-    ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with a presenter shown in the frame.`
+    ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with ${isAnimal ? "a pet animal" : "a presenter"} shown in the frame.`
     : (auto.presenter === "hands_only")
       ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with realistic human hands holding the product in the frame.`
       : `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes.`;
@@ -514,6 +519,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   const handsOnly = auto.presenter === "hands_only";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
+  const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
+  const animalName = auto.presenter === "cat" ? "cute cat" : "cute dog";
+
   const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
     ? "review"
     : auto.videoStyle;
@@ -528,6 +536,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "hands holding and presenting the product")
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, "hands holding the product")
       .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
+  } else if (isAnimal) {
+    sceneBreakdown = sceneBreakdown
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `a ${animalName} sitting next to the product`)
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `a ${animalName}`)
+      .replace(/\bhands\b/gi, `${animalName}'s paws`);
   }
 
   // Adjust prompt for heavy/large products to prevent unnatural holding/lifting
@@ -624,13 +637,21 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     speakerIdentity = "a cheerful, animated cartoon character voice";
   } else if (auto.presenter === "living_product") {
     speakerIdentity = "a cute, playful animated product character voice";
+  } else if (auto.presenter === "dog" || auto.presenter === "cat") {
+    speakerIdentity = "a friendly off-screen Thai narrator";
   }
   
-  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter). Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must present the product's value proposition, features, or name naturally in Thai. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ensure the voice is a natural Thai speaker whose voice perfectly matches the character identity of the presenter.`;
+  const matchVoiceRule = (auto.presenter === "dog" || auto.presenter === "cat")
+    ? "the voice must sound like a friendly off-screen Thai narrator presenting the product for their pet"
+    : "the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter)";
+
+  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — ${matchVoiceRule}. Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must present the product's value proposition, features, or name naturally in Thai. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ensure the voice is a natural Thai speaker whose voice perfectly matches the character identity of the presenter.`;
   const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
     promptParts.push(`${handsDir} ${voiceoverDir} ${speechDir}`);
+  } else if (auto.presenter === "dog" || auto.presenter === "cat") {
+    promptParts.push(`Presenter: ${presenterInstruction}. ${ANIMAL_PRESENTER_DIRECTION} (Strictest rule: Use exactly one single consistent animal throughout the entire video. Do not introduce people, do not switch animals, and do not morph or change the animal's appearance between scenes). ${speechDir}`);
   } else if (auto.presenter && auto.presenter !== "none") {
     promptParts.push(`Presenter: ${presenterInstruction}. ${THAI_PERSON_DIRECTION} (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes). ${speechDir}`);
   } else {
