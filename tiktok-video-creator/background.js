@@ -1302,9 +1302,6 @@ function buildTikTokVideoFilename(productInfo = {}) {
 }
 
 async function openTikTokStudioUploadTab() {
-  const { settings = {} } = await chrome.storage.sync.get("settings");
-  const focusTabs = settings.focusTabs === true;
-
   const uploadTabs = [
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/upload*" })),
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktok-studio/upload*" })),
@@ -1312,12 +1309,10 @@ async function openTikTokStudioUploadTab() {
 
   let tab = uploadTabs[0];
   if (tab) {
-    if (focusTabs) {
-      await chrome.tabs.update(tab.id, { active: true });
-      try {
-        await chrome.windows.update(tab.windowId, { focused: true });
-      } catch (_) {}
-    }
+    await chrome.tabs.update(tab.id, { active: true });
+    try {
+      await chrome.windows.update(tab.windowId, { focused: true });
+    } catch (_) {}
     return tab.id;
   }
 
@@ -1328,20 +1323,16 @@ async function openTikTokStudioUploadTab() {
 
   tab = studioTabs[0];
   if (tab) {
-    if (focusTabs) {
-      await chrome.tabs.update(tab.id, { url: TIKTOK_STUDIO_UPLOAD_URL, active: true });
-      try {
-        await chrome.windows.update(tab.windowId, { focused: true });
-      } catch (_) {}
-    } else {
-      await chrome.tabs.update(tab.id, { url: TIKTOK_STUDIO_UPLOAD_URL });
-    }
+    await chrome.tabs.update(tab.id, { url: TIKTOK_STUDIO_UPLOAD_URL, active: true });
+    try {
+      await chrome.windows.update(tab.windowId, { focused: true });
+    } catch (_) {}
     await waitForTabComplete(tab.id);
     await sleep(3000);
     return tab.id;
   }
 
-  const newTab = await chrome.tabs.create({ url: TIKTOK_STUDIO_UPLOAD_URL, active: focusTabs });
+  const newTab = await chrome.tabs.create({ url: TIKTOK_STUDIO_UPLOAD_URL, active: true });
   await waitForTabComplete(newTab.id);
   await sleep(3000);
   return newTab.id;
@@ -1398,11 +1389,10 @@ setInterval(async () => {
   try {
     const { settings = {} } = await chrome.storage.sync.get("settings");
     const focusTabs = settings.focusTabs === true;
-    if (!focusTabs) return;
 
     const data = await chrome.storage.local.get(["activeFlowTabId", "activeTikTokTabId"]);
     
-    if (data.activeFlowTabId) {
+    if (data.activeFlowTabId && focusTabs) {
       try {
         const tab = await chrome.tabs.get(Number(data.activeFlowTabId));
         if (!tab.active) {
