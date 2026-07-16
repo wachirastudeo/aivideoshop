@@ -9,6 +9,7 @@ const DEFAULT_POST_SETTINGS = {
   defaultMode: "now",
   privacy: "",
   scheduleTime: "",
+  scheduleInterval: 10,
   location: "",
   aiGenerated: true,
   allowComment: true,
@@ -54,7 +55,7 @@ function bindEvents() {
   });
 
   document.querySelectorAll(
-    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-privacy, #post-schedule-time, #post-location, #post-allow-comment, #post-allow-reuse, #post-shopee-csv-folder, #post-shopee-csv-filename"
+    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-privacy, #post-schedule-time, #post-schedule-interval, #post-location, #post-allow-comment, #post-allow-reuse, #post-shopee-csv-folder, #post-shopee-csv-filename"
   ).forEach((input) => {
     input.addEventListener("input", scheduleAutoSave);
     input.addEventListener("change", scheduleAutoSave);
@@ -217,6 +218,7 @@ function fillForm(value) {
   setValue("post-default-mode", post.defaultMode);
   setValue("post-privacy", post.privacy);
   setValue("post-schedule-time", post.scheduleTime);
+  setValue("post-schedule-interval", post.scheduleInterval ?? 10);
   setValue("post-location", post.location);
   setChecked("post-ai-generated", post.aiGenerated);
   setChecked("post-allow-comment", post.allowComment);
@@ -252,6 +254,7 @@ function readForm(existingPostDefaults = {}) {
     defaultMode: getValue("post-default-mode"),
     privacy: getValue("post-privacy"),
     scheduleTime: getValue("post-schedule-time"),
+    scheduleInterval: hasField("post-schedule-interval") ? (parseInt(getValue("post-schedule-interval"), 10) || 10) : existing.scheduleInterval,
     location: getValue("post-location"),
     aiGenerated: true,
     allowComment: getChecked("post-allow-comment"),
@@ -280,6 +283,7 @@ function normalizePostSettings(value = {}) {
       : (["download", "draft", "post"].includes(post.afterCreateAction) ? post.afterCreateAction : "post"),
     defaultMode: ["draft", "now", "schedule"].includes(post.defaultMode) ? post.defaultMode : "now",
     autoAddProductLink: post.autoAddProductLink !== false,
+    scheduleInterval: parseInt(post.scheduleInterval, 10) || 10,
     aiGenerated: true,
     allowComment: post.allowComment !== false,
     allowReuse: post.allowReuse !== false,

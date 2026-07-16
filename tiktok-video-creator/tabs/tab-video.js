@@ -72,7 +72,7 @@ function bindGlobalEvents() {
     "video-style", "presenter", "custom-presenter", "voice-tone", "location", "custom-location",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action",
-    "post-schedule-date", "post-schedule-time", "image-model", "video-model", "video-ref-mode", "flow-gen-mode"
+    "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
     if (!el) return;
@@ -120,6 +120,7 @@ function fillGlobalFormFromState() {
   }
   setValue("post-schedule-date", toInputDate(dt));
   setValue("post-schedule-time", toInputTime(dt));
+  setValue("post-schedule-interval", settings.postScheduleInterval || 10);
 
   syncVideoTextSettingsVisibility();
   syncCustomLocationVisibility();
@@ -154,7 +155,8 @@ function syncSettingsForm() {
     videoRefMode: getValue("video-ref-mode") || "frames",
     flowGenMode: getValue("flow-gen-mode") || "combined",
     postAction: getValue("post-action"),
-    postScheduleTime: combinedTime
+    postScheduleTime: combinedTime,
+    postScheduleInterval: parseInt(getValue("post-schedule-interval"), 10) || 10
   });
 
   renderQueue();
@@ -247,7 +249,8 @@ function normalizeSettings(value) {
     videoRefMode: value.videoRefMode === "ingredients" ? "ingredients" : "frames",
     flowGenMode: value.flowGenMode === "video" ? "video" : "combined",
     postAction: value.postAction === "both" ? "draft" : (value.postAction || "post"),
-    postScheduleTime: value.postScheduleTime || ""
+    postScheduleTime: value.postScheduleTime || "",
+    postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10
   };
 }
 
@@ -798,7 +801,8 @@ async function processQueue() {
           assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังอัปโหลดและตั้งเวลาโพสต์ TikTok อัตโนมัติ...`, "info");
           const scheduledCount = productQueue.slice(0, i).filter(p => p.status === "done").length;
-          const minutesOffset = scheduledCount * 120;
+          const interval = parseInt(settings.postScheduleInterval, 10) || 10;
+          const minutesOffset = scheduledCount * interval;
           await retryPostStep(`ตั้งเวลาโพสต์ TikTok สินค้า ${i + 1}`, () => scheduleVideo(product.preparedVideoUrl || product.videoUrl, product, minutesOffset));
           assertNotStopped();
         }

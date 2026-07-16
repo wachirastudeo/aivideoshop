@@ -63,6 +63,7 @@ async function loadOptions() {
   setChecked("caption-random-opening", post.randomOpening !== false);
   setValue("shopee-csv-folder", post.shopeeCsvFolder || "shopee_exports");
   setValue("shopee-csv-filename", post.shopeeCsvFilename || "shopee_products.csv");
+  setValue("default-post-schedule-interval", post.scheduleInterval ?? 10);
 
   // Sync model card UI
   syncModelCards();
@@ -132,7 +133,8 @@ async function saveSettings() {
       afterCreateAction: existingSettings.postDefaults?.afterCreateAction || "post",
       defaultMode: existingSettings.postDefaults?.defaultMode || "now",
       shopeeCsvFolder: getValue("shopee-csv-folder") || "shopee_exports",
-      shopeeCsvFilename: getValue("shopee-csv-filename") || "shopee_products.csv"
+      shopeeCsvFilename: getValue("shopee-csv-filename") || "shopee_products.csv",
+      scheduleInterval: parseInt(getValue("default-post-schedule-interval"), 10) || 10
     }
   };
 
