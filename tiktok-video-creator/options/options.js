@@ -29,6 +29,7 @@ async function loadOptions() {
   setChecked("flow-auto-portrait", flow.autoPortrait !== false);
   setChecked("flow-reuse-tab", flow.reuseTab !== false);
   setChecked("flow-reuse-project", flow.reuseProject === true);
+  setChecked("focus-tabs", settings.focusTabs !== false);
   const uploadWait = flow.uploadWaitSec ?? 8;
   setValue("flow-upload-wait", uploadWait);
   document.querySelector("#flow-upload-wait-label").textContent = uploadWait + "s";
@@ -97,6 +98,7 @@ async function saveSettings() {
     geminiModel: getSelectValue("gemini-model") || DEFAULT_GEMINI_MODEL,
     openaiApiKey: openaiKey,
     openaiModel: getSelectValue("openai-model") || DEFAULT_OPENAI_MODEL,
+    focusTabs: getChecked("focus-tabs"),
 
     flow: {
       videoModel: getRadio("flow-video-model") || "veo-3.1-lite-low-priority",

@@ -218,40 +218,15 @@ function normalizeGeneratedPostCopy(value, fallback, productInfo = {}, defaults 
   };
 }
 
-// caption ต้องขึ้นต้นด้วยช่อง "ชื่อสินค้า / Hook" และมีสุ่มคำขึ้นต้นสนุกๆ เสมอ
+// caption ต้องขึ้นต้นด้วยช่อง "ชื่อสินค้า / Hook" เสมอ (ไม่มี random opening แล้ว)
 function ensureCaptionLeadsWithHook(caption, productInfo = {}, defaults = {}) {
   const hook = resolveCaptionProductName(productInfo);
   const text = String(caption || "").trim();
   if (!hook) return text;
 
-  if (defaults.randomOpening === false) {
-    const normalizedHook = hook.toLowerCase();
-    if (text.toLowerCase().startsWith(normalizedHook)) return text;
-    return text ? `${hook}\n${text}` : hook;
-  }
-
-  const randomOpenings = [
-    "ชี้เป้าความคุ้มวันนี้! ✨",
-    "บอกต่อของดีที่ต้องมี! 🛍️",
-    "ใครยังไม่มีรีบเลย! 🔥",
-    "ไอเทมเด็ดชิ้นนี้ห้ามพลาด! 😍",
-    "ลองหรือยัง? ของดีบอกต่อ 💯",
-    "ตัวช่วยชีวิตดีขึ้นเยอะ! 👍",
-    "หลังจากลองตัวนี้คือปังมาก! 💖",
-    "ส่องด่วน! ดีงามเกินต้าน 🌟"
-  ];
-
-  const hasRandomOpening = randomOpenings.some(op => text.startsWith(op));
-  if (hasRandomOpening) return text;
-
-  const prefix = randomOpenings[Math.floor(Math.random() * randomOpenings.length)];
-  const randomizedHook = `${prefix} ${hook}`;
-
   const normalizedHook = hook.toLowerCase();
-  if (text.toLowerCase().startsWith(normalizedHook)) {
-    return `${prefix} ${text}`;
-  }
-  return text ? `${randomizedHook}\n${text}` : randomizedHook;
+  if (text.toLowerCase().startsWith(normalizedHook)) return text;
+  return text ? `${hook}\n${text}` : hook;
 }
 
 function cleanGeneratedHashtags(value) {

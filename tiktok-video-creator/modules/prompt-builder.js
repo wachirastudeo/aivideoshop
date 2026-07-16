@@ -610,8 +610,23 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const combinedProductDetails = details.join(", ");
 
   const toneDesc = VOICE_TONES[auto.voiceTone] || VOICE_TONES.Auto;
+
+  // Derive a speaker identity from the presenter setting so the AI voice matches the character
+  let speakerIdentity = "a natural Thai speaker";
+  if (auto.presenter === "woman") {
+    speakerIdentity = "a young Thai woman";
+  } else if (auto.presenter === "man") {
+    speakerIdentity = "a young Thai man";
+  } else if (auto.presenter === "กรอกเอง" && auto.customPresenter) {
+    // Use the custom presenter description to inform the voice identity
+    speakerIdentity = `a Thai speaker whose voice, age, and speech style match this character: "${auto.customPresenter}"`;
+  } else if (auto.presenter === "cartoon3d") {
+    speakerIdentity = "a cheerful, animated cartoon character voice";
+  } else if (auto.presenter === "living_product") {
+    speakerIdentity = "a cute, playful animated product character voice";
+  }
   
-  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must present the product's value proposition, features, or name naturally in Thai. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ensure the voice is a natural Thai speaker talking matching the product identity.`;
+  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter). Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must present the product's value proposition, features, or name naturally in Thai. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ensure the voice is a natural Thai speaker whose voice perfectly matches the character identity of the presenter.`;
   const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
@@ -969,26 +984,13 @@ export function buildCaption(productInfo, defaults = {}) {
     cta: cleanCaptionText(productInfo.cta || "สั่งได้เลย")
   });
 
-  if (!hook || defaults.randomOpening === false) {
+  if (!hook) {
     return body.trim();
   }
   const rest = body.startsWith(hook) ? body.slice(hook.length).trim() : body.trim();
 
-  // สุ่มคำขึ้นต้นสนุกๆ นำหน้า Hook เพื่อไม่ให้ข้อความโพสต์ซ้ำซ้อน
-  const randomOpenings = [
-    "ชี้เป้าความคุ้มวันนี้! ✨",
-    "บอกต่อของดีที่ต้องมี! 🛍️",
-    "ใครยังไม่มีรีบเลย! 🔥",
-    "ไอเทมเด็ดชิ้นนี้ห้ามพลาด! 😍",
-    "ลองหรือยัง? ของดีบอกต่อ 💯",
-    "ตัวช่วยชีวิตดีขึ้นเยอะ! 👍",
-    "หลังจากลองตัวนี้คือปังมาก! 💖",
-    "ส่องด่วน! ดีงามเกินต้าน 🌟"
-  ];
-  const prefix = randomOpenings[Math.floor(Math.random() * randomOpenings.length)];
-  const randomizedHook = `${prefix} ${hook}`;
-
-  return rest ? `${randomizedHook}\n${rest}` : randomizedHook;
+  // ขึ้นต้นด้วยชื่อสินค้า/hook เลย (ไม่มี random opening แล้ว)
+  return rest ? `${hook}\n${rest}` : hook;
 }
 
 function removeEmojis(str) {
