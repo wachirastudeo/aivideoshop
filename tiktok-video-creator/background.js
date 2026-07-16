@@ -284,16 +284,13 @@ async function openGoogleFlow(payload) {
   let needNavigate = true;
   let needReload = false;
   const { settings = {} } = await chrome.storage.sync.get("settings");
-  const focusTabs = settings.focusTabs === true;
 
   if (existingTabs.length > 0) {
     tab = existingTabs[0];
-    if (focusTabs) {
-      await chrome.tabs.update(tab.id, { active: true });
-      try {
-        await chrome.windows.update(tab.windowId, { focused: true });
-      } catch { }
-    }
+    await chrome.tabs.update(tab.id, { active: true });
+    try {
+      await chrome.windows.update(tab.windowId, { focused: true });
+    } catch { }
     
     if (reuseProject && isFlowProjectUrl(tab.url || "")) {
       needNavigate = false;
@@ -303,7 +300,10 @@ async function openGoogleFlow(payload) {
       needReload = false;
     }
   } else {
-    tab = await chrome.tabs.create({ url: FLOW_URL, active: focusTabs });
+    tab = await chrome.tabs.create({ url: FLOW_URL, active: true });
+    try {
+      await chrome.windows.update(tab.windowId, { focused: true });
+    } catch { }
     needNavigate = false;
     needReload = false;
   }
