@@ -100,6 +100,7 @@ function fillGlobalFormFromState() {
   setValue("clip-text", settings.clipText);
   setValue("promotion-text", settings.promotionText);
   setValue("text-position", settings.textPosition);
+  setValue("text-style-font", settings.textStyleFont);
   setValue("camera-movement", settings.cameraMovement);
   setValue("image-model", settings.imageModel);
   setValue("video-model", settings.videoModel);
@@ -147,6 +148,7 @@ function syncSettingsForm() {
     clipText: getValue("clip-text"),
     promotionText: getValue("promotion-text"),
     textPosition: getValue("text-position"),
+    textStyleFont: getValue("text-style-font"),
     cameraMovement: getValue("camera-movement"),
     imageModel: getValue("image-model"),
     videoModel: getValue("video-model"),
@@ -255,6 +257,7 @@ function normalizeSettings(value) {
     postAction: value.postAction === "both" ? "draft" : (value.postAction || "post"),
     postNoLink: Boolean(value.postNoLink),
     postCustomProductName: (value.postCustomProductName || "").trim(),
+    textStyleFont: value.textStyleFont || "handwriting",
     postScheduleTime: value.postScheduleTime || "",
     postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10
   };

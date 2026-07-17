@@ -73,6 +73,19 @@ export const VIDEO_STYLES = [
   }
 ];
 
+export const TEXT_FONT_STYLES = {
+  handwriting: "cute Thai handwritten-style text in white with a soft shadow",
+  "bold-modern": "bold modern clean sans-serif style Thai text in white with a strong drop shadow",
+  "neon-glow": "glowing neon sign style Thai text with a vibrant outer glow",
+  minimalist: "simple minimalist elegant thin style Thai text in clean white",
+  "cartoon-3d": "3D stylized pop-art cartoon style Thai text with a bold outline and playful texture",
+  "clean-subtitle": "clean modern sans-serif Thai subtitle text enclosed inside a semi-transparent dark rounded rectangular background box, high readability",
+  "product-label": "clean Thai text styled as a cute graphic retail sticker label or price tag badge with a dashed border",
+  "luxury-brand": "elegant high-end luxury fashion brand editorial style Thai text, fine thin serif lettering with generous spacing, premium editorial aesthetic",
+  "viral-bold": "high-energy retro pop-art style Thai text with a thick black outline, bold yellow fill, and offset shadow",
+  typewriter: "vintage typewriter style Thai text, monospace typewriter font appearance"
+};
+
 const PACING = {
   1: "slow cinematic pacing, smooth cuts every 4 seconds",
   2: "balanced TikTok pacing, clean cuts every 2-3 seconds",
@@ -375,10 +388,12 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const doodles = resolveDoodleStyle(productInfo);
 
+  const textStyleStr = TEXT_FONT_STYLES[settings?.textStyleFont] || TEXT_FONT_STYLES.handwriting;
+
   const textDirection = textEnabled
     ? userPhrase
-      ? `Visible text overlay is enabled. Place ONLY this single short Thai phrase neatly onto the image: "${userPhrase}". Render the Thai script with perfect spelling, ensuring every consonant, vowel, and tone mark (such as ไม้เอก, ไม้โท, etc.) is in the correct vertical stack and perfectly placed. Style it as cute Thai handwritten-style text in white with a soft shadow. Include 1–2 small doodles nearby (${doodles}). Do NOT add any other text, product name, price, CTA, or promotion text. Do not block important parts of the product. Position overlay at ${settings?.textPosition || "Middle"}. STRICTLY FORBIDDEN: no English text, romanized Thai, or gibberish.`
-      : `Visible text overlay is enabled. Creatively add ONE short cute Thai phrase (1–5 words, naturally matching this product) as a handwritten-style text overlay in white with a soft shadow. The chosen Thai phrase must have flawless Thai spelling and grammar, with correct vowels and tone marks properly stacked. Include 1–2 small doodles nearby (${doodles}). Do NOT add product name, price, CTA, or promotion text. Do not block important parts of the product. Position overlay at ${settings?.textPosition || "Middle"}. Text must be natural Thai — no English, no gibberish.`
+      ? `Visible text overlay is enabled. Place ONLY this single short Thai phrase neatly onto the image: "${userPhrase}". Render the Thai script with perfect spelling, ensuring every consonant, vowel, and tone mark (such as ไม้เอก, ไม้โท, etc.) is in the correct vertical stack and perfectly placed. Style it as ${textStyleStr}. Include 1–2 small doodles nearby (${doodles}). Do NOT add any other text, product name, price, CTA, or promotion text. Do not block important parts of the product. Position overlay at ${settings?.textPosition || "Middle"}. STRICTLY FORBIDDEN: no English text, romanized Thai, or gibberish.`
+      : `Visible text overlay is enabled. Creatively add ONE short cute Thai phrase (1–5 words, naturally matching this product) as a ${textStyleStr} overlay. The chosen Thai phrase must have flawless Thai spelling and grammar, with correct vowels and tone marks properly stacked. Include 1–2 small doodles nearby (${doodles}). Do NOT add product name, price, CTA, or promotion text. Do not block important parts of the product. Position overlay at ${settings?.textPosition || "Middle"}. Text must be natural Thai — no English, no gibberish.`
     : `${TEXT_FREE_DIRECTION}\nFinal check: ensure no added text or numbers exist in the output.`;
 
 
@@ -572,11 +587,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const videoUserPhrase = settings?.clipText ? sanitizeText(String(settings.clipText).trim()) : "";
   const doodles = resolveDoodleStyle(productInfo);
 
+  const textStyleStr = TEXT_FONT_STYLES[settings?.textStyleFont] || TEXT_FONT_STYLES.handwriting;
+
   promptParts.push(
     textEnabled
       ? videoUserPhrase
-        ? `MUST display this exact Thai text overlay, clearly legible and on-screen starting immediately from the very first second (first frame / Scene 1) and visible in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: "${videoUserPhrase}". Render Thai script with perfect spelling, ensuring every consonant, vowel, and tone mark is in the correct vertical stack and perfectly placed. Style it as cute Thai handwritten-style text in white with a soft shadow. Include 1–2 small doodles (${doodles}). Do not block important parts of the product. The text must appear on top of active, moving video footage right from the start to serve as an automatic video cover (STRICTLY FORBIDDEN: do not render a frozen image, still photo, or static title card with text in the middle).`
-        : `MUST display ONE short cute Thai text overlay (1–5 words, naturally matching this product) starting immediately from the very first second (first frame / Scene 1) and visible in every scene, clearly legible, at ${compactPromptText(settings?.textPosition, 40) || "Auto"}. Render Thai script with perfect spelling, ensuring every consonant, vowel, and tone mark is in the correct vertical stack and perfectly placed. Style it as cute Thai handwritten-style text in white with a soft shadow. Include 1–2 small doodles (${doodles}). Do not block important parts of the product. Choose wording that feels natural and matches the product's benefit. The text must appear on top of active, moving video footage right from the start to serve as an automatic video cover (STRICTLY FORBIDDEN: do not render a frozen image, still photo, or static title card with text in the middle).`
+        ? `MUST display this exact Thai text overlay, clearly legible and on-screen starting immediately from the very first second (first frame / Scene 1) and visible in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: "${videoUserPhrase}". Render Thai script with perfect spelling, ensuring every consonant, vowel, and tone mark is in the correct vertical stack and perfectly placed. Style it as ${textStyleStr}. Include 1–2 small doodles (${doodles}). Do not block important parts of the product. The text must appear on top of active, moving video footage right from the start to serve as an automatic video cover (STRICTLY FORBIDDEN: do not render a frozen image, still photo, or static title card with text in the middle).`
+        : `MUST display ONE short cute Thai text overlay (1–5 words, naturally matching this product) starting immediately from the very first second (first frame / Scene 1) and visible in every scene, clearly legible, at ${compactPromptText(settings?.textPosition, 40) || "Auto"}. Render Thai script with perfect spelling, ensuring every consonant, vowel, and tone mark is in the correct vertical stack and perfectly placed. Style it as ${textStyleStr}. Include 1–2 small doodles (${doodles}). Do not block important parts of the product. Choose wording that feels natural and matches the product's benefit. The text must appear on top of active, moving video footage right from the start to serve as an automatic video cover (STRICTLY FORBIDDEN: do not render a frozen image, still photo, or static title card with text in the middle).`
       : TEXT_FREE_DIRECTION
   );
 
