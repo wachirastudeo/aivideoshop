@@ -258,7 +258,7 @@ function normalizeSettings(value) {
     flowGenMode: value.flowGenMode === "video" ? "video" : "combined",
     postAction: value.postAction === "both" ? "draft" : (value.postAction || "post"),
     postNoLink: Boolean(value.postNoLink),
-    postRandomCaptionHook: Boolean(value.postRandomCaptionHook),
+    postRandomCaptionHook: value.postRandomCaptionHook !== undefined ? Boolean(value.postRandomCaptionHook) : true,
     postCustomProductName: (value.postCustomProductName || "").trim(),
     textStyleFont: value.textStyleFont || "handwriting",
     postScheduleTime: value.postScheduleTime || "",

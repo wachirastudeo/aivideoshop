@@ -416,6 +416,13 @@ function bindProductEvents() {
     renderProducts();
   });
 
+  document.querySelector("#clear-all-products")?.addEventListener("click", () => {
+    selectedIds.clear();
+    const selectAll = document.querySelector("#select-all-products");
+    if (selectAll) selectAll.checked = false;
+    renderProducts();
+  });
+
   document.querySelector("#download-batch-images")?.addEventListener("click", async () => {
     if (selectedIds.size === 0) return;
     const selectedProducts = products.filter(p => selectedIds.has(p.productId));

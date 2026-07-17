@@ -98,7 +98,7 @@ const PRESENTERS = {
   hands_only: "Only realistic hands (strictly exactly one single hand or one pair of hands, never more than two hands in the frame) holding the product gently and steadily, no face or body. No twisting or flipping of the product to prevent glitches.",
   woman: "A young Thai woman reviewer presenting the product. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   man: "A young Thai man reviewer presenting the product. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
-  child: "A cute young Thai child reviewer presenting the product. The child stands near or looks at the product with curious, happy eyes, smiling at the camera.",
+  child: "A cute young Thai child naturally playing, eating, or interacting with the product doing activities suitable for the product category. The child is engrossed in the activity naturally without looking directly at the camera or presenting it like a reviewer.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
   living_product: "The product itself becomes a living character with cute 3D eyes and personality",
   dog: "A cute friendly dog (e.g., golden retriever or corgi) interacting with or sitting next to the product in a bright, clean indoor setting.",
@@ -227,7 +227,8 @@ export function getDefaultSettings() {
     cameraMovement: "Auto",
     pacing: 2,
     transition: "Auto",
-    postAction: "post"
+    postAction: "post",
+    postRandomCaptionHook: true
   };
 }
 
@@ -565,6 +566,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `a ${animalName} sitting next to the product`)
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `a ${animalName}`)
       .replace(/\bhands\b/gi, `${animalName}'s paws`);
+  } else if (auto.presenter === "child") {
+    sceneBreakdown = sceneBreakdown
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "a cute young child playing and doing activities naturally with the product")
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, "a cute young child");
   }
 
   // Adjust prompt for heavy/large products to prevent unnatural holding/lifting
@@ -657,7 +662,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   } else if (auto.presenter === "man") {
     speakerIdentity = "a young Thai man";
   } else if (auto.presenter === "child") {
-    speakerIdentity = "a cute young Thai child";
+    speakerIdentity = "a caring Thai mother narrating warm and loving thoughts about her child interacting with the product";
   } else if (auto.presenter === "กรอกเอง" && auto.customPresenter) {
     // Use the custom presenter description to inform the voice identity
     speakerIdentity = `a Thai speaker whose voice, age, and speech style match this character: "${auto.customPresenter}"`;
