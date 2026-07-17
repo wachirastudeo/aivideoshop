@@ -16,10 +16,15 @@ export async function initProductsTab(injectedHelpers) {
   helpers = injectedHelpers;
   bindSourceSwitch();
   bindShopeeEvents();
+  bindManualEvents();
   bindProductEvents();
 
   const stored = await chrome.storage.local.get(["pullSource"]);
-  applySource(stored.pullSource === "shopee" ? "shopee" : "tiktok");
+  let activeSource = stored.pullSource;
+  if (activeSource !== "shopee" && activeSource !== "manual" && activeSource !== "tiktok") {
+    activeSource = "tiktok";
+  }
+  applySource(activeSource);
 
   if (products.length > 0) {
     renderProducts();
@@ -33,7 +38,7 @@ export async function initProductsTab(injectedHelpers) {
 }
 
 /**
- * @description สลับแหล่งดึงสินค้า TikTok / Shopee
+ * @description สลับแหล่งดึงสินค้า TikTok / Shopee / Manual
  */
 function bindSourceSwitch() {
   document.querySelectorAll(".source-switch__button").forEach((btn) => {
@@ -50,8 +55,10 @@ function applySource(source) {
   });
   const tiktokPanel = document.querySelector("#source-tiktok");
   const shopeePanel = document.querySelector("#source-shopee");
+  const manualPanel = document.querySelector("#source-manual");
   if (tiktokPanel) tiktokPanel.hidden = source !== "tiktok";
   if (shopeePanel) shopeePanel.hidden = source !== "shopee";
+  if (manualPanel) manualPanel.hidden = source !== "manual";
 }
 
 /**
@@ -1049,4 +1056,119 @@ async function sendProductToPostTab(product) {
   helpers.logActivity?.(`เลือกสินค้าเพื่อส่งไปโพสต์: ${payload.originalName || payload.name}`, "success");
   helpers.showStatus("ส่งสินค้าไปหน้า โพสต์ TikTok แล้ว", "success");
   await helpers.switchTab("post");
+}
+
+function bindManualEvents() {
+  const fileInput = document.querySelector("#manual-image-file");
+  const fileInfo = document.querySelector("#manual-image-file-info");
+  const addBtn = document.querySelector("#manual-add");
+  const statusEl = document.querySelector("#manual-status");
+
+  fileInput?.addEventListener("change", () => {
+    const files = fileInput.files;
+    if (files && files.length > 0) {
+      fileInfo.textContent = `เลือกรูปภาพแล้ว ${files.length} รูป`;
+    } else {
+      fileInfo.textContent = "ยังไม่ได้เลือกรูปภาพ (กรุณาเลือกอย่างน้อย 1 รูป)";
+    }
+  });
+
+  addBtn?.addEventListener("click", async () => {
+    try {
+      const name = document.querySelector("#manual-name")?.value.trim();
+      const price = parseFloat(document.querySelector("#manual-price")?.value) || 0;
+      const url = document.querySelector("#manual-url")?.value.trim();
+      const files = fileInput?.files || [];
+
+      if (!name) {
+        throw new Error("กรุณากรอกชื่อสินค้า / Hook");
+      }
+      if (files.length === 0) {
+        throw new Error("กรุณาเลือกรูปภาพอย่างน้อย 1 รูป");
+      }
+
+      addBtn.disabled = true;
+      if (statusEl) statusEl.textContent = "กำลังประมวลผลรูปภาพ...";
+
+      // อ่านไฟล์เป็น base64 data urls
+      const imageUrls = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const dataUrl = await readFileAsDataUrl(file);
+        imageUrls.push(dataUrl);
+      }
+
+      // สร้าง product object เพื่อเอาใส่คิว
+      // สำหรับสินค้ากรอกเอง productId จะเป็น timestamp ชั่วคราว
+      const manualId = "manual_" + Date.now();
+      const product = {
+        productId: manualId,
+        product_id: manualId,
+        id: manualId,
+        name: name,
+        originalName: name,
+        productLinkTitle: name.slice(0, 25), // clean title for link
+        displayImageUrl: imageUrls[0],
+        flowImageUrl: imageUrls[0],
+        price: price ? String(price) : "0",
+        currency: "THB",
+        imageUrls: imageUrls,
+        selectedImageUrls: imageUrls,
+        productUrl: url || "",
+        shopName: "Manual Input",
+        category: "General",
+        details: "สินค้ากรอกข้อมูลเอง",
+        source: "manual",
+        status: "pending"
+      };
+
+      const payload = buildSelectedProductPayload(product);
+
+      // โหลดคิวปัจจุบันจาก storage
+      const storedQueue = await chrome.storage.local.get(["productQueue"]);
+      const queue = Array.isArray(storedQueue.productQueue) ? storedQueue.productQueue : [];
+      queue.push(payload);
+
+      // บันทึกกลับลง storage
+      await chrome.storage.local.set({
+        productQueue: queue,
+        selectedProduct: payload,
+        activeTab: "video"
+      });
+
+      if (statusEl) {
+        statusEl.style.color = "#1a7";
+        statusEl.textContent = "เพิ่มสินค้าเข้าคิวสร้างวิดีโอแล้ว! กำลังเปลี่ยนหน้า...";
+      }
+
+      // รีเซ็ตฟอร์ม
+      if (document.querySelector("#manual-name")) document.querySelector("#manual-name").value = "";
+      if (document.querySelector("#manual-price")) document.querySelector("#manual-price").value = "";
+      if (document.querySelector("#manual-url")) document.querySelector("#manual-url").value = "";
+      if (fileInput) fileInput.value = "";
+      if (fileInfo) fileInfo.textContent = "ยังไม่ได้เลือกรูปภาพ (กรุณาเลือกอย่างน้อย 1 รูป)";
+
+      setTimeout(async () => {
+        if (statusEl) statusEl.textContent = "";
+        addBtn.disabled = false;
+        await helpers.switchTab("video");
+      }, 1000);
+
+    } catch (err) {
+      if (statusEl) {
+        statusEl.style.color = "#e23";
+        statusEl.textContent = err.message;
+      }
+      addBtn.disabled = false;
+    }
+  });
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("อ่านไฟล์รูปภาพไม่สำเร็จ"));
+    reader.readAsDataURL(file);
+  });
 }

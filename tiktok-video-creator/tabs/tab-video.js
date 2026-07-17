@@ -71,7 +71,7 @@ function bindGlobalEvents() {
   [
     "video-style", "presenter", "custom-presenter", "voice-tone", "location", "custom-location",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement",
-    "image-count", "video-count", "video-duration", "aspect-ratio", "post-action",
+    "image-count", "video-count", "video-duration", "aspect-ratio", "post-action", "post-no-link",
     "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
@@ -110,13 +110,14 @@ function fillGlobalFormFromState() {
   setValue("video-ref-mode", settings.videoRefMode);
   setValue("flow-gen-mode", settings.flowGenMode);
   setValue("post-action", settings.postAction);
+  setValue("post-no-link", settings.postNoLink);
 
   let dt;
   if (settings.postScheduleTime) {
     dt = new Date(settings.postScheduleTime);
-    if (Number.isNaN(dt.getTime())) dt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    if (Number.isNaN(dt.getTime())) dt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
   } else {
-    dt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    dt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
   }
   setValue("post-schedule-date", toInputDate(dt));
   setValue("post-schedule-time", toInputTime(dt));
@@ -155,6 +156,7 @@ function syncSettingsForm() {
     videoRefMode: getValue("video-ref-mode") || "frames",
     flowGenMode: getValue("flow-gen-mode") || "combined",
     postAction: getValue("post-action"),
+    postNoLink: getValue("post-no-link"),
     postScheduleTime: combinedTime,
     postScheduleInterval: parseInt(getValue("post-schedule-interval"), 10) || 10
   });
@@ -249,6 +251,7 @@ function normalizeSettings(value) {
     videoRefMode: value.videoRefMode === "ingredients" ? "ingredients" : "frames",
     flowGenMode: value.flowGenMode === "video" ? "video" : "combined",
     postAction: value.postAction === "both" ? "draft" : (value.postAction || "post"),
+    postNoLink: Boolean(value.postNoLink),
     postScheduleTime: value.postScheduleTime || "",
     postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10
   };
@@ -1183,12 +1186,20 @@ function escapeAttr(value) {
 }
 
 function getValue(id) {
-  return document.querySelector(`#${id}`)?.value || "";
+  const el = document.querySelector(`#${id}`);
+  if (!el) return "";
+  if (el.type === "checkbox") return el.checked;
+  return el.value || "";
 }
 
 function setValue(id, value) {
   const el = document.querySelector(`#${id}`);
-  if (el) el.value = value ?? "";
+  if (!el) return;
+  if (el.type === "checkbox") {
+    el.checked = Boolean(value);
+  } else {
+    el.value = value ?? "";
+  }
 }
 
 function getDisplayProductImage(product = {}) {

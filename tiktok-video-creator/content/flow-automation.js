@@ -2412,31 +2412,37 @@ async function runPipeline(payload, runOptions = {}) {
             // ตัดซ้ำ + จำกัดสูงสุด 6 รูป
             const uniqueUrls = [...new Set(dataUrls)].slice(0, 6);
             if (uniqueUrls.length === 0) {
-                throw new Error(`ไม่มี URL รูปภาพสินค้าที่ใช้ได้สำหรับอัปโหลด (imageUrl=${imageUrl || "ว่าง"})`);
+                if (options.noImage) {
+                    log("โหมดเจนอิสระแบบไม่มีภาพอ้างอิง: ข้ามการอัปโหลดรูปภาพ");
+                } else {
+                    throw new Error(`ไม่มี URL รูปภาพสินค้าที่ใช้ได้สำหรับอัปโหลด (imageUrl=${imageUrl || "ว่าง"})`);
+                }
             }
-            await closeFlowPanels({ required: true });
-            log(`เตรียมอัปโหลด ${uniqueUrls.length} รูป`);
-            const normalizedFallback = normalizeImageUrlForUpload(imageUrl);
-            const fallbackUrls = uniqueUrls.map((url, index) =>
-                index === 0 && normalizedFallback && normalizedFallback !== url ? [normalizedFallback] : []
-            );
-            uploadedTiles = await uploadImages(uniqueUrls, cfg.uploadWaitSec * 1000, fallbackUrls);
-            if (uploadedTiles.length === 0) {
-                throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
-            }
+            if (uniqueUrls.length > 0) {
+                await closeFlowPanels({ required: true });
+                log(`เตรียมอัปโหลด ${uniqueUrls.length} รูป`);
+                const normalizedFallback = normalizeImageUrlForUpload(imageUrl);
+                const fallbackUrls = uniqueUrls.map((url, index) =>
+                    index === 0 && normalizedFallback && normalizedFallback !== url ? [normalizedFallback] : []
+                );
+                uploadedTiles = await uploadImages(uniqueUrls, cfg.uploadWaitSec * 1000, fallbackUrls);
+                if (uploadedTiles.length === 0) {
+                    throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
+                }
 
-            // บันทึกสถานะเพื่อรีเฟรชหน้าเว็บ 1 ครั้งตามความต้องการของผู้ใช้ เพื่อความสม่ำเสมอของสถานะหน้าเพจ Google Flow
-            const stateToSave = {
-                jobId,
-                payload: { phase, prompt, imageUrl, options },
-                step: "AFTER_UPLOAD",
-                uploadedTiles: uploadedTiles.map(t => ({ key: t.key, tileId: t.tileId || t.key, mediaUrl: t.mediaUrl, href: t.href }))
-            };
-            await chrome.storage.local.set({ flowActiveJobResume: stateToSave });
-            log("🔄 อัปโหลดเสร็จสิ้นและแสดงรูปภาพชัดเจนแล้ว! รอ 4 วินาทีเพื่อให้คุณตรวจสอบก่อนทำการรีเฟรชหน้าเว็บ...");
-            await sleep(4000);
-            window.location.reload();
-            return new Promise(() => {}); // หยุดเธรดเพื่อรอการรีเฟรช
+                // บันทึกสถานะเพื่อรีเฟรชหน้าเว็บ 1 ครั้งตามความต้องการของผู้ใช้ เพื่อความสม่ำเสมอของสถานะหน้าเพจ Google Flow
+                const stateToSave = {
+                    jobId,
+                    payload: { phase, prompt, imageUrl, options },
+                    step: "AFTER_UPLOAD",
+                    uploadedTiles: uploadedTiles.map(t => ({ key: t.key, tileId: t.tileId || t.key, mediaUrl: t.mediaUrl, href: t.href }))
+                };
+                await chrome.storage.local.set({ flowActiveJobResume: stateToSave });
+                log("🔄 อัปโหลดเสร็จสิ้นและแสดงรูปภาพชัดเจนแล้ว! รอ 4 วินาทีเพื่อให้คุณตรวจสอบก่อนทำการรีเฟรชหน้าเว็บ...");
+                await sleep(4000);
+                window.location.reload();
+                return new Promise(() => {}); // หยุดเธรดเพื่อรอการรีเฟรช
+            }
         }
 
         const initialPrompt = typeof prompt === "object" ? prompt.imagePrompt : prompt;

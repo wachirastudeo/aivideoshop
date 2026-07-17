@@ -1,7 +1,37 @@
 <div class="source-switch" role="tablist" aria-label="แหล่งสินค้า">
   <button class="source-switch__button source-switch__button--active" data-source="tiktok" type="button">TikTok</button>
   <button class="source-switch__button" data-source="shopee" type="button">Shopee</button>
+  <button class="source-switch__button" data-source="manual" type="button">กรอกเอง</button>
 </div>
+
+<section id="source-manual" class="section" hidden>
+  <div class="section__header">
+    <h2>สร้างวิดีโอแบบกรอกเอง (ไม่ปักตะกร้า / ปักได้)</h2>
+  </div>
+  <div class="section__body">
+    <p class="hint">ใช้สำหรับทำวิดีโออย่างเดียว หรือปักลิงก์สินค้าแบรนด์อื่นๆ/Shopee โดยไม่ต้องดึงสินค้าจาก Showcase</p>
+    <div class="field">
+      <label class="field__label" for="manual-name">ชื่อสินค้า / Hook</label>
+      <input id="manual-name" class="input" type="text" placeholder="เช่น เสื้อยืดคู่รักลายน่ารัก">
+    </div>
+    <div class="field">
+      <label class="field__label" for="manual-price">ราคาสินค้า (บาท)</label>
+      <input id="manual-price" class="input" type="number" min="0" placeholder="เช่น 290">
+    </div>
+    <div class="field">
+      <label class="field__label" for="manual-url">ลิงก์สินค้า (ไม่ปักตะกร้า = เว้นว่างไว้)</label>
+      <input id="manual-url" class="input" type="text" placeholder="ใส่เฉพาะหากต้องการปักลิงก์ เช่น Shopee/Lazada">
+    </div>
+    <div class="field">
+      <label class="field__label" for="manual-image-file">อัปโหลดภาพสินค้า (เลือกได้หลายรูป)</label>
+      <input id="manual-image-file" class="input" type="file" accept="image/*" multiple>
+      <span class="field__hint" id="manual-image-file-info">ยังไม่ได้เลือกรูปภาพ (กรุณาเลือกอย่างน้อย 1 รูป)</span>
+    </div>
+    <button id="manual-add" class="button button--primary button--full" type="button">เพิ่มสินค้าเข้าคิวสร้างวิดีโอ</button>
+    <div id="manual-status" class="hint" aria-live="polite"></div>
+  </div>
+</section>
+
 
 <section id="source-shopee" class="section" hidden>
   <div class="section__header">

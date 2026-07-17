@@ -1,10 +1,12 @@
 import { initVideoTab, syncSelectedProductToVideoTab } from "./tabs/tab-video.js";
 import { initProductsTab } from "./tabs/tab-products.js";
+import { initCustomTab } from "./tabs/tab-custom.js";
 import { initPostTab } from "./tabs/tab-post.js";
 
 const TAB_HTML = {
   video: "tabs/tab-video.html",
   products: "tabs/tab-products.html",
+  custom: "tabs/tab-custom.html",
   post: "tabs/tab-post.html"
 };
 
@@ -149,6 +151,10 @@ async function loadTab(tabName) {
     await initProductsTab({ showStatus, logActivity, switchTab: loadTab });
   }
 
+  if (tabName === "custom") {
+    await initCustomTab({ showStatus, logActivity, switchTab: loadTab });
+  }
+
   if (tabName === "post") {
     await initPostTab({ showStatus, logActivity, switchTab: loadTab });
   }
@@ -161,6 +167,7 @@ async function loadTab(tabName) {
 function getTabLabel(tabName) {
   if (tabName === "video") return "สร้างวิดีโอ";
   if (tabName === "products") return "สินค้า TikTok";
+  if (tabName === "custom") return "เจนอิสระ";
   if (tabName === "post") return "โพสต์ TikTok";
   return tabName;
 }

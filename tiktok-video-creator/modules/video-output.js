@@ -84,7 +84,7 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
       scheduleTime = `${y}-${m}-${d}T${hh}:${mm}`;
     }
   }
-  const productUrl = resolveProductUrl(productInfo);
+  const productUrl = localSettings.postNoLink ? "" : resolveProductUrl(productInfo);
   productInfo.productUrl = productUrl;
   const postCopy = (productInfo.caption !== undefined && productInfo.caption !== null)
     ? {
@@ -111,7 +111,7 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     type: "TIKTOK_SEND_DRAFT",
     payload: {
       videoUrl,
-      productId: productInfo.productId,
+      productId: (localSettings.postNoLink || String(productInfo.productId || "").startsWith("manual_")) ? "" : productInfo.productId,
       productUrl,
       productName: resolveProductLinkTitle(productInfo),
       filename: buildTikTokVideoFilename(productInfo),

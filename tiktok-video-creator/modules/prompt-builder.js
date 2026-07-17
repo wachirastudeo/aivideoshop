@@ -82,7 +82,7 @@ const PACING = {
 const PRESENTERS = {
   Auto: "Realistic cinematic shot. Prefer product-only views. If a presenter is shown, they must stand near or gesture towards the product without complex handling.",
   none: "No humans. Focus entirely on the product resting stably in a realistic setting with smooth camera movement.",
-  hands_only: "Only realistic hands holding the product gently and steadily, no face or body. No twisting or flipping of the product to prevent glitches.",
+  hands_only: "Only realistic hands (strictly exactly one single hand or one pair of hands, never more than two hands in the frame) holding the product gently and steadily, no face or body. No twisting or flipping of the product to prevent glitches.",
   woman: "A young Thai woman reviewer presenting the product. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   man: "A young Thai man reviewer presenting the product. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
@@ -93,7 +93,7 @@ const PRESENTERS = {
 
 const THAI_PERSON_DIRECTION = "Natural Thai reviewer. The product must remain rigid, static, and completely unchanged; the reviewer stands next to it or holds it gently without covering, bending, or deforming it.";
 
-const HANDS_DIRECTION = "Show only realistic human hands holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand. The product itself must remain rigid and unchanged; do not cover, bend, warp, or deform it.";
+const HANDS_DIRECTION = "Show only realistic human hands (strictly exactly one single hand or one pair of hands, never more than two hands in the entire frame) holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand, and no extra fingers, limbs, or duplicate hands. The product itself must remain rigid and unchanged; do not cover, bend, warp, or deform it.";
 const ANIMAL_PRESENTER_DIRECTION = "No humans in the video. Show a cute consistent animal (cat or dog as specified) as the main character interacting with or sitting next to the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
 
 const PRODUCT_FIDELITY_DIRECTION = "Reproduce the product EXACTLY as shown in the reference image: preserve its exact shape, form, color, material, labels, and parts. STRICT RULE: Do not add any extra items, objects, parts, accessories, or decorations that are not in the reference image. Do not add packaging, boxes, bags, or cases unless they are clearly visible in the reference image. Do not substitute, modify, or add parts to the product. It must look 100% identical to the uploaded product image.";
