@@ -1,5 +1,23 @@
 import { fetchShowcaseProducts } from "./modules/tiktok-api.js";
 import { resolveProductUrl } from "./modules/prompt-builder.js";
+const lastWindowFocusTime = {};
+
+async function focusWindowIfNeeded(windowId) {
+  if (!windowId) return;
+  const now = Date.now();
+  const lastTime = lastWindowFocusTime[windowId] || 0;
+  // ถ้าเพิ่งโฟกัสไปเมื่อไม่ถึง 8 วินาทีที่แล้ว ไม่ต้องโฟกัสซ้ำ เพื่อไม่ให้รบกวนหน้าจอผู้ใช้ถี่เกินไป
+  if (now - lastTime < 8000) {
+    return;
+  }
+  lastWindowFocusTime[windowId] = now;
+  try {
+    await chrome.windows.update(windowId, { state: "normal", focused: true });
+    await new Promise((r) => setTimeout(r, 300));
+  } catch (err) {
+    console.error("focusWindowIfNeeded error:", err);
+  }
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   if (chrome.sidePanel?.setPanelBehavior) {
@@ -36,7 +54,7 @@ async function routeMessage(message, sender) {
     case "POST_TO_TIKTOK":           return postToTikTok(message.payload);
     case "GET_FLOW_SETTINGS":        return getFlowSettings();
     case "FLOW_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
-    case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender, { detachAfter: true });
+    case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender, { detachAfter: false });
     case "FLOW_DEBUGGER_ATTACH":     return ensureDebuggerAttached(sender?.tab?.id).then(() => ({ ok: true }));
     case "FLOW_DEBUGGER_DETACH":     return detachDebuggerTab(sender?.tab?.id);
     case "FLOW_PING":                return { pong: true };
@@ -122,18 +140,7 @@ async function clickPointWithDebugger(payload, sender, options = {}) {
   try {
     const tab = await chrome.tabs.get(tabId);
     if (tab?.windowId) {
-      const { settings = {} } = await chrome.storage.sync.get("settings");
-      const focusTabs = settings.focusTabs === true;
-      if (focusTabs) {
-        await chrome.windows.update(tab.windowId, { state: "normal", focused: true });
-        await new Promise((r) => setTimeout(r, 300)); // รอให้หน้าต่างขยายเสร็จ
-      } else {
-        const win = await chrome.windows.get(tab.windowId);
-        if (win.state === "minimized") {
-          await chrome.windows.update(tab.windowId, { state: "normal", focused: false });
-          await new Promise((r) => setTimeout(r, 300));
-        }
-      }
+      await focusWindowIfNeeded(tab.windowId);
     }
   } catch (err) {
     console.error("โฟกัสหน้าต่างล้มเหลว:", err);
@@ -204,18 +211,7 @@ async function insertTextWithDebugger(payload, sender) {
   try {
     const tab = await chrome.tabs.get(tabId);
     if (tab?.windowId) {
-      const { settings = {} } = await chrome.storage.sync.get("settings");
-      const focusTabs = settings.focusTabs === true;
-      if (focusTabs) {
-        await chrome.windows.update(tab.windowId, { state: "normal", focused: true });
-        await new Promise((r) => setTimeout(r, 300));
-      } else {
-        const win = await chrome.windows.get(tab.windowId);
-        if (win.state === "minimized") {
-          await chrome.windows.update(tab.windowId, { state: "normal", focused: false });
-          await new Promise((r) => setTimeout(r, 300));
-        }
-      }
+      await focusWindowIfNeeded(tab.windowId);
     }
   } catch (err) {
     console.error("โฟกัสหน้าต่างล้มเหลว:", err);
@@ -258,7 +254,8 @@ async function insertTextWithDebugger(payload, sender) {
     }
     return { inserted: true, method: "Input.insertText" };
   } finally {
-    await detachDebuggerTab(tabId);
+    // ห้าม detach ทันทีเพื่อให้ระบบทำงานเบื้องหลังได้โดยไม่โดน Chrome พักการทำงาน (Throttling)
+    // จะทำการ detach เมื่อขั้นตอนทั้งหมดเสร็จสิ้น
   }
 }
 
@@ -379,6 +376,10 @@ async function openGoogleFlow(payload) {
 }
 
 async function handleFlowPipelineDone(payload = {}) {
+  const stored = await chrome.storage.local.get("activeFlowTabId");
+  if (stored.activeFlowTabId) {
+    await detachDebuggerTab(stored.activeFlowTabId);
+  }
   await chrome.storage.local.remove("activeFlowTabId");
   if (payload.result?.ok) {
     await notify("TikTok Video Creator", "Flow สำเร็จ!");
@@ -455,6 +456,10 @@ async function stopFlowPipeline() {
 async function stopTikTokStudioPipeline() {
   tiktokStopVersion += 1;
   await chrome.storage.local.set({ tiktokStopRequested: true });
+  const stored = await chrome.storage.local.get("activeTikTokTabId");
+  if (stored.activeTikTokTabId) {
+    await detachDebuggerTab(stored.activeTikTokTabId);
+  }
   await chrome.storage.local.remove("activeTikTokTabId");
   const tabs = [
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/*" })),
@@ -565,16 +570,7 @@ async function fetchShopeeImages({ productUrl } = {}) {
 
   try {
     if (tab.windowId) {
-      const { settings = {} } = await chrome.storage.sync.get("settings");
-      const focusTabs = settings.focusTabs === true;
-      if (focusTabs) {
-        chrome.windows.update(tab.windowId, { state: "normal", focused: true }).catch(() => {});
-      } else {
-        const win = await chrome.windows.get(tab.windowId);
-        if (win.state === "minimized") {
-          chrome.windows.update(tab.windowId, { state: "normal", focused: false }).catch(() => {});
-        }
-      }
+      focusWindowIfNeeded(tab.windowId).catch(() => {});
     }
   } catch (e) {
     console.error("Focus window error:", e);
@@ -1313,6 +1309,8 @@ async function openTikTokStudioUploadTab() {
     try {
       await chrome.windows.update(tab.windowId, { focused: true });
     } catch (_) {}
+    await chrome.storage.local.set({ activeTikTokTabId: tab.id });
+    await ensureDebuggerAttached(tab.id).catch(() => {});
     return tab.id;
   }
 
@@ -1329,17 +1327,25 @@ async function openTikTokStudioUploadTab() {
     } catch (_) {}
     await waitForTabComplete(tab.id);
     await sleep(3000);
+    await chrome.storage.local.set({ activeTikTokTabId: tab.id });
+    await ensureDebuggerAttached(tab.id).catch(() => {});
     return tab.id;
   }
 
   const newTab = await chrome.tabs.create({ url: TIKTOK_STUDIO_UPLOAD_URL, active: true });
   await waitForTabComplete(newTab.id);
   await sleep(3000);
+  await chrome.storage.local.set({ activeTikTokTabId: newTab.id });
+  await ensureDebuggerAttached(newTab.id).catch(() => {});
   return newTab.id;
 }
 
 async function handleTikTokDone(payload = {}) {
   console.log("TikTok Done:", payload);
+  const stored = await chrome.storage.local.get("activeTikTokTabId");
+  if (stored.activeTikTokTabId) {
+    await detachDebuggerTab(stored.activeTikTokTabId);
+  }
   await chrome.storage.local.remove("activeTikTokTabId");
   if (payload.jobId) {
     await chrome.storage.local.set({ [`tiktokJob:${payload.jobId}`]: payload });

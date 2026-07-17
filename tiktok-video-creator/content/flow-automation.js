@@ -95,6 +95,12 @@ const sleep = (ms) => {
     const jitterFactor = finalMs >= 300 ? (0.75 + Math.random() * 0.50) : 1.0; // 0.75 to 1.25
     const totalMs = Math.min(10000, Math.round(finalMs * jitterFactor)); // จำกัดเพดานสูงสุดไม่เกิน 10 วินาทีตามที่ผู้ใช้กำหนด
 
+    if (document.hidden) {
+        // หากหน้าต่างถูกซ่อน/ย่อไว้ ให้ใช้ setTimeout ตัวเดียวตรงๆ
+        // เพื่อเลี่ยงไม่ให้การวนลูปเช็ค Date.now() + setTimeout(r, 100) ถี่ๆ โดนเบราว์เซอร์หน่วงเวลาสะสม (Timer Throttling)
+        return new Promise(r => setTimeout(r, totalMs));
+    }
+
     if (totalMs >= 2500) {
         return new Promise(async (resolve) => {
             const start = Date.now();
