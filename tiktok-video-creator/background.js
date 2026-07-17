@@ -2,8 +2,34 @@ import { fetchShowcaseProducts } from "./modules/tiktok-api.js";
 import { resolveProductUrl } from "./modules/prompt-builder.js";
 const lastWindowFocusTime = {};
 
-async function focusWindowIfNeeded(windowId) {
+async function focusTabAndWindowIfNeeded(tabId, windowId) {
+  if (tabId) {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      if (tab && !tab.active) {
+        // บังคับให้แท็บกลับมา Active เสมอ เพื่อให้เบราว์เซอร์ยอมเรนเดอร์เลย์เอาต์
+        await chrome.tabs.update(tabId, { active: true });
+      }
+    } catch (e) {
+      console.error("Activate tab error:", e);
+    }
+  }
+
   if (!windowId) return;
+
+  try {
+    const win = await chrome.windows.get(windowId);
+    if (win.state === "minimized") {
+      // ถ้าหน้าต่างถูกย่ออยู่ (minimized) จำเป็นต้องดึงกลับมาเป็น normal เสนอเพื่อไม่ให้การคำนวณตำแหน่ง/เลย์เอาต์พัง
+      await chrome.windows.update(windowId, { state: "normal", focused: true });
+      await new Promise((r) => setTimeout(r, 500));
+      lastWindowFocusTime[windowId] = Date.now();
+      return;
+    }
+  } catch (err) {
+    console.error("ตรวจสอบสถานะหน้าต่างล้มเหลว:", err);
+  }
+
   const now = Date.now();
   const lastTime = lastWindowFocusTime[windowId] || 0;
   // ถ้าเพิ่งโฟกัสไปเมื่อไม่ถึง 8 วินาทีที่แล้ว ไม่ต้องโฟกัสซ้ำ เพื่อไม่ให้รบกวนหน้าจอผู้ใช้ถี่เกินไป
@@ -140,7 +166,7 @@ async function clickPointWithDebugger(payload, sender, options = {}) {
   try {
     const tab = await chrome.tabs.get(tabId);
     if (tab?.windowId) {
-      await focusWindowIfNeeded(tab.windowId);
+      await focusTabAndWindowIfNeeded(tabId, tab.windowId);
     }
   } catch (err) {
     console.error("โฟกัสหน้าต่างล้มเหลว:", err);
@@ -211,7 +237,7 @@ async function insertTextWithDebugger(payload, sender) {
   try {
     const tab = await chrome.tabs.get(tabId);
     if (tab?.windowId) {
-      await focusWindowIfNeeded(tab.windowId);
+      await focusTabAndWindowIfNeeded(tabId, tab.windowId);
     }
   } catch (err) {
     console.error("โฟกัสหน้าต่างล้มเหลว:", err);
@@ -570,7 +596,7 @@ async function fetchShopeeImages({ productUrl } = {}) {
 
   try {
     if (tab.windowId) {
-      focusWindowIfNeeded(tab.windowId).catch(() => {});
+      focusTabAndWindowIfNeeded(tab.id, tab.windowId).catch(() => {});
     }
   } catch (e) {
     console.error("Focus window error:", e);

@@ -111,6 +111,7 @@ function fillGlobalFormFromState() {
   setValue("flow-gen-mode", settings.flowGenMode);
   setValue("post-action", settings.postAction);
   setValue("post-no-link", settings.postNoLink);
+  setValue("post-custom-product-name", settings.postCustomProductName);
 
   let dt;
   if (settings.postScheduleTime) {
@@ -157,6 +158,7 @@ function syncSettingsForm() {
     flowGenMode: getValue("flow-gen-mode") || "combined",
     postAction: getValue("post-action"),
     postNoLink: getValue("post-no-link"),
+    postCustomProductName: getValue("post-custom-product-name"),
     postScheduleTime: combinedTime,
     postScheduleInterval: parseInt(getValue("post-schedule-interval"), 10) || 10
   });
@@ -252,6 +254,7 @@ function normalizeSettings(value) {
     flowGenMode: value.flowGenMode === "video" ? "video" : "combined",
     postAction: value.postAction === "both" ? "draft" : (value.postAction || "post"),
     postNoLink: Boolean(value.postNoLink),
+    postCustomProductName: (value.postCustomProductName || "").trim(),
     postScheduleTime: value.postScheduleTime || "",
     postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10
   };
@@ -825,9 +828,11 @@ async function processQueue() {
         const hasNextPending = productQueue.slice(i + 1).some(p => p.status !== "done");
         if (hasNextPending) {
           if (processedCount > 0 && processedCount % 5 === 0) {
-            helpers.showStatus(`ทำรายการครบ ${processedCount} รายการแล้ว พักเบรก 2 นาทีเพื่อป้องกันการโดนจำกัดสิทธิ์...`, "info");
-            helpers.logActivity?.(`พักเบรก 2 นาที (120 วินาที) เนื่องจากทำรายการครบ ${processedCount} รายการ...`, "info");
-            await interruptibleDelay(120 * 1000);
+            const breakSeconds = 180 + Math.floor(Math.random() * 61); // สุ่ม 180 - 240 วินาที (3-4 นาที)
+            const minutesFormatted = (breakSeconds / 60).toFixed(1);
+            helpers.showStatus(`ทำรายการครบ ${processedCount} รายการแล้ว พักเบรก ${minutesFormatted} นาทีเพื่อป้องกันการโดนจำกัดสิทธิ์...`, "info");
+            helpers.logActivity?.(`พักเบรก ${minutesFormatted} นาที (${breakSeconds} วินาที) เนื่องจากทำรายการครบ ${processedCount} รายการ...`, "info");
+            await interruptibleDelay(breakSeconds * 1000);
           } else {
             const delaySeconds = 4 + Math.floor(Math.random() * 3); // สุ่ม 4 - 6 วินาที (เฉลี่ย 5 วินาที)
             helpers.showStatus(`รอจังหวะแบบสุ่ม ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");

@@ -382,8 +382,12 @@ export function buildImagePrompt(productInfo, settings = {}) {
     : `${TEXT_FREE_DIRECTION}\nFinal check: ensure no added text or numbers exist in the output.`;
 
 
+  const styleObj = VIDEO_STYLES.find(s => s.id === auto.videoStyle);
+  const styleFragment = styleObj ? styleObj.fragment : "";
+
   const promptParts = [
     intro,
+    styleFragment ? `Visual style: ${styleFragment}.` : "",
     PRODUCT_FIDELITY_DIRECTION,
     SCALE_FIDELITY_DIRECTION,
     "Critical: The generated image must maintain absolute fidelity to the original product in the reference image. The product's shape, curves, outlines, colors, materials, branding, labels, and text must be 100% identical and unchanged. Do not redesign, warp, or modify the product's structure.",
@@ -504,8 +508,12 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isImmobile = weightCategory === "immobile";
   const specificScale = getProductSpecificScaleInstruction(productText);
 
+  const styleObj = VIDEO_STYLES.find(s => s.id === auto.videoStyle);
+  const styleFragment = styleObj ? styleObj.fragment : "";
+
   const promptParts = [
     `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
+    styleFragment ? `Visual style: ${styleFragment}.` : "",
     MATCH_STILL_DIRECTION,
     PRODUCT_FIDELITY_DIRECTION,
     REALISM_AND_PHYSICS_DIRECTION,

@@ -158,6 +158,7 @@ async function handleVideoUpload(payload = {}) {
       productId = "",
       productUrl = "",
       productName = "",
+      isCustomProductName,
       filename = "",
       aiGenerated,
       allowComment,
@@ -181,7 +182,7 @@ async function handleVideoUpload(payload = {}) {
     await fillCaptionAndHashtags(caption, hashtags);
     await sleep(1000);
     assertNotStopped();
-    const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, aiGenerated, allowComment, allowReuse });
+    const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, isCustomProductName, aiGenerated, allowComment, allowReuse });
     await sleep(1000);
     assertNotStopped();
 
@@ -590,7 +591,7 @@ async function applyUploadSettings(settings) {
   assertNotStopped();
   
   const productRequired = Boolean(String(settings.productId || settings.productUrl || "").trim());
-  const productAdded = await applyProductLink(settings.productId, settings.productUrl, settings.productName);
+  const productAdded = await applyProductLink(settings.productId, settings.productUrl, settings.productName, settings.isCustomProductName);
   await sleep(2000 + Math.random() * 2000);
   assertNotStopped();
   if (productRequired && !productAdded) {
@@ -650,7 +651,7 @@ function isTabActive(tab) {
   );
 }
 
-async function applyProductLink(productId, productUrl, productName) {
+async function applyProductLink(productId, productUrl, productName, isCustomProductName) {
   const productKey = String(productId || productUrl || "").trim();
   if (!productKey) return true; // ไม่ได้ระบุสินค้า ไม่ถือว่าพลาด
 
@@ -780,7 +781,7 @@ async function applyProductLink(productId, productUrl, productName) {
   // STEP 8: แก้ชื่อ (clean) — ตั้งชื่อสินค้าใหม่ที่ตัดอักขระแปลกๆ ออก
   if (titleInput) {
     const existingTitle = titleInput.value;
-    const finalTitle = await buildProductLinkTitle(selectedRowTitle || productName, existingTitle);
+    const finalTitle = await buildProductLinkTitle(isCustomProductName ? productName : (selectedRowTitle || productName), existingTitle, isCustomProductName);
     titleInput.focus();
     try { titleInput.select(); } catch (_) {}
     await typeIntoInput(titleInput, finalTitle);
@@ -1947,14 +1948,19 @@ function findSelectableProduct(productId, productUrl) {
 // TikTok จำกัดชื่อสินค้า 30 ตัวอักษร
 const PRODUCT_TITLE_MAX = 30;
 
-async function buildProductLinkTitle(productName, fallbackTitle) {
+async function buildProductLinkTitle(productName, fallbackTitle, isCustomProductName) {
+  if (isCustomProductName) {
+    // หากเป็นชื่อสินค้าที่ผู้ใช้กำหนดเอง (Custom) ให้ตัดเครื่องหมายแปลกปลอมแล้วส่งกลับได้เลยโดยไม่ต้องตัดตามช่องว่างหรือทำอย่างอื่น
+    const safe = stripWeirdChars(productName) || "สินค้า";
+    return truncateProductTitle(safe, PRODUCT_TITLE_MAX);
+  }
   const userName = String(productName || "").trim();
   // ถ้า user กำหนดชื่อมา ใช้ชื่อนั้นหลัง clean; ถ้าไม่ เอาชื่อที่ TikTok เติมไว้มา clean
   const base = cleanProductTitle(userName) || cleanProductTitle(fallbackTitle);
-  const safe = stripWeirdChars(base) || "สินค้า";
-  const fallback = truncateProductTitle(safe, PRODUCT_TITLE_MAX);
-  const aiTitle = await generateProductLinkTitleWithAi(base, fallback);
-  return truncateProductTitle(stripWeirdChars(cleanProductTitle(aiTitle)) || fallback, PRODUCT_TITLE_MAX);
+  // ดึงคำแรกก่อนหน้าช่องว่างใดๆ เพื่อให้ชื่อสั้นกระชับที่สุดตามต้องการ
+  const firstWord = base.split(/\s+/)[0] || "";
+  const safe = stripWeirdChars(firstWord) || "สินค้า";
+  return truncateProductTitle(safe, PRODUCT_TITLE_MAX);
 }
 
 function cleanProductTitle(raw) {

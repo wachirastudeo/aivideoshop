@@ -113,7 +113,8 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
       videoUrl,
       productId: (localSettings.postNoLink || String(productInfo.productId || "").startsWith("manual_")) ? "" : productInfo.productId,
       productUrl,
-      productName: resolveProductLinkTitle(productInfo),
+      productName: resolveProductLinkTitle(productInfo, localSettings),
+      isCustomProductName: Boolean(localSettings.postCustomProductName),
       filename: buildTikTokVideoFilename(productInfo),
       caption,
       hashtags,
@@ -208,8 +209,11 @@ export function buildShopeeVideoFilename(productInfo = {}) {
   return `${safeId}_${date}_shopee.mp4`;
 }
 
-export function resolveProductLinkTitle(productInfo = {}) {
-  return String(
+export function resolveProductLinkTitle(productInfo = {}, localSettings = {}) {
+  if (localSettings.postCustomProductName) {
+    return localSettings.postCustomProductName.trim();
+  }
+  const fullTitle = String(
     productInfo.productLinkTitle ||
     productInfo.originalName ||
     productInfo.rawProduct?.title ||
@@ -218,6 +222,8 @@ export function resolveProductLinkTitle(productInfo = {}) {
     productInfo.name ||
     ""
   ).trim();
+  // ดึงเฉพาะคำแรกก่อนหน้าช่องว่างใดๆ เพื่อให้ชื่อสั้นกระชับ
+  return fullTitle.split(/\s+/)[0] || "";
 }
 
 export function assertPostMetadata({ productInfo = {}, caption = "", hashtags = [] } = {}) {
