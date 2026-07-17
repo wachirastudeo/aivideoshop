@@ -58,13 +58,16 @@ export async function generatePostCopy(productInfo = {}, defaults = {}) {
   const provider = settings.aiProvider || "gemini";
 
   try {
+    const localStore = await chrome.storage.local.get("creatorState");
+    const localSettings = localStore?.creatorState?.settings || {};
+
     if (provider === "openai") {
       if (!settings.openaiApiKey) return fallback;
-      return await generatePostCopyWithOpenAI(productInfo, defaults, settings, fallback);
+      return await generatePostCopyWithOpenAI(productInfo, defaults, settings, fallback, localSettings);
     }
 
     if (!settings.geminiApiKey) return fallback;
-    return await generatePostCopyWithGemini(productInfo, defaults, settings, fallback);
+    return await generatePostCopyWithGemini(productInfo, defaults, settings, fallback, localSettings);
   } catch (error) {
     console.warn("AI post copy failed; falling back to template copy:", sanitizeApiErrorMessage(error?.message || error));
     return fallback;
@@ -82,7 +85,7 @@ function buildFallbackPostCopy(productInfo, defaults) {
   };
 }
 
-async function generatePostCopyWithGemini(productInfo, defaults, settings, fallback) {
+async function generatePostCopyWithGemini(productInfo, defaults, settings, fallback, localSettings = {}) {
   const apiKey = settings.geminiApiKey;
   const model = encodeURIComponent(settings.geminiModel || DEFAULT_GEMINI_MODEL);
   const controller = new AbortController();
@@ -113,13 +116,13 @@ async function generatePostCopyWithGemini(productInfo, defaults, settings, fallb
     if (!response.ok) throw new Error(await getGeminiErrorMessage(response, "Gemini สร้าง caption/hashtag ไม่สำเร็จ"));
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text || "{}";
-    return normalizeGeneratedPostCopy(JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}"), fallback, productInfo, defaults);
+    return normalizeGeneratedPostCopy(JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}"), fallback, productInfo, defaults, localSettings);
   } finally {
     clearTimeout(timeout);
   }
 }
 
-async function generatePostCopyWithOpenAI(productInfo, defaults, settings, fallback) {
+async function generatePostCopyWithOpenAI(productInfo, defaults, settings, fallback, localSettings = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
 
@@ -151,7 +154,7 @@ async function generatePostCopyWithOpenAI(productInfo, defaults, settings, fallb
     }
 
     const data = await response.json();
-    return normalizeGeneratedPostCopy(JSON.parse(data.choices?.[0]?.message?.content || "{}"), fallback, productInfo, defaults);
+    return normalizeGeneratedPostCopy(JSON.parse(data.choices?.[0]?.message?.content || "{}"), fallback, productInfo, defaults, localSettings);
   } finally {
     clearTimeout(timeout);
   }
@@ -204,12 +207,16 @@ function sanitizeLongText(value) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, POST_CAPTION_MAX_LENGTH);
 }
 
-function normalizeGeneratedPostCopy(value, fallback, productInfo = {}, defaults = {}) {
+function normalizeGeneratedPostCopy(value, fallback, productInfo = {}, defaults = {}, localSettings = {}) {
   const isShopee = productInfo.source === "shopee" || (productInfo.productUrl && /shopee\.co\.th/i.test(productInfo.productUrl));
   const maxLen = isShopee ? 100 : POST_CAPTION_MAX_LENGTH;
   const maxTags = isShopee ? 3 : 5;
   const rawCaption = cleanGeneratedCaption(value?.caption) || fallback.caption;
-  const caption = truncatePostCaption(ensureCaptionLeadsWithHook(rawCaption, productInfo, defaults), maxLen);
+  // ตรวจสอบความต้องการของผู้ใช้: หากสั่งให้สุ่มคำขึ้นต้นเสมอ (postRandomCaptionHook === true)
+  // ให้ใช้ caption ที่สุ่มจาก AI ได้เลยโดยข้ามการดักใส่ hook หน้าชื่อสินค้า
+  const caption = localSettings.postRandomCaptionHook
+    ? truncatePostCaption(rawCaption, maxLen)
+    : truncatePostCaption(ensureCaptionLeadsWithHook(rawCaption, productInfo, defaults), maxLen);
   const hashtags = normalizeHashtags(cleanGeneratedHashtags(value?.hashtags?.length ? value.hashtags : fallback.hashtags), maxTags);
   return {
     caption,

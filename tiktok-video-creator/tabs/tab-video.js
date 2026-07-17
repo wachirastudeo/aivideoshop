@@ -112,6 +112,7 @@ function fillGlobalFormFromState() {
   setValue("flow-gen-mode", settings.flowGenMode);
   setValue("post-action", settings.postAction);
   setValue("post-no-link", settings.postNoLink);
+  setValue("post-random-caption-hook", settings.postRandomCaptionHook);
   setValue("post-custom-product-name", settings.postCustomProductName);
 
   let dt;
@@ -160,6 +161,7 @@ function syncSettingsForm() {
     flowGenMode: getValue("flow-gen-mode") || "combined",
     postAction: getValue("post-action"),
     postNoLink: getValue("post-no-link"),
+    postRandomCaptionHook: getValue("post-random-caption-hook"),
     postCustomProductName: getValue("post-custom-product-name"),
     postScheduleTime: combinedTime,
     postScheduleInterval: parseInt(getValue("post-schedule-interval"), 10) || 10
@@ -256,6 +258,7 @@ function normalizeSettings(value) {
     flowGenMode: value.flowGenMode === "video" ? "video" : "combined",
     postAction: value.postAction === "both" ? "draft" : (value.postAction || "post"),
     postNoLink: Boolean(value.postNoLink),
+    postRandomCaptionHook: Boolean(value.postRandomCaptionHook),
     postCustomProductName: (value.postCustomProductName || "").trim(),
     textStyleFont: value.textStyleFont || "handwriting",
     postScheduleTime: value.postScheduleTime || "",
