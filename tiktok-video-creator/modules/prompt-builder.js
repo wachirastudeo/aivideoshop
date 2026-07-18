@@ -107,7 +107,8 @@ const PRESENTERS = {
 
 const THAI_PERSON_DIRECTION = "Natural Thai reviewer. The product must remain rigid, static, and completely unchanged; the reviewer stands next to it or holds it gently without covering, bending, or deforming it.";
 
-const HANDS_DIRECTION = "Show only realistic human hands (strictly exactly one single hand or one pair of hands, never more than two hands in the entire frame) holding and presenting the product — no face, body, or full person. Anatomically correct hands with exactly five fingers per hand, and no extra fingers, limbs, or duplicate hands. The product itself must remain rigid and unchanged; do not cover, bend, warp, or deform it.";
+const HANDS_DIRECTION = "Show only realistic human hands (exactly one single hand or one pair of hands) holding and presenting the product. Focus entirely on the product and the hands. Anatomically correct hands with exactly five fingers per hand, natural fingernails, clear skin texture, and realistic hand joints. The product itself must remain rigid and unchanged; do not cover, bend, warp, or deform it.";
+const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE: Close-up cropped shot showing only the hands from the wrist down holding the product. No other human features or background persons are visible in the frame.";
 const ANIMAL_PRESENTER_DIRECTION = "No humans in the video. Show a cute consistent animal (cat or dog as specified) as the main character interacting with or sitting next to the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
 
 const PRODUCT_FIDELITY_DIRECTION = "Reproduce the product EXACTLY as shown in the reference image: preserve its exact shape, form, color, material, labels, and parts. STRICT RULE: Do not add any extra items, objects, parts, accessories, or decorations that are not in the reference image. Do not add packaging, boxes, bags, or cases unless they are clearly visible in the reference image. Do not substitute, modify, or add parts to the product. It must look 100% identical to the uploaded product image.";
@@ -119,6 +120,17 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Neve
 const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to reference: never stretch, squash, enlarge, or shrink it. The physical size of the product must be realistic and true-to-life compared to the environment, hands, or presenter. Do not make the product abnormally large or out-of-scale relative to the surroundings (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
 
 const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product and the presenter across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the presenter and background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). If a presenter is visible in the reference image, the presenter in the video (including their face, hair, clothing, gender, age, and overall appearance) must look exactly identical and consistent with the presenter depicted in the reference image across all scenes (Strictest rule: The face, hair, clothing, and overall appearance of the presenter in the video must match the presenter in the reference image exactly and remain identical throughout the entire video). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
+
+function resolveMatchStillDirection(autoPresenter) {
+  if (autoPresenter === "none") {
+    return "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
+  }
+  if (autoPresenter === "hands_only") {
+    return "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product and hands across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the hands and background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts. STRICTLY FORBIDDEN: Only the hands from the wrist down are allowed; do not show any other human features in the scene.";
+  }
+  return MATCH_STILL_DIRECTION;
+}
+
 
 const REALISM_AND_PHYSICS_DIRECTION = "Realistic motion only. The product must remain rigid and static: no morphing, warping, bending, melting, opening, or closing. No floating. Camera movement must be smooth and stable.";
 
@@ -368,7 +380,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   let peopleDirection = "";
   if (handsOnly) {
-    peopleDirection = "Show realistic human hands holding the product.";
+    peopleDirection = `${HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}`;
   } else if (auto.presenter && auto.presenter !== "none") {
     let presenterInstruction = PRESENTERS[auto.presenter] || PRESENTERS.none;
     if (auto.presenter === "กรอกเอง") {
@@ -399,17 +411,55 @@ export function buildImagePrompt(productInfo, settings = {}) {
     : `${TEXT_FREE_DIRECTION}\nFinal check: ensure no added text or numbers exist in the output.`;
 
 
-  const styleObj = VIDEO_STYLES.find(s => s.id === auto.videoStyle);
-  const styleFragment = styleObj ? styleObj.fragment : "";
+  const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
+    ? "review"
+    : auto.videoStyle;
+
+  const styleObj = VIDEO_STYLES.find(s => s.id === sceneStyle);
+  let styleFragment = styleObj ? styleObj.fragment : "";
+
+  if (noPeople) {
+    styleFragment = styleFragment
+      .replace(/\b(?:a|an)\s+(?:trendy|stylish|young|adult|Thai|natural|professional|friendly|casual|cute|3D|stylized|\s)*(?:woman|man|person|presenter|reviewer|character|hands?)\b[^.;]*[.;]?/gi, "")
+      .replace(/\b(?:hands?|people|presenters?|reviewers?|characters?)\b/gi, "");
+  } else if (handsOnly) {
+    styleFragment = styleFragment
+      .replace(/\b(?:a|an)\s+(?:trendy|stylish|young|adult|Thai|natural|professional|friendly|casual|cute|3D|stylized|\s)*(?:woman|man|person|presenter|reviewer|character)\b[^.;]*[.;]?/gi, "hands ")
+      .replace(/\b(?:people|presenters?|reviewers?|characters?)\b/gi, "hands");
+  }
+
+  let shotDistribution = "Depict the product from a diverse mix of camera angles and shot distances in a collage grid (strictly containing at most 4 scenes/panels): wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively across the collage panels (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage, strictly limited to at most 4 panels/scenes).";
+  if (noPeople) {
+    shotDistribution = shotDistribution.replace("or with a presenter", "");
+  } else if (handsOnly) {
+    shotDistribution = shotDistribution.replace("or with a presenter", "or with hands holding the product");
+  }
+
+  let scaleInstruction = "";
+  if (handsOnly) {
+    scaleInstruction = isHeavy
+      ? "Real scale."
+      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the hands in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to the hands; never make the product abnormally large).";
+    if (!isHeavy) {
+      scaleInstruction += " The physical size of the product must be perfectly proportional and realistic relative to the human hands holding it. Do not make the product abnormally giant, massive, or tiny relative to the hands.";
+    }
+  } else if (noPeople) {
+    scaleInstruction = isHeavy
+      ? "Real scale."
+      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment; never make the product abnormally large).";
+  } else {
+    scaleInstruction = isHeavy
+      ? "Real scale."
+      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment, hands, or presenter in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
+  }
 
   const promptParts = [
     intro,
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     PRODUCT_FIDELITY_DIRECTION,
-    SCALE_FIDELITY_DIRECTION,
+    scaleInstruction,
     "Critical: The generated image must maintain absolute fidelity to the original product in the reference image. The product's shape, curves, outlines, colors, materials, branding, labels, and text must be 100% identical and unchanged. Do not redesign, warp, or modify the product's structure.",
-    "Depict the product from a diverse mix of camera angles and shot distances in a collage grid (strictly containing at most 4 scenes/panels): wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively across the collage panels (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage, strictly limited to at most 4 panels/scenes).",
-    isHeavy ? "Real scale." : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment, hands, or presenter in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).",
+    shotDistribution,
     specificScale,
     PRODUCT_ISOLATION_DIRECTION,
     PRODUCT_STRUCTURE_DIRECTION,
@@ -525,23 +575,6 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isImmobile = weightCategory === "immobile";
   const specificScale = getProductSpecificScaleInstruction(productText);
 
-  const styleObj = VIDEO_STYLES.find(s => s.id === auto.videoStyle);
-  const styleFragment = styleObj ? styleObj.fragment : "";
-
-  const promptParts = [
-    `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
-    styleFragment ? `Visual style: ${styleFragment}.` : "",
-    MATCH_STILL_DIRECTION,
-    PRODUCT_FIDELITY_DIRECTION,
-    REALISM_AND_PHYSICS_DIRECTION,
-    isHeavy ? "Real scale." : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the presenter or surroundings.",
-    specificScale,
-    PRODUCT_STRUCTURE_DIRECTION,
-    categoryDirection,
-    analysisDirection,
-    NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
-  ];
-
   const handsOnly = auto.presenter === "hands_only";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
@@ -550,6 +583,51 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
     ? "review"
     : auto.videoStyle;
+
+  const styleObj = VIDEO_STYLES.find(s => s.id === sceneStyle);
+  let styleFragment = styleObj ? styleObj.fragment : "";
+
+  if (noPeople) {
+    styleFragment = styleFragment
+      .replace(/\b(?:a|an)\s+(?:trendy|stylish|young|adult|Thai|natural|professional|friendly|casual|cute|3D|stylized|\s)*(?:woman|man|person|presenter|reviewer|character|hands?)\b[^.;]*[.;]?/gi, "")
+      .replace(/\b(?:hands?|people|presenters?|reviewers?|characters?)\b/gi, "");
+  } else if (handsOnly) {
+    styleFragment = styleFragment
+      .replace(/\b(?:a|an)\s+(?:trendy|stylish|young|adult|Thai|natural|professional|friendly|casual|cute|3D|stylized|\s)*(?:woman|man|person|presenter|reviewer|character)\b[^.;]*[.;]?/gi, "hands ")
+      .replace(/\b(?:people|presenters?|reviewers?|characters?)\b/gi, "hands");
+  }
+
+  let scaleInstruction = "";
+  if (handsOnly) {
+    scaleInstruction = isHeavy
+      ? "Real scale."
+      : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the hands or surroundings.";
+    if (!isHeavy) {
+      scaleInstruction += " The physical size of the product must be perfectly proportional and realistic relative to the human hands holding it. Do not make the product abnormally giant, massive, or tiny relative to the hands.";
+    }
+  } else if (noPeople) {
+    scaleInstruction = isHeavy
+      ? "Real scale."
+      : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the surroundings.";
+  } else {
+    scaleInstruction = isHeavy
+      ? "Real scale."
+      : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the presenter or surroundings.";
+  }
+
+  const promptParts = [
+    `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
+    styleFragment ? `Visual style: ${styleFragment}.` : "",
+    resolveMatchStillDirection(auto.presenter),
+    PRODUCT_FIDELITY_DIRECTION,
+    REALISM_AND_PHYSICS_DIRECTION,
+    scaleInstruction,
+    specificScale,
+    PRODUCT_STRUCTURE_DIRECTION,
+    categoryDirection,
+    analysisDirection,
+    NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
+  ];
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
     .replace(/\d+-second\s*/g, "");
   if (noPeople) {
@@ -676,13 +754,19 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   
   const matchVoiceRule = (auto.presenter === "dog" || auto.presenter === "cat")
     ? "the voice must sound like a friendly off-screen Thai narrator presenting the product for their pet"
-    : "the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter)";
+    : (auto.presenter === "none" || auto.presenter === "hands_only")
+      ? "the voice must sound like a professional off-screen Thai narrator presenting the product. Since no presenter's face or body is shown on screen, ensure the voice is a clear, friendly voiceover narration."
+      : "the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter)";
 
-  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — ${matchVoiceRule}. Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must present the product's value proposition, features, or name naturally in Thai. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ensure the voice is a natural Thai speaker whose voice perfectly matches the character identity of the presenter.`;
+  const voiceMatchEnd = (auto.presenter === "none" || auto.presenter === "hands_only")
+    ? "ensure the voice is a natural Thai speaker delivering a clear off-screen voiceover narration."
+    : "ensure the voice is a natural Thai speaker whose voice perfectly matches the character identity of the presenter.";
+
+  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — ${matchVoiceRule}. Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must present the product's value proposition, features, or name naturally in Thai. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ${voiceMatchEnd}`;
   const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
-    promptParts.push(`${handsDir} ${voiceoverDir} ${speechDir}`);
+    promptParts.push(`${handsDir}\n${HANDS_ONLY_FACE_EXCLUSION}\n${voiceoverDir} ${speechDir}`);
   } else if (auto.presenter === "dog" || auto.presenter === "cat") {
     promptParts.push(`Presenter: ${presenterInstruction}. ${ANIMAL_PRESENTER_DIRECTION} (Strictest rule: Use exactly one single consistent animal throughout the entire video. Do not introduce people, do not switch animals, and do not morph or change the animal's appearance between scenes). ${speechDir}`);
   } else if (auto.presenter && auto.presenter !== "none") {

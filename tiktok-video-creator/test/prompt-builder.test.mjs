@@ -248,13 +248,25 @@ check("image prompt with woman presenter changes intro layout text", /with a pre
 const imgPresenterNone = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("image prompt with no presenter forbids people", /No people, faces/i.test(imgPresenterNone), imgPresenterNone);
 check("image prompt with no presenter maintains grid layout text", /collage grid/i.test(imgPresenterNone), imgPresenterNone);
+check("image prompt with no presenter has no positive presenter references", !/relative to the presenter|with a presenter/i.test(imgPresenterNone), imgPresenterNone);
 
 const imgPresenterCustom = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "กรอกเอง", customPresenter: "ชายสูงวัยใจดีสวมแว่นตา" });
 check("image prompt with custom presenter injects custom presenter text", /ชายสูงวัยใจดีสวมแว่นตา/i.test(imgPresenterCustom), imgPresenterCustom);
 
 const imgPresenterHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
-check("image prompt with hands_only presenter shows hands", /Show realistic human hands holding the product/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only presenter shows hands", /realistic human hands.*holding/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only presenter uses hands intro", /with realistic human hands holding the product/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only has strict hand details", /Anatomically correct hands/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only strictly forbids faces", /wrist down|only the hands/i.test(imgPresenterHands) && !/deformed|mutated/i.test(imgPresenterHands), imgPresenterHands);
+
+const vidPresenterNone = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
+check("video prompt with no presenter has no positive presenter/person references", !/relative to the presenter|on-screen presenter|presenter's character/i.test(vidPresenterNone), vidPresenterNone);
+
+const vidPresenterHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
+check("video prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(vidPresenterHands), vidPresenterHands);
+check("video prompt with hands_only has strict hand details", /Anatomically correct hands/i.test(vidPresenterHands), vidPresenterHands);
+check("video prompt with hands_only strictly forbids faces", /wrist down|only the hands/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
 
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
 check("image prompt with text enabled shows only clipText phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled), imgTextEnabled);
