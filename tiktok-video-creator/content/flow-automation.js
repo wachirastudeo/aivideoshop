@@ -2525,7 +2525,13 @@ async function runPipeline(payload, runOptions = {}) {
             // ภาพที่เจนเสร็จอยู่ในผลลัพธ์แล้ว → คลิกขวา Add to prompt ตรงๆ
             await addGeneratedStillToPrompt(result);
             log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
-            await sleep(5000); // หน่วงเวลา 5 วินาที
+            await sleep(3000);
+
+            if ((options.videoRefMode || "ingredients") === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
+                log("แนบรูปสินค้าต้นฉบับกลับเข้าไปเป็น Reference เพิ่มเติมเพื่อให้ตรงปกมากขึ้น...");
+                await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
+                await sleep(3000);
+            }
 
             // 6b. กรอก prompt สำหรับวิดีโอ
             log("กรอก Prompt วิดีโอ...");
@@ -2541,6 +2547,9 @@ async function runPipeline(payload, runOptions = {}) {
                 if (cfg.autoPortrait) await ensureConfig("video", options);
                 await clearPromptAttachments();
                 await addGeneratedStillToPrompt(result);
+                if ((options.videoRefMode || "ingredients") === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
+                    await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
+                }
                 const retryPrompt = context.policyFallback === "no-people"
                     ? buildPeopleSafePrompt(prompt.videoPrompt)
                     : prompt.videoPrompt;
