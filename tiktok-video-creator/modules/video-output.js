@@ -73,10 +73,19 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     ? (localSettings.postScheduleTime || postDefaults.scheduleTime || "")
     : "";
 
-  if (scheduleTime && minutesOffset > 0) {
+  if (scheduleTime) {
     const dt = new Date(scheduleTime);
     if (!Number.isNaN(dt.getTime())) {
-      dt.setMinutes(dt.getMinutes() + minutesOffset);
+      if (minutesOffset > 0) {
+        dt.setMinutes(dt.getMinutes() + minutesOffset);
+      }
+      // ปรับเวลาปัดเศษให้เป็นหน่วย 5 นาทีเพื่อให้สอดคล้องกับตัวเลือกใน TikTok Studio
+      const minVal = dt.getMinutes();
+      const roundedMin = Math.round(minVal / 5) * 5;
+      dt.setMinutes(roundedMin);
+      dt.setSeconds(0);
+      dt.setMilliseconds(0);
+
       const y = dt.getFullYear();
       const m = String(dt.getMonth() + 1).padStart(2, "0");
       const d = String(dt.getDate()).padStart(2, "0");

@@ -120,9 +120,17 @@ function fillGlobalFormFromState() {
   let dt;
   if (settings.postScheduleTime) {
     dt = new Date(settings.postScheduleTime);
-    if (Number.isNaN(dt.getTime())) dt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
+    if (Number.isNaN(dt.getTime())) {
+      dt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
+      dt.setMinutes(Math.round(dt.getMinutes() / 5) * 5);
+      dt.setSeconds(0);
+      dt.setMilliseconds(0);
+    }
   } else {
     dt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
+    dt.setMinutes(Math.round(dt.getMinutes() / 5) * 5);
+    dt.setSeconds(0);
+    dt.setMilliseconds(0);
   }
   setValue("post-schedule-date", toInputDate(dt));
   setValue("post-schedule-time", toInputTime(dt));
@@ -710,6 +718,7 @@ async function processQueue() {
   let processedCount = 0;
   let finalMessage = "";
   let finalLevel = "success";
+  let scheduledCount = 0;
 
   try {
     for (let i = 0; i < productQueue.length; i += 1) {
@@ -830,11 +839,11 @@ async function processQueue() {
         if (action === "schedule") {
           assertNotStopped();
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังอัปโหลดและตั้งเวลาโพสต์ TikTok อัตโนมัติ...`, "info");
-          const scheduledCount = productQueue.slice(0, i).filter(p => p.status === "done").length;
           const interval = parseInt(settings.postScheduleInterval, 10) || 10;
           const minutesOffset = scheduledCount * interval;
           await retryPostStep(`ตั้งเวลาโพสต์ TikTok สินค้า ${i + 1}`, () => scheduleVideo(product.preparedVideoUrl || product.videoUrl, product, minutesOffset));
           assertNotStopped();
+          scheduledCount += 1;
         }
         if (isShopee && downloadedInfo) {
           assertNotStopped();

@@ -160,6 +160,9 @@ export async function initCustomTab(injectedHelpers) {
     setValue("custom-post-action", stored.customCreatorPostAction);
   }
   let defaultDt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
+  defaultDt.setMinutes(Math.round(defaultDt.getMinutes() / 5) * 5);
+  defaultDt.setSeconds(0);
+  defaultDt.setMilliseconds(0);
   const defaultY = defaultDt.getFullYear();
   const defaultM = String(defaultDt.getMonth() + 1).padStart(2, "0");
   const defaultD = String(defaultDt.getDate()).padStart(2, "0");
