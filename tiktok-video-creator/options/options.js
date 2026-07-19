@@ -42,6 +42,7 @@ async function loadOptions() {
   setSelectValue("default-aspect-ratio", media.aspectRatio || "9:16");
   setChecked("auto-download-content", media.autoDownload !== false);
   setChecked("show-generation-progress", media.showProgress !== false);
+  setChecked("default-first-scene-no-people", media.firstSceneNoPeople === true);
 
   // Video defaults
   setSelectValue("default-video-style", settings.defaultVideoStyle || "testimonial");
@@ -116,7 +117,8 @@ async function saveSettings() {
       videoDuration: parseInt(getSelectValue("default-video-duration"), 10) || 8,
       aspectRatio: getSelectValue("default-aspect-ratio") || "9:16",
       autoDownload: getChecked("auto-download-content"),
-      showProgress: getChecked("show-generation-progress")
+      showProgress: getChecked("show-generation-progress"),
+      firstSceneNoPeople: getChecked("default-first-scene-no-people")
     },
 
     defaultVideoStyle: getSelectValue("default-video-style"),

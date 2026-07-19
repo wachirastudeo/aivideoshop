@@ -23,12 +23,13 @@ export async function downloadVideo(url, productInfo) {
   const isShopee = productInfo.source === "shopee" || (productInfo.productUrl && /shopee\.co\.th/i.test(productInfo.productUrl));
 
   let filename = "";
+  const ext = productInfo.isImage ? "png" : "mp4";
   if (isShopee) {
     const folder = (postDefaults.shopeeCsvFolder || "shopee_exports").trim();
-    const baseFilename = buildShopeeVideoFilename(productInfo);
+    const baseFilename = buildShopeeVideoFilename(productInfo).replace(/\.mp4$/, `.${ext}`);
     filename = folder ? `${folder}/${baseFilename}` : baseFilename;
   } else {
-    filename = buildTikTokVideoFilename(productInfo);
+    filename = buildTikTokVideoFilename(productInfo).replace(/\.mp4$/, `.${ext}`);
   }
 
   const response = await chrome.runtime.sendMessage({

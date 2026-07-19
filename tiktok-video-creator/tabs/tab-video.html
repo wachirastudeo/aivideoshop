@@ -56,8 +56,9 @@
             <label class="field">
               <span class="field__label">ขั้นตอนการทำงานของ Flow</span>
               <select id="flow-gen-mode" class="select select--accent">
-                <option value="combined" selected>สร้างภาพนิ่ง แล้วต่อวิดีโอ (2 ขั้นตอน)</option>
-                <option value="video">สร้างวิดีโอทันที (1 ขั้นตอน)</option>
+                <option value="combined" selected>ภาพและวิดีโอ</option>
+                <option value="video">วิดีโออย่างเดียว</option>
+                <option value="image">ภาพอย่างเดียว</option>
               </select>
             </label>
             <div class="settings-grid">
@@ -145,7 +146,8 @@
                   <option value="hands_only">เห็นเฉพาะมือ (จับสินค้า)</option>
                   <option value="woman">ผู้หญิง</option>
                   <option value="man">ผู้ชาย</option>
-                  <option value="child">เด็กน่ารัก</option>
+                  <option value="child">เด็กน่ารัก (Child, 4-6 ปี)</option>
+                  <option value="older_child">เด็กโต (Older Child, 7-12 ปี)</option>
                   <option value="cartoon3d">ตัวการ์ตูน 3D</option>
                   <option value="living_product">สินค้ามีชีวิต</option>
                   <option value="dog">สุนัข (Dog)</option>
@@ -165,6 +167,10 @@
                 </select>
               </label>
             </div>
+            <label class="checkbox-row" style="margin-top: -4px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+              <input id="first-scene-no-people" type="checkbox" style="width: auto; margin: 0; cursor: pointer;">
+              <span style="font-size: 13px; font-weight: 500; color: var(--text-color, inherit);">ฉากแรกไม่มีคน (เห็นเฉพาะสินค้าแม้เลือกมีพรีเซนเตอร์)</span>
+            </label>
             <div class="settings-grid">
               <label class="field">
                 <span class="field__label">สถานที่</span>

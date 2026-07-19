@@ -2503,7 +2503,8 @@ async function runPipeline(payload, runOptions = {}) {
         }
 
         if (phase === "combined" && result.tileId) {
-            if (!prompt?.videoPrompt) throw new Error("ไม่มี prompt สำหรับสร้างวิดีโอ Phase 2");
+            const videoPrompt = typeof prompt === "object" ? prompt.videoPrompt : prompt;
+            if (!videoPrompt) throw new Error("ไม่มี prompt สำหรับสร้างวิดีโอ Phase 2");
             log("🎯 ได้รูปภาพแล้ว! รอก่อนสัก 5-10 วินาทีตามที่กำหนด (เพื่อเลี่ยงการส่งคำสั่งเร็วเกินไป)...");
             await sleep(8000 + Math.random() * 2000); // รอ 8-10 วินาที
 
@@ -2535,7 +2536,7 @@ async function runPipeline(payload, runOptions = {}) {
 
             // 6b. กรอก prompt สำหรับวิดีโอ
             log("กรอก Prompt วิดีโอ...");
-            await setPrompt(prompt.videoPrompt);
+            await setPrompt(videoPrompt);
             await sleep(800 + Math.random() * 400); // หน่วงเวลาสั้นๆ ก่อนกด Generate
 
             // 7b. กด Generate
@@ -2551,8 +2552,8 @@ async function runPipeline(payload, runOptions = {}) {
                     await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
                 }
                 const retryPrompt = context.policyFallback === "no-people"
-                    ? buildPeopleSafePrompt(prompt.videoPrompt)
-                    : prompt.videoPrompt;
+                    ? buildPeopleSafePrompt(videoPrompt)
+                    : videoPrompt;
                 await setPrompt(retryPrompt);
                 await clickGenerate();
             };

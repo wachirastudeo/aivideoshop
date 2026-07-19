@@ -98,7 +98,8 @@ const PRESENTERS = {
   hands_only: "Only realistic hands (strictly exactly one single hand or one pair of hands, never more than two hands in the frame) holding the product gently and steadily, no face or body. No twisting or flipping of the product to prevent glitches.",
   woman: "A young Thai woman reviewer presenting the product. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   man: "A young Thai man reviewer presenting the product. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
-  child: "A cute young Thai child naturally playing, eating, or interacting with the product doing activities suitable for the product category. The child is engrossed in the activity naturally without looking directly at the camera or presenting it like a reviewer.",
+  child: "A cute young Thai child (4-6 years old) naturally playing, eating, or interacting with the product doing activities suitable for the product category. The child is engrossed in the activity naturally without looking directly at the camera or presenting it like a reviewer.",
+  older_child: "A cute Thai older child (7-12 years old, kid) naturally playing, studying, or interacting with the product. The child is engrossed in the activity naturally and smiles warmly near the product.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
   living_product: "The product itself becomes a living character with cute 3D eyes and personality",
   dog: "A cute friendly dog (e.g., golden retriever or corgi) interacting with or sitting next to the product in a bright, clean indoor setting.",
@@ -240,7 +241,8 @@ export function getDefaultSettings() {
     pacing: 2,
     transition: "Auto",
     postAction: "post",
-    postRandomCaptionHook: true
+    postRandomCaptionHook: true,
+    firstSceneNoPeople: false
   };
 }
 
@@ -644,10 +646,22 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `a ${animalName} sitting next to the product`)
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `a ${animalName}`)
       .replace(/\bhands\b/gi, `${animalName}'s paws`);
-  } else if (auto.presenter === "child") {
+  } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
+    let childDesc = "a cute young child";
+    let childAction = "playing and doing activities naturally with the product";
+    if (auto.presenter === "baby") {
+      childDesc = "a cute baby";
+      childAction = "crawling or sitting naturally near the product";
+    } else if (auto.presenter === "toddler") {
+      childDesc = "a cute toddler";
+      childAction = "playing or interacting naturally with the product";
+    } else if (auto.presenter === "older_child") {
+      childDesc = "a cute older child";
+      childAction = "using or playing with the product naturally";
+    }
     sceneBreakdown = sceneBreakdown
-      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "a cute young child playing and doing activities naturally with the product")
-      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, "a cute young child");
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `${childDesc} ${childAction}`)
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, childDesc);
   }
 
   // Adjust prompt for heavy/large products to prevent unnatural holding/lifting
@@ -659,6 +673,38 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\bholding\s+/gi, "standing next to ")
       .replace(/\bhands\s+holding\b/gi, "hands gesturing towards")
       .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
+  }
+
+  const firstSceneNoPeople = (settings?.firstSceneNoPeople === true || settings?.firstSceneNoPeople === "true");
+  if (firstSceneNoPeople && !noPeople) {
+    const isHoldable = !isHeavy && !isImmobile;
+    const lines = sceneBreakdown.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim().startsWith("- Scene 1")) {
+        let scene1 = lines[i];
+        if (isHoldable) {
+          scene1 = scene1
+            .replace(/\bwith a reviewer holding [^.]*? and talking to the camera/gi, "with hands holding the product")
+            .replace(/\bwith a reviewer holding [^.]*?/gi, "with hands holding the product")
+            .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "hands holding and presenting the product")
+            .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, "hands holding the product");
+
+          lines[i] = scene1 + " (Show only hands holding the product. STRICTLY FORBIDDEN: Do not show any human faces, presenters, reviewers, or people in Scene 1; show only the product and the hands holding it.)";
+        } else {
+          scene1 = scene1
+            .replace(/\bwith a reviewer holding [^.]*? and talking to the camera/gi, `showcasing ${productName} resting on a flat surface`)
+            .replace(/\bwith a reviewer holding [^.]*?/gi, `showcasing ${productName} resting on a flat surface`)
+            .replace(/\bshow of hands starting to open the packaging of\b/gi, `shot of the unopened packaging of`)
+            .replace(/\bhands starting to open the packaging of\b/gi, `the unopened packaging of`)
+            .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown resting on its own")
+            .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b/gi, "the product shown resting on its own");
+
+          lines[i] = scene1 + " (Product-only shot. The product must rest on a flat surface or floor. STRICTLY FORBIDDEN: Do not show any people, faces, presenters, reviewers, characters, or hands in Scene 1; show only the product on its own.)";
+        }
+        break;
+      }
+    }
+    sceneBreakdown = lines.join("\n");
   }
 
   promptParts.push(
@@ -739,7 +785,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     speakerIdentity = "a young Thai woman";
   } else if (auto.presenter === "man") {
     speakerIdentity = "a young Thai man";
-  } else if (auto.presenter === "child") {
+  } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
     speakerIdentity = "a caring Thai mother narrating warm and loving thoughts about her child interacting with the product";
   } else if (auto.presenter === "กรอกเอง" && auto.customPresenter) {
     // Use the custom presenter description to inform the voice identity
@@ -756,7 +802,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     ? "the voice must sound like a friendly off-screen Thai narrator presenting the product for their pet"
     : (auto.presenter === "none" || auto.presenter === "hands_only")
       ? "the voice must sound like a professional off-screen Thai narrator presenting the product. Since no presenter's face or body is shown on screen, ensure the voice is a clear, friendly voiceover narration."
-      : "the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter)";
+      : (["baby", "toddler", "child", "older_child"].includes(auto.presenter))
+        ? "the voice must sound like a caring Thai mother narrating warm and loving thoughts about her child on screen"
+        : "the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter)";
 
   const voiceMatchEnd = (auto.presenter === "none" || auto.presenter === "hands_only")
     ? "ensure the voice is a natural Thai speaker delivering a clear off-screen voiceover narration."
@@ -766,11 +814,40 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
-    promptParts.push(`${handsDir}\n${HANDS_ONLY_FACE_EXCLUSION}\n${voiceoverDir} ${speechDir}`);
+    let handsInstructions = `${handsDir}\n${HANDS_ONLY_FACE_EXCLUSION}`;
+    if (firstSceneNoPeople) {
+      const isHoldable = !isHeavy && !isImmobile;
+      if (!isHoldable) {
+        handsInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show hands or any human features in Scene 1. Hands are only allowed starting from Scene 2 onwards.\n${handsInstructions}`;
+      }
+    }
+    promptParts.push(`${handsInstructions}\n${voiceoverDir} ${speechDir}`);
   } else if (auto.presenter === "dog" || auto.presenter === "cat") {
-    promptParts.push(`Presenter: ${presenterInstruction}. ${ANIMAL_PRESENTER_DIRECTION} (Strictest rule: Use exactly one single consistent animal throughout the entire video. Do not introduce people, do not switch animals, and do not morph or change the animal's appearance between scenes). ${speechDir}`);
+    let animalInstructions = `Presenter: ${presenterInstruction}. ${ANIMAL_PRESENTER_DIRECTION} (Strictest rule: Use exactly one single consistent animal throughout the entire video. Do not introduce people, do not switch animals, and do not morph or change the animal's appearance between scenes).`;
+    if (firstSceneNoPeople) {
+      const isHoldable = !isHeavy && !isImmobile;
+      if (isHoldable) {
+        animalInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the animal or any pets/people in Scene 1. Only hands holding the product are allowed in Scene 1. The animal/pet character should only appear starting from Scene 2 onwards.\n${animalInstructions}`;
+      } else {
+        animalInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the animal, any pets, people, or hands in Scene 1. The animal/pet character should only appear starting from Scene 2 onwards.\n${animalInstructions}`;
+      }
+    }
+    promptParts.push(`${animalInstructions} ${speechDir}`);
   } else if (auto.presenter && auto.presenter !== "none") {
-    promptParts.push(`Presenter: ${presenterInstruction}. ${THAI_PERSON_DIRECTION} (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes). ${speechDir}`);
+    let personDir = THAI_PERSON_DIRECTION;
+    if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
+      personDir = "Natural Thai child character. The product must remain rigid, static, and completely unchanged; the child stands next to it, plays with it, or holds it gently without deforming it.";
+    }
+    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes).`;
+    if (firstSceneNoPeople) {
+      const isHoldable = !isHeavy && !isImmobile;
+      if (isHoldable) {
+        presenterInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the presenter's face, body, or any person in Scene 1. Only hands holding the product are allowed in Scene 1. The presenter should only appear starting from Scene 2 onwards.\n${presenterInstructions}`;
+      } else {
+        presenterInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the presenter, any other people, or hands in Scene 1. The presenter should only appear starting from Scene 2 onwards.\n${presenterInstructions}`;
+      }
+    }
+    promptParts.push(`${presenterInstructions} ${speechDir}`);
   } else {
     promptParts.push(`${NO_PEOPLE_DIRECTION} ${voiceoverDir} ${speechDir}`);
   }
@@ -1052,7 +1129,8 @@ function isFootwearProduct(productInfo = {}) {
 
 function pickAutoReviewer(productInfo = {}) {
   const recommended = productInfo.autoOptions?.presenter;
-  if (recommended === "woman" || recommended === "man") return recommended;
+  if (recommended === "woman" || recommended === "man" || recommended === "child" || recommended === "older_child") return recommended;
+  if (recommended === "baby" || recommended === "toddler") return "woman";
 
   const productText = [
     productInfo.name,
@@ -1061,6 +1139,17 @@ function pickAutoReviewer(productInfo = {}) {
     productInfo.highlights,
     productInfo.targetGroup
   ].filter(Boolean).join(" ").toLowerCase();
+
+  // Baby/toddler keywords fall back to woman (mother) to prevent platform child safety violations
+  if (/(ทารก|แรกเกิด|คลอดใหม่|เบบี๋|เตาะแตะ|หัดเดิน|วัยคลาน|baby|infant|newborn|toddler)/i.test(productText)) {
+    return "woman";
+  }
+  if (/(เด็กโต|ประถม|มัธยมต้น|older child|older kid|schoolkid|schoolkids)/i.test(productText)) {
+    return "older_child";
+  }
+  if (/(เด็ก|ลูก|กุมาร|เด็กเล็ก|kid|kids|child|children|toy|ของเล่น|อนุบาล)/i.test(productText)) {
+    return "child";
+  }
 
   if (/(ผู้หญิง|สตรี|สาว|คุณแม่|แม่และเด็ก|woman|women|female|lady|ladies|girl|girls|maternity|mom|mother)/i.test(productText)) {
     return "woman";

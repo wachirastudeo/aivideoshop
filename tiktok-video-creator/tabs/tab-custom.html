@@ -24,6 +24,13 @@
         </div>
 
         <label class="field">
+          <span class="field__label">สไตล์วิดีโอ (เลือกเพื่อช่วยแต่งเติม Prompt)</span>
+          <select id="custom-video-style" class="select">
+            <option value="none" selected>ไม่ระบุสไตล์ (ใช้ Prompt ล้วนๆ)</option>
+          </select>
+        </label>
+
+        <label class="field">
           <span class="field__label">Prompt (ภาษาอังกฤษ เพื่อผลลัพธ์ที่ดีที่สุด)</span>
           <textarea id="custom-prompt" class="textarea" rows="4" placeholder="เช่น A cinematic video of a cozy wooden cabin in the snow, warm lights shining through the window, camera slowly zooming in, 4k..."></textarea>
         </label>
@@ -32,8 +39,9 @@
           <label class="field">
             <span class="field__label">โหมดการสร้าง</span>
             <select id="custom-flow-mode" class="select">
-              <option value="combined" selected>สร้างภาพนิ่ง แล้วต่อวิดีโอ (2 ขั้นตอน)</option>
-              <option value="video">สร้างวิดีโอโดยตรง (1 ขั้นตอน)</option>
+              <option value="combined" selected>ภาพและวิดีโอ</option>
+              <option value="video">วิดีโออย่างเดียว</option>
+              <option value="image">ภาพอย่างเดียว</option>
             </select>
           </label>
           <label class="field">
@@ -102,6 +110,7 @@
         <div style="margin-top: 15px; display: flex; gap: 8px;">
           <button id="custom-btn-clear" class="button button--ghost" style="flex: 1;" type="button">ล้างค่า</button>
           <button id="custom-btn-create" class="button button--primary" style="flex: 2;" type="button">🎥 เริ่มสร้างและโพสต์</button>
+          <button id="custom-btn-stop" class="button button--danger" style="flex: 2;" type="button" hidden>🛑 หยุดทำงาน</button>
         </div>
         <p class="field__hint" id="custom-status" role="status"></p>
       </div>

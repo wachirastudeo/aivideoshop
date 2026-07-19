@@ -72,7 +72,8 @@ function bindGlobalEvents() {
     "video-style", "presenter", "custom-presenter", "voice-tone", "location", "custom-location",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action", "post-no-link",
-    "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode"
+    "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
+    "first-scene-no-people"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
     if (!el) return;
@@ -92,6 +93,7 @@ function bindGlobalEvents() {
 function fillGlobalFormFromState() {
   setValue("video-style", settings.videoStyle);
   setValue("presenter", settings.presenter);
+  setValue("first-scene-no-people", settings.firstSceneNoPeople);
   setValue("custom-presenter", settings.customPresenter);
   setValue("voice-tone", settings.voiceTone);
   setValue("location", settings.location);
@@ -141,6 +143,7 @@ function syncSettingsForm() {
     ...settings,
     videoStyle: getValue("video-style"),
     presenter: getValue("presenter"),
+    firstSceneNoPeople: getValue("first-scene-no-people"),
     customPresenter: getValue("custom-presenter"),
     voiceTone: getValue("voice-tone"),
     location: getValue("location"),
@@ -246,6 +249,7 @@ function normalizeSettings(value) {
     location: value.location || "Auto",
     customLocation: value.customLocation || "",
     customPresenter: value.customPresenter || "",
+    firstSceneNoPeople: value.firstSceneNoPeople === true || value.firstSceneNoPeople === "true" || value.firstSceneNoPeople === "false" ? (value.firstSceneNoPeople === true || value.firstSceneNoPeople === "true") : false,
     pacing: value.pacing || 2,
     transition: value.transition || "Auto",
     imageModel: value.imageModel || "nano-banana-pro",
@@ -255,7 +259,7 @@ function normalizeSettings(value) {
     videoDuration: value.videoDuration || 8,
     aspectRatio: value.aspectRatio || "9:16",
     videoRefMode: value.videoRefMode === "ingredients" ? "ingredients" : "frames",
-    flowGenMode: value.flowGenMode === "video" ? "video" : "combined",
+    flowGenMode: ["video", "image"].includes(value.flowGenMode) ? value.flowGenMode : "combined",
     postAction: value.postAction === "both" ? "draft" : (value.postAction || "post"),
     postNoLink: Boolean(value.postNoLink),
     postRandomCaptionHook: value.postRandomCaptionHook !== undefined ? Boolean(value.postRandomCaptionHook) : true,
@@ -332,7 +336,7 @@ function renderQueue() {
   if (!list) return;
 
   if (productQueue.length === 0) {
-    list.innerHTML = `<div class="empty-state">ยังไม่ได้เลือกสินค้า ไปที่แท็บสินค้า TikTok แล้วเลือกสินค้าที่ต้องการสร้างวิดีโอ</div>`;
+    list.innerHTML = `<div class="empty-state">ยังไม่ได้เลือกสินค้า ไปที่ <strong style="color: var(--accent-pink);">แท็บดึงสินค้า</strong> แล้วเลือกสินค้าที่ต้องการสร้างวิดีโอ</div>`;
     return;
   }
 
@@ -388,6 +392,7 @@ function productMarkup(p, index) {
   const videoPrompt = buildVideoPrompt(p, settings);
   const status = getStatusMeta(p.status);
   const isVideoOnly = settings.flowGenMode === "video";
+  const isImageOnly = settings.flowGenMode === "image";
   const imageDone = Boolean(isVideoOnly || approvedImage || p.flowImageTileId || p.status === "done" || p.status === "video_generating");
 
   const postButtonText = getActionButtonText(settings.postAction || "download");
@@ -454,19 +459,19 @@ function productMarkup(p, index) {
           <textarea class="textarea batch-highlights" rows="2" placeholder="จุดเด่นสินค้า...">${escapeHtml(p.highlights || "")}</textarea>
         </label>
 
-        <div class="prompt-grid" ${isVideoOnly ? 'style="grid-template-columns: 1fr;"' : ''}>
+        <div class="prompt-grid" ${(isVideoOnly || isImageOnly) ? 'style="grid-template-columns: 1fr;"' : ''}>
           <label class="field" ${isVideoOnly ? 'style="display: none;"' : ''}>
             <span class="field__label">Prompt ภาพ</span>
             <textarea class="textarea prompt-textarea batch-image-prompt" rows="5" readonly>${escapeHtml(imagePrompt)}</textarea>
           </label>
-          <label class="field">
+          <label class="field" ${isImageOnly ? 'style="display: none;"' : ''}>
             <span class="field__label">Prompt วิดีโอ</span>
             <textarea class="textarea prompt-textarea batch-prompt" rows="5" readonly>${escapeHtml(videoPrompt)}</textarea>
           </label>
         </div>
 
         <label class="field upload-field">
-          <span class="field__label">${isVideoOnly ? "เปลี่ยนภาพอ้างอิงวิดีโอ" : "ใส่ภาพ Phase 1 เอง"}</span>
+          <span class="field__label">${isVideoOnly ? "เปลี่ยนภาพอ้างอิงวิดีโอ" : (isImageOnly ? "ใส่ภาพนิ่งเอง (ข้ามการเจน)" : "ใส่ภาพ Phase 1 เอง")}</span>
           <span class="button button--ghost button--full file-button">
             ${imageIcon()} อัพโหลดภาพ
             <input type="file" class="batch-upload-approved" accept="image/png,image/jpeg,image/webp">
@@ -737,14 +742,21 @@ async function processQueue() {
       }
 
       const isIngredients = options.videoRefMode === "ingredients";
-      const isVideoOnly = settings.flowGenMode === "video" || product.status === "image_done";
+      const isImageOnly = settings.flowGenMode === "image";
+      const isVideoOnly = !isImageOnly && (settings.flowGenMode === "video" || product.status === "image_done");
       product.status = isVideoOnly ? "video_generating" : "image_generating";
       product.errorMessage = "";
       await persistState();
       renderQueue();
 
       let result;
-      if (isVideoOnly) {
+      if (isImageOnly) {
+        helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพนิ่งอย่างเดียว (${options.imageCount} ภาพ)`, "info");
+        const imgPrompt = buildImagePrompt(product, settings);
+        assertNotStopped();
+        helpers.logActivity?.(`สินค้า ${i + 1}: เปิด New Project ใน Google Flow เพื่อสร้างภาพนิ่งอย่างเดียว`, "info");
+        result = await openGoogleFlowWithLoginResume("image", imgPrompt, getFlowProductImage(product), buildFlowOptions(product), product, i);
+      } else if (isVideoOnly) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังอัปโหลดรูปและสร้างวิดีโอ (${options.videoCount} คลิป)`, "info");
         const vidPrompt = buildVideoPrompt(product, settings);
         assertNotStopped();
@@ -768,11 +780,17 @@ async function processQueue() {
       }
       assertNotStopped();
 
-      product.approvedImage = result?.imgUrl || product.approvedImage || getFlowProductImage(product) || "";
-      product.flowImageTileId = result?.imgTileId || product.flowImageTileId || "";
-      product.videoUrl = result?.resultUrl || product.videoUrl || "";
-      product.flowVideoTileId = result?.tileId || product.flowVideoTileId || "";
-      product.status = product.videoUrl ? "video_generating" : "done";
+      if (isImageOnly) {
+        product.approvedImage = result?.resultUrl || product.approvedImage || getFlowProductImage(product) || "";
+        product.flowImageTileId = result?.tileId || product.flowImageTileId || "";
+        product.status = "done";
+      } else {
+        product.approvedImage = result?.imgUrl || product.approvedImage || getFlowProductImage(product) || "";
+        product.flowImageTileId = result?.imgTileId || product.flowImageTileId || "";
+        product.videoUrl = result?.resultUrl || product.videoUrl || "";
+        product.flowVideoTileId = result?.tileId || product.flowVideoTileId || "";
+        product.status = product.videoUrl ? "video_generating" : "done";
+      }
       await persistState();
       renderQueue();
 

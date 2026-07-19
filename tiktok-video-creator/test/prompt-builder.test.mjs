@@ -166,6 +166,28 @@ check(
   }, settings))
 );
 
+// Child presenter age-group auto detection tests
+check(
+  "baby product name falls back to woman presenter",
+  /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "นมผงเด็กแรกเกิด", productId: "baby-milk" }, settings))
+);
+check(
+  "toddler product name falls back to woman presenter",
+  /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "ห่วงยางเด็กหัดเดินเตาะแตะ", productId: "toddler-ring" }, settings))
+);
+check(
+  "older child product name selects older_child presenter",
+  /Presenter: A cute Thai older child \(7-12 years old, kid\)/i.test(buildVideoPrompt({ name: "กระเป๋านักเรียนประถมเด็กโต", productId: "older-child-bag" }, settings))
+);
+check(
+  "general child/toy product name selects child presenter",
+  /Presenter: A cute young Thai child \(4-6 years old\)/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, settings))
+);
+check(
+  "child presenter narrator is mother voice",
+  /voice must sound like a caring Thai mother narrating/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, settings))
+);
+
 // Explicit presenter choice must override Auto.
 const explicitNone = buildVideoPrompt(
   { name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" },
@@ -316,6 +338,15 @@ check("video prompt styling requests cute handwritten-style and doodles", /cute 
 const longOverlay = "พัดลมตั้งโต๊ะอเนกประสงค์ไร้สายพลังลมเย็นสุดๆพกพาสะดวก";
 const clipTextTruncated = resolveClipText({ name: "สินค้า", overlayText: longOverlay }, { textEnabled: true });
 check("resolveClipText truncates long overlayText to 20 chars ending with ..", clipTextTruncated.length <= 20 && clipTextTruncated.endsWith(".."), clipTextTruncated);
+
+// Test 7: firstSceneNoPeople option modifies Scene 1 and presenter instructions conditionally
+const vidFirstSceneNoPeopleHoldable = buildVideoPrompt({ name: "เซรั่มหน้าใส" }, { ...settings, presenter: "woman", firstSceneNoPeople: true });
+check("video prompt with firstSceneNoPeople (holdable) contains hands exception", /STRICT EXCEPTION FOR SCENE 1: Do not show the presenter's face/i.test(vidFirstSceneNoPeopleHoldable), vidFirstSceneNoPeopleHoldable);
+check("video prompt with firstSceneNoPeople (holdable) shows only hands holding in Scene 1", /Scene 1.*Show only hands holding the product.*STRICTLY FORBIDDEN: Do not show any human faces/i.test(vidFirstSceneNoPeopleHoldable), vidFirstSceneNoPeopleHoldable);
+
+const vidFirstSceneNoPeopleHeavy = buildVideoPrompt({ name: "กระสอบปูน 50 กิโลกรัม" }, { ...settings, presenter: "woman", firstSceneNoPeople: true });
+check("video prompt with firstSceneNoPeople (heavy) contains strict exception for no people/hands", /STRICT EXCEPTION FOR SCENE 1: Do not show the presenter, any other people, or hands/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
+check("video prompt with firstSceneNoPeople (heavy) shows only product resting in Scene 1", /Scene 1.*Product-only shot.*rest on a flat surface/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
 
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);
