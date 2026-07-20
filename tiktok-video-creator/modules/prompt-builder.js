@@ -581,6 +581,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const noPeople = !(auto.presenter && auto.presenter !== "none");
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
   const animalName = auto.presenter === "cat" ? "cute cat" : "cute dog";
+  const firstSceneNoPeople = (settings?.firstSceneNoPeople === true || settings?.firstSceneNoPeople === "true");
 
   const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
     ? "review"
@@ -597,6 +598,15 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     styleFragment = styleFragment
       .replace(/\b(?:a|an)\s+(?:trendy|stylish|young|adult|Thai|natural|professional|friendly|casual|cute|3D|stylized|\s)*(?:woman|man|person|presenter|reviewer|character)\b[^.;]*[.;]?/gi, "hands ")
       .replace(/\b(?:people|presenters?|reviewers?|characters?)\b/gi, "hands");
+  }
+
+  if (firstSceneNoPeople && styleFragment) {
+    styleFragment = styleFragment
+      .replace(/\btalking\s+head\b/gi, "")
+      .replace(/\b(?:a|an)?\s*(?:person|presenter|reviewer)\s+holding\s+product\b/gi, "")
+      .replace(/,\s*,/g, ",")
+      .replace(/^,\s*|,\s*$/g, "")
+      .trim();
   }
 
   let scaleInstruction = "";
@@ -675,7 +685,6 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
   }
 
-  const firstSceneNoPeople = (settings?.firstSceneNoPeople === true || settings?.firstSceneNoPeople === "true");
   if (firstSceneNoPeople && !noPeople) {
     const isHoldable = !isHeavy && !isImmobile;
     const lines = sceneBreakdown.split("\n");
@@ -684,22 +693,31 @@ export function buildVideoPrompt(productInfo, settings = {}) {
         let scene1 = lines[i];
         if (isHoldable) {
           scene1 = scene1
-            .replace(/\bwith a reviewer holding [^.]*? and talking to the camera/gi, "with hands holding the product")
-            .replace(/\bwith a reviewer holding [^.]*?/gi, "with hands holding the product")
-            .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "hands holding and presenting the product")
+            // ดักจับ "with a reviewer holding ... and talking to the camera" (greedy ข้าม spaces และ product name ได้)
+            .replace(/\bwith a reviewer holding .+?(?:\s+and talking to the camera(?:[^.]*)?)?/gi, "with hands holding the product")
+            // ดักจับ reviewer/presenter/person ที่ทำกิจกรรมต่างๆ
+            .replace(/\b(a |an )?(presenter|reviewer|model|person)\b.*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "hands holding and presenting the product")
+            // ดักจับ "talking to the camera" โดยตรงที่อาจหลุดจาก pattern แรก
+            .replace(/\btalking\s+(?:directly\s+)?to\s+the\s+camera\b[^.]*/gi, "presenting the product")
+            // ดักจับ reviewer/presenter ที่เหลืออยู่
             .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, "hands holding the product");
 
-          lines[i] = scene1 + " (Show only hands holding the product. STRICTLY FORBIDDEN: Do not show any human faces, presenters, reviewers, or people in Scene 1; show only the product and the hands holding it.)";
+          lines[i] = scene1 + " (SCENE 1 MUST SHOW NO HUMAN FACE OR BODY: Show only hands holding the product. STRICTLY FORBIDDEN: Do not show any human faces, presenters, reviewers, or people in Scene 1; show only the product and the hands holding it. The presenter/person must NOT appear until Scene 2.)";
         } else {
           scene1 = scene1
-            .replace(/\bwith a reviewer holding [^.]*? and talking to the camera/gi, `showcasing ${productName} resting on a flat surface`)
-            .replace(/\bwith a reviewer holding [^.]*?/gi, `showcasing ${productName} resting on a flat surface`)
+            // ดักจับ "with a reviewer holding ... and talking to the camera" (greedy ข้าม spaces และ product name ได้)
+            .replace(/\bwith a reviewer holding .+?(?:\s+and talking to the camera(?:[^.]*)?)?/gi, `showcasing ${productName} resting on a flat surface`)
+            // ดักจับ hands opening packaging
             .replace(/\bshow of hands starting to open the packaging of\b/gi, `shot of the unopened packaging of`)
             .replace(/\bhands starting to open the packaging of\b/gi, `the unopened packaging of`)
-            .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown resting on its own")
+            // ดักจับ presenter/reviewer/person ที่ทำกิจกรรมต่างๆ
+            .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b.*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown resting on its own")
+            // ดักจับ talking to camera โดยตรง
+            .replace(/\btalking\s+(?:directly\s+)?to\s+the\s+camera\b[^.]*/gi, "showcasing the product")
+            // ดักจับ presenter/reviewer/person ที่เหลืออยู่
             .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b/gi, "the product shown resting on its own");
 
-          lines[i] = scene1 + " (Product-only shot. The product must rest on a flat surface or floor. STRICTLY FORBIDDEN: Do not show any people, faces, presenters, reviewers, characters, or hands in Scene 1; show only the product on its own.)";
+          lines[i] = scene1 + " (Product-only shot. The product must rest on a flat surface or floor. STRICTLY FORBIDDEN: Do not show any people, faces, presenters, reviewers, characters, or hands in Scene 1; show only the product on its own. SCENE 1 MUST BE PRODUCT-ONLY: The presenter must NOT appear until Scene 2.)";
         }
         break;
       }
@@ -842,9 +860,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;
       if (isHoldable) {
-        presenterInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the presenter's face, body, or any person in Scene 1. Only hands holding the product are allowed in Scene 1. The presenter should only appear starting from Scene 2 onwards.\n${presenterInstructions}`;
+        presenterInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the presenter's face, body, or any person in Scene 1. Only hands holding the product are allowed in Scene 1. The presenter should only appear starting from Scene 2 onwards. ⚠️ CRITICAL RULE FOR SCENE 1 — NO HUMAN FACE OR BODY IN SCENE 1: Scene 1 must show ONLY hands holding the product with NO face, NO body, NO presenter visible at all. The presenter's face and body must be completely absent from Scene 1. The presenter character should ONLY appear starting from Scene 2. STRICTLY FORBIDDEN in Scene 1: no face, no head, no torso, no person — only hands and product.\n${presenterInstructions}`;
       } else {
-        presenterInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the presenter, any other people, or hands in Scene 1. The presenter should only appear starting from Scene 2 onwards.\n${presenterInstructions}`;
+        presenterInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the presenter, any other people, or hands in Scene 1. The presenter should only appear starting from Scene 2 onwards. ⚠️ CRITICAL RULE FOR SCENE 1 — PRODUCT ONLY IN SCENE 1: Scene 1 must show ONLY the product resting on its own with NO people, NO hands, NO presenter, NO faces visible at all. The presenter must be completely absent from Scene 1. The presenter character should ONLY appear starting from Scene 2. STRICTLY FORBIDDEN in Scene 1: no person, no hands, no face — only the product alone.\n${presenterInstructions}`;
       }
     }
     promptParts.push(`${presenterInstructions} ${speechDir}`);
