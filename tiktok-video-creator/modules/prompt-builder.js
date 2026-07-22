@@ -112,7 +112,7 @@ const HANDS_DIRECTION = "Show only realistic human hands (exactly one single han
 const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE: Close-up cropped shot showing only the hands from the wrist down holding the product. No other human features or background persons are visible in the frame.";
 const ANIMAL_PRESENTER_DIRECTION = "No humans in the video. Show a cute consistent animal (cat or dog as specified) as the main character interacting with or sitting next to the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
 
-const PRODUCT_FIDELITY_DIRECTION = "Reproduce the product EXACTLY as shown in the reference image: preserve its exact shape, form, color, material, labels, and parts. STRICT RULE: Do not add any extra items, objects, parts, accessories, or decorations that are not in the reference image. Do not add packaging, boxes, bags, or cases unless they are clearly visible in the reference image. Do not substitute, modify, or add parts to the product. It must look 100% identical to the uploaded product image.";
+const PRODUCT_FIDELITY_DIRECTION = "STRICT STILL-TO-VIDEO FIDELITY LOCK: Reproduce the product EXACTLY as shown in the reference image: preserve its exact shape, 3D geometry, form, color, material texture, printed artwork, labels, and parts. STRICT RULE: Do not add any extra items, objects, parts, accessories, or decorations that are not in the reference image. Do not add packaging, boxes, bags, or cases unless they are clearly visible in the reference image. Do not substitute, modify, deform, or add parts to the product. It must look 100% pixel-faithful and identical to the uploaded product image without any visual drift or hallucination.";
 
 const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
 
@@ -138,7 +138,7 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
 }
 
 
-const REALISM_AND_PHYSICS_DIRECTION = "Realistic motion only. The product must remain rigid and static: no morphing, warping, bending, melting, opening, or closing. No floating. Camera movement must be smooth and stable.";
+const REALISM_AND_PHYSICS_DIRECTION = "STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. The product must remain completely rigid, solid, and static throughout the video: strictly NO morphing, warping, bending, melting, opening, closing, floating, stretching, or shifting of dimensions. Preserve 100% exact product identity across all video frames. Camera movement must be smooth and stable.";
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 
