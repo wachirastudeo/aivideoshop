@@ -122,14 +122,19 @@ const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to refere
 
 const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product and the presenter across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the presenter and background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). If a presenter is visible in the reference image, the presenter in the video (including their face, hair, clothing, gender, age, and overall appearance) must look exactly identical and consistent with the presenter depicted in the reference image across all scenes (Strictest rule: The face, hair, clothing, and overall appearance of the presenter in the video must match the presenter in the reference image exactly and remain identical throughout the entire video). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
 
-function resolveMatchStillDirection(autoPresenter) {
+function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
   if (autoPresenter === "none") {
     return "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
   }
   if (autoPresenter === "hands_only") {
     return "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product and hands across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the hands and background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts. STRICTLY FORBIDDEN: Only the hands from the wrist down are allowed; do not show any other human features in the scene.";
   }
-  return MATCH_STILL_DIRECTION;
+
+  if (hasModelRefImage) {
+    return "IMPORTANT: The attached reference image set includes a specific model reference photo. The video must follow this reference by depicting the product and the presenter across different scenes and angles. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. STRICT PRESENTER MATCH: The presenter in the video (including their face, facial features, hair, clothing, gender, age, and overall appearance) MUST look exactly identical to the model depicted in the model reference photo across all scenes. STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each scene with smooth camera movement and transition between them with clean cuts.";
+  }
+
+  return "IMPORTANT: The attached reference image depicts the product. The video must follow this reference by depicting the product and the presenter across different scenes and angles. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. STRICT RULE FOR PRESENTER FACE: Do NOT copy, match, or replicate the face or appearance of any person or model visible in the product reference image. The presenter in the video (including their face and facial features) must look completely distinct and different from any person depicted in the product reference image. (However, keep the presenter's face consistent across all scenes of this generated video). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each scene with smooth camera movement and transition between them with clean cuts.";
 }
 
 
@@ -242,7 +247,8 @@ export function getDefaultSettings() {
     transition: "Auto",
     postAction: "post",
     postRandomCaptionHook: true,
-    firstSceneNoPeople: false
+    firstSceneNoPeople: false,
+    modelRefImage: ""
   };
 }
 
@@ -380,6 +386,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
       ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with realistic human hands holding the product in the frame.`
       : `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes.`;
 
+  const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
+  const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
+
   let peopleDirection = "";
   if (handsOnly) {
     peopleDirection = `${HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}`;
@@ -389,6 +398,11 @@ export function buildImagePrompt(productInfo, settings = {}) {
       presenterInstruction = auto.customPresenter || "a presenter";
     }
     peopleDirection = `Presenter: ${presenterInstruction}`;
+    if (hasModelRefImage) {
+      peopleDirection += "\nSTRICT PRESENTER MATCH: A model reference image is provided. The presenter's face, hair, and overall appearance MUST look exactly identical to the model in the model reference image.";
+    } else {
+      peopleDirection += "\nSTRICT RULE FOR PRESENTER FACE: The presenter's face must look completely different and distinct from any person or model shown in the product reference image. Do NOT copy the face from the product image.";
+    }
   } else {
     peopleDirection = NO_PEOPLE_DIRECTION;
   }
@@ -582,6 +596,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
   const animalName = auto.presenter === "cat" ? "cute cat" : "cute dog";
   const firstSceneNoPeople = (settings?.firstSceneNoPeople === true || settings?.firstSceneNoPeople === "true");
+  const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
+  const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
 
   const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
     ? "review"
@@ -630,7 +646,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const promptParts = [
     `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
     styleFragment ? `Visual style: ${styleFragment}.` : "",
-    resolveMatchStillDirection(auto.presenter),
+    resolveMatchStillDirection(auto.presenter, hasModelRefImage),
     PRODUCT_FIDELITY_DIRECTION,
     REALISM_AND_PHYSICS_DIRECTION,
     scaleInstruction,

@@ -88,6 +88,8 @@ function bindGlobalEvents() {
   document.querySelector("#btn-batch-stop")?.addEventListener("click", () => {
     requestStop().catch(() => {});
   });
+  document.querySelector("#model-ref-image-input")?.addEventListener("change", handleModelRefUpload);
+  document.querySelector("#model-ref-clear-btn")?.addEventListener("click", handleModelRefClear);
 }
 
 function fillGlobalFormFromState() {
@@ -140,6 +142,7 @@ function fillGlobalFormFromState() {
   syncCustomLocationVisibility();
   syncCustomPresenterVisibility();
   syncScheduleTimeVisibility();
+  renderModelRefPreview();
 }
 
 function syncSettingsForm() {
@@ -168,6 +171,7 @@ function syncSettingsForm() {
     videoCount: parseInt(getValue("video-count"), 10) || 1,
     videoDuration: parseInt(getValue("video-duration"), 10) || 8,
     aspectRatio: getValue("aspect-ratio") || "9:16",
+    modelRefImage: settings.modelRefImage || "",
     videoRefMode: getValue("video-ref-mode") || "frames",
     flowGenMode: getValue("flow-gen-mode") || "combined",
     postAction: getValue("post-action"),
@@ -274,7 +278,8 @@ function normalizeSettings(value) {
     postCustomProductName: (value.postCustomProductName || "").trim(),
     textStyleFont: value.textStyleFont || "handwriting",
     postScheduleTime: value.postScheduleTime || "",
-    postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10
+    postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10,
+    modelRefImage: value.modelRefImage || ""
   };
 }
 
@@ -305,6 +310,50 @@ function syncCustomPresenterVisibility() {
   document.querySelectorAll(".custom-presenter-setting").forEach((field) => {
     field.hidden = !customEnabled;
   });
+}
+
+function renderModelRefPreview() {
+  const previewImg = document.querySelector("#model-ref-preview-img");
+  const placeholderIcon = document.querySelector("#model-ref-placeholder-icon");
+  const clearBtn = document.querySelector("#model-ref-clear-btn");
+  const dataUrl = settings.modelRefImage || "";
+
+  if (previewImg && placeholderIcon && clearBtn) {
+    if (dataUrl) {
+      previewImg.src = dataUrl;
+      previewImg.hidden = false;
+      placeholderIcon.style.display = "none";
+      clearBtn.hidden = false;
+    } else {
+      previewImg.src = "";
+      previewImg.hidden = true;
+      placeholderIcon.style.display = "block";
+      clearBtn.hidden = true;
+    }
+  }
+}
+
+async function handleModelRefUpload(event) {
+  const [file] = [...event.target.files];
+  if (!file) return;
+  try {
+    const dataUrl = await fileToDataUrl(file);
+    settings.modelRefImage = dataUrl;
+    syncSettingsForm();
+    await persistState();
+    helpers.showStatus("อัพโหลดภาพนางแบบอ้างอิงสำเร็จ", "success");
+  } catch (err) {
+    helpers.showStatus(err.message, "error");
+  }
+}
+
+async function handleModelRefClear() {
+  settings.modelRefImage = "";
+  const input = document.querySelector("#model-ref-image-input");
+  if (input) input.value = "";
+  syncSettingsForm();
+  await persistState();
+  helpers.showStatus("ลบภาพนางแบบอ้างอิงแล้ว", "info");
 }
 
 function populateStyleDropdown() {
@@ -1088,7 +1137,8 @@ function buildFlowOptions(product = null) {
     videoCount: settings.videoCount,
     videoDuration: settings.videoDuration,
     aspectRatio: settings.aspectRatio,
-    videoRefMode: settings.videoRefMode || "frames"
+    videoRefMode: settings.videoRefMode || "frames",
+    modelRefImage: product?.modelRefImage || settings.modelRefImage || ""
   };
   if (product) opts.imageUrls = getFlowProductImages(product);
   return opts;
