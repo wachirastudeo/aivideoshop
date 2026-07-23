@@ -656,6 +656,9 @@ function mediaCardFailureMessage(cardInfo, status) {
     const el = findMediaCard(cardInfo);
     const message = extractFlowFailureReason(el);
 
+    if (isUnusualActivityFailure(message)) {
+        return `Google Flow ตรวจพบพฤติกรรมผิดปกติ (Unusual Activity): ${message || "We noticed some unusual activity"} (คำแนะนำ: ลบ Cookies & Site Data ของ labs.google แล้วรีเฟรชหน้าเว็บ)`;
+    }
     if (/prominent people/i.test(message)) {
         return `Google Flow ปฏิเสธ prompt เพราะอาจเกี่ยวข้องกับบุคคลสาธารณะ: ${message}`;
     }
@@ -665,6 +668,9 @@ function mediaCardFailureMessage(cardInfo, status) {
 }
 function isProminentPeoplePolicyFailure(message) {
     return /prominent people|generating prominent people/i.test(String(message || ""));
+}
+function isUnusualActivityFailure(message) {
+    return /unusual activity|unusual_activity|help center/i.test(String(message || ""));
 }
 function buildPeopleSafePrompt(prompt) {
     const cleaned = String(prompt || "")
@@ -698,7 +704,7 @@ function extractFlowFailureReason(el) {
     }
 
     const unique = [...new Set(candidates)];
-    return unique.find(text => /(prompt|policy|people|unable|couldn'?t|could not|try again|not allowed|violate|error)/i.test(text))
+    return unique.find(text => /(unusual|activity|prompt|policy|people|unable|couldn'?t|could not|try again|not allowed|violate|error|help center)/i.test(text))
         || unique[0]
         || "";
 }
@@ -721,6 +727,15 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
         log(`Flow ปฏิเสธบุคคลเด่น → สร้างใหม่แบบไม่มีคน (${attempt}/${maxAttempts})...`);
         return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
             policyFallback: "no-people",
+            failureReason
+        });
+    }
+
+    if (isUnusualActivityFailure(failureReason)) {
+        log(`⚠️ Flow แจ้งเตือน Unusual Activity → พักระบบ 8 วินาที แล้วเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติ (${attempt}/${maxAttempts})...`);
+        await sleep(8000);
+        return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
+            unusualFallback: true,
             failureReason
         });
     }
