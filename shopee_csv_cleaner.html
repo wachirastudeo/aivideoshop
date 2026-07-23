@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopee CSV Cleaner & Thai Header Converter</title>
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-card: rgba(30, 41, 59, 0.7);
+      --bg-glass: rgba(15, 23, 42, 0.75);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --accent-orange: #ff5722;
+      --accent-gradient: linear-gradient(135deg, #ff5722 0%, #ff8a65 100%);
+      --emerald-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-th: 'Kanit', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(255, 87, 34, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.12) 0px, transparent 50%);
+      font-family: var(--font-th);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 87, 34, 0.15);
+      border: 1px solid rgba(255, 87, 34, 0.3);
+      color: #ff784e;
+      padding: 0.4rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(to right, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    .main-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 1.5rem;
+      padding: 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      margin-bottom: 2rem;
+    }
+
+    /* Controls Panel */
+    .option-group {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      padding: 1rem 1.5rem;
+      border-radius: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .option-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .radio-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    .radio-label:hover {
+      color: var(--text-main);
+    }
+
+    .radio-label input[type="radio"] {
+      accent-color: var(--accent-orange);
+      width: 1rem;
+      height: 1rem;
+    }
+
+    /* Upload Zone */
+    .drop-zone {
+      border: 2px dashed rgba(255, 87, 34, 0.4);
+      border-radius: 1rem;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      background: rgba(15, 23, 42, 0.4);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent-orange);
+      background: rgba(255, 87, 34, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .drop-icon {
+      font-size: 2.8rem;
+      color: #ff784e;
+      margin-bottom: 0.75rem;
+    }
+
+    .drop-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+
+    .drop-sub {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 0.75rem;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .btn-orange {
+      background: var(--accent-gradient);
+      color: white;
+      box-shadow: 0 4px 14px rgba(255, 87, 34, 0.35);
+    }
+
+    .btn-orange:hover {
+      box-shadow: 0 6px 20px rgba(255, 87, 34, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-emerald {
+      background: var(--emerald-gradient);
+      color: white;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-emerald:hover {
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin: 1.5rem 0;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .divider span {
+      padding: 0 1rem;
+    }
+
+    .paste-area {
+      width: 100%;
+      height: 100px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      color: #e2e8f0;
+      font-family: monospace;
+      font-size: 0.85rem;
+      padding: 0.75rem;
+      resize: vertical;
+      outline: none;
+    }
+
+    .paste-area:focus {
+      border-color: var(--accent-orange);
+    }
+
+    /* Results */
+    .results-section {
+      display: none;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      padding: 1rem 1.5rem;
+      border-radius: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .status-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #34d399;
+      font-weight: 500;
+    }
+
+    .actions-bar {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      max-height: 450px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.95);
+      color: #ff8a65;
+      font-weight: 600;
+      padding: 0.85rem 1rem;
+      position: sticky;
+      top: 0;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .highlight-cell {
+      color: #34d399;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="logo-badge">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Shopee CSV Converter
+      </div>
+      <h1>แปลงไฟล์ Shopee CSV หัวข้อภาษาไทย & คลีนตัวเลข</h1>
+      <p class="subtitle">เปลี่ยนหัวข้อคอลัมน์เป็นภาษาไทย (รหัสสินค้า, ราคา, ยอดขาย ฯลฯ) และตัด 2.3พัน/฿/% ออกให้อัปโหลดได้ทันที</p>
+    </header>
+
+    <div class="main-card">
+      
+      <!-- Option Mode -->
+      <div class="option-group">
+        <div class="option-title">
+          <i class="fa-solid fa-language"></i> ภาษาหัวข้อคอลัมน์ (Headers):
+        </div>
+        <label class="radio-label">
+          <input type="radio" name="headerLang" value="th" checked onchange="reprocessData()">
+          🇹🇭 ภาษาไทย (รหัสสินค้า, ราคา, ยอดขาย...)
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="headerLang" value="en" onchange="reprocessData()">
+          🇬🇧 ภาษาอังกฤษเดิม (Item Id, Price, Sales...)
+        </label>
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+        <div class="drop-title">ลากไฟล์ CSV มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</div>
+        <div class="drop-sub">รองรับไฟล์ .csv และ .txt ทุกรูปแบบ</div>
+        <button class="btn btn-orange" type="button">
+          <i class="fa-solid fa-folder-open"></i> เลือกไฟล์ CSV
+        </button>
+        <input type="file" id="fileInput" accept=".csv,.txt" onchange="handleFileSelect(event)">
+      </div>
+
+      <div class="divider">
+        <span>หรือวางข้อความ CSV โดยตรง</span>
+      </div>
+
+      <textarea id="rawCsvText" class="paste-area" placeholder="วางข้อมูล CSV ที่นี่ เช่น: Item Id,Item Name,Price,Sales..."></textarea>
+      
+      <div style="margin-top: 1rem; text-align: right;">
+        <button class="btn btn-outline" onclick="cleanPastedText()">
+          <i class="fa-solid fa-bolt"></i> คลีนข้อความนี้
+        </button>
+      </div>
+    </div>
+
+    <!-- Results Container -->
+    <div class="results-section" id="resultsSection">
+      <div class="main-card">
+        <div class="status-bar">
+          <div class="status-info">
+            <i class="fa-solid fa-circle-check fa-lg"></i>
+            <span id="statusMessage">คลีนข้อมูลและแปลงหัวข้อภาษาไทยเรียบร้อยแล้ว</span>
+          </div>
+          <div class="actions-bar">
+            <button class="btn btn-emerald" onclick="downloadCleanedCsv()">
+              <i class="fa-solid fa-file-csv"></i> ดาวน์โหลด CSV ภาษาไทย (UTF-8 BOM)
+            </button>
+            <button class="btn btn-outline" onclick="copyCleanedText()">
+              <i class="fa-solid fa-copy"></i> ก๊อปปี้ข้อความ
+            </button>
+          </div>
+        </div>
+
+        <h3 style="font-size: 1.1rem; margin-bottom: 1rem; font-weight: 600;">
+          <i class="fa-solid fa-table"></i> ตัวอย่างตารางข้อมูลที่เปลี่ยนเป็นหัวข้อภาษาไทยแล้ว
+        </h3>
+        
+        <div class="table-container">
+          <table id="previewTable">
+            <thead>
+              <tr id="tableHeader"></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Shopee CSV Auto-Cleaner & Thai Header Converter
+  </footer>
+
+  <script>
+    let rawCsvStringContent = "";
+    let cleanedDataRows = [];
+    let activeHeaders = [];
+
+    // Mapping English Column Names to Official Thai Shopee/Excel Column Names
+    const headerMappingTH = {
+      'Item Id': 'รหัสสินค้า',
+      'Item Name': 'ชื่อสินค้า',
+      'Price': 'ราคา',
+      'Sales': 'ยอดขาย',
+      'Shop Name': 'ชื่อร้านค้า',
+      'Commission Rate': 'อัตราค่าคอมมิชชั่น',
+      'Commission': 'ค่าคอมมิชชั่น',
+      'Product Link': 'ลิงก์สินค้า',
+      'Offer Link': 'ลิงก์ข้อเสนอ'
+    };
+
+    // Drag and Drop Events
+    const dropZone = document.getElementById('dropZone');
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length > 0) {
+        processFile(files[0]);
+      }
+    });
+
+    function handleFileSelect(event) {
+      const files = event.target.files;
+      if (files.length > 0) {
+        processFile(files[0]);
+      }
+    }
+
+    function processFile(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        rawCsvStringContent = e.target.result;
+        cleanCsvString(rawCsvStringContent, file.name);
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function cleanPastedText() {
+      const pasted = document.getElementById('rawCsvText').value;
+      if (!pasted.trim()) {
+        alert('กรุณาวางข้อความ CSV ก่อนครับ');
+        return;
+      }
+      rawCsvStringContent = pasted;
+      cleanCsvString(rawCsvStringContent, 'pasted_data.csv');
+    }
+
+    function reprocessData() {
+      if (rawCsvStringContent) {
+        cleanCsvString(rawCsvStringContent, 'data.csv');
+      }
+    }
+
+    // Helper: Parse Thai Numbers (2.3พัน -> 2300, 1พัน+ -> 1000, ฿ -> "", % -> "")
+    function parseThaiNumber(val) {
+      if (!val) return val;
+      let strVal = String(val).trim();
+      let cleanVal = strVal.replace(/[฿%\+]/g, '').trim();
+
+      if (cleanVal.includes('พัน')) {
+        let num = parseFloat(cleanVal.replace('พัน', '').trim());
+        if (!isNaN(num)) return String(Math.round(num * 1000));
+      }
+      if (cleanVal.includes('แสน')) {
+        let num = parseFloat(cleanVal.replace('แสน', '').trim());
+        if (!isNaN(num)) return String(Math.round(num * 100000));
+      }
+      if (cleanVal.includes('ล้าน')) {
+        let num = parseFloat(cleanVal.replace('ล้าน', '').trim());
+        if (!isNaN(num)) return String(Math.round(num * 1000000));
+      }
+
+      let num = parseFloat(cleanVal);
+      if (!isNaN(num) && (String(num) === cleanVal || cleanVal.match(/^\d+(\.\d+)?$/))) {
+        return Number.isInteger(num) ? String(num) : String(num);
+      }
+
+      return cleanVal;
+    }
+
+    function parseCSVLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    }
+
+    function cleanCsvString(rawText, originalFilename) {
+      const lines = rawText.split(/\r?\n/).filter(line => line.trim().length > 0);
+      if (lines.length === 0) return;
+
+      const originalHeaders = parseCSVLine(lines[0]);
+      const useThai = document.querySelector('input[name="headerLang"]:checked').value === 'th';
+
+      activeHeaders = originalHeaders.map(h => {
+        const trimmed = h.trim();
+        return useThai ? (headerMappingTH[trimmed] || trimmed) : trimmed;
+      });
+
+      cleanedDataRows = [];
+      const numColsEn = ['Price', 'Sales', 'Commission Rate', 'Commission'];
+
+      for (let i = 1; i < lines.length; i++) {
+        const rowVals = parseCSVLine(lines[i]);
+        if (rowVals.length < originalHeaders.length) continue;
+
+        const rowObj = {};
+        originalHeaders.forEach((origHeader, idx) => {
+          const origHeaderTrimmed = origHeader.trim();
+          const targetHeaderName = useThai ? (headerMappingTH[origHeaderTrimmed] || origHeaderTrimmed) : origHeaderTrimmed;
+          let origVal = rowVals[idx] || '';
+
+          if (numColsEn.includes(origHeaderTrimmed)) {
+            rowObj[targetHeaderName] = parseThaiNumber(origVal);
+          } else {
+            rowObj[targetHeaderName] = origVal;
+          }
+        });
+        cleanedDataRows.push(rowObj);
+      }
+
+      renderPreviewTable();
+      document.getElementById('statusMessage').innerText = `คลีนข้อมูลและจัดหัวข้อภาษาไทยเรียบร้อย (${cleanedDataRows.length} รายการ)`;
+      document.getElementById('resultsSection').style.display = 'block';
+    }
+
+    function renderPreviewTable() {
+      const headerTr = document.getElementById('tableHeader');
+      const bodyTbody = document.getElementById('tableBody');
+
+      headerTr.innerHTML = '';
+      bodyTbody.innerHTML = '';
+
+      activeHeaders.forEach(header => {
+        const th = document.createElement('th');
+        th.innerText = header;
+        headerTr.appendChild(th);
+      });
+
+      const previewRows = cleanedDataRows.slice(0, 30);
+      const numericHeadersTH = ['ราคา', 'ยอดขาย', 'อัตราค่าคอมมิชชั่น', 'ค่าคอมมิชชั่น', 'Price', 'Sales', 'Commission Rate', 'Commission'];
+
+      previewRows.forEach(row => {
+        const tr = document.createElement('tr');
+        activeHeaders.forEach(header => {
+          const td = document.createElement('td');
+          const val = row[header] || '';
+          td.innerText = val;
+
+          if (numericHeadersTH.includes(header)) {
+            td.classList.add('highlight-cell');
+          }
+          tr.appendChild(td);
+        });
+        bodyTbody.appendChild(tr);
+      });
+    }
+
+    function generateCsvContent() {
+      let csvContent = activeHeaders.map(h => `"${h.replace(/"/g, '""')}"`).join(',') + '\n';
+      
+      cleanedDataRows.forEach(row => {
+        const line = activeHeaders.map(h => {
+          let val = row[h] || '';
+          if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+            val = `"${val.replace(/"/g, '""')}"`;
+          }
+          return val;
+        }).join(',');
+        csvContent += line + '\n';
+      });
+
+      return csvContent;
+    }
+
+    function downloadCleanedCsv() {
+      const csvContent = generateCsvContent();
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `shopee_data_thailand_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function copyCleanedText() {
+      const csvContent = generateCsvContent();
+      navigator.clipboard.writeText(csvContent).then(() => {
+        alert('ก๊อปปี้ข้อมูล CSV หัวข้อภาษาไทย ลงคลิปบอร์ด เรียบร้อยแล้ว!');
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+    }
+  </script>
+</body>
+</html>

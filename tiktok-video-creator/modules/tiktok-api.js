@@ -41,8 +41,10 @@ export async function fetchShowcaseProducts(options = {}) {
 
     const list = data.data?.products || data.data?.list || data.products || data.items || [];
     
-    // คำนวณ offset สำหรับหน้าถัดไป (ถ้าดึงมาได้ครบตามจำนวน count แสดงว่ามีหน้าต่อไป)
-    const nextOffset = list.length >= count ? String(offset + count) : "";
+    // คำนวณ offset สำหรับหน้าถัดไปอย่างถูกต้อง
+    // TikTok API จะส่ง has_more มาด้วย หรือถ้ามีรายการกลับมา และยังไม่ระบุว่าหมดแล้ว ให้ใช้ offset + list.length
+    const hasMore = data.data?.has_more !== undefined ? Boolean(data.data?.has_more) : list.length > 0;
+    const nextOffset = (hasMore && list.length > 0) ? String(offset + list.length) : "";
 
     return {
       products: list.map(normalizeProduct),

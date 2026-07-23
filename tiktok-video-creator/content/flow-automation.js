@@ -732,8 +732,16 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
     }
 
     if (isUnusualActivityFailure(failureReason)) {
-        log(`⚠️ Flow แจ้งเตือน Unusual Activity → พักระบบ 8 วินาที แล้วเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติ (${attempt}/${maxAttempts})...`);
-        await sleep(8000);
+        log(`⚡ Flow แจ้งเตือน Unusual Activity → ล้าง Site Data & Cookies และเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติทันที (${attempt}/${maxAttempts})...`);
+        try {
+            localStorage.clear();
+            sessionStorage.clear();
+            if (window.indexedDB && indexedDB.databases) {
+                indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
+            }
+        } catch(e) {}
+        chrome.runtime.sendMessage({ action: "CLEAR_SITE_DATA" }).catch(() => {});
+        await sleep(1000);
         return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
             unusualFallback: true,
             failureReason
@@ -2242,7 +2250,19 @@ async function waitForResult(phase, options = {}) {
             if (!failureSeenAt) failureSeenAt = Date.now();
             const failureAge = Date.now() - failureSeenAt;
             const policyFailure = isProminentPeoplePolicyFailure(pendingFailure);
-            if (!policyFailure && failureAge < failureGraceMs) {
+            const unusualFailure = isUnusualActivityFailure(pendingFailure);
+
+            if (unusualFailure) {
+                log("⚡ ตรวจพบ Failed ชั่วคราว (Unusual Activity) → ล้างแคช/คุกกี้ และเริ่มใหม่ทันทีโดยไม่รอนับถอยหลัง!");
+                try {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    if (window.indexedDB && indexedDB.databases) {
+                        indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
+                    }
+                } catch(e) {}
+                chrome.runtime.sendMessage({ action: "CLEAR_SITE_DATA" }).catch(() => {});
+            } else if (!policyFailure && failureAge < failureGraceMs) {
                 log(`Flow แสดง Failed ชั่วคราว รอผลลัพธ์สำเร็จอีก ${Math.ceil((failureGraceMs - failureAge) / 1000)}s...`);
                 await sleep(1000);
                 continue;

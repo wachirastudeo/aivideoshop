@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Labs.google Auto-Clear Fail & Countdown",
+  "version": "1.0.0",
+  "description": "ตรวจจับ Fail ชั่วคราวบน labs.google แล้วล้างแคช คุกกี้ และรีเฟรชให้อัตโนมัติทันที",
+  "permissions": [
+    "storage",
+    "cookies",
+    "browsingData",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://labs.google/*",
+    "*://*.google.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://labs.google/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
