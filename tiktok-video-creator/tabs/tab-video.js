@@ -227,7 +227,8 @@ function normalizeProductQueue(value) {
         details: item.details || "",
         structureAdvice: item.structureAdvice || "",
         promptAdvice: item.promptAdvice || "",
-        autoOptions: item.autoOptions && typeof item.autoOptions === "object" ? item.autoOptions : null
+        autoOptions: item.autoOptions && typeof item.autoOptions === "object" ? item.autoOptions : null,
+        isCollapsed: item.isCollapsed !== undefined ? item.isCollapsed : true
       };
     });
 }
@@ -486,8 +487,13 @@ function productMarkup(p, index) {
   ` : "";
 
   return `
-    <article class="flow-job" data-index="${index}" data-status="${escapeHtml(p.status)}">
+    <article class="flow-job ${p.isCollapsed ? 'is-collapsed' : ''}" data-index="${index}" data-status="${escapeHtml(p.status)}">
       <header class="flow-job__header">
+        <button class="collapse-toggle batch-collapse-toggle" type="button" title="${p.isCollapsed ? 'แสดง' : 'ซ่อน'}" aria-label="${p.isCollapsed ? 'แสดง' : 'ซ่อน'}" aria-expanded="${!p.isCollapsed}">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
         <img class="flow-job__thumb" src="${escapeAttr(sourceImage)}" data-fallback="assets/icon.svg" alt="" width="64" height="64">
         <div class="flow-job__title">
           <h3>${escapeHtml(p.name || "ไม่มีชื่อสินค้า")}</h3>
@@ -574,6 +580,23 @@ function bindBatchEvents() {
     const idx = parseInt(item.dataset.index, 10);
     const p = productQueue[idx];
     if (!p) return;
+
+    const header = item.querySelector(".flow-job__header");
+    header?.addEventListener("click", (e) => {
+      if (e.target.closest(".batch-remove")) return;
+
+      const nextCollapsed = !item.classList.contains("is-collapsed");
+      item.classList.toggle("is-collapsed", nextCollapsed);
+      p.isCollapsed = nextCollapsed;
+      persistState();
+
+      const toggleBtn = item.querySelector(".batch-collapse-toggle");
+      if (toggleBtn) {
+        toggleBtn.setAttribute("aria-expanded", String(!nextCollapsed));
+        toggleBtn.title = nextCollapsed ? "แสดง" : "ซ่อน";
+        toggleBtn.setAttribute("aria-label", toggleBtn.title);
+      }
+    });
 
     const nameInput = item.querySelector(".batch-name");
     const hookSelect = item.querySelector(".batch-hook-select");
@@ -706,6 +729,7 @@ async function launchFlow(phase, product) {
     const image = phase === "image" ? getFlowProductImage(product) : (product.approvedImage || getFlowProductImage(product));
     product.status = phase === "image" ? "image_generating" : "video_generating";
     product.errorMessage = "";
+    product.isCollapsed = false;
     await persistState();
     renderQueue();
 
@@ -804,6 +828,7 @@ async function processQueue() {
       const isVideoOnly = !isImageOnly && (settings.flowGenMode === "video" || product.status === "image_done");
       product.status = isVideoOnly ? "video_generating" : "image_generating";
       product.errorMessage = "";
+      product.isCollapsed = false;
       await persistState();
       renderQueue();
 

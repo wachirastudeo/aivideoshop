@@ -1779,3 +1779,33 @@ html[data-mode="tab"] .activity-log {
   font-weight: 600;
 }
 
+/* Collapsible flow-job item styling */
+.flow-job.is-collapsed .flow-steps,
+.flow-job.is-collapsed .flow-job__grid,
+.flow-job.is-collapsed .flow-job__body {
+  display: none !important;
+}
+
+.flow-job.is-collapsed .flow-job__header {
+  border-bottom: none;
+}
+
+.flow-job__header {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.flow-job__header:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.flow-job__header .collapse-toggle {
+  margin-right: 4px;
+}
+
+.flow-job.is-collapsed .collapse-toggle svg {
+  transform: rotate(-90deg);
+}
+
+
