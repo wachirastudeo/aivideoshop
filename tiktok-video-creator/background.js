@@ -38,7 +38,7 @@ async function focusTabAndWindowIfNeeded(tabId, windowId) {
   }
   lastWindowFocusTime[windowId] = now;
   try {
-    await chrome.windows.update(windowId, { state: "normal", focused: true });
+    await chrome.windows.update(windowId, { focused: true });
     await new Promise((r) => setTimeout(r, 300));
   } catch (err) {
     console.error("focusWindowIfNeeded error:", err);
