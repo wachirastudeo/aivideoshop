@@ -144,6 +144,8 @@ const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pa
 
 const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork, motif, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement of the design. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace the pattern. For videos, this pattern must remain completely static and unchanged on the product's surface as the camera moves or the presenter holds it.";
 
+const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact hue, saturation, color balance, printed patterns, artwork, and motifs of the product from the reference image. Do NOT shift, alter, recolor, or replace the product's original colors, graphics, or surface patterns under any lighting or environment effect.";
+
 const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glasses must be perfectly proportioned to a human face, head, or hands. Do not make the glasses abnormally large, tiny, or out-of-scale relative to the presenter. Maintain the exact frame shape, lens color/transparency, bridge width, and temple length.";
 
 const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
@@ -379,12 +381,16 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
 
-  // Determine introductory description/layout advice based on presenter settings (always keep multiple angles grid/collage, strictly at most 4 scenes)
-  const intro = (auto.presenter && auto.presenter !== "none" && auto.presenter !== "hands_only")
-    ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with ${isAnimal ? "a pet animal" : "a presenter"} shown in the frame.`
-    : (auto.presenter === "hands_only")
-      ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with realistic human hands holding the product in the frame.`
-      : `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes.`;
+  const isSingleMode = settings?.imageMode === "single" || settings?.singleFrame === true || settings?.singleFrame === "true";
+
+  // Determine introductory description/layout advice based on presenter & imageMode settings
+  const intro = isSingleMode
+    ? `A high-fidelity single full-frame studio product photograph in a vertical 9:16 layout, showing ${productName} clearly in the center with 100% exact product details.`
+    : (auto.presenter && auto.presenter !== "none" && auto.presenter !== "hands_only")
+      ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with ${isAnimal ? "a pet animal" : "a presenter"} shown in the frame.`
+      : (auto.presenter === "hands_only")
+        ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with realistic human hands holding the product in the frame.`
+        : `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes.`;
 
   const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
   const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
@@ -473,6 +479,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
     intro,
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     PRODUCT_FIDELITY_DIRECTION,
+    PRINTED_GRAPHIC_FIDELITY_DIRECTION,
+    COLOR_AND_PATTERN_FIDELITY_DIRECTION,
     scaleInstruction,
     "Critical: The generated image must maintain absolute fidelity to the original product in the reference image. The product's shape, curves, outlines, colors, materials, branding, labels, and text must be 100% identical and unchanged. Do not redesign, warp, or modify the product's structure.",
     shotDistribution,

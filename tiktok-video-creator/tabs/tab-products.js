@@ -403,6 +403,25 @@ function bindProductEvents() {
   document.querySelector("#product-search")?.addEventListener("input", () => { currentPage = 1; renderProducts(); });
   document.querySelector("#product-sort")?.addEventListener("change", () => { currentPage = 1; renderProducts(); });
 
+  document.querySelector("#select-page-products")?.addEventListener("change", (e) => {
+    const isChecked = e.target.checked;
+    const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
+    const sortBy = document.querySelector("#product-sort")?.value || "newest";
+    const filtered = products
+      .filter((p) => p.name.toLowerCase().includes(query))
+      .sort((a, b) => sortProducts(a, b, sortBy));
+    
+    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+    const paginated = filtered.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+
+    if (isChecked) {
+      paginated.forEach(p => selectedIds.add(p.productId));
+    } else {
+      paginated.forEach(p => selectedIds.delete(p.productId));
+    }
+    renderProducts();
+  });
+
   document.querySelector("#select-all-products")?.addEventListener("change", (e) => {
     const isChecked = e.target.checked;
     const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
@@ -420,6 +439,8 @@ function bindProductEvents() {
     selectedIds.clear();
     const selectAll = document.querySelector("#select-all-products");
     if (selectAll) selectAll.checked = false;
+    const selectPage = document.querySelector("#select-page-products");
+    if (selectPage) selectPage.checked = false;
     renderProducts();
   });
 
@@ -716,13 +737,24 @@ function renderPagination(totalPages) {
 
 function updateBatchUI() {
   const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
-  const visibleProducts = products.filter((p) => p.name.toLowerCase().includes(query));
+  const sortBy = document.querySelector("#product-sort")?.value || "newest";
+  const filtered = products
+    .filter((p) => p.name.toLowerCase().includes(query))
+    .sort((a, b) => sortProducts(a, b, sortBy));
+
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginated = filtered.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+
+  const selectPage = document.querySelector("#select-page-products");
   const selectAll = document.querySelector("#select-all-products");
   const batchBtn = document.querySelector("#create-batch-videos");
   const batchDownloadBtn = document.querySelector("#download-batch-images");
   
-  if (selectAll && visibleProducts.length > 0) {
-    selectAll.checked = visibleProducts.every(p => selectedIds.has(p.productId));
+  if (selectPage) {
+    selectPage.checked = paginated.length > 0 && paginated.every(p => selectedIds.has(p.productId));
+  }
+  if (selectAll) {
+    selectAll.checked = filtered.length > 0 && filtered.every(p => selectedIds.has(p.productId));
   }
   if (batchBtn) {
     batchBtn.textContent = `สร้างวิดีโอ (${selectedIds.size})`;

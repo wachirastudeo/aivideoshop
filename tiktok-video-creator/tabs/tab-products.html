@@ -108,12 +108,19 @@
     </div>
 
     <div class="batch-actions">
-      <label class="checkbox-row">
-        <input id="select-all-products" type="checkbox"> เลือกทั้งหมด
-      </label>
-      <button id="clear-all-products" class="button button--ghost" type="button" style="padding: 4px 10px; font-size: 13px; height: auto; min-height: 0; margin-left: 4px;">ล้างทั้งหมด</button>
-      <button id="download-batch-images" class="button button--ghost" type="button" disabled>ดาวน์โหลดภาพ (0)</button>
-      <button id="create-batch-videos" class="button button--primary" type="button" disabled>สร้างวิดีโอ (0)</button>
+      <div class="batch-actions__left" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <label class="checkbox-row" style="cursor: pointer; user-select: none;">
+          <input id="select-page-products" type="checkbox"> เลือกหน้านี้
+        </label>
+        <label class="checkbox-row" style="cursor: pointer; user-select: none;">
+          <input id="select-all-products" type="checkbox"> เลือกทั้งหมด
+        </label>
+        <button id="clear-all-products" class="button button--ghost" type="button" style="padding: 4px 8px; font-size: 12px; height: auto; min-height: 0;">ล้างทั้งหมด</button>
+      </div>
+      <div class="batch-actions__right" style="display: flex; align-items: center; gap: 6px;">
+        <button id="download-batch-images" class="button button--ghost" type="button" disabled>ดาวน์โหลดภาพ (0)</button>
+        <button id="create-batch-videos" class="button button--primary" type="button" disabled>สร้างวิดีโอ (0)</button>
+      </div>
     </div>
     <div id="product-list" class="product-list"></div>
     <div id="pagination-controls" class="pagination-container"></div>
