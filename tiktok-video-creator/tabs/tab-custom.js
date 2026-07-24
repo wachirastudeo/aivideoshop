@@ -136,7 +136,9 @@ export async function initCustomTab(injectedHelpers) {
     "customCreatorPostAction",
     "customCreatorScheduleDate",
     "customCreatorScheduleTime",
-    "customCreatorStyle"
+    "customCreatorStyle",
+    "activeFlowTabId",
+    "activeTikTokTabId"
   ]);
 
   populateStyleDropdown();
@@ -244,6 +246,15 @@ export async function initCustomTab(injectedHelpers) {
   document.querySelector("#custom-btn-stop")?.addEventListener("click", () => {
     requestStop().catch(() => {});
   });
+
+  // Sync running state from storage on load
+  const isRunning = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId);
+  const createBtn = document.querySelector("#custom-btn-create");
+  const stopBtn = document.querySelector("#custom-btn-stop");
+  const clearBtn = document.querySelector("#custom-btn-clear");
+  if (createBtn) createBtn.hidden = isRunning;
+  if (stopBtn) stopBtn.hidden = !isRunning;
+  if (clearBtn) clearBtn.disabled = isRunning;
 }
 
 function getValue(id) {
@@ -465,3 +476,17 @@ function populateStyleDropdown() {
   `).join("");
   select.insertAdjacentHTML("afterbegin", `<option value="none" selected>ไม่ระบุสไตล์ (ใช้ Prompt ล้วนๆ)</option>`);
 }
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && (changes.activeFlowTabId || changes.activeTikTokTabId)) {
+    chrome.storage.local.get(["activeFlowTabId", "activeTikTokTabId"]).then((stored) => {
+      const running = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId);
+      const createBtn = document.querySelector("#custom-btn-create");
+      const stopBtn = document.querySelector("#custom-btn-stop");
+      const clearBtn = document.querySelector("#custom-btn-clear");
+      if (createBtn) createBtn.hidden = running;
+      if (stopBtn) stopBtn.hidden = !running;
+      if (clearBtn) clearBtn.disabled = running;
+    });
+  }
+});

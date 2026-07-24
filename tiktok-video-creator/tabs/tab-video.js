@@ -57,6 +57,11 @@ export async function initVideoTab(injectedHelpers) {
   bindGlobalEvents();
   fillGlobalFormFromState();
   renderQueue();
+
+  // Sync running state from storage on load
+  const isRunning = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId);
+  isProcessing = isRunning;
+  setBatchButtons(isRunning);
 }
 
 export async function syncSelectedProductToVideoTab() {
@@ -1503,3 +1508,13 @@ function toInputTime(date) {
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 }
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && (changes.activeFlowTabId || changes.activeTikTokTabId)) {
+    chrome.storage.local.get(["activeFlowTabId", "activeTikTokTabId"]).then((stored) => {
+      const running = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId);
+      isProcessing = running;
+      setBatchButtons(running);
+    });
+  }
+});
