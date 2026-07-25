@@ -23,6 +23,33 @@
           <span class="field__hint" id="custom-image-file-info">ยังไม่ได้เลือกรูปภาพ (เว้นว่างไว้เพื่อเจนจากข้อความล้วน)</span>
         </div>
 
+        <!-- อัปโหลดภาพนางแบบ/พรีเซนเตอร์อ้างอิงหน้าคน (ไม่บังคับ) -->
+        <div class="field" style="margin-top: 10px; margin-bottom: 8px;">
+          <span class="field__label">ภาพอ้างอิงใบหน้าพรีเซนเตอร์ (ไม่บังคับ)</span>
+          <div class="model-ref-container" style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+            <div id="custom-model-ref-preview-box" class="model-ref-preview-box" style="width: 54px; height: 54px; border: 1.5px dashed var(--border-color, #ccc); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--bg-surface, #f9f9f9); flex-shrink: 0; position: relative;">
+              <img id="custom-model-ref-preview-img" src="" alt="Model preview" style="width: 100%; height: 100%; object-fit: cover;" hidden>
+              <svg id="custom-model-ref-placeholder-icon" class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width: 22px; height: 22px; color: var(--muted, #888);">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <label class="button button--secondary button--small" style="cursor: pointer; width: fit-content; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 12px;">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span>เลือกรูปใบหน้า</span>
+                <input id="custom-model-ref-image-input" type="file" accept="image/png,image/jpeg,image/webp" style="display: none;">
+              </label>
+              <button id="custom-model-ref-clear-btn" type="button" class="button button--ghost button--small" style="width: fit-content; color: var(--danger-color, #e53935); font-size: 11px; padding: 1px 4px;" hidden>ลบรูปใบหน้า</button>
+            </div>
+          </div>
+        </div>
+
+
         <label class="field">
           <span class="field__label">สไตล์วิดีโอ (เลือกเพื่อช่วยแต่งเติม Prompt)</span>
           <select id="custom-video-style" class="select">
@@ -70,6 +97,17 @@
               <option value="9:16" selected>9:16 TikTok</option>
               <option value="16:9">16:9 แนวนอน</option>
             </select>
+          </label>
+        </div>
+
+        <div class="settings-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <label class="field">
+            <span class="field__label">จำนวนรอบที่ต้องการสร้าง (รอบ)</span>
+            <input id="custom-loops" class="input" type="number" min="1" value="1">
+          </label>
+          <label class="field" id="custom-schedule-interval-container" style="display: none;">
+            <span class="field__label">ระยะห่างการโพสต์ (นาที)</span>
+            <input id="custom-schedule-interval" class="input" type="number" min="1" max="1440" value="10">
           </label>
         </div>
 

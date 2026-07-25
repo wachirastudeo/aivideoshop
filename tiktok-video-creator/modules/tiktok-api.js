@@ -36,7 +36,11 @@ export async function fetchShowcaseProducts(options = {}) {
     console.log("TikTok API Response Data:", data);
 
     if (data.code !== 0 && data.code !== undefined) {
-      throw new Error(data.message || `API error code=${data.code}`);
+      let errMsg = data.message || `API error code=${data.code}`;
+      if (errMsg.toLowerCase().includes("permission is temporarily banned")) {
+        errMsg = "บัญชีนี้ถูก TikTok จำกัดสิทธิ์ดึงข้อมูลชั่วคราว (เนื่องจากดึงข้อมูลถี่เกินไป หรือบัญชีไม่ใช่ Creator) แนะนำให้เว้นระยะการดึงข้อมูล 1-2 ชั่วโมง หรือสลับไปใช้แท็บ 'Shopee' / 'กรอกเอง' ด้านบนแทนครับ";
+      }
+      throw new Error(errMsg);
     }
 
     const list = data.data?.products || data.data?.list || data.products || data.items || [];
@@ -52,7 +56,11 @@ export async function fetchShowcaseProducts(options = {}) {
       rawData: data
     };
   } catch (error) {
-    throw new Error("ดึงข้อมูลล้มเหลว (ตรวจสอบว่า Login TikTok แล้วหรือยัง): " + error.message);
+    let msg = error.message;
+    if (msg.toLowerCase().includes("permission is temporarily banned")) {
+      throw new Error("บัญชีถูก TikTok จำกัดสิทธิ์ดึงข้อมูลชั่วคราว (เนื่องจากดึงข้อมูลถี่เกินไป หรือไม่ใช่ Creator) แนะนำให้เว้นระยะ 1-2 ชั่วโมง หรือใช้แท็บ 'Shopee' / 'กรอกเอง' ด้านบนแทนครับ");
+    }
+    throw new Error("ดึงข้อมูลล้มเหลว (ตรวจสอบว่า Login TikTok แล้วหรือยัง): " + msg);
   }
 }
 

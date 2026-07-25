@@ -1725,6 +1725,7 @@ async function humanTypeWords(prompt) {
     }
 }
 
+
 async function setPrompt(prompt) {
     const editor = await waitForPromptEditor(15000);
     if (!editor) throw new Error("หาช่องพิมพ์ prompt ไม่เจอ");
@@ -2002,6 +2003,7 @@ async function clickGenerate() {
     // ปิด debugger ก่อนกดเจนเพื่อให้ infobar หายไปและระดับหน้าจอกลับมาปกติ
     await detachFlowDebugger();
     await sleep(1000);
+
 
     preGenMediaKeys = snapMediaKeys();
     const end = Date.now() + 30000;

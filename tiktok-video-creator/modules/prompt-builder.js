@@ -99,7 +99,7 @@ const PRESENTERS = {
   woman: "A young Thai woman reviewer presenting the product. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   man: "A young Thai man reviewer presenting the product. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   child: "A cute young Thai child (4-6 years old) naturally playing, eating, or interacting with the product doing activities suitable for the product category. The child is engrossed in the activity naturally without looking directly at the camera or presenting it like a reviewer.",
-  older_child: "A cute Thai older child (7-12 years old, kid) naturally playing, studying, or interacting with the product. The child is engrossed in the activity naturally and smiles warmly near the product.",
+  older_child: "A cute Thai older child (7-12 years old, kid) naturally playing, studying, or interacting with the product. The child is engrossed in the activity naturally without looking directly at the camera or presenting/reviewing it like a reviewer.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
   living_product: "The product itself becomes a living character with cute 3D eyes and personality",
   dog: "A cute friendly dog (e.g., golden retriever or corgi) interacting with or sitting next to the product in a bright, clean indoor setting.",
@@ -110,9 +110,10 @@ const THAI_PERSON_DIRECTION = "Natural Thai reviewer. The product must remain ri
 
 const HANDS_DIRECTION = "Show only realistic human hands (exactly one single hand or one pair of hands) holding and presenting the product. Focus entirely on the product and the hands. Anatomically correct hands with exactly five fingers per hand, natural fingernails, clear skin texture, and realistic hand joints. The product itself must remain rigid and unchanged; do not cover, bend, warp, or deform it.";
 const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE: Close-up cropped shot showing only the hands from the wrist down holding the product. No other human features or background persons are visible in the frame.";
+const HANDS_ONLY_BACKGROUND_DIRECTION = "BACKGROUND AESTHETICS: The background must be a beautiful, warm, modern setting (such as a cozy aesthetic cafe, stylish workspace, or elegant modern room) with a very soft-focus shallow depth of field (cinematic bokeh blur). This ensures the background looks premium, cozy, and visually rich rather than empty, plain, or distracting, while keeping the hands and product in extremely sharp, crisp focus.";
 const ANIMAL_PRESENTER_DIRECTION = "No humans in the video. Show a cute consistent animal (cat or dog as specified) as the main character interacting with or sitting next to the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
 
-const PRODUCT_FIDELITY_DIRECTION = "STRICT STILL-TO-VIDEO FIDELITY LOCK: Reproduce the product EXACTLY as shown in the reference image: preserve its exact shape, 3D geometry, form, color, material texture, printed artwork, labels, and parts. STRICT RULE: Do not add any extra items, objects, parts, accessories, or decorations that are not in the reference image. Do not add packaging, boxes, bags, or cases unless they are clearly visible in the reference image. Do not substitute, modify, deform, or add parts to the product. It must look 100% pixel-faithful and identical to the uploaded product image without any visual drift, distortion, or hallucination. ABSOLUTE ZERO DISTORTION RULE: Preserve all printed text, brand logos, labels, and packaging dimensions exactly as in the original reference image without any warping, bending, or restyling.";
+const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, logos, labels, and parts. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.";
 
 const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
 
@@ -123,18 +124,22 @@ const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to refere
 const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product and the presenter across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the presenter and background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). If a presenter is visible in the reference image, the presenter in the video (including their face, hair, clothing, gender, age, and overall appearance) must look exactly identical and consistent with the presenter depicted in the reference image across all scenes (Strictest rule: The face, hair, clothing, and overall appearance of the presenter in the video must match the presenter in the reference image exactly and remain identical throughout the entire video). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
 
 function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
+  const baseFidelity = "Maintain absolute consistency for the product: its shape, proportions, colors, materials, printed logos, and text must be identical and in true scale relative to the surroundings in every scene; do not shrink, enlarge, stretch, or warp it.";
+  const collageRule = "STRICT RULE: Do NOT generate the video frame as a collage, grid, split-screen, or multi-panel composition. Each scene must be a single, full-frame shot showing only one angle at a time. Animate each panel from the reference collage sequentially as a full-screen scene with smooth camera movement and clean cuts.";
+  const singleSceneRule = "STRICT RULE: Do NOT generate the video frame as a collage, grid, split-screen, or multi-panel composition. Each scene must be a single, full-frame shot showing only one angle at a time. Animate the scenes with smooth camera movement and clean cuts.";
+
   if (autoPresenter === "none") {
-    return "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
+    return `IMPORTANT: The reference image is a collage grid. The video must follow this by depicting the product across different scenes/angles. ${baseFidelity} ${collageRule}`;
   }
   if (autoPresenter === "hands_only") {
-    return "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product and hands across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the hands and background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts. STRICTLY FORBIDDEN: Only the hands from the wrist down are allowed; do not show any other human features in the scene.";
+    return `IMPORTANT: The reference image is a collage grid. The video must follow this by depicting the product and hands across different scenes/angles. ${baseFidelity} ${collageRule} STRICTLY FORBIDDEN: Only the hands from the wrist down are allowed; do not show any other human features in the scene.`;
   }
 
   if (hasModelRefImage) {
-    return "IMPORTANT: The attached reference image set includes a specific model reference photo. The video must follow this reference by depicting the product and the presenter across different scenes and angles. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. STRICT PRESENTER MATCH: The presenter in the video (including their face, facial features, hair, clothing, gender, age, and overall appearance) MUST look exactly identical to the model depicted in the model reference photo across all scenes. STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each scene with smooth camera movement and transition between them with clean cuts.";
+    return `IMPORTANT: The reference image set includes a model photo. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} STRICT PRESENTER MATCH: The presenter in the video (including their face, hair, clothing, and overall appearance) MUST look exactly identical to the model depicted in the model reference photo across all scenes. ${singleSceneRule}`;
   }
 
-  return "IMPORTANT: The attached reference image depicts the product. The video must follow this reference by depicting the product and the presenter across different scenes and angles. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. STRICT RULE FOR PRESENTER FACE: Do NOT copy, match, or replicate the face or appearance of any person or model visible in the product reference image. The presenter in the video (including their face and facial features) must look completely distinct and different from any person depicted in the product reference image. (However, keep the presenter's face consistent across all scenes of this generated video). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each scene with smooth camera movement and transition between them with clean cuts.";
+  return `IMPORTANT: The reference image depicts the product. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} STRICT RULE FOR PRESENTER FACE: Do NOT copy, match, or replicate the face of any model visible in the product reference image. The presenter in the video must look completely distinct and different from any person in the product reference image (but keep the presenter's face consistent across all scenes). ${singleSceneRule}`;
 }
 
 
@@ -142,18 +147,20 @@ const REALISM_AND_PHYSICS_DIRECTION = "STRICT RIGIDITY & STABILITY LOCK: Realist
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 
-const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork, motif, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement of the design. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace the pattern. For videos, this pattern must remain completely static and unchanged on the product's surface as the camera moves or the presenter holds it.";
+const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork, motifs, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace. For videos, this pattern must remain static on the product surface.";
 
-const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact hue, saturation, color balance, printed patterns, artwork, and motifs of the product from the reference image. Do NOT shift, alter, recolor, or replace the product's original colors, graphics, or surface patterns under any lighting or environment effect.";
+const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference. Do NOT shift, alter, recolor, or replace original colors or graphics under any lighting or environment effect.";
 
 const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glasses must be perfectly proportioned to a human face, head, or hands. Do not make the glasses abnormally large, tiny, or out-of-scale relative to the presenter. Maintain the exact frame shape, lens color/transparency, bridge width, and temple length.";
 
 const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
-const TEXT_FREE_DIRECTION = "STRICT NO-TEXT RULE: Do not add any text overlays, subtitles, captions, price tags, banners, promotional copy, watermarks, CTA, or signs onto the video. Absolutely no on-screen text, writing, or numbers should be added. Keep the product's own printed text exactly as in the reference, but do not add any new, extra, or unnecessary text anywhere in the scenes.";
+const TEXT_FREE_DIRECTION = "STRICT NO-TEXT RULE: Do not add any text overlays, subtitles, captions, price tags, banners, promotional copy, watermarks, CTA, or signs. Absolutely no on-screen text, writing, or numbers should be added. Keep the product's own printed text exactly as in reference, but do not add any new, extra, or unnecessary text.";
 
-const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT RULE: Do not add, invent, or write any new text, labels, brand names, slogans, numbers, or gibberish text on the product surface or packaging. If the original reference product is blank or has no text, the generated product must be completely clean and blank without any text. Do not generate fake branding or mock text on the product.";
+const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT RULE: Do not write new text, labels, brand names, numbers, or gibberish on the product. If the reference is blank, keep it clean. Do not generate fake branding.";
+
+const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new design details, buttons, stripes, logos, or decorations not on the reference. Render any texture finish (matte, glossy, metallic, fabric) or gradient with 100% precision. Do not compromise product accuracy for style.";
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
 
@@ -450,7 +457,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
       .replace(/\b(?:people|presenters?|reviewers?|characters?)\b/gi, "hands");
   }
 
-  let shotDistribution = "Depict the product from a diverse mix of camera angles and shot distances in a collage grid (strictly containing at most 4 scenes/panels): wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups/narrow shots highlighting product textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent the product comprehensively across the collage panels (Strictest rule: depict a diverse mix of wide, medium, and close-up shots in the collage, strictly limited to at most 4 panels/scenes).";
+  let shotDistribution = "Depict the product from a diverse mix of camera angles and shot distances in a collage grid (strictly at most 4 panels): wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups highlighting textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent it comprehensively (Strictest rule: depict a diverse mix of wide, medium, and close-ups, strictly limited to at most 4 panels).";
   if (noPeople) {
     shotDistribution = shotDistribution.replace("or with a presenter", "");
   } else if (handsOnly) {
@@ -479,17 +486,18 @@ export function buildImagePrompt(productInfo, settings = {}) {
     intro,
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     PRODUCT_FIDELITY_DIRECTION,
+    STRICT_PRODUCT_IDENTITY_RULE,
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
     scaleInstruction,
-    "Critical: The generated image must maintain absolute fidelity to the original product in the reference image. The product's shape, curves, outlines, colors, materials, branding, labels, and text must be 100% identical and unchanged. Do not redesign, warp, or modify the product's structure.",
+    "Critical: The generated image must maintain absolute fidelity to the product shape, colors, branding, and text (100% identical). Do not redesign, warp, or modify structure. Strictest rule: The product must look exactly like the reference photo, pixel-for-pixel.",
     shotDistribution,
     specificScale,
     PRODUCT_ISOLATION_DIRECTION,
     PRODUCT_STRUCTURE_DIRECTION,
     categoryDirection,
     analysisDirection,
-    "Choose a clean, realistic, commercially appealing background that fits this product category.",
+    handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "Choose a clean, realistic, commercially appealing background that fits this product category.",
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     peopleDirection,
     productTextFidelityDirection,
@@ -656,6 +664,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     resolveMatchStillDirection(auto.presenter, hasModelRefImage),
     PRODUCT_FIDELITY_DIRECTION,
+    STRICT_PRODUCT_IDENTITY_RULE,
+    PRINTED_GRAPHIC_FIDELITY_DIRECTION,
+    COLOR_AND_PATTERN_FIDELITY_DIRECTION,
+    "Critical: The generated video must maintain absolute fidelity to the original product. Its shape, colors, materials, branding, and text must be 100% identical and remain completely consistent, static, and unchanged across all scenes. Do not redesign, warp, morph, or modify the product's structure in any way.",
     REALISM_AND_PHYSICS_DIRECTION,
     scaleInstruction,
     specificScale,
@@ -663,6 +675,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     categoryDirection,
     analysisDirection,
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
+    handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "",
   ];
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
     .replace(/\d+-second\s*/g, "");
@@ -828,7 +841,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   } else if (auto.presenter === "man") {
     speakerIdentity = "a young Thai man";
   } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
-    speakerIdentity = "a caring Thai mother narrating warm and loving thoughts about her child interacting with the product";
+    if (auto.presenter === "older_child") {
+      speakerIdentity = "a caring Thai mother narrating warm thoughts about her school-aged child interacting with the product. The voice and script must be age-appropriate for an older child and must never use baby-talk, baby words, or speak/sound like a small child";
+    } else {
+      speakerIdentity = "a caring Thai mother narrating warm thoughts about her child interacting with the product. The voice and script must never use baby-talk or sound like a small child";
+    }
   } else if (auto.presenter === "กรอกเอง" && auto.customPresenter) {
     // Use the custom presenter description to inform the voice identity
     speakerIdentity = `a Thai speaker whose voice, age, and speech style match this character: "${auto.customPresenter}"`;
@@ -845,14 +862,21 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     : (auto.presenter === "none" || auto.presenter === "hands_only")
       ? "the voice must sound like a professional off-screen Thai narrator presenting the product. Since no presenter's face or body is shown on screen, ensure the voice is a clear, friendly voiceover narration."
       : (["baby", "toddler", "child", "older_child"].includes(auto.presenter))
-        ? "the voice must sound like a caring Thai mother narrating warm and loving thoughts about her child on screen"
+        ? "the voice must sound like a caring Thai mother narrating warm and loving thoughts about her child on screen. The voice must be an adult mother's voice, and the narration must NEVER use baby-talk, baby words, or sound like a young child"
         : "the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter)";
 
   const voiceMatchEnd = (auto.presenter === "none" || auto.presenter === "hands_only")
     ? "ensure the voice is a natural Thai speaker delivering a clear off-screen voiceover narration."
-    : "ensure the voice is a natural Thai speaker whose voice perfectly matches the character identity of the presenter.";
+    : (["baby", "toddler", "child", "older_child"].includes(auto.presenter))
+      ? "ensure the voice is a natural Thai speaker whose voice matches the off-screen mother narrator."
+      : "ensure the voice is a natural Thai speaker whose voice perfectly matches the character identity of the presenter.";
 
-  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — ${matchVoiceRule}. Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must present the product's value proposition, features, or name naturally in Thai. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ${voiceMatchEnd}`;
+  const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
+  const presentInstruction = isChildPresenter
+    ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
+    : "present the product's value proposition, features, or name naturally in Thai";
+
+  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — ${matchVoiceRule}. Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must ${presentInstruction}. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ${voiceMatchEnd}`;
   const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
@@ -1149,6 +1173,10 @@ function inferPromptAutoOptions(productInfo = {}) {
   if (/(ครัว|บ้าน|เครื่องใช้|organizer|storage|clean|ทำความสะอาด)/i.test(text)) {
     return promptAutoOptions("before-after", "none", "professional", "Professional", "Modern Living Room", "Pan Left to Right", "Swipe", "Home utility product, optimized to show the problem and result clearly");
   }
+  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|โทรศัพท์|มือถือ|case|phone|mobile|gadget|cover)/i.test(text)) {
+    return promptAutoOptions("review", "hands_only", "fun", "Trendy", "Cafe / Coffee Shop", "Slow Zoom In", "Cut ตรง", "Phone or mobile accessory product, shown held by hands in a cozy aesthetic cafe background");
+  }
+
   if (/(กล่อง|แพ็ค|package|เซ็ต|bundle|gift)/i.test(text)) {
     return promptAutoOptions("review", "none", "kind", "มินิมัล", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "Product with set or bundle, use reference image to determine actual form");
   }
@@ -1171,7 +1199,7 @@ function isFootwearProduct(productInfo = {}) {
 
 function pickAutoReviewer(productInfo = {}) {
   const recommended = productInfo.autoOptions?.presenter;
-  if (recommended === "woman" || recommended === "man" || recommended === "child" || recommended === "older_child") return recommended;
+  if (recommended === "woman" || recommended === "man" || recommended === "child" || recommended === "older_child" || recommended === "hands_only") return recommended;
   if (recommended === "baby" || recommended === "toddler") return "woman";
 
   const productText = [
@@ -1181,6 +1209,10 @@ function pickAutoReviewer(productInfo = {}) {
     productInfo.highlights,
     productInfo.targetGroup
   ].filter(Boolean).join(" ").toLowerCase();
+
+  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|โทรศัพท์|มือถือ|case|phone|mobile|gadget|cover)/i.test(productText)) {
+    return "hands_only";
+  }
 
   // Baby/toddler keywords fall back to woman (mother) to prevent platform child safety violations
   if (/(ทารก|แรกเกิด|คลอดใหม่|เบบี๋|เตาะแตะ|หัดเดิน|วัยคลาน|baby|infant|newborn|toddler)/i.test(productText)) {
@@ -1258,7 +1290,36 @@ export function buildCaption(productInfo, defaults = {}) {
   }
   const rest = body.startsWith(hook) ? body.slice(hook.length).trim() : body.trim();
 
-  // ขึ้นต้นด้วยชื่อสินค้า/hook เลย (ไม่มี random opening แล้ว)
+  // จัดการตัวเลือกสุ่มคำขึ้นต้นโพสต์ (postRandomCaptionHook)
+  const useRandomHook = defaults.postRandomCaptionHook !== undefined
+    ? defaults.postRandomCaptionHook
+    : true;
+
+  if (useRandomHook) {
+    const RANDOM_CAPTION_HOOKS = [
+      "กรี๊ดดดด! ต้องบอกต่อสิ่งนี้ ",
+      "ของมันต้องมีจริง! ",
+      "ป้ายยาแรงๆ เลยตัวนี้ ",
+      "ในที่สุดก็เจอ! ",
+      "อันนี้ดีจริงไม่จกตา ",
+      "เพิ่งรู้ว่ามีแบบนี้ด้วย ",
+      "ใช้ดีจนต้องรีวิว! ",
+      "เกินต้านมากแม่ตัวนี้ ",
+      "ไอเทมลับที่ทุกคนต้องมี! ",
+      "บอกต่อความปังด่วนๆ ",
+      "สวยจนต้องเหลียวหลัง ",
+      "ชี้เป้าความคุ้ม! ",
+      "ดีจนต้องกราบ ",
+      "ใครยังไม่มีรีบเลย! ",
+      "ปังไม่ไหวแล้ววว "
+    ];
+    const randomIndex = Math.floor(Math.random() * RANDOM_CAPTION_HOOKS.length);
+    const randomPrefix = RANDOM_CAPTION_HOOKS[randomIndex];
+    const randomizedHook = `${randomPrefix}${hook}`;
+    return rest ? `${randomizedHook}\n${rest}` : randomizedHook;
+  }
+
+  // ขึ้นต้นด้วยชื่อสินค้า/hook เลย
   return rest ? `${hook}\n${rest}` : hook;
 }
 
