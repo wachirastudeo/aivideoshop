@@ -1166,13 +1166,39 @@ async function clickCalendarDay(dateInput, targetDate) {
 
     const activeCandidates = allElements.filter(el => {
       const className = (el.className || "").toLowerCase();
+      
+      // 1. ตรวจสอบรายละเอียดจาก aria-label หรือ title เพื่อคัดวันต่างเดือนออก (เช่น กรกฎาคม ปนกับ มิถุนายน)
+      const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
+      const title = (el.getAttribute("title") || "").toLowerCase();
+      const textToCheck = `${ariaLabel} ${title}`.trim();
+      
+      if (textToCheck) {
+        const hasTargetMonthInAttr = textToCheck.includes(targetMonthNameEn) || 
+                                     textToCheck.includes(targetMonthAbbrEn) || 
+                                     textToCheck.includes(targetMonthNameTh) || 
+                                     textToCheck.includes(targetMonthAbbrTh);
+        
+        // ถ้าปุ่มมีการระบุเดือนใน attribute แต่ดันไม่ตรงกับเดือนเป้าหมาย -> คัดทิ้งทันที
+        if (!hasTargetMonthInAttr) {
+          // เช็คว่าในข้อความมีการระบุเดือนอื่นจริงไหม (ถ้ามีเดือนอื่นที่ไม่ใช่เป้าหมายปะปนอยู่ ให้คัดออก)
+          const hasAnyMonthName = monthNamesEn.some(m => textToCheck.includes(m)) ||
+                                  monthNamesTh.some(m => textToCheck.includes(m)) ||
+                                  monthAbbrsTh.some(m => textToCheck.includes(m));
+          if (hasAnyMonthName) {
+            return false;
+          }
+        }
+      }
+
+      // 2. คัดกรองจากชื่อ Class ของวันขอบนอก (outside/prev/next/sibling/muted)
       const isOutside = className.includes("outside") || 
                         className.includes("prev") || 
                         className.includes("next") || 
                         className.includes("other") || 
                         className.includes("disabled") || 
                         className.includes("muted") ||
-                        className.includes("inactive");
+                        className.includes("inactive") ||
+                        className.includes("sibling");
       
       const parentClassName = (el.parentElement?.className || "").toLowerCase();
       const parentIsOutside = parentClassName.includes("outside") || 
@@ -1181,7 +1207,8 @@ async function clickCalendarDay(dateInput, targetDate) {
                               parentClassName.includes("other") || 
                               parentClassName.includes("disabled") || 
                               parentClassName.includes("muted") ||
-                              parentClassName.includes("inactive");
+                              parentClassName.includes("inactive") ||
+                              parentClassName.includes("sibling");
       
       const style = window.getComputedStyle(el);
       const color = style.color || "";
@@ -1189,7 +1216,8 @@ async function clickCalendarDay(dateInput, targetDate) {
       const isMuted = color.includes("rgba") || 
                       opacity === "0.5" || 
                       color === "rgb(153, 153, 153)" ||
-                      color === "rgb(187, 187, 187)";
+                      color === "rgb(187, 187, 187)" ||
+                      color === "rgb(186, 186, 186)";
       
       return !isOutside && !parentIsOutside && !isMuted;
     });
@@ -1489,10 +1517,6 @@ function formatLikeDefault(defaultStr, targetDate) {
     dayIdx = 2;
   } else {
     // แยกกรณี DD MM YYYY หรือ MM DD YYYY
-    const today = new Date();
-    const curDay = today.getDate();
-    const curMonth = today.getMonth() + 1;
-
     const p0 = parseInt(parts[0], 10);
     const p1 = parseInt(parts[1], 10);
 
@@ -1506,15 +1530,26 @@ function formatLikeDefault(defaultStr, targetDate) {
     } else if (isTextP1) {
       monthIdx = 1;
       dayIdx = 0;
-    } else if (p0 === curDay || p1 === curMonth) {
+    } else if (p0 > 12) {
+      // p0 มากกว่า 12 มั่นใจได้ว่าเป็น วันที่ แน่นอน
       dayIdx = 0;
       monthIdx = 1;
-    } else if (p0 === curMonth || p1 === curDay) {
+    } else if (p1 > 12) {
+      // p1 มากกว่า 12 มั่นใจได้ว่าเป็น วันที่ แน่นอน
       monthIdx = 0;
       dayIdx = 1;
     } else {
-      dayIdx = 0;
-      monthIdx = 1;
+      // ถ้าทั้งสองค่า <= 12 ให้ประเมินจากภาษาเบราว์เซอร์
+      const locale = (navigator.language || "th-TH").toLowerCase();
+      if (locale.includes("us")) {
+        // ภาษาแบบ US มักจะเป็น MM/DD/YYYY
+        monthIdx = 0;
+        dayIdx = 1;
+      } else {
+        // ภาษาอื่นๆ และไทย มักจะเป็น DD/MM/YYYY
+        dayIdx = 0;
+        monthIdx = 1;
+      }
     }
   }
 
