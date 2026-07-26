@@ -1819,8 +1819,6 @@ async function typeContentEditable(editor, prompt) {
     range.selectNodeContents(editor);
     sel?.removeAllRanges();
     sel?.addRange(range);
-    document.execCommand("delete", false, null);
-    await sleep(100);
     document.execCommand("insertText", false, prompt);
     editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
 }
@@ -1859,37 +1857,22 @@ function focusAndPlaceCursor(editor) {
 }
 
 async function typeSlate(editor, prompt) {
-    // 1. วางเคอร์เซอร์ในโหนดของ Slate
-    focusAndPlaceCursor(editor);
-    await sleep(250);
+    // 1. เลื่อนมาตรงกลางและโฟกัสช่องกรอก
+    editor.scrollIntoView({ behavior: "instant", block: "center" });
+    await sleep(200);
+    
+    // คลิกปุ่มตรงกลางด้วย debugger เพื่อปักหมุดโฟกัสจริงในโมเดล Slate/React
+    log("คลิกปุ่มตรงกลางด้วย debugger เพื่อโฟกัส Slate...");
+    await clickButtonCenterWithDebugger(editor);
+    await sleep(300);
 
     const textNodes = getTextNodes(editor);
     const isEmpty = textNodes.length === 0 || editor.textContent.trim() === "";
 
-    if (!isEmpty) {
-        // Select all text nodes safely without selecting or deleting paragraph element containers
-        const range = document.createRange();
-        const selection = window.getSelection();
-        range.setStart(textNodes[0], 0);
-        const lastNode = textNodes[textNodes.length - 1];
-        range.setEnd(lastNode, lastNode.length);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-        await sleep(50);
-    } else {
-        focusAndPlaceCursor(editor);
-        await sleep(50);
-    }
-
     // วิธีที่ 1: ใช้ Debugger เป็นวิธีหลักเพื่ออัปเดต React State ของ Slate แน่นอนและหลีกเลี่ยงการ unmount/หน้าจอพัง
     try {
         log("กรอก Prompt ด้วยระบบ Debugger (เพื่อความเสถียรของ Slate/React)...");
-        // ล้างค่าเก่าออกก่อน
-        selectEditableContents(editor);
-        document.execCommand("delete", false, null);
-        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
-        await sleep(200);
-
+        // ระบบ Debugger จะทำการล้างข้อมูลแบบปลอดภัย (Cmd+A + Backspace) และกรอกข้อความให้ผ่านระดับเบราว์เซอร์
         const response = await chrome.runtime.sendMessage({
             type: "FLOW_INSERT_TEXT",
             payload: { text: prompt, clear: true }
@@ -1908,9 +1891,15 @@ async function typeSlate(editor, prompt) {
     // วิธีที่ 2: ลองใช้ execCommand แทรกข้อความธรรมดา (กรณีตัวตรวจจับ Debugger พลาด)
     try {
         log("ใช้ execCommand แทรกข้อความธรรมดา...");
-        selectEditableContents(editor);
-        document.execCommand("delete", false, null);
-        await sleep(100);
+        if (!isEmpty) {
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.setStart(textNodes[0], 0);
+            const lastNode = textNodes[textNodes.length - 1];
+            range.setEnd(lastNode, lastNode.length);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+        }
         document.execCommand("insertText", false, prompt);
         editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: prompt }));
         editor.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1924,9 +1913,15 @@ async function typeSlate(editor, prompt) {
     // วิธีที่ 3: ลองใช้ Clipboard Paste event จำลองการวางข้อความ
     try {
         log("ใช้ Clipboard Paste event...");
-        selectEditableContents(editor);
-        document.execCommand("delete", false, null);
-        await sleep(100);
+        if (!isEmpty) {
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.setStart(textNodes[0], 0);
+            const lastNode = textNodes[textNodes.length - 1];
+            range.setEnd(lastNode, lastNode.length);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+        }
         const dt = new DataTransfer(); dt.setData("text/plain", prompt);
         editor.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt }));
         await sleep(500);
@@ -1936,28 +1931,8 @@ async function typeSlate(editor, prompt) {
         }
     } catch (e) { console.warn("[FlowAuto] paste failed:", e); }
 
-    focusAndPlaceCursor(editor);
-    if (!isEmpty) {
-        const nodes = getTextNodes(editor);
-        if (nodes.length > 0) {
-            const range = document.createRange();
-            const selection = window.getSelection();
-            range.setStart(nodes[0], 0);
-            const lastNode = nodes[nodes.length - 1];
-            range.setEnd(lastNode, lastNode.length);
-            selection?.removeAllRanges();
-            selection?.addRange(range);
-            document.execCommand("insertText", false, ""); // clear selection
-            await sleep(50);
-        }
-    }
-    for (const ch of prompt) {
-        if (stopRequested) return;
-        document.execCommand(ch === "\n" ? "insertLineBreak" : "insertText", false, ch === "\n" ? null : ch);
-        await sleep(4);
-    }
-    editor.dispatchEvent(new Event("change", { bubbles: true }));
-    if (!await waitForPromptCommit(editor, prompt, 2500)) {
+    // ตรวจสอบขั้นสุดท้าย
+    if (!await waitForPromptCommit(editor, prompt, 1000)) {
         throw new Error("กรอก prompt ใน Slate ไม่สำเร็จ");
     }
 }
@@ -1989,7 +1964,7 @@ async function waitForPromptCommit(editor, prompt, timeoutMs) {
 async function typeDraft(editor, prompt) {
     editor.focus(); await sleep(150 + Math.random() * 100);
     document.execCommand("selectAll", false, null);
-    document.execCommand("delete", false, null);
+    document.execCommand("insertText", false, "");
     await sleep(100 + Math.random() * 100);
     await humanTypeWords(prompt);
     await sleepStop(2000);

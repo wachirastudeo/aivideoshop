@@ -967,40 +967,20 @@ async function processQueue() {
       await persistState();
       renderQueue();
       helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
-      helpers.logActivity?.(`ข้ามสินค้า ${i + 1} (ทำต่อรายการถัดไป): ${err.message}`, "error");
+      helpers.logActivity?.(`หยุดทำงานคิว (ไม่ข้ามรายการ) เนื่องจากเกิดข้อผิดพลาดที่สินค้า ${i + 1}: ${err.message}`, "error");
       
-      processedCount += 1;
-      // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่ม หรือพักเบรกหากครบ 5 รายการ (กรณีข้ามจาก error)
-      if (i < productQueue.length - 1) {
-        const hasNextPending = productQueue.slice(i + 1).some(p => p.status !== "done");
-        if (hasNextPending) {
-          if (processedCount > 0 && processedCount % 5 === 0) {
-            helpers.showStatus(`ทำรายการครบ ${processedCount} รายการแล้ว พักเบรก 2 นาทีเพื่อป้องกันการโดนจำกัดสิทธิ์...`, "info");
-            helpers.logActivity?.(`พักเบรก 2 นาที (120 วินาที) เนื่องจากทำรายการครบ ${processedCount} รายการ...`, "info");
-            try {
-              await interruptibleDelay(120 * 1000);
-            } catch (e) {}
-          } else {
-            const delaySeconds = 4 + Math.floor(Math.random() * 3); // สุ่ม 4 - 6 วินาที (เฉลี่ย 5 วินาที)
-            helpers.showStatus(`รอจังหวะแบบสุ่ม ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");
-            helpers.logActivity?.(`รอหน่วงเวลาระหว่างรายการชิ้นถัดไป ${delaySeconds} วินาที...`, "info");
-            try {
-              await interruptibleDelay(delaySeconds * 1000);
-            } catch (e) {}
-          }
-        }
-      }
-      continue;
+      stopRequested = true;
+      break;
     }
     }
 
     const wasStopped = stopRequested;
     finalMessage = wasStopped
-      ? "หยุดทำงานแล้ว"
+      ? (errorCount > 0 ? "หยุดทำงานเนื่องจากมีข้อผิดพลาด" : "หยุดทำงานแล้ว")
       : errorCount > 0
         ? `จบโปรเซสเพราะ Error ${errorCount} รายการ`
         : "สร้างเสร็จสมบูรณ์ทุกรายการ";
-    finalLevel = wasStopped ? "info" : errorCount > 0 ? "error" : "success";
+    finalLevel = wasStopped ? (errorCount > 0 ? "error" : "info") : errorCount > 0 ? "error" : "success";
   } catch (error) {
     finalMessage = error?.message || "โปรเซสหยุดจากข้อผิดพลาด";
     finalLevel = error?.code === "STOP_REQUESTED" ? "info" : "error";

@@ -1248,6 +1248,49 @@ async function fetchVideoBase64FromFlowTab(videoUrl, previousError = "") {
   }
 
   const flowTabId = flowTabs[0].id;
+  
+  // รัน script ใน MAIN world เพื่อให้สามารถดึงข้อมูล blob URL ที่สร้างในเพจจริงได้ตรงๆ
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: flowTabId },
+      world: "MAIN",
+      func: async (url) => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const blob = await res.blob();
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              resolve({
+                ok: true,
+                base64: reader.result.split(",")[1],
+                mimeType: blob.type
+              });
+            };
+            reader.onerror = (e) => resolve({ ok: false, error: e.message });
+            reader.readAsDataURL(blob);
+          });
+        } catch (e) {
+          return { ok: false, error: e.message };
+        }
+      },
+      args: [videoUrl]
+    });
+    
+    if (results && results[0] && results[0].result && results[0].result.ok) {
+      const data = results[0].result;
+      return { base64: data.base64, mimeType: data.mimeType || "video/mp4" };
+    }
+    
+    if (results && results[0] && results[0].result && results[0].result.error) {
+      console.warn("fetchVideoBase64FromFlowTab MAIN world returned error:", results[0].result.error);
+    }
+  } catch (err) {
+    console.error("fetchVideoBase64FromFlowTab MAIN world failed:", err);
+  }
+
+  // Fallback: ใช้การส่งข้อความหา content script แบบเดิม
   await ensureFlowContentScript(flowTabId);
   const res = await chrome.tabs.sendMessage(flowTabId, {
     type: "FLOW_FETCH_BLOB_BASE64",
