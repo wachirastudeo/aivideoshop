@@ -69,6 +69,7 @@ const CUSTOM_VISUAL_STYLES = [
 
 let helpers = {};
 let selectedImageBase64 = "";
+let selectedModelRefImageBase64 = "";
 
 let stopRequested = false;
 const stopWaiters = new Set();
@@ -136,7 +137,10 @@ export async function initCustomTab(injectedHelpers) {
     "customCreatorPostAction",
     "customCreatorScheduleDate",
     "customCreatorScheduleTime",
-    "customCreatorStyle"
+    "customCreatorStyle",
+    "customCreatorModelRefImage",
+    "activeFlowTabId",
+    "activeTikTokTabId"
   ]);
 
   populateStyleDropdown();
@@ -186,7 +190,14 @@ export async function initCustomTab(injectedHelpers) {
     if (settings.videoModel) setValue("custom-video-model", settings.videoModel);
     if (settings.duration) setValue("custom-video-duration", settings.duration);
     if (settings.aspectRatio) setValue("custom-aspect-ratio", settings.aspectRatio);
+    setValue("custom-loops", settings.loops || 1);
+    setValue("custom-schedule-interval", settings.scheduleInterval || 10);
   }
+
+  if (stored.customCreatorModelRefImage) {
+    selectedModelRefImageBase64 = stored.customCreatorModelRefImage;
+  }
+  renderCustomModelRefPreview();
 
   syncScheduleTimeVisibility();
 
@@ -199,6 +210,8 @@ export async function initCustomTab(injectedHelpers) {
   document.querySelector("#custom-video-model")?.addEventListener("change", saveState);
   document.querySelector("#custom-video-duration")?.addEventListener("change", saveState);
   document.querySelector("#custom-aspect-ratio")?.addEventListener("change", saveState);
+  document.querySelector("#custom-loops")?.addEventListener("input", saveState);
+  document.querySelector("#custom-schedule-interval")?.addEventListener("input", saveState);
   
   document.querySelector("#custom-post-action")?.addEventListener("change", () => {
     syncScheduleTimeVisibility();
@@ -226,6 +239,32 @@ export async function initCustomTab(injectedHelpers) {
     }
   });
 
+  const modelRefInput = document.querySelector("#custom-model-ref-image-input");
+  modelRefInput?.addEventListener("change", async () => {
+    const file = modelRefInput.files?.[0];
+    if (file) {
+      try {
+        selectedModelRefImageBase64 = await readFileAsDataUrl(file);
+        renderCustomModelRefPreview();
+        await saveState();
+        helpers.showStatus?.("อัปโหลดภาพใบหน้าอ้างอิงสำเร็จ", "success");
+      } catch (err) {
+        helpers.showStatus?.(err.message, "error");
+        selectedModelRefImageBase64 = "";
+        renderCustomModelRefPreview();
+      }
+    }
+  });
+
+  const modelRefClearBtn = document.querySelector("#custom-model-ref-clear-btn");
+  modelRefClearBtn?.addEventListener("click", async () => {
+    selectedModelRefImageBase64 = "";
+    if (modelRefInput) modelRefInput.value = "";
+    renderCustomModelRefPreview();
+    await saveState();
+    helpers.showStatus?.("ลบภาพใบหน้าอ้างอิงแล้ว", "info");
+  });
+
   document.querySelector("#custom-btn-clear")?.addEventListener("click", () => {
     const promptInput = document.querySelector("#custom-prompt");
     if (promptInput) promptInput.value = "";
@@ -237,6 +276,11 @@ export async function initCustomTab(injectedHelpers) {
     if (fileInput) fileInput.value = "";
     if (fileInfo) fileInfo.textContent = "ยังไม่ได้เลือกรูปภาพ (เว้นว่างไว้เพื่อเจนจากข้อความล้วน)";
     selectedImageBase64 = "";
+    selectedModelRefImageBase64 = "";
+    if (modelRefInput) modelRefInput.value = "";
+    renderCustomModelRefPreview();
+    setValue("custom-loops", 1);
+    setValue("custom-schedule-interval", 10);
     saveState();
   });
 
@@ -244,6 +288,15 @@ export async function initCustomTab(injectedHelpers) {
   document.querySelector("#custom-btn-stop")?.addEventListener("click", () => {
     requestStop().catch(() => {});
   });
+
+  // Sync running state from storage on load
+  const isRunning = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId);
+  const createBtn = document.querySelector("#custom-btn-create");
+  const stopBtn = document.querySelector("#custom-btn-stop");
+  const clearBtn = document.querySelector("#custom-btn-clear");
+  if (createBtn) createBtn.hidden = isRunning;
+  if (stopBtn) stopBtn.hidden = !isRunning;
+  if (clearBtn) clearBtn.disabled = isRunning;
 }
 
 function getValue(id) {
@@ -261,6 +314,31 @@ function syncScheduleTimeVisibility() {
   if (container) {
     container.style.display = action === "schedule" ? "block" : "none";
   }
+  const intervalContainer = document.querySelector("#custom-schedule-interval-container");
+  if (intervalContainer) {
+    intervalContainer.style.display = action === "schedule" ? "block" : "none";
+  }
+}
+
+function renderCustomModelRefPreview() {
+  const previewImg = document.querySelector("#custom-model-ref-preview-img");
+  const placeholderIcon = document.querySelector("#custom-model-ref-placeholder-icon");
+  const clearBtn = document.querySelector("#custom-model-ref-clear-btn");
+  if (selectedModelRefImageBase64) {
+    if (previewImg) {
+      previewImg.src = selectedModelRefImageBase64;
+      previewImg.hidden = false;
+    }
+    if (placeholderIcon) placeholderIcon.style.display = "none";
+    if (clearBtn) clearBtn.hidden = false;
+  } else {
+    if (previewImg) {
+      previewImg.src = "";
+      previewImg.hidden = true;
+    }
+    if (placeholderIcon) placeholderIcon.style.display = "block";
+    if (clearBtn) clearBtn.hidden = true;
+  }
 }
 
 async function saveState() {
@@ -271,7 +349,9 @@ async function saveState() {
     flowMode: getValue("custom-flow-mode"),
     videoModel: getValue("custom-video-model"),
     duration: getValue("custom-video-duration"),
-    aspectRatio: getValue("custom-aspect-ratio")
+    aspectRatio: getValue("custom-aspect-ratio"),
+    loops: parseInt(getValue("custom-loops"), 10) || 1,
+    scheduleInterval: parseInt(getValue("custom-schedule-interval"), 10) || 10
   };
   await chrome.storage.local.set({
     customCreatorPrompt: prompt,
@@ -281,7 +361,8 @@ async function saveState() {
     customCreatorScheduleDate: getValue("custom-post-schedule-date"),
     customCreatorScheduleTime: getValue("custom-post-schedule-time"),
     customCreatorStyle: getValue("custom-video-style"),
-    customCreatorSettings: settings
+    customCreatorSettings: settings,
+    customCreatorModelRefImage: selectedModelRefImageBase64
   });
 }
 
@@ -292,6 +373,10 @@ function readFileAsDataUrl(file) {
     reader.onerror = () => reject(new Error("อ่านไฟล์รูปภาพไม่สำเร็จ"));
     reader.readAsDataURL(file);
   });
+}
+
+function interruptibleDelay(ms) {
+  return runInterruptibly(() => new Promise(resolve => setTimeout(resolve, ms)));
 }
 
 async function startPipeline() {
@@ -316,123 +401,164 @@ async function startPipeline() {
     if (stopBtn) stopBtn.hidden = false;
     if (clearBtn) clearBtn.disabled = true;
 
-    if (statusEl) {
-      statusEl.style.color = "";
-      statusEl.textContent = "กำลังเริ่มระบบอัตโนมัติเปิดหน้า Google Flow...";
-    }
-    helpers.logActivity?.("เริ่มการเจนวิดีโออิสระ", "info");
-
     const flowMode = getValue("custom-flow-mode");
     const videoModel = getValue("custom-video-model");
     const duration = parseInt(getValue("custom-video-duration"), 10) || 8;
     const aspectRatio = getValue("custom-aspect-ratio") || "9:16";
     const postAction = getValue("custom-post-action");
+    const loops = parseInt(getValue("custom-loops"), 10) || 1;
+    const interval = parseInt(getValue("custom-schedule-interval"), 10) || 10;
 
-    const flowOptions = {
-      imageModel: "nano-banana-pro",
-      videoModel: videoModel,
-      imageCount: 1,
-      videoCount: 1,
-      videoDuration: duration,
-      aspectRatio: aspectRatio,
-      flowGenMode: flowMode,
-      noImage: !selectedImageBase64
-    };
+    let scheduledCount = 0;
 
-    const phase = ["video", "image"].includes(flowMode) ? flowMode : "combined";
-    
-    const styleId = getValue("custom-video-style");
-    const styleObj = CUSTOM_VISUAL_STYLES.find(s => s.id === styleId);
-    const styleFragment = styleObj ? styleObj.fragment : "";
+    for (let i = 0; i < loops; i++) {
+      assertNotStopped();
+      const loopPrefix = loops > 1 ? `[รอบที่ ${i + 1}/${loops}] ` : "";
 
-    let finalPrompt = prompt;
-    if (styleFragment) {
-      finalPrompt = `${prompt}\nVisual style: ${styleFragment}.`;
-    }
+      if (statusEl) {
+        statusEl.style.color = "";
+        statusEl.textContent = `${loopPrefix}กำลังเริ่มระบบอัตโนมัติเปิดหน้า Google Flow...`;
+      }
+      helpers.logActivity?.(`${loopPrefix}เริ่มการเจนวิดีโออิสระ`, "info");
 
-    assertNotStopped();
+      const imageUrls = [];
+      if (selectedImageBase64) imageUrls.push(selectedImageBase64);
+      if (selectedModelRefImageBase64) imageUrls.push(selectedModelRefImageBase64);
 
-    // 1. เรียกใช้ openGoogleFlow
-    const flowResult = await runInterruptibly(() => openGoogleFlow(phase, finalPrompt, selectedImageBase64 || "", flowOptions));
-    assertNotStopped();
+      const flowOptions = {
+        imageModel: "nano-banana-pro",
+        videoModel: videoModel,
+        imageCount: 1,
+        videoCount: 1,
+        videoDuration: duration,
+        aspectRatio: aspectRatio,
+        flowGenMode: flowMode,
+        noImage: !selectedImageBase64 && !selectedModelRefImageBase64
+      };
 
-    const videoUrl = flowResult?.resultUrl || "";
+      if (imageUrls.length > 0) {
+        flowOptions.imageUrls = imageUrls;
+      }
 
-    if (!videoUrl) {
-      throw new Error(flowMode === "image" ? "ไม่พบรูปภาพผลลัพธ์จาก Google Flow" : "ไม่พบวิดีโอผลลัพธ์จาก Google Flow");
-    }
+      const phase = ["video", "image"].includes(flowMode) ? flowMode : "combined";
+      
+      const styleId = getValue("custom-video-style");
+      const styleObj = CUSTOM_VISUAL_STYLES.find(s => s.id === styleId);
+      const styleFragment = styleObj ? styleObj.fragment : "";
 
-    if (statusEl) statusEl.textContent = flowMode === "image" ? "สร้างรูปภาพสำเร็จ! กำลังดาวน์โหลด..." : "สร้างวิดีโอสำเร็จ! กำลังดาวน์โหลดและเตรียมโพสต์...";
-    helpers.logActivity?.(flowMode === "image" ? "สร้างรูปภาพใน Flow สำเร็จ กำลังดาวน์โหลด..." : "สร้างวิดีโอใน Flow สำเร็จ กำลังดาวน์โหลด...", "success");
+      let finalPrompt = prompt;
+      if (styleFragment) {
+        finalPrompt = `${prompt}\nVisual style: ${styleFragment}.`;
+      }
+      if (selectedImageBase64) {
+        finalPrompt = `${finalPrompt}
+STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, logos, labels, and parts. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.
+Reproduce the printed surface artwork, motifs, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace. For videos, this pattern must remain static on the product surface.
+EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference. Do NOT shift, alter, recolor, or replace original colors or graphics under any lighting or environment effect.
+STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. The product must remain completely rigid, solid, and static throughout the video: strictly NO morphing, warping, bending, melting, opening, closing, floating, stretching, or shifting of dimensions. Preserve 100% exact product identity across all video frames. Camera movement must be smooth and stable.`;
+      }
+      if (selectedModelRefImageBase64) {
+        finalPrompt = `${finalPrompt}\nSTRICT PRESENTER MATCH: A model reference image is provided. The presenter's face, hair, and overall appearance MUST look exactly identical to the model in the model reference image.`;
+      }
 
-    // 2. จำลองข้อมูล Product แบบไม่มีข้อมูลสินค้าเพื่อข้ามการปักตะกร้า
-    const customProduct = {
-      productId: "",
-      product_id: "",
-      name: (flowMode === "image" ? "custom_image_" : "custom_video_") + Date.now(),
-      originalName: flowMode === "image" ? "Custom Image" : "Custom Video",
-      caption: caption,
-      hashtags: hashtagsRaw.split(",").map(t => t.trim()).filter(Boolean),
-      source: "custom",
-      isImage: flowMode === "image"
-    };
+      assertNotStopped();
 
-    assertNotStopped();
+      // 1. เรียกใช้ openGoogleFlow
+      const flowResult = await runInterruptibly(() => openGoogleFlow(phase, finalPrompt, selectedImageBase64 || "", flowOptions));
+      assertNotStopped();
 
-    // ดาวน์โหลดรูปภาพ/วิดีโอ
-    const downloaded = await runInterruptibly(() => downloadVideo(videoUrl, customProduct));
-    assertNotStopped();
+      const videoUrl = flowResult?.resultUrl || "";
 
-    const videoLocalUrl = downloaded.videoUrl || videoUrl;
+      if (!videoUrl) {
+        throw new Error(flowMode === "image" ? "ไม่พบรูปภาพผลลัพธ์จาก Google Flow" : "ไม่พบวิดีโอผลลัพธ์จาก Google Flow");
+      }
 
-    if (postAction === "download" || flowMode === "image") {
-      helpers.logActivity?.(flowMode === "image" ? "ดาวน์โหลดรูปภาพอิสระเสร็จสิ้น!" : "ดาวน์โหลดวิดีโออิสระเสร็จสิ้น!", "success");
+      if (statusEl) statusEl.textContent = `${loopPrefix}${flowMode === "image" ? "สร้างรูปภาพสำเร็จ! กำลังดาวน์โหลด..." : "สร้างวิดีโอสำเร็จ! กำลังดาวน์โหลดและเตรียมโพสต์..."}`;
+      helpers.logActivity?.(`${loopPrefix}${flowMode === "image" ? "สร้างรูปภาพใน Flow สำเร็จ กำลังดาวน์โหลด..." : "สร้างวิดีโอใน Flow สำเร็จ กำลังดาวน์โหลด..."}`, "success");
+
+      // 2. จำลองข้อมูล Product แบบไม่มีข้อมูลสินค้าเพื่อข้ามการปักตะกร้า
+      const customProduct = {
+        productId: "",
+        product_id: "",
+        name: (flowMode === "image" ? "custom_image_" : "custom_video_") + Date.now() + `_${i}`,
+        originalName: flowMode === "image" ? "Custom Image" : "Custom Video",
+        caption: caption,
+        hashtags: hashtagsRaw.split(",").map(t => t.trim()).filter(Boolean),
+        source: "custom",
+        isImage: flowMode === "image"
+      };
+
+      assertNotStopped();
+
+      // ดาวน์โหลดรูปภาพ/วิดีโอ
+      const downloaded = await runInterruptibly(() => downloadVideo(videoUrl, customProduct));
+      assertNotStopped();
+
+      const videoLocalUrl = downloaded.videoUrl || videoUrl;
+
+      if (postAction === "download" || flowMode === "image") {
+        helpers.logActivity?.(`${loopPrefix}${flowMode === "image" ? "ดาวน์โหลดรูปภาพอิสระเสร็จสิ้น!" : "ดาวน์โหลดวิดีโออิสระเสร็จสิ้น!"}`, "success");
+        if (statusEl) {
+          statusEl.style.color = "#1a7";
+          statusEl.textContent = `${loopPrefix}${flowMode === "image" ? "สร้างรูปภาพและดาวน์โหลดสำเร็จ!" : "สร้างวิดีโอและดาวน์โหลดสำเร็จ!"}`;
+        }
+        
+        if (i < loops - 1) {
+          const delaySec = 5;
+          helpers.showStatus?.(`รอบที่ ${i + 1} เสร็จสิ้น รอ ${delaySec} วินาทีก่อนเริ่มรอบถัดไป...`, "info");
+          await interruptibleDelay(delaySec * 1000);
+        }
+        continue;
+      }
+
+      // เซ็ต postNoLink = true ใน creatorState settings เพื่อข้ามการปักตะกร้าชัวร์ 100%
+      const storedState = await chrome.storage.local.get("creatorState");
+      const creatorState = storedState.creatorState || {};
+      if (!creatorState.settings) creatorState.settings = {};
+      creatorState.settings.postNoLink = true;
+      
+      // กรณีตั้งเวลาโพสต์ ดึง schedule time
+      let scheduleTime = "";
+      if (postAction === "schedule") {
+        const dateVal = getValue("custom-post-schedule-date");
+        const timeVal = getValue("custom-post-schedule-time") || "00:00";
+        scheduleTime = (dateVal && timeVal) ? `${dateVal}T${timeVal}` : "";
+        creatorState.settings.postScheduleTime = scheduleTime;
+      }
+      await chrome.storage.local.set({ creatorState });
+
+      assertNotStopped();
+
+      // 3. เรียกใช้ TikTok posting
+      if (postAction === "draft") {
+        helpers.logActivity?.(`${loopPrefix}กำลังส่งแบบร่างไปยัง TikTok Studio...`, "info");
+        const res = await runInterruptibly(() => sendVideoToTikTokStudio(videoLocalUrl, customProduct, "draft"));
+        if (!res?.ok) throw new Error(res?.error || "ส่งแบบร่างล้มเหลว");
+        helpers.logActivity?.(`${loopPrefix}บันทึกแบบร่าง TikTok สำเร็จ!`, "success");
+      } else if (postAction === "post") {
+        helpers.logActivity?.(`${loopPrefix}กำลังส่งเพื่อโพสต์ไปยัง TikTok Studio...`, "info");
+        const res = await runInterruptibly(() => sendVideoToTikTokStudio(videoLocalUrl, customProduct, "post"));
+        if (!res?.ok) throw new Error(res?.error || "โพสต์ล้มเหลว");
+        helpers.logActivity?.(`${loopPrefix}โพสต์ไปยัง TikTok Studio สำเร็จ!`, "success");
+      } else if (postAction === "schedule") {
+        helpers.logActivity?.(`${loopPrefix}กำลังตั้งเวลาโพสต์ไปยัง TikTok Studio...`, "info");
+        const minutesOffset = scheduledCount * interval;
+        const res = await runInterruptibly(() => sendVideoToTikTokStudio(videoLocalUrl, customProduct, "schedule", minutesOffset));
+        if (!res?.ok) throw new Error(res?.error || "ตั้งเวลาล้มเหลว");
+        helpers.logActivity?.(`${loopPrefix}ตั้งเวลาโพสต์บน TikTok Studio สำเร็จ! (บวกเวลาเพิ่ม ${minutesOffset} นาที)`, "success");
+        scheduledCount++;
+      }
+
       if (statusEl) {
         statusEl.style.color = "#1a7";
-        statusEl.textContent = flowMode === "image" ? "สร้างรูปภาพและดาวน์โหลดสำเร็จ!" : "สร้างวิดีโอและดาวน์โหลดสำเร็จ!";
+        statusEl.textContent = `${loopPrefix}ดำเนินการสร้างวิดีโอและส่งไปยัง TikTok Studio สำเร็จ!`;
       }
-      return;
-    }
 
-    // เซ็ต postNoLink = true ใน creatorState settings เพื่อข้ามการปักตะกร้าชัวร์ 100%
-    const storedState = await chrome.storage.local.get("creatorState");
-    const creatorState = storedState.creatorState || {};
-    if (!creatorState.settings) creatorState.settings = {};
-    creatorState.settings.postNoLink = true;
-    
-    // กรณีตั้งเวลาโพสต์ ดึง schedule time
-    let scheduleTime = "";
-    if (postAction === "schedule") {
-      const dateVal = getValue("custom-post-schedule-date");
-      const timeVal = getValue("custom-post-schedule-time") || "00:00";
-      scheduleTime = (dateVal && timeVal) ? `${dateVal}T${timeVal}` : "";
-      creatorState.settings.postScheduleTime = scheduleTime;
-    }
-    await chrome.storage.local.set({ creatorState });
-
-    assertNotStopped();
-
-    // 3. เรียกใช้ TikTok posting
-    if (postAction === "draft") {
-      helpers.logActivity?.("กำลังส่งแบบร่างไปยัง TikTok Studio...", "info");
-      const res = await runInterruptibly(() => sendVideoToTikTokStudio(videoLocalUrl, customProduct, "draft"));
-      if (!res?.ok) throw new Error(res?.error || "ส่งแบบร่างล้มเหลว");
-      helpers.logActivity?.("บันทึกแบบร่าง TikTok สำเร็จ!", "success");
-    } else if (postAction === "post") {
-      helpers.logActivity?.("กำลังส่งเพื่อโพสต์ไปยัง TikTok Studio...", "info");
-      const res = await runInterruptibly(() => sendVideoToTikTokStudio(videoLocalUrl, customProduct, "post"));
-      if (!res?.ok) throw new Error(res?.error || "โพสต์ล้มเหลว");
-      helpers.logActivity?.("โพสต์ไปยัง TikTok Studio สำเร็จ!", "success");
-    } else if (postAction === "schedule") {
-      helpers.logActivity?.("กำลังตั้งเวลาโพสต์ไปยัง TikTok Studio...", "info");
-      const res = await runInterruptibly(() => sendVideoToTikTokStudio(videoLocalUrl, customProduct, "schedule"));
-      if (!res?.ok) throw new Error(res?.error || "ตั้งเวลาล้มเหลว");
-      helpers.logActivity?.("ตั้งเวลาโพสต์บน TikTok Studio สำเร็จ!", "success");
-    }
-
-    if (statusEl) {
-      statusEl.style.color = "#1a7";
-      statusEl.textContent = "ดำเนินการสร้างวิดีโอและส่งไปยัง TikTok Studio สำเร็จ!";
+      if (i < loops - 1) {
+        const delaySec = 10;
+        helpers.showStatus?.(`รอบที่ ${i + 1} เสร็จสิ้น รอ ${delaySec} วินาทีก่อนเริ่มรอบถัดไป...`, "info");
+        await interruptibleDelay(delaySec * 1000);
+      }
     }
 
   } catch (err) {
@@ -465,3 +591,17 @@ function populateStyleDropdown() {
   `).join("");
   select.insertAdjacentHTML("afterbegin", `<option value="none" selected>ไม่ระบุสไตล์ (ใช้ Prompt ล้วนๆ)</option>`);
 }
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && (changes.activeFlowTabId || changes.activeTikTokTabId)) {
+    chrome.storage.local.get(["activeFlowTabId", "activeTikTokTabId"]).then((stored) => {
+      const running = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId);
+      const createBtn = document.querySelector("#custom-btn-create");
+      const stopBtn = document.querySelector("#custom-btn-stop");
+      const clearBtn = document.querySelector("#custom-btn-clear");
+      if (createBtn) createBtn.hidden = running;
+      if (stopBtn) stopBtn.hidden = !running;
+      if (clearBtn) clearBtn.disabled = running;
+    });
+  }
+});

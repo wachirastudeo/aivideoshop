@@ -187,6 +187,33 @@ check(
   "child presenter narrator is mother voice",
   /voice must sound like a caring Thai mother narrating/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, settings))
 );
+check(
+  "older child presenter narrator is mother voice",
+  /voice must sound like a caring Thai mother narrating/i.test(buildVideoPrompt({ name: "ของเล่นเด็กโต", productId: "older-child-narration" }, settings))
+);
+check(
+  "child presenter narrator voice does not contradict with presenter identity",
+  !/perfectly matches the character identity of the presenter/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, settings))
+);
+check(
+  "older child presenter narrator voice does not contradict with presenter identity",
+  !/perfectly matches the character identity of the presenter/i.test(buildVideoPrompt({ name: "ของเล่นเด็กโต", productId: "older-child-narration" }, settings))
+);
+check(
+  "older child presenter narrator has age-appropriate settings without baby-talk",
+  /never use baby-talk, baby words, or speak\/sound like a small child/i.test(buildVideoPrompt({ name: "ของเล่นเด็กโต", productId: "older-child-narration" }, settings))
+);
+check(
+  "child presenter narrator does not use baby-talk",
+  /never use baby-talk or sound like a small child/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, settings))
+);
+check(
+  "child presenter narration does not sound like commercial product review",
+  /NOT sound like a commercial product review or sales pitch/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, settings))
+);
+
+
+
 
 // Explicit presenter choice must override Auto.
 const explicitNone = buildVideoPrompt(
@@ -220,9 +247,11 @@ check("omni-flash video prompt requests multi-scene", /multi-scene|distinct scen
 check("omni-flash video prompt has Scene 1", /Scene 1/i.test(omniVid), omniVid);
 check("omni-flash video prompt has Scene 2", /Scene 2/i.test(omniVid), omniVid);
 check("omni-flash video prompt has Scene 3", /Scene 3/i.test(omniVid), omniVid);
-// --- empty caption template returns empty string ---
-const capEmpty = buildCaption(prodA, { captionTemplate: "" });
-eq("empty caption template returns empty string", capEmpty, "");
+// --- random caption opener test ---
+const capRandom = buildCaption(prodA, { captionTemplate: "{product_name}", postRandomCaptionHook: true });
+const capNonRandom = buildCaption(prodA, { captionTemplate: "{product_name}", postRandomCaptionHook: false });
+check("random caption hook prepends random phrase", capRandom !== capNonRandom && capRandom.includes("Arzopa"), `random=${capRandom} non-random=${capNonRandom}`);
+eq("non-random caption hook starts directly with product name", capNonRandom, "Arzopa A1 จอภาพแบบพกพา");
 
 // --- Shopee caption & hashtags 150-char limit tests ---
 const shortTrunc = truncateShopeeCaptionAndHashtags("สเปรย์หอมปรับอากาศ", ["#สเปรย์หอม", "#ปรับอากาศ"]);
@@ -360,6 +389,24 @@ check("image prompt without modelRefImage instructs AI NOT to copy face from pro
 
 const imgWithModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
 check("image prompt with modelRefImage enforces exact model face match", /STRICT PRESENTER MATCH: A model reference image is provided/i.test(imgWithModelRef), imgWithModelRef);
+
+// Test 9: Video prompt fidelity directions
+const sampleVideoPrompt = buildVideoPrompt({ name: "กระเป๋าเป้ลายการ์ตูน" }, settings);
+check("video prompt includes printed graphic fidelity instruction", /Reproduce the printed surface artwork/i.test(sampleVideoPrompt), sampleVideoPrompt);
+check("video prompt includes color and pattern accuracy instruction", /EXACT COLOR & PATTERN ACCURACY/i.test(sampleVideoPrompt), sampleVideoPrompt);
+// Test 10: Hands-only background aesthetics
+const handsOnlyImg = buildImagePrompt({ name: "เคสมือถือ" }, { ...settings, presenter: "hands_only" });
+check("hands_only image prompt contains background aesthetics", /BACKGROUND AESTHETICS/i.test(handsOnlyImg), handsOnlyImg);
+check("hands_only image prompt has soft-focus cinematic bokeh blur instruction", /soft-focus shallow depth of field|cinematic bokeh blur/i.test(handsOnlyImg), handsOnlyImg);
+
+const handsOnlyVid = buildVideoPrompt({ name: "เคสมือถือ" }, { ...settings, presenter: "hands_only" });
+check("hands_only video prompt contains background aesthetics", /BACKGROUND AESTHETICS/i.test(handsOnlyVid), handsOnlyVid);
+check("hands_only video prompt has soft-focus cinematic bokeh blur instruction", /soft-focus shallow depth of field|cinematic bokeh blur/i.test(handsOnlyVid), handsOnlyVid);
+
+// Test 11: Phone case product infers hands_only and Cafe/Coffee Shop setting
+const caseAutoVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
+check("phone case product Auto presenter recommends hands_only", /STRICTLY FORBIDDEN: Only the hands from the wrist down are allowed/i.test(caseAutoVid) && /Anatomically correct hands/i.test(caseAutoVid), caseAutoVid);
+check("phone case product Auto location recommends Cafe \/ Coffee Shop setting", /in a Cafe \/ Coffee Shop setting/i.test(caseAutoVid), caseAutoVid);
 
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);
