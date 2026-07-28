@@ -1043,28 +1043,35 @@ async function clickCalendarDay(dateInput, targetDate) {
     dateInput.focus();
     await realClick(dateInput);
 
-    // 1. รอให้ป๊อปอัปปฏิทินแสดงผลจริง (สูงสุด 3 วินาที)
+    // 1. รอให้ป๊อปอัปปฏิทินแสดงผลจริง (สูงสุด 1.5 วินาที)
     log("รอปฏิทินแสดงผล...");
     let popoverElement = await retryUntil("ค้นหาและรอคอนเทนเนอร์ปฏิทินแสดงจริง", () => {
       return findCalendarContainer(dateInput);
-    }, 3000, 500);
+    }, 1500, 300);
 
-    // หากไม่เปิด ให้ลองส่งปุ่ม Enter และคลิกซ้ำอีกครั้ง (Fallback เปิดป๊อปอัป)
+    // หากไม่เปิด ให้ลองส่งปุ่ม Enter และคลิกอินพุตร่วมกับไอคอนข้างเคียง
     if (!popoverElement) {
-      log("ไม่พบปฏิทินใน 3 วินาที, ลองยิงคีย์บอร์ด Enter และส่งคำสั่งคลิกปุ่มซ้ำ...");
+      log("ไม่พบปฏิทิน, ลองยิงคีย์บอร์ด Enter และคลิกอินพุตร่วมกับไอคอนข้างเคียง...");
       dateInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
       await realClick(dateInput);
+      if (dateInput.parentElement) {
+        await realClick(dateInput.parentElement);
+      }
+      const siblingIcon = dateInput.parentElement ? dateInput.parentElement.querySelector("svg, button, [class*='icon']") : null;
+      if (siblingIcon) {
+        await realClick(siblingIcon);
+      }
       popoverElement = await retryUntil("รอคอนเทนเนอร์ปฏิทินเปิดรอบสอง", () => {
         return findCalendarContainer(dateInput);
-      }, 3000, 500);
+      }, 1500, 300);
     }
 
     const targetDay = targetDate.getDate(); // เช่น 11
     let calendarContainer = popoverElement;
     
     if (!calendarContainer) {
-      log("ไม่พบตารางปฏิทินที่แยกอิสระ จะใช้ document.body เป็นตัวเลือกสุดท้าย");
-      calendarContainer = document.body;
+      log("ไม่พบตารางปฏิทินที่แยกอิสระ ยกเลิกการจิ้มปฏิทินเพื่อเลี่ยงการคลิกตำแหน่งผิดพลาด");
+      return false;
     }
     
     const monthNamesEn = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
@@ -1213,16 +1220,41 @@ async function clickCalendarDay(dateInput, targetDate) {
       const style = window.getComputedStyle(el);
       const color = style.color || "";
       const opacity = style.opacity || "";
-      const isMuted = color.includes("rgba") || 
+      let isMuted = color.includes("rgba") || 
                       opacity === "0.5" || 
                       color === "rgb(153, 153, 153)" ||
                       color === "rgb(187, 187, 187)" ||
                       color === "rgb(186, 186, 186)";
       
+      if (!isMuted) {
+        const childSpans = el.querySelectorAll("span, div, p");
+        for (const child of childSpans) {
+          const childStyle = window.getComputedStyle(child);
+          const childColor = childStyle.color || "";
+          const childOpacity = childStyle.opacity || "";
+          if (childColor.includes("rgba") || childOpacity === "0.5" || 
+              childColor === "rgb(153, 153, 153)" || 
+              childColor === "rgb(187, 187, 187)" || 
+              childColor === "rgb(186, 186, 186)") {
+            isMuted = true;
+            break;
+          }
+        }
+      }
+      
       return !isOutside && !parentIsOutside && !isMuted;
     });
 
-    let bestCandidate = activeCandidates.length > 0 ? activeCandidates[0] : allElements[0];
+    let bestCandidate = null;
+    if (activeCandidates.length > 0) {
+      bestCandidate = (activeCandidates.length > 1 && targetDay >= 15)
+        ? activeCandidates[activeCandidates.length - 1]
+        : activeCandidates[0];
+    } else if (allElements.length > 0) {
+      bestCandidate = (allElements.length > 1 && targetDay >= 15)
+        ? allElements[allElements.length - 1]
+        : allElements[0];
+    }
 
     if (bestCandidate) {
       log(`พบปุ่มวันในปฏิทินแล้ว คลิกวัน: ${targetDay}`);
@@ -1245,62 +1277,78 @@ async function clickCalendarDay(dateInput, targetDate) {
 }
 
 async function fillScheduleTime(scheduleTime) {
-  const date = new Date(scheduleTime);
+  let date;
+  const match = String(scheduleTime).match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+  if (match) {
+    date = new Date(
+      parseInt(match[1], 10),
+      parseInt(match[2], 10) - 1,
+      parseInt(match[3], 10),
+      parseInt(match[4], 10),
+      parseInt(match[5], 10),
+      0, 0
+    );
+  } else {
+    date = new Date(scheduleTime);
+  }
+
   if (Number.isNaN(date.getTime())) {
     throw new Error(`invalid scheduleTime: ${scheduleTime}`);
   }
 
   const container = document.querySelector(TIKTOK_SELECTORS.scheduleContainer) || document;
   
-  // สแกนหา input รวมไปถึง button, combobox, datepicker ที่อาจถูกใช้แทนกล่องข้อความป้อนวันที่/เวลา
-  let inputs = [...container.querySelectorAll("input, button, [role='combobox'], [role='haspopup']")].filter(isVisible);
-  
-  if (!inputs.length) {
-    inputs = [...document.querySelectorAll("input, button, [role='combobox'], [role='haspopup']")].filter(isVisible);
-  }
+  const dateRegex = /\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}|\d{2}\.\d{2}\.\d{4}/;
+  const timeRegex = /\d{2}:\d{2}/;
 
-  if (!inputs.length) {
-    log("ไม่พบช่องตั้งเวลา จะปล่อยให้ TikTok ใช้ค่าเดิมหลังเลือก Schedule");
-    return;
-  }
+  // 1. ค้นหาช่องวันที่และเวลาจาก Input tags ทั้งหมด (รวมถึงตัวที่แอบอยู่)
+  const allInputs = [...container.querySelectorAll("input")];
+  // 2. ค้นหาช่องวันที่และเวลาจากปุ่มหรือกล่องที่แสดงผลอยู่บนหน้าจอ (รวมถึง div, span, p, button)
+  const allElements = [...container.querySelectorAll("input, button, [role='combobox'], [role='haspopup'], div, span, p")].filter(isVisible);
 
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$|^\d{2}\.\d{2}\.\d{4}$/;
-  const timeRegex = /^\d{2}:\d{2}$|^\d{2}:\d{2}\s*(?:am|pm)?$/i;
-
-  let dateInput = inputs.find(input => {
-    const val = (input.value || input.textContent || "").trim();
-    return dateRegex.test(val);
-  });
-  let timeInput = inputs.find(input => {
-    const val = (input.value || input.textContent || "").trim();
-    return timeRegex.test(val);
-  });
-
+  let dateInput = allInputs.find(input => dateRegex.test(input.value || ""));
   if (!dateInput) {
-    dateInput = inputs.find(input => {
-      const val = (input.value || input.textContent || "").trim();
-      const ph = (input.placeholder || "").toLowerCase();
-      const id = (input.id || "").toLowerCase();
-      const cls = (input.className || "").toLowerCase();
-      return ph.includes("date") || id.includes("date") || cls.includes("date") || val.includes("-") || val.includes("/") || val.includes(" ");
-    });
-  }
-  if (!timeInput) {
-    timeInput = inputs.find(input => {
-      const val = (input.value || input.textContent || "").trim();
-      const ph = (input.placeholder || "").toLowerCase();
-      const id = (input.id || "").toLowerCase();
-      const cls = (input.className || "").toLowerCase();
-      return ph.includes("time") || id.includes("time") || cls.includes("time") || (val.includes(":") && !val.includes("-") && !val.includes("/"));
+    // หาจากองค์ประกอบที่แสดงผลตัวเลขวันที่ (ต้องไม่มีเวลาเครื่องหมาย : ปน)
+    dateInput = allElements.find(el => {
+      const val = (el.value || el.textContent || "").trim();
+      return dateRegex.test(val) && !val.includes(":");
     });
   }
 
-  // Fallback คัดแยกตามตำแหน่งถ้ายังตรวจหาเจาะจงไม่ครบ
-  if (!dateInput && inputs.length >= 2) {
-    dateInput = inputs[0];
+  let timeInput = allInputs.find(input => timeRegex.test(input.value || ""));
+  if (!timeInput) {
+    // หาจากองค์ประกอบที่แสดงผลตัวเลขเวลา (ต้องไม่มีวันที่เครื่องหมาย - หรือ / ปน)
+    timeInput = allElements.find(el => {
+      const val = (el.value || el.textContent || "").trim();
+      return timeRegex.test(val) && !val.includes("-") && !val.includes("/");
+    });
   }
-  if (!timeInput && inputs.length >= 2) {
-    timeInput = inputs[1];
+
+  // Fallback คัดแยกตามตำแหน่งถ้าตรวจหาเจาะจงไม่ครบ
+  if (!dateInput || !timeInput) {
+    const pickerCandidates = [...container.querySelectorAll("input, button, [role='combobox'], [role='haspopup'], [class*='picker' i], [class*='select' i], [class*='input' i]")].filter(isVisible);
+    const uniquePickers = pickerCandidates.filter((el, idx) => {
+      return !pickerCandidates.some((other, oIdx) => oIdx !== idx && other.contains(el));
+    });
+    
+    if (uniquePickers.length >= 2) {
+      if (!dateInput) dateInput = uniquePickers[0];
+      if (!timeInput) timeInput = uniquePickers[1];
+    }
+  }
+
+  // ตรวจจับและสลับกล่องข้อมูลกรณีดึงอินพุตสลับฝั่งกัน (เช่น ในระบบที่เอาช่องเวลาขึ้นก่อนช่องวันที่)
+  if (dateInput && timeInput) {
+    const valDate = (dateInput.value || dateInput.textContent || "").trim();
+    const valTime = (timeInput.value || timeInput.textContent || "").trim();
+    const dateHasColon = valDate.includes(":");
+    const timeHasDateSeparator = valTime.includes("-") || valTime.includes("/");
+    if (dateHasColon || timeHasDateSeparator) {
+      log("🔄 ตรวจพบฟิลด์กรอกข้อมูลสลับฝั่งกัน (Time โชว์ก่อน Date) -> ทำการสลับช่องเป้าหมายเพื่อให้เลือกข้อมูลได้ถูกต้อง");
+      const temp = dateInput;
+      dateInput = timeInput;
+      timeInput = temp;
+    }
   }
 
   const defaultDateStr = dateInput ? (dateInput.value || dateInput.textContent || "").trim() : "";

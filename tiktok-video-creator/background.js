@@ -92,7 +92,59 @@ async function routeMessage(message, sender) {
     case "TIKTOK_STUDIO_LOG":        console.log("TikTok Studio:", message.message); return { ok: true };
     case "TIKTOK_DONE":              return handleTikTokDone(message.payload);
     case "PIPELINE_LOG":             console.log("Pipeline:", message.payload); return { ok: true };
+    case "CLEAR_SITE_DATA":          return clearGoogleFlowSiteData();
     default: throw new Error("ไม่รู้จักคำสั่งที่ส่งมา");
+  }
+}
+
+async function clearGoogleFlowSiteData() {
+  console.log("[Background] Clearing labs.google site data (preserving login)...");
+  try {
+    await new Promise((resolve, reject) => {
+      chrome.browsingData.remove(
+        {
+          origins: [
+            "https://labs.google",
+            "https://labs.google.com"
+          ]
+        },
+        {
+          cacheStorage: true,
+          cookies: false, // ไม่ลบคุกกี้ เพื่อไม่ให้หลุดล็อกอิน Google Account
+          fileSystems: true,
+          indexedDB: true,
+          localStorage: true,
+          serviceWorkers: true,
+          webSQL: true,
+          cache: true
+        },
+        () => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
+    console.log("[Background] labs.google site data cleared successfully.");
+
+    // รีเฟรชแท็บ Google Flow ทั้งหมดที่เปิดอยู่อัตโนมัติ
+    try {
+      const flowTabs = await queryFlowTabs();
+      for (const tab of flowTabs) {
+        if (tab.id) {
+          chrome.tabs.reload(tab.id);
+        }
+      }
+    } catch (e) {
+      console.warn("[Background] Reload tabs warning:", e);
+    }
+
+    return { ok: true };
+  } catch (error) {
+    console.error("[Background] Failed to clear labs.google site data:", error);
+    return { ok: false, error: error.message };
   }
 }
 

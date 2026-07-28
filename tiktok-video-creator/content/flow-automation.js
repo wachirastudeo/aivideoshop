@@ -659,6 +659,9 @@ function mediaCardFailureMessage(cardInfo, status) {
     if (isUnusualActivityFailure(message)) {
         return `Google Flow ตรวจพบพฤติกรรมผิดปกติ (Unusual Activity): ${message || "We noticed some unusual activity"} (คำแนะนำ: ลบ Cookies & Site Data ของ labs.google แล้วรีเฟรชหน้าเว็บ)`;
     }
+    if (isAudioGenerationFailure(message)) {
+        return `Google Flow สร้างผลลัพธ์ไม่สำเร็จ: ${message} (คำแนะนำ: ลบ Cookies & Site Data ของ labs.google แล้วรีเฟรชหน้าเว็บ)`;
+    }
     if (/prominent people/i.test(message)) {
         return `Google Flow ปฏิเสธ prompt เพราะอาจเกี่ยวข้องกับบุคคลสาธารณะ: ${message}`;
     }
@@ -671,6 +674,9 @@ function isProminentPeoplePolicyFailure(message) {
 }
 function isUnusualActivityFailure(message) {
     return /unusual activity|unusual_activity|help center/i.test(String(message || ""));
+}
+function isAudioGenerationFailure(message) {
+    return /audio generation failed|silent videos/i.test(String(message || ""));
 }
 function buildPeopleSafePrompt(prompt) {
     const cleaned = String(prompt || "")
@@ -740,10 +746,26 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
                 indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
             }
         } catch(e) {}
-        chrome.runtime.sendMessage({ action: "CLEAR_SITE_DATA" }).catch(() => {});
+        chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" }).catch(() => {});
         await sleep(1000);
         return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
             unusualFallback: true,
+            failureReason
+        });
+    }
+
+    if (isAudioGenerationFailure(failureReason)) {
+        log(`⚡ Flow แจ้งเตือน Audio Generation Failed → ล้าง Site Data & Cookies และเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติทันที (${attempt}/${maxAttempts})...`);
+        try {
+            localStorage.clear();
+            sessionStorage.clear();
+            if (window.indexedDB && indexedDB.databases) {
+                indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
+            }
+        } catch(e) {}
+        chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" }).catch(() => {});
+        await sleep(1000);
+        return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
             failureReason
         });
     }
@@ -773,7 +795,19 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
         await humanClick(currentButton);
     }
 
-    return { started: false, error: "กด Retry แล้ว แต่ Google Flow ไม่เริ่มสร้างใหม่" };
+    log("⚠️ กด Retry บนการ์ดแล้วไม่ตอบสนอง → ดำเนินการล้าง Site Data & Cookies และเริ่มสร้างใหม่...");
+    try {
+        localStorage.clear();
+        sessionStorage.clear();
+        if (window.indexedDB && indexedDB.databases) {
+            indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
+        }
+    } catch(e) {}
+    chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" }).catch(() => {});
+    await sleep(1000);
+    return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
+        failureReason
+    });
 }
 async function restartFailedGeneration(attempt, maxAttempts, restartGeneration, context = {}) {
     if (typeof restartGeneration !== "function") {
@@ -2228,9 +2262,10 @@ async function waitForResult(phase, options = {}) {
             const failureAge = Date.now() - failureSeenAt;
             const policyFailure = isProminentPeoplePolicyFailure(pendingFailure);
             const unusualFailure = isUnusualActivityFailure(pendingFailure);
+            const audioFailure = isAudioGenerationFailure(pendingFailure);
 
-            if (unusualFailure) {
-                log("⚡ ตรวจพบ Failed ชั่วคราว (Unusual Activity) → ล้างแคช/คุกกี้ และเริ่มใหม่ทันทีโดยไม่รอนับถอยหลัง!");
+            if (unusualFailure || audioFailure) {
+                log(`⚡ ตรวจพบ Failed ชั่วคราว (${unusualFailure ? "Unusual Activity" : "Audio Generation Failed"}) → ล้างแคช/คุกกี้ และเริ่มใหม่ทันทีโดยไม่รอนับถอยหลัง!`);
                 try {
                     localStorage.clear();
                     sessionStorage.clear();
@@ -2238,7 +2273,7 @@ async function waitForResult(phase, options = {}) {
                         indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
                     }
                 } catch(e) {}
-                chrome.runtime.sendMessage({ action: "CLEAR_SITE_DATA" }).catch(() => {});
+                chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" }).catch(() => {});
             } else if (!policyFailure && failureAge < failureGraceMs) {
                 log(`Flow แสดง Failed ชั่วคราว รอผลลัพธ์สำเร็จอีก ${Math.ceil((failureGraceMs - failureAge) / 1000)}s...`);
                 await sleep(1000);

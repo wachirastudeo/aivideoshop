@@ -74,7 +74,20 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     : "";
 
   if (scheduleTime) {
-    const dt = new Date(scheduleTime);
+    let dt;
+    const match = String(scheduleTime).match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+    if (match) {
+      dt = new Date(
+        parseInt(match[1], 10),
+        parseInt(match[2], 10) - 1,
+        parseInt(match[3], 10),
+        parseInt(match[4], 10),
+        parseInt(match[5], 10),
+        0, 0
+      );
+    } else {
+      dt = new Date(scheduleTime);
+    }
     if (!Number.isNaN(dt.getTime())) {
       if (minutesOffset > 0) {
         dt.setMinutes(dt.getMinutes() + minutesOffset);

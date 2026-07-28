@@ -13,7 +13,9 @@
     "tabs",
     "notifications",
     "debugger",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "cookies",
+    "browsingData"
   ],
   "host_permissions": [
     "https://*.tiktok.com/*",
