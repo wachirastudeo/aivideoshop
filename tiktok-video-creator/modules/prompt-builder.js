@@ -147,6 +147,16 @@ const REALISM_AND_PHYSICS_DIRECTION = "STRICT RIGIDITY & STABILITY LOCK: Realist
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 
+const CLOTHING_FIDELITY_DIRECTION = "CLOTHING & APPAREL FRONT-ONLY VIEW LOCK: Show ONLY the FRONT view of the clothing item. Do NOT show the back view, reverse side, back side, or turning-around/360-degree rotation movements of the clothing or presenter. The presenter or model must strictly face forward at all times showing the front design of the garment (front-facing view only). STRICTLY FORBIDDEN: do not show the back side of the clothing, back-facing angles, or presenter/model turning their back to the camera, to prevent arm and hand distortion glitches.";
+
+export function isClothingProduct(text = "") {
+  const clean = String(text || "").toLowerCase();
+  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(clean)) {
+    return false;
+  }
+  return /(เสื้อ|กางเกง|กระโปรง|ชุด|เดรส|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|เสื้อผ้า|แฟชั่น|เข็มขัด|หมวก|ผ้า|ถุงเท้า|กางเกงยีนส์|ชุดเดรส|ชุดเซ็ท|ชุดกระโปรง|clothing|clothes|apparel|dress|shirt|tshirt|tee|pants|trousers|jacket|hoodie|skirt|outfit|garment|fashion|\bwear\b|suit|coat|\btop\b|\bbottom\b)/i.test(clean);
+}
+
 const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwork, motifs, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace. For videos, this pattern must remain static on the product surface.";
 
 const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference. Do NOT shift, alter, recolor, or replace original colors or graphics under any lighting or environment effect.";
@@ -457,7 +467,11 @@ export function buildImagePrompt(productInfo, settings = {}) {
       .replace(/\b(?:people|presenters?|reviewers?|characters?)\b/gi, "hands");
   }
 
+  const isClothing = isClothingProduct(productText);
   let shotDistribution = "Depict the product from a diverse mix of camera angles and shot distances in a collage grid (strictly at most 4 panels): wide shots showing the product in context or with a presenter, medium shots, and detailed close-ups highlighting textures and labels. Show different angles (front view, 45-degree angle, top-down view) to represent it comprehensively (Strictest rule: depict a diverse mix of wide, medium, and close-ups, strictly limited to at most 4 panels).";
+  if (isClothing) {
+    shotDistribution = "Depict ONLY front-facing views and front close-ups of the clothing item in a collage grid (strictly at most 4 panels): wide front shots showing the clothing on a presenter or mannequin facing forward, medium front shots, and detailed front close-ups highlighting fabric texture and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view, reverse side, or back-facing angles (Strictest rule: front-facing views only, strictly limited to at most 4 panels).";
+  }
   if (noPeople) {
     shotDistribution = shotDistribution.replace("or with a presenter", "");
   } else if (handsOnly) {
@@ -605,6 +619,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const weightCategory = getProductWeightCategory(productText);
   const isHeavy = weightCategory !== "light";
   const isImmobile = weightCategory === "immobile";
+  const isClothing = isClothingProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(productText);
 
   const handsOnly = auto.presenter === "hands_only";
@@ -720,6 +735,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\bholding\s+/gi, "standing next to ")
       .replace(/\bhands\s+holding\b/gi, "hands gesturing towards")
       .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
+  }
+
+  if (isClothing) {
+    sceneBreakdown = sceneBreakdown
+      .replace(/360-degree rotation showing (.+?) from all angles/gi, "front-facing showcase showing the front view of $1")
+      .replace(/showing (.+?) from all angles/gi, "showing the front view of $1");
+    sceneBreakdown += "\n(CLOTHING FRONT-ONLY RULE: The model/presenter must remain strictly front-facing in all scenes; do NOT turn around or show the back side of the clothing item, to prevent arm and hand distortion glitches.)";
   }
 
   if (firstSceneNoPeople && !noPeople) {
@@ -1023,14 +1045,17 @@ function buildAnalysisDirection(productInfo = {}) {
 }
 
 function buildCategoryFidelityDirection(productInfo = {}) {
-  const text = `${productInfo.name || ""} ${productInfo.category || ""}`.toLowerCase();
+  const text = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`.toLowerCase();
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
     return SHOE_FIDELITY_DIRECTION;
+  }
+  if (isClothingProduct(text)) {
+    return `${CLOTHING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   if (/(แว่นตา|แว่นกันแดด|แว่นสายตา|แว่น|glasses|sunglasses|eyewear|spectacles)/i.test(text)) {
     return EYEWEAR_FIDELITY_DIRECTION;
   }
-  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|กรอบ|กรอบโทรศัพท์|เสื้อ|เสื้อยืด|เสื้อลาย|เสื้อยืดลาย|กางเกง|หมวก|กระเป๋า|หมอน|แก้ว|ถ้วย|เมือก|พวงกุญแจ|สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ของแต่งบ้าน|ผ้า|case|cover|skin|sticker|decal|poster|mug|tumbler|tee|tshirt|hoodie|cap|hat|bag|pillow|canvas|printed|graphic|pattern|illustration|ลาย|ลายพิมพ์|พิมพ์ลาย)/i.test(text)) {
+  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|กรอบ|กรอบโทรศัพท์|เสื้อ|เสื้อยืด|เสื้อลาย|เสื้อยืดลาย|กางเกง|หมวก|กระเป๋า|หมอน|แก้ว|ถ้วย|เมือก|พวงกุญแจ|สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ของแต่งบ้าน|\bผ้า\b|case|cover|skin|sticker|decal|poster|mug|tumbler|tee|tshirt|hoodie|cap|hat|bag|pillow|canvas|printed|graphic|pattern|illustration|ลาย|ลายพิมพ์|พิมพ์ลาย)/i.test(text)) {
     return PRINTED_GRAPHIC_FIDELITY_DIRECTION;
   }
   return "";

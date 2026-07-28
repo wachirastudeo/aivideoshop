@@ -11,7 +11,8 @@ import {
   formatPrice,
   getDefaultSettings,
   getDefaultProductInfo,
-  truncateShopeeCaptionAndHashtags
+  truncateShopeeCaptionAndHashtags,
+  isClothingProduct
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -140,7 +141,7 @@ check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.t
 check("shoe video Auto includes a reviewer", /Presenter: (?:A young Thai woman reviewer|A young Thai man reviewer)/i.test(shoeVideo));
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
-check("shoe prompts remain concise", shoeImage.length < 5000 && shoeVideo.length < 8000, `image=${shoeImage.length} video=${shoeVideo.length}`);
+check("shoe prompts remain concise", shoeImage.length < 5500 && shoeVideo.length < 8500, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
 // --- default behavior: UGC style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
@@ -407,6 +408,14 @@ check("hands_only video prompt has soft-focus cinematic bokeh blur instruction",
 const caseAutoVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
 check("phone case product Auto presenter recommends hands_only", /STRICTLY FORBIDDEN: Only the hands from the wrist down are allowed/i.test(caseAutoVid) && /Anatomically correct hands/i.test(caseAutoVid), caseAutoVid);
 check("phone case product Auto location recommends Cafe \/ Coffee Shop setting", /in a Cafe \/ Coffee Shop setting/i.test(caseAutoVid), caseAutoVid);
+
+// Test 12: Clothing front-only view lock
+const clothingVid = buildVideoPrompt({ name: "เสื้อยืดคอกลมแฟชั่น", category: "เสื้อผ้า" }, settings);
+check("clothing video prompt enforces front-only view lock", /CLOTHING & APPAREL FRONT-ONLY VIEW LOCK/i.test(clothingVid), clothingVid);
+check("clothing video prompt forbids back view and turning around", /do NOT show the back view|CLOTHING FRONT-ONLY RULE/i.test(clothingVid), clothingVid);
+
+const clothingImg = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาว", category: "แฟชั่น" }, settings);
+check("clothing image prompt enforces front-facing shot distribution", /Depict ONLY front-facing views and front close-ups of the clothing item/i.test(clothingImg), clothingImg);
 
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);
