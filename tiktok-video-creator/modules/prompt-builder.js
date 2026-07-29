@@ -96,8 +96,8 @@ const PRESENTERS = {
   Auto: "Realistic cinematic shot. Prefer product-only views. If a presenter is shown, they must stand near or gesture towards the product without complex handling.",
   none: "No humans. Focus entirely on the product resting stably in a realistic setting with smooth camera movement.",
   hands_only: "Realistic first-person POV (Point of View) perspective. Show the product being used, worn, or presented naturally with realistic anatomical hands (strictly 5 fingers per hand, natural ergonomic grip, clean skin texture, realistic knuckles) or feet/legs depending on product category. No face or head shown in the frame.",
-  woman: "A young Thai woman reviewer presenting the product. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
-  man: "A young Thai man reviewer presenting the product. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
+  woman: "A young Thai woman reviewer presenting the product standing in full-body view. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
+  man: "A young Thai man reviewer presenting the product standing in full-body view. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   child: "A cute young Thai child (4-6 years old) naturally playing, eating, or interacting with the product doing activities suitable for the product category. The child is engrossed in the activity naturally without looking directly at the camera or presenting it like a reviewer.",
   older_child: "A cute Thai older child (7-12 years old, kid) naturally playing, studying, or interacting with the product. The child is engrossed in the activity naturally without looking directly at the camera or presenting/reviewing it like a reviewer.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
@@ -106,7 +106,11 @@ const PRESENTERS = {
   cat: "A cute fluffy cat interacting with or sitting next to the product in a cozy, warm indoor setting."
 };
 
-const THAI_PERSON_DIRECTION = "Natural Thai reviewer. The product must remain rigid, static, and completely unchanged; the reviewer stands next to it or holds it gently without covering, bending, or deforming it.";
+const THAI_PERSON_DIRECTION = "Natural Thai reviewer standing in a full-length shot. The product must remain rigid, static, and completely unchanged; the reviewer stands next to it or holds it gently without covering, bending, or deforming it.";
+
+const FULL_BODY_PRESENTER_DIRECTION = "STRICT FULL-BODY STANDING PRESENTER RULE: Whenever a standing presenter, model, or person is shown in the frame, you MUST generate a FULL-LENGTH FULL-BODY SHOT (head-to-toe standing view). The presenter's ENTIRE body—including their head, torso, full legs, knees, ankles, feet, and footwear—MUST be 100% fully visible standing on the floor inside the frame. ABSOLUTELY FORBIDDEN: cropping or cutting off the presenter at the waist, thighs, or knees (no half-body crops when standing). Both legs and feet must be completely shown standing naturally.";
+
+const FULL_PRODUCT_VISIBILITY_DIRECTION = "STRICT FULL PRODUCT VISIBILITY & NO CROPPING RULE: The ENTIRE product (including all top, bottom, left, right, side edges, legs, handles, doors, shelves, and structural frame) MUST be 100% fully visible inside the frame. ABSOLUTELY NO CROPPING or cutting off any edge or portion of the product. For large or bulky items (such as cabinets, wardrobes, kitchen sinks, dishwashers, refrigerators, sofas, desks, or shelves), use a wide-angle framing (wide camera shot) with ample breathing space around all four edges of the product so that the ENTIRE full cabinet/sink/furniture piece is completely captured in the frame without any part chopped off.";
 
 const HANDS_DIRECTION = "NATURAL HAND & BODY POV ANATOMY LOCK: Realistic first-person POV (Point of View) perspective from eye-level or chest-level angle looking directly at the product in real use. Adapt naturally to the product category: for handheld goods, show realistic anatomically correct human hands and forearms holding or presenting it gently with a natural ergonomic grip (strictly exactly 5 fingers per hand, natural fingernails, clean skin texture, realistic knuckles, and natural wrist joints; no extra fingers, no twisted digits, no clipping or squeezing into the product). For footwear, socks, or pants, show a natural POV shot looking down at feet/legs wearing or stepping with the item. The product itself must remain rigid, static, completely unchanged, and in true realistic scale.";
 const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE — FIRST-PERSON POV FACE EXCLUSION: Close-up or medium POV shot cropped below the neck or from a first-person angle. No full face, facial features, or head are visible in the frame.";
@@ -115,7 +119,7 @@ const ANIMAL_PRESENTER_DIRECTION = "No humans in the video. Show a cute consiste
 
 const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, patterns, print designs, graphical illustrations, logos, labels, and parts. The pattern, artwork, and visual print on the product (especially for phone cases, clothes, or printed goods) must be 100% identical, keeping the same graphics, colors, and layout without any modification or hallucination. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.";
 
-const PRODUCT_ISOLATION_DIRECTION = "STRICT NEW BACKGROUND, LOCATION, PROP & FILLER ITEM REPLACEMENT RULE: Extract ONLY the main target product itself (the main item or main storage/shelf structure) from the reference image. You MUST COMPLETELY REPLACE AND CHANGE the background, location, floor, wall, table, and ALL surrounding prop items, secondary decor objects, background accessories, and secondary filler items (such as books, boxes, plants, bottles, or objects stored on/in shelves, racks, cabinets, or organizers in the reference photo). DO NOT copy, reuse, mirror, or recreate any props, filler items, decorative objects, secondary items, or background elements from the uploaded reference image. Ignore all original background props and filler items completely, and place ONLY the main product in an entirely new, fresh, realistic setting with BRAND-NEW, DIFFERENT, commercially appealing props and filler items appropriate for the new scene (e.g. new modern books, new decorative plants, clean new boxes). ABSOLUTELY FORBIDDEN: copying, keeping, or reusing any prop objects, filler items, background items, or surrounding decor from the reference photo.";
+const PRODUCT_ISOLATION_DIRECTION = "CRITICAL ISOLATION RULE — EXTRACT ONLY THE PRODUCT, 100% NEW SCENE & BACKGROUND: The attached reference photo is used SOLELY to define the main product (its exact 3D shape, logo, branding, colors, and printed text). You MUST ISOLATE AND EXTRACT ONLY THE PRODUCT ITSELF. STRICTLY FORBIDDEN: Do NOT copy, mirror, simulate, resemble, or recreate any portion of the background scene, environment, room, walls, floor, table surface, lighting style, or surrounding prop elements from the reference photo. Place the identical target product into an ENTIRELY NEW, FRESH, DIFFERENT, and UNRELATED scene setting (e.g. a cozy aesthetic cafe, modern stylish room, or clean countertop with completely new decor elements). The background scene and all surrounding environment items MUST BE 100% DIFFERENT from the reference photo. ONLY THE PRODUCT ITSELF MATCHES THE REFERENCE PHOTO.";
 
 const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Never add, remove, or rearrange them.";
 
@@ -169,7 +173,7 @@ const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "For bags, wallets, watches, and acc
 const FOOD_BEVERAGE_FIDELITY_DIRECTION = "For food, beverages, coffee, and supplements: preserve the exact pouch/bottle/jar packaging shape, printed artwork, label text, and food presentation. Do not warp packaging dimensions or branding.";
 const HOME_LIVING_FIDELITY_DIRECTION = "For home goods, kitchenware, tumblers, mugs, and bedding: preserve the exact item shape, handle, lid, material texture (ceramic, stainless steel, fabric), print pattern, and proportions.";
 
-const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
+const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, spoken strictly based on real product specifications without any exaggerated overclaims, false claims, hallucinated features (such as claiming keeping cold/thermal insulation on normal bags, or unverified health benefits), or unverified health/feature promises. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the real product benefit.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
 const TEXT_FREE_DIRECTION = "STRICT NO-TEXT RULE: Do not add any text overlays, subtitles, captions, price tags, banners, promotional copy, watermarks, CTA, or signs. Absolutely no on-screen text, writing, or numbers should be added. Keep the product's own printed text exactly as in reference, but do not add any new, extra, or unnecessary text.";
@@ -426,7 +430,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     if (auto.presenter === "กรอกเอง") {
       presenterInstruction = auto.customPresenter || "a presenter";
     }
-    peopleDirection = `Presenter: ${presenterInstruction}`;
+    peopleDirection = `Presenter: ${presenterInstruction}\n${FULL_BODY_PRESENTER_DIRECTION}`;
     if (hasModelRefImage) {
       peopleDirection += "\nSTRICT PRESENTER MATCH: A model reference image is provided. The presenter's face, hair, and overall appearance MUST look exactly identical to the model in the model reference image.";
     } else {
@@ -507,13 +511,14 @@ export function buildImagePrompt(productInfo, settings = {}) {
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
+    PRODUCT_ISOLATION_DIRECTION,
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
+    FULL_PRODUCT_VISIBILITY_DIRECTION,
     scaleInstruction,
     "Critical: The generated image must maintain absolute fidelity to the product shape, colors, branding, and text (100% identical). Do not redesign, warp, or modify structure. Strictest rule: The product must look exactly like the reference photo, pixel-for-pixel.",
     shotDistribution,
     specificScale,
-    PRODUCT_ISOLATION_DIRECTION,
     PRODUCT_STRUCTURE_DIRECTION,
     categoryDirection,
     analysisDirection,
@@ -534,8 +539,8 @@ function getProductWeightCategory(text = "") {
     return "light";
   }
 
-  // 1. Immobile/bulky products (e.g. furniture, large appliances)
-  const isImmobile = /(ตู้|เตียง|ลิ้นชัก|ชั้นวาง|โต๊ะ|เก้าอี้|โซฟา|เฟอร์นิเจอร์|เครื่องซักผ้า|ตู้เย็น|ทีวี|โทรทัศน์|ที่นอน|ฟูก|ลู่วิ่ง|จักรยาน|แอร์|เครื่องปรับอากาศ|เตาอบ|ไมโครเวฟ|เครื่องล้างจาน|ตู้แช่|cabinet|drawer|shelf|wardrobe|dresser|furniture|table|desk|chair|sofa|couch|bed|mattress|refrigerator|fridge|freezer|washing\s*machine|washer|dryer|dishwasher|tv|television|air\s*conditioner|treadmill|bicycle|bike|oven|stove|microwave)/i.test(clean);
+  // 1. Immobile/bulky products (e.g. furniture, cabinets, sinks, large appliances)
+  const isImmobile = /(ตู้|เตียง|ลิ้นชัก|ชั้นวาง|โต๊ะ|เก้าอี้|โซฟา|เฟอร์นิเจอร์|เครื่องซักผ้า|ตู้เย็น|ทีวี|โทรทัศน์|ที่นอน|ฟูก|ลู่วิ่ง|จักรยาน|แอร์|เครื่องปรับอากาศ|เตาอบ|ไมโครเวฟ|เครื่องล้างจาน|ตู้แช่|ซิ้ง|ซิ้งค์|ซิงค์|อ่าง|อ่างล้าง|เคาน์เตอร์|cabinet|drawer|shelf|wardrobe|dresser|furniture|table|desk|chair|sofa|couch|bed|mattress|refrigerator|fridge|freezer|washing\s*machine|washer|dryer|dishwasher|tv|television|air\s*conditioner|treadmill|bicycle|bike|oven|stove|microwave|sink|counter)/i.test(clean);
   if (isImmobile) {
     return "immobile";
   }
@@ -686,9 +691,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     resolveMatchStillDirection(auto.presenter, hasModelRefImage),
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
+    PRODUCT_ISOLATION_DIRECTION,
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
-    PRODUCT_ISOLATION_DIRECTION,
+    FULL_PRODUCT_VISIBILITY_DIRECTION,
     "Critical: The generated video must maintain absolute fidelity to the original product. Its shape, colors, materials, branding, and text must be 100% identical and remain completely consistent, static, and unchanged across all scenes. Do not redesign, warp, morph, or modify the product's structure in any way.",
     REALISM_AND_PHYSICS_DIRECTION,
     scaleInstruction,
@@ -905,7 +911,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
     : "present the product's value proposition, features, or name naturally in Thai";
 
-  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — ${matchVoiceRule}. Based on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, relevant, and natural spoken dialogue in Thai script. The speaker must ${presentInstruction}. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ${voiceMatchEnd}`;
+  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — ${matchVoiceRule}. Based strictly on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, realistic, and factual spoken dialogue in Thai script. STRICT ACCURACY & NO OVERCLAIM RULE: The spoken script MUST strictly stick to the actual product name and real highlights provided. ABSOLUTELY FORBIDDEN: making exaggerated claims, overclaims, false medical/health claims, unverified features, or promising effects beyond the actual product specification. DO NOT INVENT fake functions, magical benefits, or capabilities not explicitly mentioned in the product details. FORBIDDEN EXAMPLES: Do NOT claim thermal insulation or keeping cold ("เก็บความเย็น") for normal fashion bags unless explicitly stated; do NOT claim waterproofing, weight loss, or medical cures unless explicitly stated in highlights. Speak ONLY truth about the product's real design, actual use, and authentic features. The speaker must ${presentInstruction}. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ${voiceMatchEnd}`;
   const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
@@ -933,7 +939,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
       personDir = "Natural Thai child character. The product must remain rigid, static, and completely unchanged; the child stands next to it, plays with it, or holds it gently without deforming it. The child must NOT speak to the camera, must NOT speak any dialogue, and must NOT review the product directly; all spoken dialogue in this video is strictly an off-screen voiceover by a caring Thai mother.";
     }
-    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes).`;
+    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${FULL_BODY_PRESENTER_DIRECTION} (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes).`;
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;
       if (isHoldable) {
@@ -1253,6 +1259,9 @@ function resolvePromptLocation(auto = {}) {
 function inferPromptAutoOptions(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
 
+  if (/(ซิ้ง|ซิ้งค์|ซิงค์|อ่าง|อ่างล้าง|ล้างจาน|เครื่องล้างจาน|ครัว|เครื่องครัว|เตาอบ|ไมโครเวฟ|จาน|ชาม|หม้อ|กระทะ|sink|dishwasher|kitchenware|cookware|kitchen)/i.test(text)) {
+    return promptAutoOptions("review", "none", "professional", "Professional", "Modern Kitchen", "Slow Zoom In", "Cut ตรง", "Kitchen product, shown in a clean modern kitchen setting suited to its use");
+  }
   if (/(ตู้|ลิ้นชัก|ชั้นวาง|เฟอร์นิเจอร์|ห้องนั่งเล่น|ห้องนอน|cabinet|drawer|shelf|furniture|wardrobe|dresser)/i.test(text)) {
     return promptAutoOptions("review", "none", "professional", "Professional", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "Furniture product, shown alone in a clean realistic interior suited to its use");
   }
@@ -1287,9 +1296,42 @@ function inferPromptAutoOptions(productInfo = {}) {
 
 function inferRequiredProductLocation(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
-  if (/(ตู้|ลิ้นชัก|ชั้นวาง|เฟอร์นิเจอร์|ห้องนั่งเล่น|ห้องนอน|cabinet|drawer|shelf|furniture|wardrobe|dresser)/i.test(text)) {
+
+  // 1. Kitchen & Dishwashing & Cooking -> Modern Kitchen
+  if (/(ซิ้ง|ซิ้งค์|ซิงค์|อ่าง|อ่างล้าง|ล้างจาน|เครื่องล้างจาน|ครัว|เครื่องครัว|เตาอบ|ไมโครเวฟ|จาน|ชาม|หม้อ|กระทะ|sink|dishwasher|kitchenware|cookware|kitchen)/i.test(text)) {
+    return "Modern Kitchen";
+  }
+
+  // 2. Bathroom & Sanitaryware -> Modern Bathroom
+  if (/(สบู่|แชมพู|ยาสระผม|ฝักบัว|ก๊อกน้ำ|สุขภัณฑ์|ห้องน้ำ|ชักโครก|กระดาษชำระ|ผ้าเช็ดตัว|bathroom|shower|faucet|toilet|towel)/i.test(text)) {
+    return "Modern Bathroom";
+  }
+
+  // 3. Bedroom & Bedding -> Cozy Bedroom
+  if (/(เตียง|ที่นอน|ฟูก|หมอน|ผ้าห่ม|ผ้านวม|ตู้เสื้อผ้า|โต๊ะข้างเตียง|ห้องนอน|bed|mattress|pillow|blanket|wardrobe|nightstand|bedroom)/i.test(text)) {
+    return "Cozy Bedroom";
+  }
+
+  // 4. Coffee & Tea -> Cafe / Coffee Shop
+  if (/(กาแฟ|เมล็ดกาแฟ|ผงกาแฟ|ชา|โกโก้|แก้วกาแฟ|coffee|tea|cafe|coffee shop)/i.test(text)) {
+    return "Cafe / Coffee Shop";
+  }
+
+  // 5. Living Room Furniture -> Modern Living Room
+  if (/(โซฟา|ชั้นวางทีวี|ทีวี|โทรทัศน์|โต๊ะกลาง|ห้องนั่งเล่น|sofa|couch|tv cabinet|living room)/i.test(text)) {
     return "Modern Living Room";
   }
+
+  // 6. Office & Desk -> Stylish Office
+  if (/(โต๊ะทำงาน|เก้าอี้ทำงาน|คอมพิวเตอร์|โน๊ตบุ๊ค|คีย์บอร์ด|เมาส์|หูฟัง|สำนักงาน|office|desk|computer|laptop|workspace)/i.test(text)) {
+    return "Stylish Office";
+  }
+
+  // 7. General Storage & Furniture
+  if (/(ตู้|ลิ้นชัก|ชั้นวาง|เฟอร์นิเจอร์|cabinet|drawer|shelf|furniture|dresser)/i.test(text)) {
+    return "Modern Living Room";
+  }
+
   return "";
 }
 
