@@ -95,7 +95,7 @@ const PACING = {
 const PRESENTERS = {
   Auto: "Realistic cinematic shot. Prefer product-only views. If a presenter is shown, they must stand near or gesture towards the product without complex handling.",
   none: "No humans. Focus entirely on the product resting stably in a realistic setting with smooth camera movement.",
-  hands_only: "Only realistic hands (strictly exactly one single hand or one pair of hands, never more than two hands in the frame) holding the product gently and steadily, no face or body. No twisting or flipping of the product to prevent glitches.",
+  hands_only: "Realistic first-person POV (Point of View) perspective. Show the product being used, worn, or presented naturally with realistic anatomical hands (strictly 5 fingers per hand, natural ergonomic grip, clean skin texture, realistic knuckles) or feet/legs depending on product category. No face or head shown in the frame.",
   woman: "A young Thai woman reviewer presenting the product. She stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   man: "A young Thai man reviewer presenting the product. He stands near or holds it gently without squeezing or bending it, smiling at the camera.",
   child: "A cute young Thai child (4-6 years old) naturally playing, eating, or interacting with the product doing activities suitable for the product category. The child is engrossed in the activity naturally without looking directly at the camera or presenting it like a reviewer.",
@@ -108,14 +108,14 @@ const PRESENTERS = {
 
 const THAI_PERSON_DIRECTION = "Natural Thai reviewer. The product must remain rigid, static, and completely unchanged; the reviewer stands next to it or holds it gently without covering, bending, or deforming it.";
 
-const HANDS_DIRECTION = "Show only realistic human hands (exactly one single hand or one pair of hands) holding and presenting the product. Focus entirely on the product and the hands. Anatomically correct hands with exactly five fingers per hand, natural fingernails, clear skin texture, and realistic hand joints. The product itself must remain rigid and unchanged; do not cover, bend, warp, or deform it.";
-const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE: Close-up cropped shot showing only the hands from the wrist down holding the product. No other human features or background persons are visible in the frame.";
-const HANDS_ONLY_BACKGROUND_DIRECTION = "BACKGROUND AESTHETICS: The background must be a beautiful, warm, modern setting (such as a cozy aesthetic cafe, stylish workspace, or elegant modern room) with a very soft-focus shallow depth of field (cinematic bokeh blur). This ensures the background looks premium, cozy, and visually rich rather than empty, plain, or distracting, while keeping the hands and product in extremely sharp, crisp focus.";
+const HANDS_DIRECTION = "NATURAL HAND & BODY POV ANATOMY LOCK: Realistic first-person POV (Point of View) perspective from eye-level or chest-level angle looking directly at the product in real use. Adapt naturally to the product category: for handheld goods, show realistic anatomically correct human hands and forearms holding or presenting it gently with a natural ergonomic grip (strictly exactly 5 fingers per hand, natural fingernails, clean skin texture, realistic knuckles, and natural wrist joints; no extra fingers, no twisted digits, no clipping or squeezing into the product). For footwear, socks, or pants, show a natural POV shot looking down at feet/legs wearing or stepping with the item. The product itself must remain rigid, static, completely unchanged, and in true realistic scale.";
+const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE — FIRST-PERSON POV FACE EXCLUSION: Close-up or medium POV shot cropped below the neck or from a first-person angle. No full face, facial features, or head are visible in the frame.";
+const HANDS_ONLY_BACKGROUND_DIRECTION = "BACKGROUND AESTHETICS: The background must be a beautiful, warm, authentic modern setting (such as a cozy aesthetic cafe, stylish workspace, realistic indoor room, or natural outdoor path appropriate for the product) with a soft-focus shallow depth of field (cinematic bokeh blur). Keep the POV perspective, product, and interacting hands/feet/body parts in crisp, sharp focus.";
 const ANIMAL_PRESENTER_DIRECTION = "No humans in the video. Show a cute consistent animal (cat or dog as specified) as the main character interacting with or sitting next to the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
 
 const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, patterns, print designs, graphical illustrations, logos, labels, and parts. The pattern, artwork, and visual print on the product (especially for phone cases, clothes, or printed goods) must be 100% identical, keeping the same graphics, colors, and layout without any modification or hallucination. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.";
 
-const PRODUCT_ISOLATION_DIRECTION = "Ignore the original background and every unrelated object. Show one product only in a new setting suitable for its real use.";
+const PRODUCT_ISOLATION_DIRECTION = "STRICT NEW BACKGROUND, LOCATION, PROP & FILLER ITEM REPLACEMENT RULE: Extract ONLY the main target product itself (the main item or main storage/shelf structure) from the reference image. You MUST COMPLETELY REPLACE AND CHANGE the background, location, floor, wall, table, and ALL surrounding prop items, secondary decor objects, background accessories, and secondary filler items (such as books, boxes, plants, bottles, or objects stored on/in shelves, racks, cabinets, or organizers in the reference photo). DO NOT copy, reuse, mirror, or recreate any props, filler items, decorative objects, secondary items, or background elements from the uploaded reference image. Ignore all original background props and filler items completely, and place ONLY the main product in an entirely new, fresh, realistic setting with BRAND-NEW, DIFFERENT, commercially appealing props and filler items appropriate for the new scene (e.g. new modern books, new decorative plants, clean new boxes). ABSOLUTELY FORBIDDEN: copying, keeping, or reusing any prop objects, filler items, background items, or surrounding decor from the reference photo.";
 
 const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Never add, remove, or rearrange them.";
 
@@ -132,7 +132,7 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
     return `IMPORTANT: The reference image is a collage grid. The video must follow this by depicting the product across different scenes/angles. ${baseFidelity} ${collageRule}`;
   }
   if (autoPresenter === "hands_only") {
-    return `IMPORTANT: The reference image is a collage grid. The video must follow this by depicting the product and hands across different scenes/angles. ${baseFidelity} ${collageRule} STRICTLY FORBIDDEN: Only the hands from the wrist down are allowed; do not show any other human features in the scene.`;
+    return `IMPORTANT: The reference image is a collage grid. The video must follow this by depicting the product in an authentic first-person POV (point of view) perspective across different scenes/angles. ${baseFidelity} ${collageRule} STRICTLY FORBIDDEN: Do not show any face or head in the frame; keep the camera angle in a realistic first-person POV cropped below the neck showing hands, arms, or feet/legs interacting with or wearing the product naturally.`;
   }
 
   if (hasModelRefImage) {
@@ -162,6 +162,12 @@ const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "Reproduce the printed surface artwor
 const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference. Do NOT shift, alter, recolor, or replace original colors or graphics under any lighting or environment effect.";
 
 const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glasses must be perfectly proportioned to a human face, head, or hands. Do not make the glasses abnormally large, tiny, or out-of-scale relative to the presenter. Maintain the exact frame shape, lens color/transparency, bridge width, and temple length.";
+const BEAUTY_SKINCARE_FIDELITY_DIRECTION = "For cosmetics, skincare, and personal care (creams, serums, lipsticks, bottles, tubes, compacts): preserve the exact container bottle/jar/tube shape, dispenser cap/pump type, brand logo, printed text, label artwork, and formula texture. Do not alter container proportions, lid type, or packaging design.";
+const COFFEE_BAG_FIDELITY_DIRECTION = "COFFEE POUCH & LABEL FIDELITY LOCK: The product is a printed coffee bag or coffee bean pouch. You MUST reproduce the EXACT printed front label artwork, brand logo, typography, text layout, coffee bean illustrations, degassing valve, and bag shape (e.g., gusseted pouch or flat-bottom bag) 100% pixel-faithfully as shown in the reference image. Maintain the exact label colors, logo placement, and printed text layout without redrawing, altering, replacing, simplifying, or writing gibberish on the label.";
+const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For electronics, mobile accessories, phone cases, and gadgets: preserve the exact casing contours, button/port/camera lens cutout placements, metallic/matte/glass finish, printed graphics, and structural dimensions. Do not distort device shape or modify casing details.";
+const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "For bags, wallets, watches, and accessories: preserve the exact strap style, zipper/clasp hardware, leather/fabric texture, printed patterns, branding, and structural shape. Do not alter the bag or accessory model.";
+const FOOD_BEVERAGE_FIDELITY_DIRECTION = "For food, beverages, coffee, and supplements: preserve the exact pouch/bottle/jar packaging shape, printed artwork, label text, and food presentation. Do not warp packaging dimensions or branding.";
+const HOME_LIVING_FIDELITY_DIRECTION = "For home goods, kitchenware, tumblers, mugs, and bedding: preserve the exact item shape, handle, lid, material texture (ceramic, stainless steel, fabric), print pattern, and proportions.";
 
 const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, said once in a single scene; other scenes have no speech. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the product message.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
@@ -406,7 +412,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     : (auto.presenter && auto.presenter !== "none" && auto.presenter !== "hands_only")
       ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with ${isAnimal ? "a pet animal" : "a presenter"} shown in the frame.`
       : (auto.presenter === "hands_only")
-        ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes with realistic human hands holding the product in the frame.`
+        ? `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes in an authentic first-person POV (point of view) perspective with realistic hands, forearms, or feet/legs naturally interacting with or wearing the product.`
         : `A high-fidelity product photography collage grid (strictly containing at most 4 scenes/panels) in one vertical 9:16 layout, showing ${productName} from at most 4 different angles and scenes.`;
 
   const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
@@ -682,6 +688,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     STRICT_PRODUCT_IDENTITY_RULE,
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
+    PRODUCT_ISOLATION_DIRECTION,
     "Critical: The generated video must maintain absolute fidelity to the original product. Its shape, colors, materials, branding, and text must be 100% identical and remain completely consistent, static, and unchanged across all scenes. Do not redesign, warp, morph, or modify the product's structure in any way.",
     REALISM_AND_PHYSICS_DIRECTION,
     scaleInstruction,
@@ -690,7 +697,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     categoryDirection,
     analysisDirection,
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
-    handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "",
+    locationStr ? `Location setting: Place the product in a brand new, realistic ${locationStr} background location. DO NOT use or match the original reference image background.` : (handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "Choose a clean, realistic, commercially appealing background that fits this product category. ALWAYS generate a new, non-matching background location."),
   ];
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
     .replace(/\d+-second\s*/g, "");
@@ -1046,7 +1053,7 @@ function buildAnalysisDirection(productInfo = {}) {
 
 function buildCategoryFidelityDirection(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`.toLowerCase();
-  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
+  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
     return SHOE_FIDELITY_DIRECTION;
   }
   if (isClothingProduct(text)) {
@@ -1055,7 +1062,25 @@ function buildCategoryFidelityDirection(productInfo = {}) {
   if (/(แว่นตา|แว่นกันแดด|แว่นสายตา|แว่น|glasses|sunglasses|eyewear|spectacles)/i.test(text)) {
     return EYEWEAR_FIDELITY_DIRECTION;
   }
-  if (/(เคส|เคสโทรศัพท์|เคสมือถือ|กรอบ|กรอบโทรศัพท์|เสื้อ|เสื้อยืด|เสื้อลาย|เสื้อยืดลาย|กางเกง|หมวก|กระเป๋า|หมอน|แก้ว|ถ้วย|เมือก|พวงกุญแจ|สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ของแต่งบ้าน|\bผ้า\b|case|cover|skin|sticker|decal|poster|mug|tumbler|tee|tshirt|hoodie|cap|hat|bag|pillow|canvas|printed|graphic|pattern|illustration|ลาย|ลายพิมพ์|พิมพ์ลาย)/i.test(text)) {
+  if (/(ครีม|เซรั่ม|ลิป|ลิปสติก|สกินแคร์|บำรุง|กันแดด|แชมพู|สบู่|น้ำหอม|แป้ง|รองพื้น|บลัชออน|แต่งหน้า|เครื่องสำอาง|cosmetics|skincare|serum|cream|lotion|lipstick|lipgloss|shampoo|cleanser|perfume|makeup|foundation)/i.test(text)) {
+    return BEAUTY_SKINCARE_FIDELITY_DIRECTION;
+  }
+  if (/(เคส|ไอโฟน|มือถือ|หูฟัง|บลูทูธ|สายชาร์จ|พาวเวอร์แบงค์|พัดลม|อิเล็กทรอนิกส์|gadget|phone case|cover|earphone|headphone|bluetooth|charger|powerbank|fan|electronic|appliance)/i.test(text)) {
+    return `${ELECTRONICS_GADGETS_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
+  }
+  if (/(กระเป๋า|เป้|กระเป๋าสตางค์|นาฬิกา|สร้อย|แหวน|ต่างหู|เครื่องประดับ|bag|backpack|wallet|purse|watch|jewelry|necklace|ring|bracelet|accessory)/i.test(text)) {
+    return BAGS_ACCESSORIES_FIDELITY_DIRECTION;
+  }
+  if (/(ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean bag|coffee beans pouch)/i.test(text)) {
+    return `${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
+  }
+  if (/(กาแฟ|ชา|โกโก้|ขนม|อาหาร|อาหารเสริม|วิตามิน|คอลลาเจน|อาหารหมา|อาหารแมว|coffee|tea|snack|food|supplement|vitamin|collagen|pet food)/i.test(text)) {
+    return FOOD_BEVERAGE_FIDELITY_DIRECTION;
+  }
+  if (/(แก้ว|ขวด|กระติก|แก้วเก็บความเย็น|หมอน|ผ้าห่ม|ที่นอน|ผ้าม่าน|ของแต่งบ้าน|เครื่องครัว|tumbler|mug|cup|bottle|flask|pillow|blanket|kitchenware|home)/i.test(text)) {
+    return HOME_LIVING_FIDELITY_DIRECTION;
+  }
+  if (/(สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ลาย|ลายพิมพ์|พิมพ์ลาย|sticker|decal|poster|canvas|printed|graphic|pattern|illustration)/i.test(text)) {
     return PRINTED_GRAPHIC_FIDELITY_DIRECTION;
   }
   return "";
@@ -1107,20 +1132,71 @@ function cleanEnglishProductName(title) {
 function generationProductName(value, category = "") {
   if (!value) return "the product";
 
-  const lowerVal = value.toLowerCase();
+  const lowerVal = String(value).toLowerCase();
   const lowerCat = String(category || "").toLowerCase();
+  const text = `${lowerVal} ${lowerCat}`;
 
-  // Map keywords to clean English generic terms
-  if (lowerVal.includes("กาแฟ") || lowerCat.includes("coffee")) return "coffee product";
-  if (lowerVal.includes("พัดลม") || lowerCat.includes("fan")) return "portable fan";
-  if (lowerVal.includes("เสื้อ") || lowerVal.includes("กางเกง") || lowerVal.includes("ผ้า") || lowerCat.includes("clothe") || lowerCat.includes("apparel")) return "clothing item";
-  if (lowerVal.includes("ครีม") || lowerVal.includes("เซรั่ม") || lowerVal.includes("บำรุง") || lowerVal.includes("สกินแคร์") || lowerCat.includes("skin") || lowerCat.includes("cosmetic")) return "skincare product bottle";
-  if (lowerVal.includes("อาหาร") || lowerVal.includes("ขนม") || lowerCat.includes("food") || lowerCat.includes("snack")) return "food product";
-  if (lowerVal.includes("แก้ว") || lowerVal.includes("ขวด") || lowerCat.includes("bottle") || lowerCat.includes("cup")) return "cup";
-  if (lowerVal.includes("กระเป๋า") || lowerCat.includes("bag")) return "bag";
-  if (lowerVal.includes("รองเท้า") || lowerCat.includes("shoe")) return "shoe";
+  // Clothing & Fashion
+  if (/เดรส|ชุดกระโปรง|แซก|dress/i.test(text)) return "fashion dress";
+  if (/เสื้อยืด|คอกลม|คอวี|t-shirt|tshirt|tee/i.test(text)) return "t-shirt";
+  if (/เสื้อเชิ้ต|เชิ้ต|shirt/i.test(text)) return "shirt";
+  if (/เสื้อฮู้ด|ฮู้ด|hoodie/i.test(text)) return "hoodie";
+  if (/เสื้อแจ็คเก็ต|แจ็คเก็ต|เสื้อกันหนาว|jacket|coat/i.test(text)) return "jacket";
+  if (/กางเกงขายาว|กางเกงยีนส์|ยีนส์|pants|trousers|jeans/i.test(text)) return "pants";
+  if (/กางเกงขาสั้น|ขาสั้น|shorts/i.test(text)) return "shorts";
+  if (/กระโปรง|skirt/i.test(text)) return "skirt";
+  if (/ชุดชั้นใน|บรา|กางเกงใน|underwear|bra/i.test(text)) return "underwear";
+  if (/ถุงเท้า|socks/i.test(text)) return "socks";
+  if (/หมวก|cap|hat|beanie/i.test(text)) return "cap";
+  if (/เสื้อ|ผ้า|clothe|apparel|garment/i.test(text)) return "clothing garment";
 
-  // If there are English words in the original name, extract the first few words to identify it
+  // Footwear
+  if (/สนีกเกอร์|ผ้าใบ|sneaker|sneakers/i.test(text)) return "sneaker shoes";
+  if (/รองเท้าแตะ|แตะ|สลิปเปอร์|sandal|sandals|slipper|slippers/i.test(text)) return "sandals";
+  if (/ส้นสูง|รองเท้าส้นสูง|heels|high heels/i.test(text)) return "high heels";
+  if (/รองเท้าบูท|บูท|boots|boot/i.test(text)) return "boots";
+  if (/รองเท้า|footwear|shoe|shoes/i.test(text)) return "shoes";
+
+  // Beauty & Skincare & Personal Care
+  if (/ลิป|ลิปสติก|ลิปแมตต์|ลิปมัน|ลิปบาล์ม|ลิปกลอส|lipstick|lipgloss|lip balm/i.test(text)) return "lipstick container";
+  if (/เซรั่ม|เอสเซนส์|serum|essence|ampoule/i.test(text)) return "skincare serum bottle";
+  if (/ครีม|มอยส์เจอร์|โลชั่น|กันแดด|cream|lotion|moisturizer|sunscreen/i.test(text)) return "skincare cream container";
+  if (/โฟมล้างหน้า|คลีนซิ่ง|เจลล้างหน้า|cleanser|face wash/i.test(text)) return "facial cleanser bottle";
+  if (/สบู่|สบู่อาบน้ำ|bar soap|soap/i.test(text)) return "bar soap";
+  if (/แชมพู|ยาสระผม|ทรีทเม้นท์|ครีมนวด|shampoo|conditioner/i.test(text)) return "shampoo bottle";
+  if (/น้ำหอม|perfume|fragrance/i.test(text)) return "perfume bottle";
+  if (/แป้งพัฟ|แป้งฝุ่น|รองพื้น|บลัชออน|อายแชโดว์|แต่งหน้า|เครื่องสำอาง|makeup|foundation|powder|compact/i.test(text)) return "cosmetic makeup compact";
+
+  // Electronics & Gadgets
+  if (/เคส|เคสโทรศัพท์|เคสมือถือ|เคสไอโฟน|phone case|cover/i.test(text)) return "phone case";
+  if (/หูฟัง|หูฟังบลูทูธ|หูฟังไร้สาย|earphone|earphones|earbuds|headphone|headphones/i.test(text)) return "wireless earphones";
+  if (/สมาร์ทวอทช์|นาฬิกาข้อมือ|นาฬิกา|smartwatch|watch/i.test(text)) return "wrist watch";
+  if (/พาวเวอร์แบงค์|พาวเวอร์แบงก์|powerbank|power bank/i.test(text)) return "power bank";
+  if (/สายชาร์จ|หัวชาร์จ|ชาร์จ|charger|charging cable/i.test(text)) return "charger accessory";
+  if (/พัดลม|พัดลมพกพา|portable fan|fan/i.test(text)) return "portable fan";
+
+  // Bags & Accessories
+  if (/กระเป๋าสะพาย|กระเป๋าถือ|กระเป๋าผู้หญิง|handbag|shoulder bag|tote bag/i.test(text)) return "handbag";
+  if (/กระเป๋าเป้|เป้|backpack/i.test(text)) return "backpack";
+  if (/กระเป๋าสตางค์|กระเป๋าเงิน|wallet|purse/i.test(text)) return "wallet";
+  if (/กระเป๋า|bag/i.test(text)) return "bag";
+  if (/สร้อย|แหวน|ต่างหู|กำไล|เครื่องประดับ|necklace|ring|earring|bracelet|jewelry/i.test(text)) return "fashion jewelry accessory";
+
+  // Home & Kitchen
+  if (/แก้วเก็บความเย็น|กระติกน้ำ|ขวดน้ำ|tumbler|water bottle|flask/i.test(text)) return "insulated tumbler bottle";
+  if (/แก้วกาแฟ|แก้ว|ถ้วย|mug|cup/i.test(text)) return "coffee mug";
+  if (/หมอน|หมอนข้าง|pillow|cushion/i.test(text)) return "pillow";
+  if (/ผ้าห่ม|ผ้านวม|blanket|quilt/i.test(text)) return "blanket";
+
+  // Food & Beverage & Supplements
+  if (/ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean/i.test(text)) return "printed coffee pouch bag";
+  if (/กาแฟ|coffee/i.test(text)) return "coffee pouch bag";
+  if (/ชา|ชาไทย|ชาเขียว|tea/i.test(text)) return "tea product";
+  if (/ขนม|คุกกี้|เบเกอรี่|snack|cookie|bakery/i.test(text)) return "snack food product";
+  if (/อาหารเสริม|วิตามิน|คอลลาเจน|supplement|vitamin|collagen/i.test(text)) return "supplement bottle";
+  if (/อาหารหมา|อาหารแมว|ขนมสุนัข|ขนมแมว|pet food|dog food|cat food/i.test(text)) return "pet food bag";
+
+  // Try extracting cleaned English words if present
   let englishWords = cleanEnglishProductName(value);
   if (englishWords.length > 3) {
     const words = englishWords.split(" ").slice(0, 4).join(" ");
