@@ -1246,9 +1246,10 @@ async function selectAspectRatio(aspectRatio) {
 async function selectBatchCount(count) {
     let targetVal = Number(count) || 1;
     if (targetVal < 1) targetVal = 1;
-    if (targetVal > 4) targetVal = 4;
+    if (targetVal > 8) targetVal = 8;
     
-    const label = targetVal === 1 ? "1X" : `X${targetVal}`;
+    // Google Flow ใช้ format "XN" สำหรับทุกค่า เช่น "X1", "X2", "X3", "X4"
+    const label = `X${targetVal}`;
     log(`กำลังหาปุ่มสำหรับ batch count: ${label}...`);
     
     const menu = document.querySelector('[role="menu"][data-state="open"]');
@@ -2411,10 +2412,10 @@ async function loadSettings() {
         const r = await chrome.runtime.sendMessage({ type: "GET_FLOW_SETTINGS" });
         if (r && !r.error) return {
             ...r,
-            uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 400)
+            uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 120)
         };
     } catch { }
-    return { videoModel: "veo-3.1-lite-low-priority", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 400 };
+    return { videoModel: "veo-3.1-lite-low-priority", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 120 };
 }
 
 // ── Main pipeline ─────────────────────────────────────────────

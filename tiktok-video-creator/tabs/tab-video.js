@@ -18,6 +18,8 @@ const RUNNING_STATUSES = new Set(["image_generating", "video_generating", "flow1
 const POST_RETRY_ATTEMPTS = 2;
 const POST_RETRY_DELAY_MS = 60000;
 const FLOW_LOGIN_RETRY_MS = 5000;
+const FLOW_TIMEOUT_RELOAD_WAIT_MS = 15000; // รอหลัง reload flow ก่อน retry
+const FLOW_TIMEOUT_MAX_RETRY = 2;          // จำนวนครั้งสูงสุดที่จะ retry เมื่อ timeout
 
 let helpers = {};
 let settings = getDefaultSettings();
@@ -45,10 +47,20 @@ export async function initVideoTab(injectedHelpers) {
     ...(savedOptions.mediaSettings || {})
   };
 
+  // โหลด creatorState (เก็บ UI state เช่น videoStyle, mood) แต่ค่า media settings
+  // จาก Options page ต้องชนะเสมอ เพื่อให้ตั้งค่าใหม่ใน Options มีผลทันที
+  const savedMediaSettings = savedOptions.mediaSettings || {};
   settings = normalizeSettings({
     ...getDefaultSettings(),
     ...optionDefaults,
-    ...(stored.creatorState?.settings || {})
+    ...(stored.creatorState?.settings || {}),
+    // ค่าเหล่านี้มาจาก Options page — override creatorState เสมอ
+    imageCount: savedMediaSettings.imageCount || optionDefaults.imageCount || 1,
+    videoCount: savedMediaSettings.videoCount || optionDefaults.videoCount || 1,
+    imageModel: savedMediaSettings.imageModel || optionDefaults.imageModel || "nano-banana-pro",
+    videoModel: savedMediaSettings.videoModel || optionDefaults.videoModel || "veo-3.1-lite-low-priority",
+    videoDuration: savedMediaSettings.videoDuration || optionDefaults.videoDuration || 8,
+    aspectRatio: savedMediaSettings.aspectRatio || optionDefaults.aspectRatio || "9:16",
   });
   productQueue = resetStaleStatuses(normalizeProductQueue(stored.productQueue));
 
@@ -935,11 +947,11 @@ async function processQueue() {
         renderQueue();
       }
       processedCount += 1;
-      // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่ม หรือพักเบรกหากครบ 5 รายการ
+      // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่ม หรือพักเบรกหากครบ 10 รายการ
       if (i < productQueue.length - 1) {
         const hasNextPending = productQueue.slice(i + 1).some(p => p.status !== "done");
         if (hasNextPending) {
-          if (processedCount > 0 && processedCount % 5 === 0) {
+          if (processedCount > 0 && processedCount % 10 === 0) {
             const breakSeconds = 180 + Math.floor(Math.random() * 61); // สุ่ม 180 - 240 วินาที (3-4 นาที)
             const minutesFormatted = (breakSeconds / 60).toFixed(1);
             helpers.showStatus(`ทำรายการครบ ${processedCount} รายการแล้ว พักเบรก ${minutesFormatted} นาทีเพื่อป้องกันการโดนจำกัดสิทธิ์...`, "info");
@@ -1019,10 +1031,42 @@ async function retryPostStep(label, task) {
 }
 
 async function openGoogleFlowWithLoginResume(phase, prompt, imageUrl, options, product, index) {
+  let timeoutRetryCount = 0;
   while (!stopRequested) {
     try {
       return await runInterruptibly(() => openGoogleFlow(phase, prompt, imageUrl, options));
     } catch (error) {
+      if (isFlowTimeoutError(error)) {
+        // หมดเวลา 12 นาที → รีหน้า Flow แล้ว retry รายการนี้ใหม่ตั้งแต่ต้น
+        timeoutRetryCount++;
+        if (timeoutRetryCount > FLOW_TIMEOUT_MAX_RETRY) {
+          throw error; // เกินจำนวน retry สูงสุด → โยน error ออกตามปกติ
+        }
+        helpers.showStatus(
+          `สินค้า ${index + 1}: หมดเวลา Google Flow — รีหน้าและลองใหม่ (ครั้งที่ ${timeoutRetryCount}/${FLOW_TIMEOUT_MAX_RETRY})...`,
+          "warning"
+        );
+        helpers.logActivity?.(
+          `สินค้า ${index + 1}: Google Flow timeout → ล้างแคชและ reload หน้า แล้วลองใหม่ (${timeoutRetryCount}/${FLOW_TIMEOUT_MAX_RETRY})`,
+          "warning"
+        );
+        // รีเซ็ต status กลับไปเริ่มต้นของรายการนี้ (ล้าง approved image ออกเพื่อเจนใหม่ทั้งหมดจากขั้นตอนแรก)
+        product.status = "pending";
+        product.approvedImage = "";
+        product.flowImageTileId = "";
+        product.errorMessage = "";
+        await persistState();
+        renderQueue();
+        // ส่งคำสั่งล้าง site data + reload flow tab ผ่าน background
+        try {
+          await chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" });
+        } catch (e) {
+          console.warn("[FlowTimeout] CLEAR_SITE_DATA warning:", e);
+        }
+        await interruptibleDelay(FLOW_TIMEOUT_RELOAD_WAIT_MS);
+        continue; // วนลูปใหม่ → เรียก openGoogleFlow อีกครั้งสำหรับรายการนี้จากขั้นตอนแรก
+      }
+
       if (!isFlowLoginError(error)) throw error;
 
       product.status = "post_blocked";
@@ -1042,6 +1086,11 @@ function isFlowLoginError(error) {
   const message = String(error?.message || "");
   return error?.code === "FLOW_LOGIN_REQUIRED" ||
     /Google Flow ต้อง login Google|login Google|accounts\.google/i.test(message);
+}
+
+function isFlowTimeoutError(error) {
+  const message = String(error?.message || "");
+  return /หมดเวลา|timeout|ล้มเหลว|อัปโหลด.*ไม่สำเร็จ|ไม่พบ media card/i.test(message);
 }
 
 function delay(ms) {

@@ -139,7 +139,7 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
     return `IMPORTANT: The reference image set includes a model photo. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} STRICT PRESENTER MATCH: The presenter in the video (including their face, hair, clothing, and overall appearance) MUST look exactly identical to the model depicted in the model reference photo across all scenes. ${singleSceneRule}`;
   }
 
-  return `IMPORTANT: The reference image depicts the product. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} STRICT RULE FOR PRESENTER FACE: Do NOT copy, match, or replicate the face of any model visible in the product reference image. The presenter in the video must look completely distinct and different from any person in the product reference image (but keep the presenter's face consistent across all scenes). ${singleSceneRule}`;
+  return `IMPORTANT: The reference image depicts the product. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} CRITICAL RULE — PRESENTER FACE MUST NOT RESEMBLE THE PRODUCT REFERENCE MODEL: The product reference image may contain a model or person. The presenter generated in this video MUST have a completely different face, features, skin tone, and appearance from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: do not copy, match, replicate, or loosely resemble the face of the person/model in the product photo. Generate an entirely new, distinct-looking presenter who bears no resemblance to the reference model. Keep the presenter's appearance fully consistent across all scenes. ${singleSceneRule}`;
 }
 
 
@@ -424,7 +424,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     if (hasModelRefImage) {
       peopleDirection += "\nSTRICT PRESENTER MATCH: A model reference image is provided. The presenter's face, hair, and overall appearance MUST look exactly identical to the model in the model reference image.";
     } else {
-      peopleDirection += "\nSTRICT RULE FOR PRESENTER FACE: The presenter's face must look completely different and distinct from any person or model shown in the product reference image. Do NOT copy the face from the product image.";
+      peopleDirection += "\nSTRICT RULE — PRESENTER FACE MUST BE COMPLETELY DIFFERENT FROM PRODUCT REFERENCE IMAGE: The product reference image contains a model/person. The generated presenter's face, facial features, skin tone, hair, and overall appearance MUST be COMPLETELY DIFFERENT from and bear NO resemblance to the person visible in the product reference image. Do NOT copy, replicate, or even loosely resemble the face of any model or person appearing in the product reference image. STRICTLY FORBIDDEN: generating a presenter that looks like, resembles, or could be mistaken for the model in the product reference photo. Create an entirely new, distinct person who looks nothing like the reference model.";
     }
   } else {
     peopleDirection = NO_PEOPLE_DIRECTION;
