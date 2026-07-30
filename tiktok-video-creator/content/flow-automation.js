@@ -688,7 +688,7 @@ function buildPeopleSafePrompt(prompt) {
             .trim())
         .filter(Boolean)
         .join("\n");
-    return `${cleaned}\nProduct-only scene. No people, faces, presenters, reviewers, characters, celebrities, or public figures.`;
+    return `${cleaned}\nProduct-only scene. Focus entirely on the product. No people, faces, presenters, reviewers, or characters.`;
 }
 function extractFlowFailureReason(el) {
     if (!el) return "";
@@ -2230,7 +2230,6 @@ async function waitForResult(phase, options = {}) {
                 failedResult = mediaCardFailureMessage(card, status);
                 failedCard = card;
             }
-        }
         if (failedResult) {
             pendingFailure = failedResult;
             pendingFailedCard = failedCard;
@@ -2290,11 +2289,46 @@ async function waitForResult(phase, options = {}) {
             }
             if (retryAttempts < maxRetryAttempts) {
                 retryAttempts++;
+                const restartInitialGeneration = async (context = {}) => {
+                    if (cfg.autoPortrait) {
+                        await ensureConfig(resultPhase, options);
+                        await sleep(5000);
+                    }
+                    if (context.policyFallback === "no-people") {
+                        log("🛡️ เกิดความผิดพลาดทางนโยบายใบหน้าบุคคลเด่น → ล้างรูปภาพอ้างอิงที่ติดใบหน้าออกเพื่อเจนต่อแบบปลอดภัย...");
+                        await clearPromptAttachments();
+                    } else if (uploadedTiles.length > 0) {
+                        const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
+                        if (attached.length !== uploadedTiles.length) {
+                            throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบระหว่าง Retry");
+                        }
+                        await sleep(5000);
+                    }
+                    const retryPrompt = context.policyFallback === "no-people"
+                        ? buildPeopleSafePrompt(initialPrompt)
+                        : initialPrompt;
+                    await setPrompt(retryPrompt);
+                    await clickGenerate();
+                };
+                const restartVideoGeneration = async (context = {}) => {
+                    if (cfg.autoPortrait) await ensureConfig("video", options);
+                    await clearPromptAttachments();
+                    if (context.policyFallback === "no-people") {
+                        log("🛡️ เกิดความผิดพลาดทางนโยบายใบหน้าบุคคลเด่นในวิดีโอ → ล้างรูปภาพที่ติดใบหน้าออกเพื่อเจนวิดีโอต่อแบบปลอดภัย...");
+                    } else {
+                        await addGeneratedStillToPrompt(result);
+                    }
+                    const retryPrompt = context.policyFallback === "no-people"
+                        ? buildPeopleSafePrompt(videoPrompt)
+                        : videoPrompt;
+                    await setPrompt(retryPrompt);
+                    await clickGenerate();
+                };
                 const retryResult = await retryFailedMediaCard(
                     pendingFailedCard,
                     retryAttempts,
                     maxRetryAttempts,
-                    options.restartGeneration
+                    options.restartGeneration || (phase === "video" ? restartVideoGeneration : restartInitialGeneration)
                 );
                 if (retryResult.started) {
                     startedAt = Date.now();
@@ -2576,11 +2610,8 @@ async function runPipeline(payload, runOptions = {}) {
             log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
             await sleep(3000);
 
-            if ((options.videoRefMode || "ingredients") === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
-                log("แนบรูปสินค้าต้นฉบับกลับเข้าไปเป็น Reference เพิ่มเติมเพื่อให้ตรงปกมากขึ้น...");
-                await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
-                await sleep(3000);
-            }
+            // ใช้ภาพที่สร้างใหม่ใน Phase 1 เป็น reference วิดีโอเพียงอย่างเดียว
+            // (ไม่แนบรูปสินค้าต้นฉบับกลับเข้าไป เพื่อป้องกันไม่ให้ Google Flow ตรวจจับหน้าคนในรูปต้นฉบับเดิม)
 
             // 6b. กรอก prompt สำหรับวิดีโอ
             log("กรอก Prompt วิดีโอ...");
@@ -2596,9 +2627,6 @@ async function runPipeline(payload, runOptions = {}) {
                 if (cfg.autoPortrait) await ensureConfig("video", options);
                 await clearPromptAttachments();
                 await addGeneratedStillToPrompt(result);
-                if ((options.videoRefMode || "ingredients") === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
-                    await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
-                }
                 const retryPrompt = context.policyFallback === "no-people"
                     ? buildPeopleSafePrompt(videoPrompt)
                     : videoPrompt;
