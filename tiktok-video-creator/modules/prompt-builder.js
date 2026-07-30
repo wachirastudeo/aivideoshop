@@ -75,15 +75,15 @@ export const VIDEO_STYLES = [
 
 export const TEXT_FONT_STYLES = {
   handwriting: "cute Thai handwritten-style text in white with a soft shadow",
-  "bold-modern": "bold modern clean sans-serif style Thai text in white with a strong drop shadow",
-  "neon-glow": "glowing neon sign style Thai text with a vibrant outer glow",
-  minimalist: "simple minimalist elegant thin style Thai text in clean white",
-  "cartoon-3d": "3D stylized pop-art cartoon style Thai text with a bold outline and playful texture",
-  "clean-subtitle": "clean modern sans-serif Thai subtitle text enclosed inside a semi-transparent dark rounded rectangular background box, high readability",
-  "product-label": "clean Thai text styled as a cute graphic retail sticker label or price tag badge with a dashed border",
-  "luxury-brand": "elegant high-end luxury fashion brand editorial style Thai text, fine thin serif lettering with generous spacing, premium editorial aesthetic",
-  "viral-bold": "high-energy retro pop-art style Thai text with a thick black outline, bold yellow fill, and offset shadow",
-  typewriter: "vintage typewriter style Thai text, monospace typewriter font appearance"
+  "bold-modern": "cute bold modern rounded-sans style Thai text in white with a strong drop shadow",
+  "neon-glow": "cute rounded glowing neon sign style Thai text with a vibrant outer glow",
+  minimalist: "cute minimalist rounded thin style Thai text in clean soft white",
+  "cartoon-3d": "cute 3D stylized pop-art cartoon style Thai text with a bold outline and playful texture",
+  "clean-subtitle": "cute rounded readable Thai subtitle text enclosed inside a semi-transparent dark rounded rectangular background box, high readability",
+  "product-label": "cute rounded Thai text styled as a graphic retail sticker label or price tag badge with a dashed border",
+  "luxury-brand": "cute yet elegant high-end luxury fashion brand editorial style Thai text, fine thin lettering with generous spacing, premium aesthetic",
+  "viral-bold": "cute high-energy retro pop-art style Thai text with a thick black outline, bold yellow fill, and offset shadow",
+  typewriter: "cute vintage typewriter style Thai text, soft rounded monospace typewriter font appearance"
 };
 
 const PACING = {
@@ -1341,10 +1341,6 @@ function isFootwearProduct(productInfo = {}) {
 }
 
 function pickAutoReviewer(productInfo = {}) {
-  const recommended = productInfo.autoOptions?.presenter;
-  if (recommended === "woman" || recommended === "man" || recommended === "child" || recommended === "older_child" || recommended === "hands_only") return recommended;
-  if (recommended === "baby" || recommended === "toddler") return "woman";
-
   const productText = [
     productInfo.name,
     productInfo.originalName,
@@ -1353,19 +1349,25 @@ function pickAutoReviewer(productInfo = {}) {
     productInfo.targetGroup
   ].filter(Boolean).join(" ").toLowerCase();
 
+  const isFather = /(ผู้ชาย|บุรุษ|คุณพ่อ|พ่อ|man|men|male|boy|boys|father|dad)/i.test(productText);
+
+  // AUTO PRESENTER RULE: Forbidden to pick child presenters (child/older_child).
+  // If auto recommended presenter was a child, map to parent (father/mother) instead.
+  const recommended = productInfo.autoOptions?.presenter;
+  if (recommended === "woman" || recommended === "man" || recommended === "hands_only") return recommended;
+  if (recommended === "baby" || recommended === "toddler" || recommended === "child" || recommended === "older_child") {
+    return isFather ? "man" : "woman";
+  }
+
   if (/(เคส|เคสโทรศัพท์|เคสมือถือ|โทรศัพท์|มือถือ|case|phone|mobile|gadget|cover)/i.test(productText)) {
     return "hands_only";
   }
 
-  // Baby/toddler keywords fall back to woman (mother) to prevent platform child safety violations
-  if (/(ทารก|แรกเกิด|คลอดใหม่|เบบี๋|เตาะแตะ|หัดเดิน|วัยคลาน|baby|infant|newborn|toddler)/i.test(productText)) {
-    return "woman";
-  }
-  if (/(เด็กโต|ประถม|มัธยมต้น|older child|older kid|schoolkid|schoolkids)/i.test(productText)) {
-    return "older_child";
-  }
-  if (/(เด็ก|ลูก|กุมาร|เด็กเล็ก|kid|kids|child|children|toy|ของเล่น|อนุบาล)/i.test(productText)) {
-    return "child";
+  // AUTO PRESENTER RULE: Child/baby/toy/kids products MUST NOT select child presenters in Auto mode.
+  // Must select parents (woman = mother, man = father) instead.
+  // To use a child presenter, user must explicitly choose child mode (child or older_child) in presenter settings.
+  if (/(เด็ก|ลูก|กุมาร|เด็กเล็ก|เด็กโต|ประถม|มัธยมต้น|ทารก|แรกเกิด|คลอดใหม่|เบบี๋|เตาะแตะ|หัดเดิน|วัยคลาน|baby|infant|newborn|toddler|kid|kids|child|children|toy|ของเล่น|อนุบาล|schoolkid|schoolkids)/i.test(productText)) {
+    return isFather ? "man" : "woman";
   }
 
   if (/(ผู้หญิง|สตรี|สาว|คุณแม่|แม่และเด็ก|woman|women|female|lady|ladies|girl|girls|maternity|mom|mother)/i.test(productText)) {

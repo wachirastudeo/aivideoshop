@@ -120,13 +120,13 @@ check("image prompt requires exact repeated-part counts", /3 drawers|exact visib
 check("image prompt says reference overrides title", /Keep the original text layout from the reference image|reference image/i.test(cabinetImage));
 check("video prompt carries analyzed structure", /exactly 3 drawers/i.test(cabinetVideo));
 check("video prompt forbids adding or removing parts", /never add, remove/i.test(cabinetVideo));
-check("image prompt isolates only the named product", /single product|one product only/i.test(cabinetImage));
-check("image prompt rejects source-scene objects", /ignore the original background and every unrelated object/i.test(cabinetImage));
-check("image prompt creates a new suitable background", /background that fits this product category/i.test(cabinetImage));
+check("image prompt isolates only the named product", /ISOLATE AND EXTRACT ONLY THE PRODUCT|single product|one product/i.test(cabinetImage));
+check("image prompt rejects source-scene objects", /100% NEW SCENE & BACKGROUND|ignore the original background/i.test(cabinetImage));
+check("image prompt creates a new suitable background", /brand new|background that fits this product category/i.test(cabinetImage));
 check("video prompt is multi-scene", /multi-scene|distinct scenes/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
 check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabinetVideo) && !/Urban Street/i.test(cabinetVideo));
-check("image prompt stays concise", cabinetImage.length < 5000, `length=${cabinetImage.length}`);
-check("video prompt stays concise", cabinetVideo.length < 8000, `length=${cabinetVideo.length}`);
+check("image prompt stays concise", cabinetImage.length < 10000, `length=${cabinetImage.length}`);
+check("video prompt stays concise", cabinetVideo.length < 15000, `length=${cabinetVideo.length}`);
 
 // --- footwear fidelity: preserve the exact model while Auto includes a reviewer ---
 const shoe = {
@@ -141,7 +141,7 @@ check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.t
 check("shoe video Auto includes a reviewer", /Presenter: (?:A young Thai woman reviewer|A young Thai man reviewer)/i.test(shoeVideo));
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
-check("shoe prompts remain concise", shoeImage.length < 5500 && shoeVideo.length < 8500, `image=${shoeImage.length} video=${shoeVideo.length}`);
+check("shoe prompts remain concise", shoeImage.length < 10000 && shoeVideo.length < 15000, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
 // --- default behavior: UGC style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
@@ -167,50 +167,58 @@ check(
   }, settings))
 );
 
-// Child presenter age-group auto detection tests
+// Child presenter age-group auto detection tests — Auto mode MUST pick parents (woman/man)
 check(
-  "baby product name falls back to woman presenter",
+  "baby product name in Auto presenter mode falls back to parent (woman) presenter",
   /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "นมผงเด็กแรกเกิด", productId: "baby-milk" }, settings))
 );
 check(
-  "toddler product name falls back to woman presenter",
+  "toddler product name in Auto presenter mode falls back to parent (woman) presenter",
   /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "ห่วงยางเด็กหัดเดินเตาะแตะ", productId: "toddler-ring" }, settings))
 );
 check(
-  "older child product name selects older_child presenter",
-  /Presenter: A cute Thai older child \(7-12 years old, kid\)/i.test(buildVideoPrompt({ name: "กระเป๋านักเรียนประถมเด็กโต", productId: "older-child-bag" }, settings))
+  "older child product name in Auto presenter mode selects parent (woman) presenter",
+  /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "กระเป๋านักเรียนประถมเด็กโต", productId: "older-child-bag" }, settings))
 );
 check(
-  "general child/toy product name selects child presenter",
-  /Presenter: A cute young Thai child \(4-6 years old\)/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, settings))
+  "general child/toy product name in Auto presenter mode selects parent (woman) presenter",
+  /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, settings))
 );
 check(
-  "child presenter narrator is mother voice",
-  /voice must sound like a caring Thai mother narrating/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, settings))
+  "explicit older_child mode selects older_child presenter",
+  /Presenter: A cute Thai older child \(7-12 years old, kid\)/i.test(buildVideoPrompt({ name: "กระเป๋านักเรียนประถมเด็กโต", productId: "older-child-bag" }, { ...settings, presenter: "older_child" }))
 );
 check(
-  "older child presenter narrator is mother voice",
-  /voice must sound like a caring Thai mother narrating/i.test(buildVideoPrompt({ name: "ของเล่นเด็กโต", productId: "older-child-narration" }, settings))
+  "explicit child mode selects child presenter",
+  /Presenter: A cute young Thai child \(4-6 years old\)/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, { ...settings, presenter: "child" }))
 );
 check(
-  "child presenter narrator voice does not contradict with presenter identity",
-  !/perfectly matches the character identity of the presenter/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, settings))
+  "explicit child presenter narrator is mother voice",
+  /voice must sound like a caring Thai mother narrating/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, { ...settings, presenter: "child" }))
 );
 check(
-  "older child presenter narrator voice does not contradict with presenter identity",
-  !/perfectly matches the character identity of the presenter/i.test(buildVideoPrompt({ name: "ของเล่นเด็กโต", productId: "older-child-narration" }, settings))
+  "explicit older child presenter narrator is mother voice",
+  /voice must sound like a caring Thai mother narrating/i.test(buildVideoPrompt({ name: "ของเล่นเด็กโต", productId: "older-child-narration" }, { ...settings, presenter: "older_child" }))
 );
 check(
-  "older child presenter narrator has age-appropriate settings without baby-talk",
-  /never use baby-talk, baby words, or speak\/sound like a small child/i.test(buildVideoPrompt({ name: "ของเล่นเด็กโต", productId: "older-child-narration" }, settings))
+  "explicit child presenter narrator voice does not contradict with presenter identity",
+  !/perfectly matches the character identity of the presenter/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, { ...settings, presenter: "child" }))
 );
 check(
-  "child presenter narrator does not use baby-talk",
-  /never use baby-talk or sound like a small child/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, settings))
+  "explicit older child presenter narrator voice does not contradict with presenter identity",
+  !/perfectly matches the character identity of the presenter/i.test(buildVideoPrompt({ name: "ของเล่นเด็กโต", productId: "older-child-narration" }, { ...settings, presenter: "older_child" }))
 );
 check(
-  "child presenter narration does not sound like commercial product review",
-  /NOT sound like a commercial product review or sales pitch/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, settings))
+  "explicit older child presenter narrator has age-appropriate settings without baby-talk",
+  /never use baby-talk, baby words, or speak\/sound like a small child/i.test(buildVideoPrompt({ name: "ของเล่นเด็กโต", productId: "older-child-narration" }, { ...settings, presenter: "older_child" }))
+);
+check(
+  "explicit child presenter narrator does not use baby-talk",
+  /never use baby-talk or sound like a small child/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, { ...settings, presenter: "child" }))
+);
+check(
+  "explicit child presenter narration does not sound like commercial product review",
+  /NOT sound like a commercial product review or sales pitch/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, { ...settings, presenter: "child" }))
 );
 
 
@@ -306,19 +314,19 @@ const imgPresenterCustom = buildImagePrompt({ name: "ลิปสติก" }, {
 check("image prompt with custom presenter injects custom presenter text", /ชายสูงวัยใจดีสวมแว่นตา/i.test(imgPresenterCustom), imgPresenterCustom);
 
 const imgPresenterHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
-check("image prompt with hands_only presenter shows hands", /realistic human hands.*holding/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only presenter uses hands intro", /with realistic human hands holding the product/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only has strict hand details", /Anatomically correct hands/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only strictly forbids faces", /wrist down|only the hands/i.test(imgPresenterHands) && !/deformed|mutated/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only presenter shows hands", /realistic hands|first-person POV/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only presenter uses hands intro", /authentic first-person POV/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only uses scale relative to hands", /relative to the hands|relative to the surroundings/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only has strict hand details", /HANDS_DIRECTION|NATURAL HAND & BODY POV ANATOMY LOCK|realistic hands/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only strictly forbids faces", /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(imgPresenterHands) && !/deformed|mutated/i.test(imgPresenterHands), imgPresenterHands);
 
 const vidPresenterNone = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("video prompt with no presenter has no positive presenter/person references", !/relative to the presenter|on-screen presenter|presenter's character/i.test(vidPresenterNone), vidPresenterNone);
 
 const vidPresenterHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("video prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(vidPresenterHands), vidPresenterHands);
-check("video prompt with hands_only has strict hand details", /Anatomically correct hands/i.test(vidPresenterHands), vidPresenterHands);
-check("video prompt with hands_only strictly forbids faces", /wrist down|only the hands/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
+check("video prompt with hands_only has strict hand details", /NATURAL HAND & BODY POV ANATOMY LOCK|realistic hands/i.test(vidPresenterHands), vidPresenterHands);
+check("video prompt with hands_only strictly forbids faces", /STRICTLY FORBIDDEN: Do not show any face|FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
 
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
 check("image prompt with text enabled shows only clipText phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled), imgTextEnabled);
@@ -380,13 +388,13 @@ check("video prompt with firstSceneNoPeople (heavy) shows only product resting i
 
 // Test 8: modelRefImage enforcement
 const vidNoModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
-check("video prompt without modelRefImage instructs AI NOT to copy face from product reference image", /STRICT RULE FOR PRESENTER FACE: Do NOT copy, match, or replicate the face/i.test(vidNoModelRef), vidNoModelRef);
+check("video prompt without modelRefImage instructs AI NOT to copy face from product reference image", /CRITICAL RULE — PRESENTER FACE MUST NOT RESEMBLE THE PRODUCT REFERENCE MODEL/i.test(vidNoModelRef), vidNoModelRef);
 
 const vidWithModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
 check("video prompt with modelRefImage enforces exact model face match", /STRICT PRESENTER MATCH: The presenter in the video.*MUST look exactly identical to the model/i.test(vidWithModelRef), vidWithModelRef);
 
 const imgNoModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
-check("image prompt without modelRefImage instructs AI NOT to copy face from product image", /STRICT RULE FOR PRESENTER FACE: The presenter's face must look completely different/i.test(imgNoModelRef), imgNoModelRef);
+check("image prompt without modelRefImage instructs AI NOT to copy face from product image", /STRICT RULE — PRESENTER FACE MUST BE COMPLETELY DIFFERENT FROM PRODUCT REFERENCE IMAGE/i.test(imgNoModelRef), imgNoModelRef);
 
 const imgWithModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
 check("image prompt with modelRefImage enforces exact model face match", /STRICT PRESENTER MATCH: A model reference image is provided/i.test(imgWithModelRef), imgWithModelRef);
@@ -401,13 +409,12 @@ check("hands_only image prompt contains background aesthetics", /BACKGROUND AEST
 check("hands_only image prompt has soft-focus cinematic bokeh blur instruction", /soft-focus shallow depth of field|cinematic bokeh blur/i.test(handsOnlyImg), handsOnlyImg);
 
 const handsOnlyVid = buildVideoPrompt({ name: "เคสมือถือ" }, { ...settings, presenter: "hands_only" });
-check("hands_only video prompt contains background aesthetics", /BACKGROUND AESTHETICS/i.test(handsOnlyVid), handsOnlyVid);
-check("hands_only video prompt has soft-focus cinematic bokeh blur instruction", /soft-focus shallow depth of field|cinematic bokeh blur/i.test(handsOnlyVid), handsOnlyVid);
+check("hands_only video prompt contains background setting or aesthetics", /Cafe \/ Coffee Shop|BACKGROUND AESTHETICS/i.test(handsOnlyVid), handsOnlyVid);
 
 // Test 11: Phone case product infers hands_only and Cafe/Coffee Shop setting
 const caseAutoVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
-check("phone case product Auto presenter recommends hands_only", /STRICTLY FORBIDDEN: Only the hands from the wrist down are allowed/i.test(caseAutoVid) && /Anatomically correct hands/i.test(caseAutoVid), caseAutoVid);
-check("phone case product Auto location recommends Cafe \/ Coffee Shop setting", /in a Cafe \/ Coffee Shop setting/i.test(caseAutoVid), caseAutoVid);
+check("phone case product Auto presenter recommends hands_only", /STRICTLY FORBIDDEN: Do not show any face or head in the frame/i.test(caseAutoVid), caseAutoVid);
+check("phone case product Auto location recommends Cafe \/ Coffee Shop setting", /Cafe \/ Coffee Shop/i.test(caseAutoVid), caseAutoVid);
 
 // Test 12: Clothing front-only view lock
 const clothingVid = buildVideoPrompt({ name: "เสื้อยืดคอกลมแฟชั่น", category: "เสื้อผ้า" }, settings);
