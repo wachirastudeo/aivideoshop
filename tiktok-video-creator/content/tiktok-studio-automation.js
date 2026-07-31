@@ -1016,6 +1016,13 @@ async function setRadioState(input, desired) {
   await sleep(350);
 }
 
+function getElementClassName(el) {
+  if (!el) return "";
+  if (typeof el.className === "string") return el.className.toLowerCase();
+  if (el.className && typeof el.className.baseVal === "string") return el.className.baseVal.toLowerCase();
+  return (el.getAttribute("class") || "").toLowerCase();
+}
+
 function findCalendarContainer(dateInput) {
   if (!dateInput) return null;
   const containerCandidates = ['.tiktok-calendar-container', '.TUXPopover-content', '.TUXCalendar', '[class*="calendar" i]', '[class*="Calendar" i]', '[class*="popover" i]', '[class*="Popover" i]'];
@@ -1136,7 +1143,7 @@ async function clickCalendarDay(dateInput, targetDate) {
       });
 
       let nextButton = headerNavElements.find(el => {
-        const className = (el.className || "").toLowerCase();
+        const className = getElementClassName(el);
         const testId = (el.getAttribute("data-testid") || "").toLowerCase();
         const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
         const iconName = (el.getAttribute("data-icon") || "").toLowerCase();
@@ -1214,7 +1221,8 @@ async function clickCalendarDay(dateInput, targetDate) {
     });
 
     const activeCandidates = allElements.filter(el => {
-      const className = (el.className || "").toLowerCase();
+      if (!el || el.nodeType !== 1) return false;
+      const className = getElementClassName(el);
       
       // 1. ตรวจสอบรายละเอียดจาก aria-label หรือ title เพื่อคัดวันต่างเดือนออก (เช่น กรกฎาคม ปนกับ มิถุนายน)
       const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
@@ -1251,7 +1259,7 @@ async function clickCalendarDay(dateInput, targetDate) {
                         className.includes("sibling") ||
                         isDisabledAttr;
       
-      const parentClassName = (el.parentElement?.className || "").toLowerCase();
+      const parentClassName = getElementClassName(el.parentElement);
       const parentIsOutside = parentClassName.includes("outside") || 
                               parentClassName.includes("prev") || 
                               parentClassName.includes("next") || 
