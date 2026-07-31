@@ -19,7 +19,7 @@ let pass = 0, fail = 0;
 const results = [];
 function check(name, cond, detail = "") {
   if (cond) { pass++; results.push(`✅ ${name}`); }
-  else { fail++; results.push(`❌ ${name}${detail ? " — " + detail : ""}`); }
+  else { fail++; results.push(`❌ ${name}`); }
 }
 function eq(name, got, want) {
   check(name, JSON.stringify(got) === JSON.stringify(want), `got=${JSON.stringify(got)} want=${JSON.stringify(want)}`);
