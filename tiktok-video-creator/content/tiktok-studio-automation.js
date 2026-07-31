@@ -1166,8 +1166,16 @@ async function clickCalendarDay(dateInput, targetDate) {
 
       if (nextButton) {
         log("พบปุ่มถัดไป คลิกเปลี่ยนเดือน...");
-        const clickableEl = nextButton.closest('button, [role="button"], a') || nextButton;
+        const clickableEl = nextButton.closest('button, [role="button"], a, [class*="btn" i], [class*="icon" i]') || nextButton;
+        try {
+          clickableEl.click();
+        } catch (e) {}
         await realClick(clickableEl);
+        if (clickableEl !== nextButton) {
+          try {
+            nextButton.click();
+          } catch (e) {}
+        }
         await sleep(800); // พักรอให้แอนิเมชันปฏิทินเปลี่ยนเดือนเสร็จสิ้น
 
         // Refresh container reference incase DOM re-rendered after month change
@@ -1281,25 +1289,43 @@ async function clickCalendarDay(dateInput, targetDate) {
       return !isOutside && !parentIsOutside && !isMuted;
     });
 
+    const now = new Date();
+    const isTargetNextMonth = (targetDate.getFullYear() > now.getFullYear()) ||
+                              (targetDate.getFullYear() === now.getFullYear() && targetDate.getMonth() > now.getMonth());
+
     let bestCandidate = null;
     if (activeCandidates.length > 0) {
-      bestCandidate = (activeCandidates.length > 1 && targetDay >= 15)
-        ? activeCandidates[activeCandidates.length - 1]
-        : activeCandidates[0];
+      if (activeCandidates.length === 1) {
+        bestCandidate = activeCandidates[0];
+      } else {
+        bestCandidate = isTargetNextMonth
+          ? activeCandidates[activeCandidates.length - 1]
+          : activeCandidates[0];
+      }
     } else if (allElements.length > 0) {
-      bestCandidate = (allElements.length > 1 && targetDay >= 15)
-        ? allElements[allElements.length - 1]
-        : allElements[0];
+      if (allElements.length === 1) {
+        bestCandidate = allElements[0];
+      } else {
+        bestCandidate = isTargetNextMonth
+          ? allElements[allElements.length - 1]
+          : allElements[0];
+      }
     }
 
     if (bestCandidate) {
       log(`พบปุ่มวันในปฏิทินแล้ว คลิกวัน: ${targetDay}`);
+      try {
+        bestCandidate.click();
+      } catch (e) {}
       await realClick(bestCandidate);
       
       // คลิกตัวหนังสือกึ่งกลางปุ่มเพิ่ม (Dual Day Click) เพื่อกระตุ้น React event handler
       const innerTextEl = [...bestCandidate.querySelectorAll('*')].find(el => el.textContent.trim() === String(targetDay));
       if (innerTextEl && innerTextEl !== bestCandidate) {
         log("ลองคลิกตัวหนังสือกึ่งกลางปุ่มเพิ่มเติม...");
+        try {
+          innerTextEl.click();
+        } catch (e) {}
         await realClick(innerTextEl);
       }
       
