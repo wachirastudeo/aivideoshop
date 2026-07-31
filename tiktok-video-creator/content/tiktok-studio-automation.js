@@ -1126,8 +1126,16 @@ async function clickCalendarDay(dateInput, targetDate) {
       }
       
       log(`เดือนในปฏิทินปัจจุบัน (${headerText || "ไม่ระบุ"}) ยังไม่ตรงกับเป้าหมาย (${targetMonthNameEn} / ${targetMonthNameTh}), กำลังเปลี่ยนเดือน...`);
-      const navButtons = [...calendarContainer.querySelectorAll('button, svg, span, div, a, [role="button"]')].filter(isVisible);
-      let nextButton = navButtons.find(el => {
+      
+      // ค้นหาปุ่มนำทางบริเวณส่วนหัวของปฏิทิน (สโคปเฉพาะพื้นที่ 35% ด้านบน เพื่อเลี่ยงคลาส UI layout เช่น text-right หรือ margin-right)
+      const cr = calendarContainer.getBoundingClientRect();
+      const headerNavElements = [...calendarContainer.querySelectorAll('button, svg, [role="button"], a, [class*="btn" i], [class*="icon" i], [class*="arrow" i], [class*="chevron" i], [class*="next" i]')].filter(el => {
+        if (!isVisible(el)) return false;
+        const r = el.getBoundingClientRect();
+        return r.top >= cr.top - 10 && r.top < cr.top + cr.height * 0.35 && r.width > 0 && r.height > 0;
+      });
+
+      let nextButton = headerNavElements.find(el => {
         const className = (el.className || "").toLowerCase();
         const testId = (el.getAttribute("data-testid") || "").toLowerCase();
         const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
@@ -1139,40 +1147,20 @@ async function clickCalendarDay(dateInput, targetDate) {
           return false;
         }
 
-        // ค้นหาปุ่มถัดไป (Next Month >)
-        const isNextMonthAttr = ariaLabel.includes("next month") || ariaLabel.includes("เดือนถัดไป") ||
-                                title.includes("next month") || title.includes("เดือนถัดไป") ||
-                                className.includes("next-month") || className.includes("nextmonth") ||
-                                testId.includes("next-month") || testId.includes("nextmonth");
-        if (isNextMonthAttr) return true;
-
-        return className.includes("next") || className.includes("right") || className.includes("forward") || 
-               testId.includes("next") || testId.includes("right") ||
-               ariaLabel.includes("next") || ariaLabel.includes("right") || ariaLabel.includes("ถัดไป") ||
+        return ariaLabel.includes("next") || ariaLabel.includes("right") || ariaLabel.includes("ถัดไป") ||
                title.includes("next") || title.includes("right") || title.includes("ถัดไป") ||
+               className.includes("next") || testId.includes("next") ||
                iconName.includes("right") || iconName.includes("next") ||
                (!iconName.includes("arrowdown") && className.includes("arrow-right"));
       });
-      
-      // Fallback: ค้นหาปุ่มเปลี่ยนเดือนถัดไปตามพิกัดส่วนหัวปฏิทิน
-      if (!nextButton) {
-        const cr = calendarContainer.getBoundingClientRect();
-        const headerButtons = [...calendarContainer.querySelectorAll('button, svg, [role="button"], [class*="arrow" i], [class*="btn" i], [class*="next" i], [class*="right" i]')].filter(el => {
-          if (!isVisible(el)) return false;
-          const r = el.getBoundingClientRect();
-          return r.top < cr.top + cr.height * 0.35; // อยู่ในพื้นที่ส่วนหัว 35% แรก
-        });
-        
-        if (headerButtons.length >= 4) {
-          // มี 4 ปุ่ม: [<<] [<] [>] [>>] -> ปุ่มขวาเกือบสุด Index (length - 2) คือ [>] (Next Month)
-          headerButtons.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-          nextButton = headerButtons[headerButtons.length - 2];
-        } else if (headerButtons.length >= 2) {
-          // มี 2 หรือ 3 ปุ่ม: [<] [>] -> ปุ่มขวาสุดคือ [>] (Next Month)
-          headerButtons.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-          nextButton = headerButtons[headerButtons.length - 1];
-        } else if (headerButtons.length === 1) {
-          nextButton = headerButtons[0];
+
+      // Fallback: หากไม่เจอปุ่มโดยตรง ให้เลือกปุ่มขวาสุดของพื้นที่หัวข้อปฏิทินตามตำแหน่งจริงบนหน้าจอ
+      if (!nextButton && headerNavElements.length > 0) {
+        headerNavElements.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+        if (headerNavElements.length >= 4) {
+          nextButton = headerNavElements[headerNavElements.length - 2];
+        } else {
+          nextButton = headerNavElements[headerNavElements.length - 1];
         }
       }
 
@@ -1407,17 +1395,30 @@ async function fillScheduleTime(scheduleTime) {
 
   log(`กำลังกรอกค่าเวลา: Date=${formattedDate} (เดิม=${defaultDateStr}), Time=${formattedTime} (เดิม=${defaultTimeStr})`);
 
+  // 1. กรอกเวลาก่อนเพื่อล้างข้อผิดพลาด "Schedule at least 15 minutes in advance" หากเวลาปัจจุบันต่ำกว่าเกณฑ์
+  if (timeInput) {
+    log(`กำลังกรอกเวลาล่วงหน้าก่อน: ${formattedTime}`);
+    await setTuxTimePickerValue(timeInput, formattedTime);
+    await sleep(400);
+  }
+
+  // 2. ปรับเปลี่ยนวันที่เป้าหมาย
   if (dateInput) {
     log(`กำลังปรับวันที่: ${formattedDate}`);
     const clicked = await clickCalendarDay(dateInput, date);
     if (!clicked) {
       log("ไม่สามารถเลือกจากปฏิทินได้ จะใช้วิธีกรอกข้อความแทน");
       await setTuxInputValue(dateInput, formattedDate);
+    } else {
+      // ซิงค์อินพุตวันที่เพื่อความสมบูรณ์แบบ
+      await setTuxInputValue(dateInput, formattedDate);
     }
-    await sleep(1000); // พักรอให้ระบบตรวจสอบความถูกต้องของวันและเวลา
+    await sleep(800);
   }
+
+  // 3. ตรวจเช็คเวลาซ้ำอีกครั้งเพื่อให้มั่นใจว่าทั้งวันและเวลาถูกซิงค์เข้า React state ครบถ้วน
   if (timeInput) {
-    log(`กำลังกรอกเวลา: ${formattedTime}`);
+    log(`ยืนยันการกรอกเวลาครั้งสุดท้าย: ${formattedTime}`);
     await setTuxTimePickerValue(timeInput, formattedTime);
   }
   await sleep(500);
