@@ -143,7 +143,7 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
     return `IMPORTANT: The reference image set includes a model photo. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} STRICT PRESENTER MATCH: The presenter in the video (including their face, hair, clothing, and overall appearance) MUST look exactly identical to the model depicted in the model reference photo across all scenes. ${singleSceneRule}`;
   }
 
-  return `IMPORTANT: The reference image depicts the product. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} CRITICAL RULE — EVERYDAY PRESENTER FACE: The product reference image may contain a person. The presenter generated in this video MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, skin tone, hairstyle, and overall appearance from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: do not copy, match, replicate, mirror, or loosely resemble the face of any person in the product photo. Generate an everyday, authentic, non-famous presenter face from scratch who bears zero resemblance to the person in the reference photo. Keep the presenter's appearance fully consistent across all scenes. ${singleSceneRule}`;
+  return `IMPORTANT: The reference image depicts the product. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The uploaded reference image is for product extraction only and may contain a seller, model, or person in the photo. The presenter generated in this video MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, skin tone, hairstyle, and overall appearance from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face or head of any person appearing in the reference photo under any circumstances. Always generate a completely new, authentic human face from scratch that bears zero resemblance to the reference photo. Keep the presenter's appearance fully consistent across all scenes. ${singleSceneRule}`;
 }
 
 
@@ -433,7 +433,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
       }
       peopleDirection = `Presenter: ${presenterInstruction}\nSTRICT PRESENTER MATCH: A model reference image is provided. The presenter's face, hair, and overall appearance MUST look exactly identical to the model in the model reference image.`;
     } else {
-      peopleDirection = "Product Hero Focus: Focus entirely on a clean, sharp, high-fidelity studio product hero presentation. The target product is the sole primary hero focal point in the center of the frame in true scale.";
+      peopleDirection = "Product Hero Focus: Focus entirely on a clean, sharp, high-fidelity studio product hero presentation. The target product is the sole primary hero focal point in the center of the frame in true scale.\nCRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: If any person or presenter is rendered, the presenter MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, and hairstyle from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face of any person appearing in the reference photo under any circumstances.";
     }
   } else {
     peopleDirection = NO_PEOPLE_DIRECTION;
@@ -937,7 +937,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
       personDir = "Natural Thai child character. The product must remain rigid, static, and completely unchanged; the child stands next to it, plays with it, or holds it gently without deforming it. The child must NOT speak to the camera, must NOT speak any dialogue, and must NOT review the product directly; all spoken dialogue in this video is strictly an off-screen voiceover by a caring Thai mother.";
     }
-    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${FULL_BODY_PRESENTER_DIRECTION} (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes).`;
+    const faceMatchRule = hasModelRefImage
+      ? "STRICT PRESENTER MATCH: A model reference image is provided. The presenter's face, hair, and overall appearance MUST look exactly identical to the model in the model reference image."
+      : "CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The uploaded reference image is for product extraction only and may contain a seller, model, or person in the photo. The presenter generated in this video MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, skin tone, hairstyle, and overall appearance from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face or head of any person appearing in the reference photo under any circumstances. Always generate a completely new, authentic human face from scratch that bears zero resemblance to the reference photo.";
+    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${FULL_BODY_PRESENTER_DIRECTION} ${faceMatchRule} (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes).`;
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;
       if (isHoldable) {

@@ -388,7 +388,7 @@ check("video prompt with firstSceneNoPeople (heavy) shows only product resting i
 
 // Test 8: modelRefImage enforcement
 const vidNoModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
-check("video prompt without modelRefImage instructs AI NOT to copy face from product reference image", /CRITICAL RULE — EVERYDAY PRESENTER FACE/i.test(vidNoModelRef), vidNoModelRef);
+check("video prompt without modelRefImage instructs AI NOT to copy face from product reference image", /CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION|CRITICAL RULE — EVERYDAY PRESENTER FACE/i.test(vidNoModelRef), vidNoModelRef);
 
 const vidWithModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
 check("video prompt with modelRefImage enforces exact model face match", /STRICT PRESENTER MATCH: The presenter in the video.*MUST look exactly identical to the model/i.test(vidWithModelRef), vidWithModelRef);
