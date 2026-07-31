@@ -588,12 +588,27 @@ async function ensureFlowContentScript(tabId) {
       files: ["content/flow-automation.js"]
     });
   } catch (error) {
-    throw new Error("inject content script ไปยัง Google Flow ไม่สำเร็จ: " + error.message);
+    console.warn("inject content script ไปยัง Google Flow ไม่สำเร็จ:", error);
   }
 
-  const ready = await waitForContentScript(tabId, 8000);
+  let ready = await waitForContentScript(tabId, 5000);
   if (!ready) {
-    throw new Error("content script ของ Google Flow ยังไม่พร้อมหลัง inject");
+    // ถ้ายังไม่พร้อม ให้รีเฟรชแท็บ Google Flow 1 ครั้งและลองใหม่เพื่อล้างสถานะ extension context ที่ค้าง
+    try {
+      await chrome.tabs.reload(tabId);
+      await new Promise((r) => setTimeout(r, 3000));
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content/flow-automation.js"]
+      }).catch(() => {});
+      ready = await waitForContentScript(tabId, 8000);
+    } catch (e) {
+      console.warn("Reload tab for Google Flow failed:", e);
+    }
+  }
+
+  if (!ready) {
+    throw new Error("content script ของ Google Flow ยังไม่พร้อมหลัง inject (กรุณากดรีเฟรชหน้า Google Flow 1 ครั้ง)");
   }
 }
 
