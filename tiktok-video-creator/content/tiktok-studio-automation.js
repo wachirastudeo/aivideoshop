@@ -1078,8 +1078,13 @@ async function clickCalendarDay(dateInput, targetDate) {
     const monthNamesTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
     const monthAbbrsTh = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
-    // ตรวจสอบและเปลี่ยนเดือนได้สูงสุด 3 ครั้ง (เผื่อต้องข้ามไปเดือนหน้า)
-    for (let m = 0; m < 3; m++) {
+    const targetMonthNameEn = monthNamesEn[targetDate.getMonth()];
+    const targetMonthAbbrEn = targetMonthNameEn.slice(0, 3); // e.g. "jul"
+    const targetMonthNameTh = monthNamesTh[targetDate.getMonth()];
+    const targetMonthAbbrTh = monthAbbrsTh[targetDate.getMonth()];
+
+    // ตรวจสอบและเปลี่ยนเดือนได้สูงสุด 6 ครั้ง (เผื่อต้องข้ามไปเดือนหน้า)
+    for (let m = 0; m < 6; m++) {
       assertNotStopped();
       let headerEl = calendarContainer.querySelector('[class*="header"], [class*="title"], [class*="Header"], [class*="Title"]');
       if (!headerEl) {
@@ -1095,10 +1100,6 @@ async function clickCalendarDay(dateInput, targetDate) {
       if (!headerEl) break;
       
       const headerText = headerEl.textContent.toLowerCase();
-      const targetMonthNameEn = monthNamesEn[targetDate.getMonth()];
-      const targetMonthAbbrEn = targetMonthNameEn.slice(0, 3); // e.g. "jul"
-      const targetMonthNameTh = monthNamesTh[targetDate.getMonth()];
-      const targetMonthAbbrTh = monthAbbrsTh[targetDate.getMonth()];
 
       const hasTargetMonth = headerText.includes(targetMonthNameEn) || 
                              headerText.includes(targetMonthAbbrEn) || 
@@ -1109,15 +1110,17 @@ async function clickCalendarDay(dateInput, targetDate) {
       }
       
       log(`เดือนในปฏิทินไม่ตรงกับเป้าหมาย (${targetMonthNameEn}), กำลังพยายามเปลี่ยนเดือน...`);
-      const navButtons = [...calendarContainer.querySelectorAll('button, svg, span, div')].filter(isVisible);
+      const navButtons = [...calendarContainer.querySelectorAll('button, svg, span, div, a, [role="button"]')].filter(isVisible);
       let nextButton = navButtons.find(el => {
         const className = (el.className || "").toLowerCase();
         const testId = (el.getAttribute("data-testid") || "").toLowerCase();
         const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
         const iconName = (el.getAttribute("data-icon") || "").toLowerCase();
+        const title = (el.getAttribute("title") || "").toLowerCase();
         return className.includes("next") || className.includes("right") || className.includes("forward") || 
                testId.includes("next") || testId.includes("right") ||
-               ariaLabel.includes("next") || ariaLabel.includes("right") ||
+               ariaLabel.includes("next") || ariaLabel.includes("right") || ariaLabel.includes("ถัดไป") ||
+               title.includes("next") || title.includes("right") || title.includes("ถัดไป") ||
                iconName.includes("right") || iconName.includes("next") ||
                (!iconName.includes("arrowdown") && className.includes("arrow-right"));
       });
@@ -1125,7 +1128,7 @@ async function clickCalendarDay(dateInput, targetDate) {
       // Fallback: ค้นหาปุ่มเปลี่ยนเดือนถัดไปตามพิกัด (ปุ่มขวาสุดของพื้นที่หัวข้อปฏิทิน)
       if (!nextButton) {
         const cr = calendarContainer.getBoundingClientRect();
-        const headerButtons = [...calendarContainer.querySelectorAll('button, svg, [role="button"], [class*="arrow" i], [class*="btn" i]')].filter(el => {
+        const headerButtons = [...calendarContainer.querySelectorAll('button, svg, [role="button"], [class*="arrow" i], [class*="btn" i], [class*="next" i], [class*="right" i]')].filter(el => {
           if (!isVisible(el)) return false;
           const r = el.getBoundingClientRect();
           return r.top < cr.top + cr.height * 0.3; // อยู่ในพื้นที่ส่วนหัว 30% แรก
@@ -1140,8 +1143,15 @@ async function clickCalendarDay(dateInput, targetDate) {
 
       if (nextButton) {
         log("พบปุ่มถัดไป คลิกเปลี่ยนเดือน...");
-        await realClick(nextButton);
+        const clickableEl = nextButton.closest('button, [role="button"]') || nextButton;
+        await realClick(clickableEl);
         await sleep(800); // พักรอให้แอนิเมชันปฏิทินเปลี่ยนเดือนเสร็จสิ้น
+
+        // Refresh container reference incase DOM re-rendered after month change
+        const freshContainer = findCalendarContainer(dateInput);
+        if (freshContainer) {
+          calendarContainer = freshContainer;
+        }
       } else {
         break;
       }
@@ -1197,7 +1207,8 @@ async function clickCalendarDay(dateInput, targetDate) {
         }
       }
 
-      // 2. คัดกรองจากชื่อ Class ของวันขอบนอก (outside/prev/next/sibling/muted)
+      // 2. คัดกรองจากชื่อ Class และ Attributes ของวันขอบนอก (outside/prev/next/sibling/muted/disabled)
+      const isDisabledAttr = el.getAttribute("aria-disabled") === "true" || el.hasAttribute("disabled");
       const isOutside = className.includes("outside") || 
                         className.includes("prev") || 
                         className.includes("next") || 
@@ -1205,7 +1216,8 @@ async function clickCalendarDay(dateInput, targetDate) {
                         className.includes("disabled") || 
                         className.includes("muted") ||
                         className.includes("inactive") ||
-                        className.includes("sibling");
+                        className.includes("sibling") ||
+                        isDisabledAttr;
       
       const parentClassName = (el.parentElement?.className || "").toLowerCase();
       const parentIsOutside = parentClassName.includes("outside") || 
