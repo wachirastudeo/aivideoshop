@@ -317,7 +317,7 @@ const imgPresenterHands = buildImagePrompt({ name: "ลิปสติก" }, { 
 check("image prompt with hands_only presenter shows hands", /realistic hands|first-person POV/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only presenter uses single full-frame product intro", /single full-frame professional studio product photograph/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only uses scale relative to hands", /relative to the hands|relative to the surroundings/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only has strict hand details", /HANDS_DIRECTION|NATURAL HAND & BODY POV ANATOMY LOCK|realistic hands/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only strictly forbids faces", /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(imgPresenterHands) && !/deformed|mutated/i.test(imgPresenterHands), imgPresenterHands);
 
 const vidPresenterNone = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
@@ -325,7 +325,7 @@ check("video prompt with no presenter has no positive presenter/person reference
 
 const vidPresenterHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("video prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(vidPresenterHands), vidPresenterHands);
-check("video prompt with hands_only has strict hand details", /NATURAL HAND & BODY POV ANATOMY LOCK|realistic hands/i.test(vidPresenterHands), vidPresenterHands);
+check("video prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only strictly forbids faces", /STRICTLY FORBIDDEN: Do not show any face|FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
 
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
@@ -440,7 +440,9 @@ check("pet spray image prompt includes brand logo & pattern fidelity lock", /Pre
 const petSprayVid = buildVideoPrompt({ name: "สเปรย์กำจัดเห็บหมัดหมา", category: "สัตว์เลี้ยง" }, settings);
 check("pet spray video prompt includes spray bottle fidelity lock", /SPRAY BOTTLE & PACKAGING LABEL FIDELITY LOCK/i.test(petSprayVid), petSprayVid);
 
-console.log(results.join("\n"));
+if (fail > 0) {
+  console.log(results.filter(r => r.startsWith("❌")).join("\n"));
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
 
