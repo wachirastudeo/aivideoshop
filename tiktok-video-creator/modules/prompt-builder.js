@@ -182,6 +182,10 @@ const TEXT_FREE_DIRECTION = "STRICT NO-TEXT RULE: Do not add any text overlays, 
 
 const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT RULE: Do not write new text, labels, brand names, numbers, or gibberish on the product. If the reference is blank, keep it clean. Do not generate fake branding.";
 
+const STRICT_SHOP_LOGO_EXCLUSION_RULE = "CRITICAL RULE — STRICTLY FORBIDDEN: Do NOT copy, replicate, draw, or include any shop logos, store branding watermarks, seller profile logos, platform badges, e-commerce icons, or corner watermarks visible in the reference photo. Extract ONLY the physical product object itself. Absolutely NO shop logos, NO store names, NO watermarks, NO seller stamps, and NO platform icons anywhere on the generated image or video.";
+
+const NO_ADDED_PATTERNS_OR_GRAPHICS_RULE = "STRICT PLAIN & SOLID-COLOR PRODUCT RULE: If the reference product is plain, blank, or solid-colored without printed graphics, patterns, or logos, you MUST keep the product 100% PLAIN, SOLID-COLOR, and CLEAN. Strictly FORBIDDEN: Do NOT invent, add, or draw any extra patterns, stripes, graphics, logos, prints, or decorations that do not exist on the reference photo.";
+
 const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new design details, buttons, stripes, logos, or decorations not on the reference. Render any texture finish (matte, glossy, metallic, fabric) or gradient with 100% precision. Do not compromise product accuracy for style.";
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
@@ -517,6 +521,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
     peopleDirection,
     productTextFidelityDirection,
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
+    STRICT_SHOP_LOGO_EXCLUSION_RULE,
+    NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     textDirection
   ];
 
@@ -693,6 +699,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     categoryDirection,
     analysisDirection,
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
+    STRICT_SHOP_LOGO_EXCLUSION_RULE,
+    NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     locationStr ? `Location setting: Place the product in a brand new, realistic ${locationStr} background location. DO NOT use or match the original reference image background.` : (handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "Choose a clean, realistic, commercially appealing background that fits this product category. ALWAYS generate a new, non-matching background location."),
   ];
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
