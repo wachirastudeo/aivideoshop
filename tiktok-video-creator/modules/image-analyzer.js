@@ -611,7 +611,7 @@ function inferAutoOptionsFromProduct(productInfo = {}) {
   }
   if (/(แมว|หมา|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|cat|dog|pet|kitten|puppy)/i.test(text)) {
     const isCat = /(แมว|cat|kitten)/i.test(text);
-    return buildAutoOptions("review", isCat ? "cat" : "dog", "fun", "น่ารัก", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "สินค้าสัตว์เลี้ยงแนะนำพรีเซนเตอร์เป็นสัตว์เลี้ยงสุดน่ารัก");
+    return buildAutoOptions("review", isCat ? "cat" : "dog", "fun", "น่ารัก", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "สินค้าสัตว์เลี้ยงแนะนำพรีเซนเตอร์เป็นผู้รีวิวร่วมกับสัตว์เลี้ยงสุดน่ารัก");
   }
   if (/(ของเล่น|เด็ก|น่ารัก|cute|toy|kid)/i.test(text)) {
     return buildAutoOptions("trending-hook", "cartoon3d", "fun", "น่ารัก", "Modern Living Room", "Push In Fast", "Zoom Transition", "สินค้าน่ารักควรเปิดด้วย hook สนุกและภาพจำง่าย");

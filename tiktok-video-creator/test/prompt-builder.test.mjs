@@ -302,20 +302,20 @@ check("light product soap 100g not detected as heavy", !/Real scale./i.test(ligh
 
 // --- image prompt presenter tests ---
 const imgPresenterWoman = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "woman" });
-check("image prompt with woman presenter includes female reviewer", /young Thai woman reviewer/i.test(imgPresenterWoman), imgPresenterWoman);
-check("image prompt with woman presenter changes intro layout text", /with a presenter shown in the frame/i.test(imgPresenterWoman), imgPresenterWoman);
+check("image prompt with woman presenter focuses on product hero presentation", /Product Hero Focus|Product Focus|Product photography/i.test(imgPresenterWoman), imgPresenterWoman);
+check("image prompt with woman presenter uses single full-frame product intro", /single full-frame professional studio product photograph/i.test(imgPresenterWoman), imgPresenterWoman);
 
 const imgPresenterNone = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("image prompt with no presenter forbids people", /No people, faces/i.test(imgPresenterNone), imgPresenterNone);
-check("image prompt with no presenter maintains grid layout text", /collage grid/i.test(imgPresenterNone), imgPresenterNone);
+check("image prompt with no presenter uses single full-frame product intro", /single full-frame professional studio product photograph/i.test(imgPresenterNone), imgPresenterNone);
 check("image prompt with no presenter has no positive presenter references", !/relative to the presenter|with a presenter/i.test(imgPresenterNone), imgPresenterNone);
 
 const imgPresenterCustom = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "กรอกเอง", customPresenter: "ชายสูงวัยใจดีสวมแว่นตา" });
-check("image prompt with custom presenter injects custom presenter text", /ชายสูงวัยใจดีสวมแว่นตา/i.test(imgPresenterCustom), imgPresenterCustom);
+check("image prompt with custom presenter without modelRefImage maintains clean product focus", /Product Hero Focus|Product Focus|Product photography/i.test(imgPresenterCustom), imgPresenterCustom);
 
 const imgPresenterHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("image prompt with hands_only presenter shows hands", /realistic hands|first-person POV/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only presenter uses hands intro", /authentic first-person POV/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only presenter uses single full-frame product intro", /single full-frame professional studio product photograph/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only uses scale relative to hands", /relative to the hands|relative to the surroundings/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only has strict hand details", /HANDS_DIRECTION|NATURAL HAND & BODY POV ANATOMY LOCK|realistic hands/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only strictly forbids faces", /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(imgPresenterHands) && !/deformed|mutated/i.test(imgPresenterHands), imgPresenterHands);
@@ -345,9 +345,9 @@ const coffeeVideo = buildVideoPrompt(coffeeProduct, settings);
 check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeImage), coffeeImage);
 check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeVideo), coffeeVideo);
 
-// --- image prompt 4-scene limit test ---
+// --- image prompt single full-frame format test ---
 const imgLimit = buildImagePrompt({ name: "พัดลมไร้สาย" }, settings);
-check("image prompt limits collage grid to at most 4 scenes", /strictly containing at most 4 scenes\/panels/i.test(imgLimit) && /at most 4 different angles and scenes/i.test(imgLimit), imgLimit);
+check("image prompt specifies single full-frame product layout", /single full-frame professional studio product photograph/i.test(imgLimit), imgLimit);
 
 // --- automatic text overlay & styling tests ---
 import { resolveClipText } from "../modules/prompt-builder.js";
@@ -394,14 +394,14 @@ const vidWithModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟ
 check("video prompt with modelRefImage enforces exact model face match", /STRICT PRESENTER MATCH: The presenter in the video.*MUST look exactly identical to the model/i.test(vidWithModelRef), vidWithModelRef);
 
 const imgNoModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
-check("image prompt without modelRefImage instructs AI NOT to copy face from product image", /STRICT RULE — PRESENTER FACE MUST BE COMPLETELY DIFFERENT FROM PRODUCT REFERENCE IMAGE/i.test(imgNoModelRef), imgNoModelRef);
+check("image prompt without modelRefImage instructs AI to focus on clean product hero presentation", /Product Hero Focus|Product Focus/i.test(imgNoModelRef), imgNoModelRef);
 
 const imgWithModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
 check("image prompt with modelRefImage enforces exact model face match", /STRICT PRESENTER MATCH: A model reference image is provided/i.test(imgWithModelRef), imgWithModelRef);
 
 // Test 9: Video prompt fidelity directions
 const sampleVideoPrompt = buildVideoPrompt({ name: "กระเป๋าเป้ลายการ์ตูน" }, settings);
-check("video prompt includes printed graphic fidelity instruction", /Reproduce the printed surface artwork/i.test(sampleVideoPrompt), sampleVideoPrompt);
+check("video prompt includes printed graphic fidelity instruction", /Reproduce all printed surface artwork|Reproduce the printed surface artwork/i.test(sampleVideoPrompt), sampleVideoPrompt);
 check("video prompt includes color and pattern accuracy instruction", /EXACT COLOR & PATTERN ACCURACY/i.test(sampleVideoPrompt), sampleVideoPrompt);
 // Test 10: Hands-only background aesthetics
 const handsOnlyImg = buildImagePrompt({ name: "เคสมือถือ" }, { ...settings, presenter: "hands_only" });
@@ -418,11 +418,27 @@ check("phone case product Auto location recommends Cafe \/ Coffee Shop setting",
 
 // Test 12: Clothing front-only view lock
 const clothingVid = buildVideoPrompt({ name: "เสื้อยืดคอกลมแฟชั่น", category: "เสื้อผ้า" }, settings);
-check("clothing video prompt enforces front-only view lock", /CLOTHING & APPAREL FRONT-ONLY VIEW LOCK/i.test(clothingVid), clothingVid);
+check("clothing video prompt enforces front-only view lock", /STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK/i.test(clothingVid), clothingVid);
 check("clothing video prompt forbids back view and turning around", /do NOT show the back view|CLOTHING FRONT-ONLY RULE/i.test(clothingVid), clothingVid);
 
 const clothingImg = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาว", category: "แฟชั่น" }, settings);
-check("clothing image prompt enforces front-facing shot distribution", /Depict ONLY front-facing views and front close-ups of the clothing item/i.test(clothingImg), clothingImg);
+check("clothing image prompt enforces front-facing shot distribution", /Single full-frame front shot: Depict ONLY the front-facing view of the clothing item/i.test(clothingImg), clothingImg);
+
+// Test 13: Pet products Auto/dog/cat presenter includes both reviewer and pet animal
+const petFoodAutoVid = buildVideoPrompt({ name: "อาหารแมวพรีเมียม 1.2kg" }, { ...settings, presenter: "Auto" });
+check("cat pet product Auto presenter includes reviewer and cat", /reviewer/i.test(petFoodAutoVid) && /cat/i.test(petFoodAutoVid), petFoodAutoVid);
+
+const dogToyVid = buildVideoPrompt({ name: "ของเล่นสุนัข" }, { ...settings, presenter: "dog" });
+check("dog pet product explicit presenter includes reviewer and dog", /reviewer/i.test(dogToyVid) && /dog/i.test(dogToyVid), dogToyVid);
+check("dog pet product voice matches reviewer presenting with pet", /the voice age, gender, and speech style must match the on-screen Thai presenter presenting the product with their pet/i.test(dogToyVid), dogToyVid);
+
+// Test 14: Spray bottle & pet spray fidelity lock
+const petSprayImg = buildImagePrompt({ name: "สเปรย์อาบน้ำแห้งแมว 250ml", category: "สัตว์เลี้ยง" }, settings);
+check("pet spray image prompt includes spray bottle fidelity lock", /SPRAY BOTTLE & PACKAGING LABEL FIDELITY LOCK/i.test(petSprayImg), petSprayImg);
+check("pet spray image prompt includes brand logo & pattern fidelity lock", /Preserve the exact brand logo, product name typography, printed graphics, patterns/i.test(petSprayImg), petSprayImg);
+
+const petSprayVid = buildVideoPrompt({ name: "สเปรย์กำจัดเห็บหมัดหมา", category: "สัตว์เลี้ยง" }, settings);
+check("pet spray video prompt includes spray bottle fidelity lock", /SPRAY BOTTLE & PACKAGING LABEL FIDELITY LOCK/i.test(petSprayVid), petSprayVid);
 
 console.log(results.join("\n"));
 console.log(`\n${pass} passed, ${fail} failed`);
