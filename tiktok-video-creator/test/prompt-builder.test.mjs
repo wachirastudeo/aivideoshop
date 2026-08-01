@@ -453,6 +453,13 @@ check("furniture video prompt includes zero dynamic warping rule", /ZERO DYNAMIC
 const sofaImg = buildImagePrompt({ name: "โซฟาปรับนอน 2 ที่นั่ง ผ้าฮอลแลนด์" }, settings);
 check("sofa image prompt includes furniture fidelity lock", /STRICT FURNITURE & INTERIOR STRUCTURAL FIDELITY LOCK/i.test(sofaImg), sofaImg);
 
+// Test 16: Phone case & Bags structural fidelity lock
+const phoneCaseVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูนหมี" }, settings);
+check("phone case video prompt includes phone case fidelity lock", /STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK/i.test(phoneCaseVid), phoneCaseVid);
+
+const bagVid = buildVideoPrompt({ name: "กระเป๋าสะพายข้างหนังแท้สำหรับผู้หญิง" }, settings);
+check("bag video prompt includes bags fidelity lock", /STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK/i.test(bagVid), bagVid);
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }
