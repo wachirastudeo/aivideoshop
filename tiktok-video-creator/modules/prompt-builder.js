@@ -108,7 +108,7 @@ const PRESENTERS = {
 
 const THAI_PERSON_DIRECTION = "Natural Thai reviewer standing in a full-length shot, modestly dressed in a complete outfit (proper top AND long pants/skirt). The product must remain rigid and static; reviewer stands next to it gently.";
 
-const FULL_BODY_PRESENTER_DIRECTION = "STRICT FULL-BODY SHOT & DECENT DRESS CODE: Presenter MUST be shown in a full-length head-to-toe standing view with head, torso, full legs, feet, and footwear fully visible on the floor. STRICT FULL OUTFIT REQUIREMENT: Presenter MUST wear a complete, modest FULL OUTFIT with BOTH a proper top (shirt/blouse/jacket) AND proper long bottoms (trousers/jeans/long pants/knee-length skirt). FORBIDDEN: shirtless, bottomless, underwear, high-cut shorts, or appearing as if missing pants/bottoms.";
+const FULL_BODY_PRESENTER_DIRECTION = "STRICT FULL-BODY SHOT & DECENT DRESS CODE: Presenter MUST be shown in a full-length head-to-toe standing view with head, torso, full legs, feet, and footwear fully visible on the floor. STRICT FULL OUTFIT REQUIREMENT: Presenter MUST wear a complete, modest FULL OUTFIT with BOTH a proper top (shirt/blouse/jacket) AND proper long bottoms (trousers/jeans/long pants/knee-length skirt). FORBIDDEN: incomplete outfits or improper attire.";
 
 const FULL_PRODUCT_VISIBILITY_DIRECTION = "STRICT FULL PRODUCT VISIBILITY & NO CROPPING RULE: The ENTIRE product (including all top, bottom, left, right, side edges, legs, handles, doors, shelves, and structural frame) MUST be 100% fully visible inside the frame. ABSOLUTELY NO CROPPING or cutting off any edge or portion of the product. For large or bulky items (such as cabinets, wardrobes, kitchen sinks, dishwashers, refrigerators, sofas, desks, or shelves), use a wide-angle framing (wide camera shot) with ample breathing space around all four edges of the product so that the ENTIRE full cabinet/sink/furniture piece is completely captured in the frame without any part chopped off.";
 
@@ -148,7 +148,7 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
 }
 
 
-const REALISM_AND_PHYSICS_DIRECTION = "STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. The product must remain completely rigid, solid, and static throughout the video: strictly NO morphing, warping, bending, melting, opening, closing, floating, stretching, or shifting of dimensions. Preserve 100% exact product identity across all video frames. Camera movement must be smooth and stable.";
+const REALISM_AND_PHYSICS_DIRECTION = "STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. Product remains rigid, solid, and static: no morphing, warping, bending, or melting. SMARTPHONE CAMERA LOOK: Organic natural lighting, authentic everyday UGC feel, avoiding hyper-processed commercial studio gloss or artificial CGI sheen.";
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 
@@ -173,15 +173,16 @@ const SPRAY_BOTTLE_FIDELITY_DIRECTION = "SPRAY BOTTLE & PACKAGING LABEL FIDELITY
 const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glasses must be perfectly proportioned to a human face, head, or hands. Do not make the glasses abnormally large, tiny, or out-of-scale relative to the presenter. Maintain the exact frame shape, lens color/transparency, bridge width, and temple length.";
 const BEAUTY_SKINCARE_FIDELITY_DIRECTION = "For cosmetics, skincare, and personal care (creams, serums, lipsticks, bottles, tubes, compacts): preserve the exact container bottle/jar/tube shape, dispenser cap/pump type, brand logo, printed text, label artwork, and formula texture. Do not alter container proportions, lid type, or packaging design.";
 const COFFEE_BAG_FIDELITY_DIRECTION = "STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK: The product is a printed coffee bag or coffee bean pouch. You MUST reproduce the EXACT printed front label artwork, brand logo, emblem, typography, font style, exact Thai/English brand text, weight markings (e.g. 200g/250g/500g), coffee bean illustrations, roasting badges, degassing valve, seal crimp edges, and pouch shape (e.g., gusseted pouch or flat-bottom bag) 100% pixel-faithfully as shown in the reference image. Maintain the exact label background color, logo placement, badge alignment, and printed text layout without redrawing, altering, replacing, simplifying, changing fonts, or writing gibberish on the label.";
-const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For electronics, mobile accessories, and gadgets: preserve the exact casing contours, button/port/camera lens cutout placements, metallic/matte/glass finish, printed graphics, and structural dimensions. Do not distort device shape or modify casing details.";
+const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
 const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, and edge bevels MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
+const JEWELRY_FIDELITY_DIRECTION = "For jewelry/watches, preserve exact gemstone cuts, metal luster/shade, chain link style, clasp, watch face indices, and sub-dials. Do not alter craftsmanship details.";
 const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK: You MUST reproduce the bag (handbag, backpack, tote bag, shoulder bag, cross-body bag, wallet, or pouch) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: All bag silhouettes, strap/handle drop lengths, zipper pulls, metal clasps, buckles, stitching lines, and pocket placements MUST be rendered 100% pixel-faithfully without structural warping. MATERIAL TEXTURE & PRINTED ARTWORK: Preserve exact leather grain, canvas weave, nylon sheen, quilted pattern, brand monogram, logo plaque, or printed artwork. ZERO DEFORMATION RULE: The bag must maintain its true 3D structure and form naturally without melting, twisting, stretching, or morphing across video frames.";
 const FOOD_BEVERAGE_FIDELITY_DIRECTION = "For food, beverages, coffee, and supplements: preserve the exact pouch/bottle/jar packaging shape, printed artwork, label text, and food presentation. Do not warp packaging dimensions or branding.";
 const GENERAL_PACKAGING_FIDELITY_DIRECTION = "UNIVERSAL PRODUCT & PACKAGING LABEL FIDELITY LOCK: You MUST reproduce the target product EXACTLY as shown in the reference image. Preserve its 100% exact 3D form, packaging shape, container type, brand logo, printed text, front label artwork, graphic illustrations, typography, color scheme, and texture. Copy the reference image pixel-faithfully; do NOT redesign, simplify, alter, recolor, or warp the product or its packaging in any way.";
 const HOME_LIVING_FIDELITY_DIRECTION = "For home goods, kitchenware, tumblers, mugs, and bedding: preserve the exact item shape, handle, lid, material texture (ceramic, stainless steel, fabric), print pattern, and proportions.";
 const FURNITURE_FIDELITY_DIRECTION = "STRICT FURNITURE & INTERIOR STRUCTURAL FIDELITY LOCK: You MUST reproduce the furniture piece (table, chair, sofa, desk, cabinet, shelf, wardrobe, bed, armchair, or home decor) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D GEOMETRY & ARCHITECTURAL REALISM: All legs (strictly straight, vertical, and sturdy 4-leg or pedestal frame), tabletop thickness, armrests, seat cushion depth, backrest angle, wood grain orientation, upholstery fabric weave/leather texture, and metal joint hardware MUST be rendered 100% pixel-faithfully without any structural distortion or warping. ZERO DYNAMIC WARPING RULE: The furniture piece is 100% rigid architectural furniture resting flat and grounded on the floor. It must NEVER bend, melt, sway, stretch, warp, twist, float, or change shape as the camera moves. PHYSICAL PROPORTIONS & SCALE: Maintain true-to-life scale and proportions relative to the surrounding room, floor, walls, and any presenter standing or sitting near it. Do not distort legs or shrink/enlarge any component relative to the rest of the piece.";
 
-const SPEECH_DIRECTION = "At most ONE short natural Thai spoken line in the whole clip, spoken strictly based on real product specifications without any exaggerated overclaims, false claims, hallucinated features (such as claiming keeping cold/thermal insulation on normal bags, or unverified health benefits), or unverified health/feature promises. Never repeat, loop, echo, or restart it; no doubled or stuttering audio. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the real product benefit.";
+const SPEECH_DIRECTION = "STRICT SINGLE SPOKEN SCENE & ZERO REPETITION LOCK: Speak the generated Thai dialogue sentence EXACTLY ONCE in Scene 1 only. All subsequent scenes MUST remain completely silent with NO spoken voice and NO audio repetition. ABSOLUTELY FORBIDDEN: NEVER repeat, loop, re-say, echo, duplicate, or restart the spoken dialogue in any subsequent scene. At most ONE short natural Thai spoken line (maximum 5-8 words) in the whole clip, spoken strictly based on real product specifications without any exaggerated overclaims. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the real product benefit.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
 const TEXT_FREE_DIRECTION = "STRICT NO-TEXT RULE: Do not add any text overlays, subtitles, captions, price tags, banners, promotional copy, watermarks, CTA, or signs. Absolutely no on-screen text, writing, or numbers should be added. Keep the product's own printed text exactly as in reference, but do not add any new, extra, or unnecessary text.";
@@ -289,7 +290,8 @@ export function getDefaultSettings() {
     postAction: "post",
     postRandomCaptionHook: true,
     firstSceneNoPeople: false,
-    modelRefImage: ""
+    modelRefImage: "",
+    imageMode: "single"
   };
 }
 
@@ -421,7 +423,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const isSingleMode = settings?.imageMode === "single" || settings?.singleFrame === true || settings?.singleFrame === "true";
 
   // Phase 1 STILL IMAGE: ALWAYS use a single full-frame high-resolution hero product photograph to ensure 100% exact product fidelity, sharp label text, and exact brand logo reproduction without multi-panel grid compression distortion.
-  const intro = `A high-fidelity single full-frame professional studio product photograph in a vertical 9:16 layout, showing ${productName} clearly in the center with 100% exact, crystal-clear, pixel-faithful product details, brand logo, and printed packaging text.`;
+  const intro = isSingleMode
+    ? `A high-fidelity single full-frame authentic smartphone camera photograph in a vertical 9:16 layout, showing ${productName} clearly in the center with 100% exact, crystal-clear, 1-to-1 pixel-faithful reference product replica, brand logo, and printed packaging text. Rendered with natural everyday mobile camera quality, completely avoiding artificial commercial studio lighting, hyper-processed gloss, or ad staging.`
+    : `A high-fidelity multi-angle 4-panel grid photograph in a vertical 9:16 layout, showing 4 distinct angles of ${productName} (front view, side view, detail close-up, and lifestyle view) with 100% exact, crystal-clear, 1-to-1 pixel-faithful product details, brand logo, and printed packaging text. Rendered with natural everyday mobile camera quality. ZERO DISTORTION LOCK: Maintain 100% exact 1-to-1 product shape, colors, logo, and artwork fidelity across all 4 panels without warping or redesigning.`;
 
   const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
   const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
@@ -439,7 +443,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
       }
       peopleDirection = `Presenter: ${presenterInstruction}\nSTRICT PRESENTER MATCH: A model reference image is provided. The presenter's face, hair, and overall appearance MUST look exactly identical to the model in the model reference image.`;
     } else {
-      peopleDirection = "Product Hero Focus: Focus entirely on a clean, sharp, high-fidelity studio product hero presentation. The target product is the sole primary hero focal point in the center of the frame in true scale.\nCRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: If any person or presenter is rendered, the presenter MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, and hairstyle from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face of any person appearing in the reference photo under any circumstances.";
+      peopleDirection = "Product Focus: Focus entirely on a clean, sharp, authentic smartphone camera product presentation. The target product is the primary hero focal point in the center of the frame in true scale.\nCRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: If any person or presenter is rendered, the presenter MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, and hairstyle from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face of any person appearing in the reference photo under any circumstances.";
     }
   } else {
     peopleDirection = NO_PEOPLE_DIRECTION;
@@ -483,10 +487,13 @@ export function buildImagePrompt(productInfo, settings = {}) {
   }
 
   const isClothing = isClothingProduct(productText);
-  let shotDistribution = "Single full-frame hero shot: Depict the product in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity, printed text, brand logo, and packaging artwork.";
-  if (isClothing) {
-    shotDistribution = "Single full-frame front shot: Depict ONLY the front-facing view of the clothing item in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side.";
-  }
+  let shotDistribution = isSingleMode
+    ? (isClothing
+        ? "Single full-frame front shot: Depict ONLY the front-facing view of the clothing item in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side."
+        : "Single full-frame hero shot: Depict the product in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity, printed text, brand logo, and packaging artwork.")
+    : (isClothing
+        ? "Multi-angle 4-panel grid collage layout: A 4-panel split layout showing the clothing item from 4 clean front-facing perspectives (Panel 1: Full outfit view, Panel 2: Upper body close-up of collar/logo, Panel 3: Fabric texture detail, Panel 4: Lifestyle presentation). Maintain 100% identical garment cut, color, logo, and texture across all panels."
+        : "Multi-angle 4-panel grid collage layout: A 4-panel split layout showing the product from 4 distinct angles (Panel 1: Front view hero shot, Panel 2: Side/3-quarter angle view, Panel 3: Macro close-up of texture/logo, Panel 4: Realistic lifestyle context). Maintain 100% identical product appearance, packaging artwork, colors, and printed text across all 4 panels.");
 
   let scaleInstruction = "";
   if (handsOnly) {
@@ -509,7 +516,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
   const imageBackgroundDirection = handsOnly
     ? HANDS_ONLY_BACKGROUND_DIRECTION
-    : `STRICT NEW REALISTIC BACKGROUND SCENE & RICH ATMOSPHERE LOCK: Extract ONLY the target product from the reference image, ignoring its original background entirely. Place the product into a BRAND NEW, highly realistic, aesthetically rich ${locationSetting} background scene. VIBRANT ATMOSPHERE & COLOR PALETTE: Enhance the background with warm, harmonious color tones, realistic depth of field, natural soft lighting, subtle architectural details, and high-end commercial staging tailored specifically to this product category. ABSOLUTELY FORBIDDEN: Do NOT copy, mirror, or reuse the original background from the reference photo. The background MUST be 100% brand new, authentic, rich, and visually captivating.`;
+    : `STRICT NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE LOCK: Extract ONLY the target product from the reference image, ignoring its original background entirely. Place the product into a BRAND NEW, highly realistic ${locationSetting} background scene. NATURAL SMARTPHONE ATMOSPHERE: Enhance the background with clean, organic everyday lighting, realistic depth of field, authentic real-life textures, and a believable environment tailored specifically to this product category. FORBIDDEN: Do NOT use hyper-processed commercial studio gloss, fake HDR sheen, or artificial CGI lighting. The scene MUST look authentic, natural, and grounded in real life.`;
 
   const promptParts = [
     intro,
@@ -716,6 +723,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   ];
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
     .replace(/\d+-second\s*/g, "");
+  sceneBreakdown = sceneBreakdown
+    .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, '$1 [AUDIO: SPOKEN THAI LINE PLAYS ONCE HERE IN SCENE 1 ONLY]')
+    .replace(/^(\s*-\s*Scene 2\b[^\n]*)/m, '$1 [AUDIO: STRICTLY SILENT - NO SPOKEN WORDS, NO REPEATED WORDS]')
+    .replace(/^(\s*-\s*Scene 3\b[^\n]*)/m, '$1 [AUDIO: STRICTLY SILENT - NO SPOKEN WORDS, NO REPEATED WORDS]')
+    .replace(/^(\s*-\s*Scene 4\b[^\n]*)/m, '$1 [AUDIO: STRICTLY SILENT - NO SPOKEN WORDS, NO REPEATED WORDS]');
   if (noPeople) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown on its own")
@@ -727,6 +739,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
   } else if (isAnimal) {
     sceneBreakdown = sceneBreakdown
+      .replace(/- Scene 1 \(([^)]+)\): ([^\n]+)/i, `- Scene 1 ($1 - Pet Opening): A 3-second opening scene featuring a ${animalName} sitting next to or interacting naturally with ${productName} right from the start.`)
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `a reviewer together with a ${animalName} sitting next to the product`)
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `a reviewer together with a ${animalName}`)
       .replace(/\bhands\b/gi, "hands");
@@ -920,7 +933,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
     : "present the product's value proposition, features, or name naturally in Thai";
 
-  const speechDir = `Spoken script: The spoken dialogue must be in Thai script, spoken once in a single scene with a ${toneDesc}. The voice must sound like ${speakerIdentity} — ${matchVoiceRule}. Based strictly on these product details [${combinedProductDetails}], the AI must dynamically generate a highly matching, realistic, and factual spoken dialogue in Thai script. STRICT ACCURACY & NO OVERCLAIM RULE: The spoken script MUST strictly stick to the actual product name and real highlights provided. ABSOLUTELY FORBIDDEN: making exaggerated claims, overclaims, false medical/health claims, unverified features, or promising effects beyond the actual product specification. DO NOT INVENT fake functions, magical benefits, or capabilities not explicitly mentioned in the product details. FORBIDDEN EXAMPLES: Do NOT claim thermal insulation or keeping cold ("เก็บความเย็น") for normal fashion bags unless explicitly stated; do NOT claim waterproofing, weight loss, or medical cures unless explicitly stated in highlights. Speak ONLY truth about the product's real design, actual use, and authentic features. The speaker must ${presentInstruction}. STRICTLY FORBIDDEN: never start the spoken script with any greeting or welcome words such as "สวัสดี", "หวัดดี", "สวัสดีครับ", "สวัสดีค่ะ", "hello", "hi", or "hey". Start directly with the product's key value (Strictest rule: Never say any greeting). STRICTLY FORBIDDEN: never mention any price, cost, number, currency, discount amount, or promotional price in any form — not in Thai ("ราคา", "บาท", "ลด", "ถูก") nor in English ("price", "baht", "cost", "sale"). STRICTLY FORBIDDEN: never mention any product weight, volume, size, or physical quantity in the spoken script, such as grams ("กรัม", "g"), kilograms ("กิโลกรัม", "กิโล", "กก.", "kg"), milliliters ("มล.", "ml"), liters ("ลิตร", "l"), ounces ("ออนซ์", "oz"), or any numerical amount (Strictest rule: spoken script must never mention any product weight, volume, or size). ALSO FORBIDDEN: never say any call-to-action phrases such as "สั่งได้เลย", "กดลิงก์", "ช้อปเลย", "รีบซื้อ", "order now", "click the link", or any buying prompt. Do not speak in English, do not add subtitles, and ${voiceMatchEnd}`;
+  const speechDir = `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. FORBIDDEN: no exaggerated claims, no greetings (never say "สวัสดี", "หวัดดี", "hello", "hi"), no price/discounts ("ราคา", "บาท", "ลด"), no quantities ("กรัม", "kg", "มล."), no CTA ("สั่งได้เลย", "กดลิงก์"). Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
   const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
@@ -1394,7 +1407,7 @@ function pickAutoReviewer(productInfo = {}) {
   // AUTO PRESENTER RULE: Forbidden to pick child presenters (child/older_child).
   // If auto recommended presenter was a child, map to parent (father/mother) instead.
   const recommended = productInfo.autoOptions?.presenter;
-  if (recommended === "woman" || recommended === "man" || recommended === "hands_only") return recommended;
+  if (["woman", "man", "hands_only", "dog", "cat"].includes(recommended)) return recommended;
   if (recommended === "baby" || recommended === "toddler" || recommended === "child" || recommended === "older_child") {
     return isFather ? "man" : "woman";
   }
@@ -1408,6 +1421,11 @@ function pickAutoReviewer(productInfo = {}) {
   // To use a child presenter, user must explicitly choose child mode (child or older_child) in presenter settings.
   if (/(เด็ก|ลูก|กุมาร|เด็กเล็ก|เด็กโต|ประถม|มัธยมต้น|ทารก|แรกเกิด|คลอดใหม่|เบบี๋|เตาะแตะ|หัดเดิน|วัยคลาน|baby|infant|newborn|toddler|kid|kids|child|children|toy|ของเล่น|อนุบาล|schoolkid|schoolkids)/i.test(productText)) {
     return isFather ? "man" : "woman";
+  }
+
+  if (/(แมว|หมา|สัตว์เลี้ยง|สุนัข|อาหารแมว|อาหารหมา|cat|dog|pet|kitten|puppy)/i.test(productText)) {
+    const isCat = /(แมว|cat|kitten)/i.test(productText);
+    return isCat ? "cat" : "dog";
   }
 
   if (/(ผู้หญิง|สตรี|สาว|คุณแม่|แม่และเด็ก|woman|women|female|lady|ladies|girl|girls|maternity|mom|mother)/i.test(productText)) {

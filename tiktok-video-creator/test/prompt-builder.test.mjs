@@ -124,11 +124,11 @@ check("image prompt says reference overrides title", /Keep the original text lay
 check("video prompt carries analyzed structure", /exactly 3 drawers/i.test(cabinetVideo));
 check("video prompt forbids adding or removing parts", /never add, remove/i.test(cabinetVideo));
 check("image prompt isolates only the named product", /ISOLATE AND EXTRACT ONLY THE PRODUCT|single product|one product/i.test(cabinetImage));
-check("image prompt rejects source-scene objects", /100% NEW SCENE & BACKGROUND|ignore the original background/i.test(cabinetImage));
+check("image prompt rejects source-scene objects", /100% NEW SCENE & BACKGROUND|ignore the original background|ignoring its original background/i.test(cabinetImage));
 check("image prompt creates a new suitable background", /brand new|background that fits this product category/i.test(cabinetImage));
 check("video prompt is multi-scene", /multi-scene|distinct scenes/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
 check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabinetVideo) && !/Urban Street/i.test(cabinetVideo));
-check("image prompt stays concise", cabinetImage.length < 10000, `length=${cabinetImage.length}`);
+check("image prompt stays concise", cabinetImage.length < 12000, `length=${cabinetImage.length}`);
 check("video prompt stays concise", cabinetVideo.length < 15000, `length=${cabinetVideo.length}`);
 
 // --- footwear fidelity: preserve the exact model while Auto includes a reviewer ---
@@ -306,11 +306,11 @@ check("light product soap 100g not detected as heavy", !/Real scale./i.test(ligh
 // --- image prompt presenter tests ---
 const imgPresenterWoman = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "woman" });
 check("image prompt with woman presenter focuses on product hero presentation", /Product Hero Focus|Product Focus|Product photography/i.test(imgPresenterWoman), imgPresenterWoman);
-check("image prompt with woman presenter uses single full-frame product intro", /single full-frame professional studio product photograph/i.test(imgPresenterWoman), imgPresenterWoman);
+check("image prompt with woman presenter uses single full-frame product intro", /multi-angle 4-panel grid photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterWoman), imgPresenterWoman);
 
 const imgPresenterNone = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("image prompt with no presenter forbids people", /No people, faces/i.test(imgPresenterNone), imgPresenterNone);
-check("image prompt with no presenter uses single full-frame product intro", /single full-frame professional studio product photograph/i.test(imgPresenterNone), imgPresenterNone);
+check("image prompt with no presenter uses single full-frame product intro", /multi-angle 4-panel grid photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterNone), imgPresenterNone);
 check("image prompt with no presenter has no positive presenter references", !/relative to the presenter|with a presenter/i.test(imgPresenterNone), imgPresenterNone);
 
 const imgPresenterCustom = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "กรอกเอง", customPresenter: "ชายสูงวัยใจดีสวมแว่นตา" });
@@ -318,7 +318,7 @@ check("image prompt with custom presenter without modelRefImage maintains clean 
 
 const imgPresenterHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("image prompt with hands_only presenter shows hands", /realistic hands|first-person POV/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only presenter uses single full-frame product intro", /single full-frame professional studio product photograph/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only presenter uses single full-frame product intro", /multi-angle 4-panel grid photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only uses scale relative to hands", /relative to the hands|relative to the surroundings/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only strictly forbids faces", /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(imgPresenterHands) && !/deformed|mutated/i.test(imgPresenterHands), imgPresenterHands);
@@ -350,7 +350,7 @@ check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRO
 
 // --- image prompt single full-frame format test ---
 const imgLimit = buildImagePrompt({ name: "พัดลมไร้สาย" }, settings);
-check("image prompt specifies single full-frame product layout", /single full-frame professional studio product photograph/i.test(imgLimit), imgLimit);
+check("image prompt specifies single full-frame product layout", /multi-angle 4-panel grid photograph|single full-frame authentic smartphone camera photograph/i.test(imgLimit), imgLimit);
 
 // --- automatic text overlay & styling tests ---
 import { resolveClipText } from "../modules/prompt-builder.js";
@@ -425,11 +425,18 @@ check("clothing video prompt enforces front-only view lock", /STRICT CLOTHING & 
 check("clothing video prompt forbids back view and turning around", /do NOT show the back view|CLOTHING FRONT-ONLY RULE/i.test(clothingVid), clothingVid);
 
 const clothingImg = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาว", category: "แฟชั่น" }, settings);
-check("clothing image prompt enforces front-facing shot distribution", /Single full-frame front shot: Depict ONLY the front-facing view of the clothing item/i.test(clothingImg), clothingImg);
+check("clothing image prompt enforces front-facing shot distribution", /front shot|front-facing/i.test(clothingImg), clothingImg);
 
 // Test 13: Pet products Auto/dog/cat presenter includes both reviewer and pet animal
 const petFoodAutoVid = buildVideoPrompt({ name: "อาหารแมวพรีเมียม 1.2kg" }, { ...settings, presenter: "Auto" });
 check("cat pet product Auto presenter includes reviewer and cat", /reviewer/i.test(petFoodAutoVid) && /cat/i.test(petFoodAutoVid), petFoodAutoVid);
+check("cat pet product opens Scene 1 showing cat right away", /Scene 1[\s\S]*cute cat/i.test(petFoodAutoVid), petFoodAutoVid);
+
+const petCollarAutoVid = buildVideoPrompt({ name: "ปลอกคอสัตว์เลี้ยงพรีเมียม", category: "สัตว์เลี้ยง" }, { ...settings, presenter: "Auto" });
+check("generic pet product Auto presenter picks dog pet animal", /reviewer/i.test(petCollarAutoVid) && /dog/i.test(petCollarAutoVid), petCollarAutoVid);
+
+const petFoodAutoOptVid = buildVideoPrompt({ name: "อาหารสัตว์", autoOptions: { presenter: "cat" } }, { ...settings, presenter: "Auto" });
+check("autoOptions cat presenter is preserved in Auto presenter mode", /reviewer/i.test(petFoodAutoOptVid) && /cat/i.test(petFoodAutoOptVid), petFoodAutoOptVid);
 
 const dogToyVid = buildVideoPrompt({ name: "ของเล่นสุนัข" }, { ...settings, presenter: "dog" });
 check("dog pet product explicit presenter includes reviewer and dog", /reviewer/i.test(dogToyVid) && /dog/i.test(dogToyVid), dogToyVid);

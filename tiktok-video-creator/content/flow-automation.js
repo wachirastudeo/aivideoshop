@@ -676,7 +676,7 @@ function isUnusualActivityFailure(message) {
     return /unusual activity|unusual_activity|help center/i.test(String(message || ""));
 }
 function isAudioGenerationFailure(message) {
-    return /audio generation failed|silent videos/i.test(String(message || ""));
+    return /audio generation failed|please try a different prompt|silent videos/i.test(String(message || ""));
 }
 function buildPeopleSafePrompt(prompt) {
     const cleaned = String(prompt || "")

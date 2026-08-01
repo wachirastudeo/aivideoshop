@@ -988,11 +988,68 @@ async function typeIntoInput(input, value) {
   await sleep(150 + Math.random() * 150);
 }
 
+function findScheduleToggle() {
+  let radio = document.querySelector(TIKTOK_SELECTORS.scheduleRadio);
+  if (radio && isVisible(radio)) return radio;
+
+  radio = [...document.querySelectorAll('input[type="radio"], input[type="checkbox"], [role="radio"], [role="switch"]')].find(input => {
+    if (!isVisible(input)) return false;
+    const val = (input.value || "").toLowerCase();
+    const name = (input.name || "").toLowerCase();
+    const id = (input.id || "").toLowerCase();
+    const e2e = (input.getAttribute("data-e2e") || "").toLowerCase();
+    return val.includes("schedule") || name.includes("schedule") || id.includes("schedule") || e2e.includes("schedule");
+  });
+  if (radio) return radio;
+
+  const candidates = [...document.querySelectorAll('label, button, [role="radio"], [role="switch"], [class*="radio" i], [class*="switch" i], [class*="schedule" i]')].filter(isVisible);
+  const matched = candidates.find(el => {
+    const text = (el.textContent || "").trim().toLowerCase();
+    return text.includes("schedule video") || text.includes("schedule post") || text.includes("ตั้งเวลาโพสต์") || text.includes("ตั้งเวลาวิดีโอ") || text.includes("ตั้งเวลา");
+  });
+
+  if (matched) {
+    const childInput = matched.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"], [role="switch"]');
+    return childInput || matched;
+  }
+
+  return null;
+}
+
+function findPostNowToggle() {
+  let radio = document.querySelector(TIKTOK_SELECTORS.postNowRadio);
+  if (radio && isVisible(radio)) return radio;
+
+  radio = [...document.querySelectorAll('input[type="radio"], input[type="checkbox"], [role="radio"], [role="switch"]')].find(input => {
+    if (!isVisible(input)) return false;
+    const val = (input.value || "").toLowerCase();
+    const name = (input.name || "").toLowerCase();
+    const id = (input.id || "").toLowerCase();
+    const e2e = (input.getAttribute("data-e2e") || "").toLowerCase();
+    return val.includes("now") || name.includes("now") || id.includes("now") || e2e.includes("now") || e2e.includes("post_now");
+  });
+  if (radio) return radio;
+
+  const candidates = [...document.querySelectorAll('label, button, [role="radio"], [role="switch"], [class*="radio" i], [class*="switch" i]')].filter(isVisible);
+  const matched = candidates.find(el => {
+    const text = (el.textContent || "").trim().toLowerCase();
+    return text.includes("post now") || text.includes("โพสต์เลย") || text.includes("โพสต์ทันที");
+  });
+
+  if (matched) {
+    const childInput = matched.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"], [role="switch"]');
+    return childInput || matched;
+  }
+
+  return null;
+}
+
 async function applyScheduleSettings(postType, scheduleTime) {
   if (!postType || postType === "draft") return;
 
   if (postType === "now") {
-    await setRadioState(document.querySelector(TIKTOK_SELECTORS.postNowRadio), true);
+    const nowRadio = findPostNowToggle();
+    if (nowRadio) await setRadioState(nowRadio, true);
     return;
   }
 
@@ -1004,8 +1061,16 @@ async function applyScheduleSettings(postType, scheduleTime) {
     throw new Error("scheduleTime is required when postType is schedule");
   }
 
-  await setRadioState(document.querySelector(TIKTOK_SELECTORS.scheduleRadio), true);
-  await sleep(800);
+  log(`กำลังเปิดการทำงานตั้งเวลาโพสต์ (Schedule mode)...`);
+  const schedRadio = findScheduleToggle();
+  if (schedRadio) {
+    log(`พบสวิตช์/ปุ่มตั้งเวลาโพสต์ -> คลิกเปิดโหมดตั้งเวลา`);
+    await setRadioState(schedRadio, true);
+    await sleep(800);
+  } else {
+    log(`⚠️ ไม่พบปุ่มวิทยุตั้งเวลาโดยตรง พยายามค้นหาช่องกรอกวันที่และเวลาในหน้าเว็บทันที...`);
+  }
+
   await fillScheduleTime(scheduleTime);
 }
 
@@ -1373,165 +1438,265 @@ async function fillScheduleTime(scheduleTime) {
     throw new Error(`invalid scheduleTime: ${scheduleTime}`);
   }
 
+  // หากเวลาที่กำหนดน้อยกว่า 20 นาทีจากตอนนี้ (รวมถึงอดีต) -> ปรับเป็นเวลาล่วงหน้า 30 นาที
+  const now = new Date();
+  if (date.getTime() < now.getTime() + 20 * 60 * 1000) {
+    log(`⚠️ เวลาที่กำหนด (${scheduleTime}) อยู่ในอดีตหรือน้อยกว่า 20 นาที -> ปรับเป็นเวลาล่วงหน้า 30 นาที`);
+    date = new Date(now.getTime() + 30 * 60 * 1000);
+    date.setMinutes(Math.ceil(date.getMinutes() / 5) * 5);
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+    // หาก ceil ทำให้นาที = 60 -> ขยับชั่วโมง
+    if (date.getMinutes() >= 60) {
+      date.setHours(date.getHours() + 1);
+      date.setMinutes(0);
+    }
+  }
+
+  const targetHH = String(date.getHours()).padStart(2, "0");
+  const targetMM = String(date.getMinutes()).padStart(2, "0");
+  const targetTimeStr = `${targetHH}:${targetMM}`;
+  const targetY = date.getFullYear();
+  const targetM = String(date.getMonth() + 1).padStart(2, "0");
+  const targetD = String(date.getDate()).padStart(2, "0");
+  const targetDateStr = `${targetY}-${targetM}-${targetD}`;
+
+  log(`📅 เป้าหมาย: วันที่=${targetDateStr}, เวลา=${targetTimeStr}`);
+
   const container = document.querySelector(TIKTOK_SELECTORS.scheduleContainer) || document;
   
-  const dateRegex = /\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}|\d{2}\.\d{2}\.\d{4}/;
-  const timeRegex = /\d{2}:\d{2}/;
+  const dateRegex = /\d{4}[-\/\.]\d{1,2}[-\/\.]\d{1,2}|\d{1,2}[-\/\.]\d{1,2}[-\/\.]\d{2,4}|\d{1,2}\s+[A-Za-zก-ฮ.]+\s+\d{2,4}/;
+  const timeRegex = /\d{1,2}:\d{2}/;
 
-  // 1. ค้นหาช่องวันที่และเวลาจาก Input tags ทั้งหมด (รวมถึงตัวที่แอบอยู่)
   const allInputs = [...container.querySelectorAll("input")];
-  // 2. ค้นหาช่องวันที่และเวลาจากปุ่มหรือกล่องที่แสดงผลอยู่บนหน้าจอ (รวมถึง div, span, p, button)
-  const allElements = [...container.querySelectorAll("input, button, [role='combobox'], [role='haspopup'], div, span, p")].filter(isVisible);
+  const allElements = [...container.querySelectorAll("input, button, [role='combobox'], [role='haspopup'], [role='textbox'], div, span, p")].filter(isVisible);
 
-  let dateInput = allInputs.find(input => dateRegex.test(input.value || ""));
+  let dateInput = allInputs.find(input => {
+    const val = (input.value || "").trim();
+    const ph = (input.placeholder || "").trim();
+    const name = (input.name || "").trim();
+    const aria = (input.getAttribute("aria-label") || "").trim();
+    const classStr = getElementClassName(input);
+    const testId = (input.getAttribute("data-testid") || input.getAttribute("data-e2e") || "").trim();
+    return dateRegex.test(val) || /date|calendar|schedule-date|datepicker/i.test(ph + name + aria + classStr + testId);
+  });
+
+  let timeInput = allInputs.find(input => {
+    const val = (input.value || "").trim();
+    const ph = (input.placeholder || "").trim();
+    const name = (input.name || "").trim();
+    const aria = (input.getAttribute("aria-label") || "").trim();
+    const classStr = getElementClassName(input);
+    const testId = (input.getAttribute("data-testid") || input.getAttribute("data-e2e") || "").trim();
+    return timeRegex.test(val) || /time|clock|schedule-time|timepicker/i.test(ph + name + aria + classStr + testId);
+  });
+
   if (!dateInput) {
-    // หาจากองค์ประกอบที่แสดงผลตัวเลขวันที่ (ต้องไม่มีเวลาเครื่องหมาย : ปน)
     dateInput = allElements.find(el => {
       const val = (el.value || el.textContent || "").trim();
-      return dateRegex.test(val) && !val.includes(":");
+      const ph = (el.placeholder || el.getAttribute("aria-label") || "").trim();
+      const classStr = getElementClassName(el);
+      return (dateRegex.test(val) || /date|calendar|datepicker/i.test(ph + classStr)) && !val.includes(":");
     });
   }
 
-  let timeInput = allInputs.find(input => timeRegex.test(input.value || ""));
   if (!timeInput) {
-    // หาจากองค์ประกอบที่แสดงผลตัวเลขเวลา (ต้องไม่มีวันที่เครื่องหมาย - หรือ / ปน)
     timeInput = allElements.find(el => {
       const val = (el.value || el.textContent || "").trim();
-      return timeRegex.test(val) && !val.includes("-") && !val.includes("/");
+      const ph = (el.placeholder || el.getAttribute("aria-label") || "").trim();
+      const classStr = getElementClassName(el);
+      return (timeRegex.test(val) || /time|clock|timepicker/i.test(ph + classStr)) && !val.includes("-") && !val.includes("/");
     });
   }
 
-  // Fallback คัดแยกตามตำแหน่งถ้าตรวจหาเจาะจงไม่ครบ
   if (!dateInput || !timeInput) {
     const pickerCandidates = [...container.querySelectorAll("input, button, [role='combobox'], [role='haspopup'], [class*='picker' i], [class*='select' i], [class*='input' i]")].filter(isVisible);
     const uniquePickers = pickerCandidates.filter((el, idx) => {
       return !pickerCandidates.some((other, oIdx) => oIdx !== idx && other.contains(el));
     });
     
-    if (uniquePickers.length >= 2) {
-      if (!dateInput) dateInput = uniquePickers[0];
-      if (!timeInput) timeInput = uniquePickers[1];
+    for (const p of uniquePickers) {
+      const text = (p.value || p.textContent || "").trim();
+      const cls = getElementClassName(p) + p.innerHTML;
+      if (!timeInput && (text.includes(":") || /clock|time/i.test(cls))) {
+        timeInput = p;
+      } else if (!dateInput && (dateRegex.test(text) || /calendar|date/i.test(cls))) {
+        dateInput = p;
+      }
     }
   }
 
-  // ตรวจจับและสลับกล่องข้อมูลกรณีดึงอินพุตสลับฝั่งกัน (เช่น ในระบบที่เอาช่องเวลาขึ้นก่อนช่องวันที่)
   if (dateInput && timeInput) {
     const valDate = (dateInput.value || dateInput.textContent || "").trim();
     const valTime = (timeInput.value || timeInput.textContent || "").trim();
-    const dateHasColon = valDate.includes(":");
-    const timeHasDateSeparator = valTime.includes("-") || valTime.includes("/");
-    if (dateHasColon || timeHasDateSeparator) {
-      log("🔄 ตรวจพบฟิลด์กรอกข้อมูลสลับฝั่งกัน (Time โชว์ก่อน Date) -> ทำการสลับช่องเป้าหมายเพื่อให้เลือกข้อมูลได้ถูกต้อง");
+    if (valDate.includes(":") || valTime.includes("-") || valTime.includes("/")) {
+      log("🔄 สลับช่องกรอกข้อมูล Date/Time ให้ถูกต้องตามข้อความจริง");
       const temp = dateInput;
       dateInput = timeInput;
       timeInput = temp;
     }
   }
 
-  const defaultDateStr = dateInput ? (dateInput.value || dateInput.textContent || "").trim() : "";
-  const defaultTimeStr = timeInput ? (timeInput.value || timeInput.textContent || "").trim() : "";
+  log(`กำลังกรอกค่าวันที่และเวลา: Date=${targetDateStr}, Time=${targetTimeStr}`);
 
-  const formattedDate = formatLikeDefault(defaultDateStr, date);
-  const formattedTime = formatTimeLikeDefault(defaultTimeStr, date);
-
-  log(`กำลังกรอกค่าเวลา: Date=${formattedDate} (เดิม=${defaultDateStr}), Time=${formattedTime} (เดิม=${defaultTimeStr})`);
-
-  // 1. กรอกเวลาก่อนเพื่อล้างข้อผิดพลาด "Schedule at least 15 minutes in advance" หากเวลาปัจจุบันต่ำกว่าเกณฑ์
-  if (timeInput) {
-    log(`กำลังกรอกเวลาล่วงหน้าก่อน: ${formattedTime}`);
-    await setTuxTimePickerValue(timeInput, formattedTime);
-    await sleep(400);
-  }
-
-  // 2. ปรับเปลี่ยนวันที่เป้าหมาย
+  // ======= STEP 1: ตั้งวันที่ก่อน (DATE FIRST) =======
   if (dateInput) {
-    log(`กำลังปรับวันที่: ${formattedDate}`);
+    log(`กำลังปรับเลือกวันที่ก่อน: ${targetDateStr}`);
+    // ลองคลิกปฏิทินก่อน
     const clicked = await clickCalendarDay(dateInput, date);
-    if (!clicked) {
-      log("ไม่สามารถเลือกจากปฏิทินได้ จะใช้วิธีกรอกข้อความแทน");
-      await setTuxInputValue(dateInput, formattedDate);
-    } else {
-      // ซิงค์อินพุตวันที่เพื่อความสมบูรณ์แบบ
-      await setTuxInputValue(dateInput, formattedDate);
-    }
+    // ยืนยันค่าหลังคลิกด้วยการ set input value โดยตรง
+    await setTuxInputValue(dateInput, targetDateStr);
     await sleep(800);
+    // ตรวจสอบว่าค่าที่แสดงตรงกับที่ต้องการ
+    const shownDate = (dateInput.value || dateInput.textContent || "").trim();
+    if (shownDate && !shownDate.includes(targetD)) {
+      log(`⚠️ วันที่แสดง (${shownDate}) ไม่ตรงกับเป้าหมาย (${targetDateStr}) -> ลอง set อีกครั้ง`);
+      await setTuxInputValue(dateInput, targetDateStr);
+      await sleep(500);
+    }
   }
 
-  // 3. ตรวจเช็คเวลาซ้ำอีกครั้งเพื่อให้มั่นใจว่าทั้งวันและเวลาถูกซิงค์เข้า React state ครบถ้วน
+  // ======= STEP 2: ตั้งเวลาตามหลัง (TIME SECOND) =======
   if (timeInput) {
-    log(`ยืนยันการกรอกเวลาครั้งสุดท้าย: ${formattedTime}`);
-    await setTuxTimePickerValue(timeInput, formattedTime);
+    log(`กำลังปรับเลือกเวลาตามหลัง: ${targetTimeStr}`);
+    // ลองผ่าน custom time picker popover ก่อน
+    const pickerSet = await setTuxTimePickerValue(timeInput, targetTimeStr);
+    await sleep(400);
+    // ตรวจสอบว่าค่าที่แสดงตรงกับที่ต้องการ
+    const shownTime = (timeInput.value || timeInput.textContent || "").trim();
+    const timeOk = shownTime.startsWith(targetTimeStr) || shownTime === targetTimeStr;
+    if (!timeOk) {
+      log(`⚠️ เวลาที่แสดง (${shownTime}) ไม่ตรงกับเป้าหมาย (${targetTimeStr}) -> ลอง keyboard input โดยตรง`);
+      await setTimeByKeyboard(timeInput, targetTimeStr);
+      await sleep(400);
+    }
   }
+
   await sleep(500);
 }
 
 async function setTuxTimePickerValue(input, targetTime) {
-  if (!input) return;
+  if (!input) return false;
 
   const parts = targetTime.split(":");
-  if (parts.length !== 2) return;
-  const hr = String(parseInt(parts[0], 10)).padStart(2, "0");
+  if (parts.length !== 2) return false;
+  const hrNum = parseInt(parts[0], 10);
+  const hrStr = String(hrNum).padStart(2, "0");
   const minVal = parseInt(parts[1], 10);
-  const roundedMin = Math.round(minVal / 5) * 5;
-  const clampedMin = Math.min(55, Math.max(0, roundedMin));
-  const min = String(clampedMin).padStart(2, "0");
+  const clampedMin = Math.min(55, Math.max(0, minVal));
+  const minStr = String(clampedMin).padStart(2, "0");
+  const fullTimeStr = `${hrStr}:${minStr}`;
 
+  // วิธีที่ 1: พยายาม type ตรงๆ ก่อน (เร็วที่สุด)
+  const typed = await setTimeByKeyboard(input, fullTimeStr);
+  const shownAfterType = (input.value || input.textContent || "").trim();
+  if (typed && (shownAfterType === fullTimeStr || shownAfterType.startsWith(fullTimeStr))) {
+    log(`✅ ตั้งเวลา ${fullTimeStr} สำเร็จด้วยวิธี keyboard`);
+    return true;
+  }
+
+  // วิธีที่ 2: เปิด popover แล้วคลิกตัวเลือก
   input.focus();
   await realClick(input);
-  await sleep(400);
+  await sleep(500);
 
-  const hourOption = [...document.querySelectorAll(".tiktok-timepicker-left")].find(
-    el => el.textContent.trim() === hr
-  );
-  if (hourOption) {
-    await realClick(hourOption);
+  // ค้นหา popover เวลาที่กำลังเปิดอยู่
+  const popovers = [...document.querySelectorAll('div, section, [role="dialog"], [role="listbox"], [role="tooltip"], [class*="popover" i], [class*="picker" i], [class*="time" i], [class*="dropdown" i]')].filter(el => {
+    if (!isVisible(el)) return false;
+    if (input.contains(el)) return false;
+    const text = el.textContent || "";
+    // popover เวลาต้องมีตัวเลขชั่วโมงหลายๆ ตัว
+    return (text.includes("00") && text.includes("01") && text.includes("02"));
+  });
+
+  const timePopover = popovers[0] || null;
+
+  if (timePopover) {
+    const columns = [...timePopover.querySelectorAll('ul, [role="listbox"], [class*="column" i], [class*="list" i], [class*="scroll" i], [class*="wrapper" i]')].filter(isVisible);
+
+    if (columns.length >= 2) {
+      const hourCol = columns[0];
+      const minCol = columns[1];
+
+      const hourOpt = [...hourCol.querySelectorAll('li, div, span, [role="option"]')].find(el => {
+        const txt = el.textContent.trim();
+        return txt === hrStr || txt === String(hrNum);
+      });
+      if (hourOpt) { await realClick(hourOpt); await sleep(200); }
+
+      const minOpt = [...minCol.querySelectorAll('li, div, span, [role="option"]')].find(el => {
+        const txt = el.textContent.trim();
+        return txt === minStr || txt === String(clampedMin);
+      });
+      if (minOpt) { await realClick(minOpt); await sleep(200); }
+    } else {
+      // Fallback column detection
+      const allOptions = [...timePopover.querySelectorAll('.tiktok-timepicker-left, .tiktok-timepicker-right, li, button, [role="option"], [class*="item" i], div, span')].filter(isVisible);
+      const hourOpt = allOptions.find(el => {
+        const txt = el.textContent.trim();
+        return (txt === hrStr || txt === String(hrNum)) && (!el.firstElementChild || el.classList.contains("tiktok-timepicker-left"));
+      });
+      if (hourOpt) { await realClick(hourOpt); await sleep(200); }
+
+      const minOpt = allOptions.find(el => {
+        const txt = el.textContent.trim();
+        return (txt === minStr || txt === String(clampedMin)) && (!el.firstElementChild || el.classList.contains("tiktok-timepicker-right"));
+      });
+      if (minOpt) { await realClick(minOpt); await sleep(200); }
+    }
+    // ปิด popover
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, bubbles: true }));
     await sleep(200);
   }
 
-  const minuteOption = [...document.querySelectorAll(".tiktok-timepicker-right")].find(
-    el => el.textContent.trim() === min
-  );
-  if (minuteOption) {
-    await realClick(minuteOption);
-    await sleep(200);
-  }
+  // ซิงค์ค่าเวลากลับเข้าอินพุตโดยตรงเป็น fallback สุดท้าย
+  await setTuxInputValue(input, fullTimeStr);
+  return true;
+}
 
-  const isReadonly = input.hasAttribute("readonly");
-  if (isReadonly) {
-    input.removeAttribute("readonly");
-  }
-
-  input.select();
-  input.setSelectionRange(0, input.value.length);
-  await sleep(100);
-
+// ตั้งเวลาผ่านการพิมพ์ keyboard โดยตรงเข้าอินพุต
+async function setTimeByKeyboard(input, targetTime) {
+  if (!input) return false;
   try {
-    document.execCommand('insertText', false, `${hr}:${min}`);
+    const isReadonly = input.hasAttribute("readonly");
+    if (isReadonly) input.removeAttribute("readonly");
+
+    input.focus();
+    await realClick(input);
+    await sleep(200);
+
+    // เลือกข้อความทั้งหมดก่อนพิมพ์ทับ
+    input.select && input.select();
+    input.setSelectionRange && input.setSelectionRange(0, (input.value || "").length);
+    await sleep(100);
+
+    // พิมพ์ค่าทีละตัวอักษรผ่าน KeyboardEvent
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    if (nativeSetter) nativeSetter.call(input, targetTime);
+    else input.value = targetTime;
+
+    // แจ้ง React ว่าค่าเปลี่ยน
+    const tracker = input._valueTracker;
+    if (tracker) tracker.setValue("");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await sleep(150);
+
+    // กด Enter เพื่อยืนยัน
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 13, bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", keyCode: 13, bubbles: true }));
+    await sleep(150);
+
+    input.dispatchEvent(new Event("blur", { bubbles: true }));
+    input.blur();
+    await sleep(150);
+
+    if (isReadonly) input.setAttribute("readonly", "readonly");
+    return true;
   } catch (e) {
-    input.value = `${hr}:${min}`;
+    console.warn("setTimeByKeyboard error:", e);
+    return false;
   }
-  await sleep(100);
-
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  input.dispatchEvent(new Event("change", { bubbles: true }));
-
-  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-  input.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-  input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-  await sleep(200);
-
-  // ส่งปุ่ม Escape เพื่อให้มั่นใจว่าป๊อปอัปเวลาปิดลงเรียบร้อย
-  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
-  input.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
-  await sleep(200);
-
-  if (isReadonly) {
-    input.setAttribute("readonly", "readonly");
-  }
-  
-  input.dispatchEvent(new Event("blur", { bubbles: true }));
-  input.blur();
-  await sleep(300);
 }
 
 async function setTuxInputValue(input, value) {
@@ -1607,32 +1772,23 @@ async function setTuxInputValue(input, value) {
 }
 
 function formatLikeDefault(defaultStr, targetDate) {
+  const y = targetDate.getFullYear();
+  const m = String(targetDate.getMonth() + 1).padStart(2, "0");
+  const d = String(targetDate.getDate()).padStart(2, "0");
+
   if (!defaultStr || typeof defaultStr !== "string") {
-    try {
-      const locale = navigator.language || "th-TH";
-      return new Intl.DateTimeFormat(locale, {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-      }).format(targetDate);
-    } catch (e) {
-      const y = targetDate.getFullYear();
-      const m = String(targetDate.getMonth() + 1).padStart(2, "0");
-      const d = String(targetDate.getDate()).padStart(2, "0");
-      return `${y}-${m}-${d}`;
-    }
+    return `${y}-${m}-${d}`;
   }
 
-  let separator = "-";
-  if (defaultStr.includes("/")) separator = "/";
-  else if (defaultStr.includes(".")) separator = ".";
-  else if (defaultStr.includes(" ")) separator = " ";
+  const cleanDefault = defaultStr.trim();
+  if (!cleanDefault) return `${y}-${m}-${d}`;
 
-  const parts = defaultStr.split(separator);
+  let separator = "-";
+  if (cleanDefault.includes("/")) separator = "/";
+  else if (cleanDefault.includes(".")) separator = ".";
+
+  const parts = cleanDefault.split(separator);
   if (parts.length !== 3) {
-    const y = targetDate.getFullYear();
-    const m = String(targetDate.getMonth() + 1).padStart(2, "0");
-    const d = String(targetDate.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   }
 
@@ -1718,30 +1874,10 @@ function formatLikeDefault(defaultStr, targetDate) {
   return formattedParts.join(separator);
 }
 
-function formatTimeLikeDefault(defaultStr, targetDate) {
-  if (!defaultStr || typeof defaultStr !== "string") {
-    const hh = String(targetDate.getHours()).padStart(2, "0");
-    const mm = String(targetDate.getMinutes()).padStart(2, "0");
-    return `${hh}:${mm}`;
-  }
-
-  const hasAmPm = /am|pm/i.test(defaultStr);
-  const hh = targetDate.getHours();
+function formatTimeLikeDefault(_defaultStr, targetDate) {
+  const hh = String(targetDate.getHours()).padStart(2, "0");
   const mm = String(targetDate.getMinutes()).padStart(2, "0");
-
-  if (hasAmPm) {
-    const isPm = hh >= 12;
-    const displayH = hh % 12 === 0 ? 12 : hh % 12;
-    const amPmStr = isPm ? (defaultStr.includes("PM") ? "PM" : "pm") : (defaultStr.includes("AM") ? "AM" : "am");
-    return `${String(displayH).padStart(2, "0")}:${mm} ${amPmStr}`;
-  }
-
-  if (defaultStr.includes("น.")) {
-    const displayH = String(hh).padStart(2, "0");
-    return `${displayH}:${mm} น.`;
-  }
-
-  return `${String(hh).padStart(2, "0")}:${mm}`;
+  return `${hh}:${mm}`;
 }
 
 function setInputValue(input, value) {
