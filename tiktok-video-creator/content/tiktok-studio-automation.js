@@ -1024,37 +1024,44 @@ function getElementClassName(el) {
 }
 
 function findCalendarContainer(dateInput) {
-  if (!dateInput) return null;
-  const containerCandidates = ['.tiktok-calendar-container', '.TUXPopover-content', '.TUXCalendar', '[class*="calendar" i]', '[class*="Calendar" i]', '[class*="popover" i]', '[class*="Popover" i]'];
-  for (const sel of containerCandidates) {
-    const els = [...document.querySelectorAll(sel)].filter(isVisible);
-    for (const el of els) {
-      const daysCount = el.querySelectorAll('button, [role="gridcell"], td, span').length;
-      if (daysCount < 15) continue;
-      
-      if (el.contains(dateInput)) {
-        // เจาะหาตัวลูกด้านในที่แยกอิสระจาก dateInput
-        const sub = [...el.querySelectorAll('.tiktok-calendar-container, .TUXPopover-content, .TUXCalendar, [class*="calendar" i], [class*="Calendar" i], [role="grid"]')].find(sub => !sub.contains(dateInput) && isVisible(sub));
-        if (sub) return sub;
-      } else {
-        return el;
-      }
-    }
-  }
-  return null;
+  // ค้นหาป๊อปอัปปฏิทินที่กำลังแสดงผลลอยอยู่บนหน้าจอ โดยต้องไม่อยู่ซ้อนข้างใน dateInput
+  const allContainers = [...document.querySelectorAll('div, span, [role="dialog"], [role="tooltip"], [role="grid"], section')].filter(el => {
+    if (!isVisible(el)) return false;
+    if (dateInput && el.contains(dateInput)) return false; // ป๊อปอัปจริงต้องแยกอยู่นอก dateInput
+    
+    // ตรวจหาจำนวนเซลล์วันที่ ต้องมีไม่ต่ำกว่า 15 ปุ่มหรือเซลล์
+    const cellCount = el.querySelectorAll('button, [role="gridcell"], td, [class*="cell" i], [class*="date" i]').length;
+    return cellCount >= 15;
+  });
+
+  if (allContainers.length === 0) return null;
+
+  // คัดเลือกคลาสปฏิทินที่มีลำดับ z-index สูงสุดหรือมีคลาสเฉพาะ
+  allContainers.sort((a, b) => {
+    const classA = getElementClassName(a);
+    const classB = getElementClassName(b);
+    const hasCalA = classA.includes("calendar") || classA.includes("popover") || classA.includes("picker");
+    const hasCalB = classB.includes("calendar") || classB.includes("popover") || classB.includes("picker");
+    if (hasCalA && !hasCalB) return -1;
+    if (!hasCalA && hasCalB) return 1;
+    return 0;
+  });
+
+  return allContainers[0];
 }
 
 async function clickCalendarDay(dateInput, targetDate) {
   try {
     log("คลิกที่ช่องวันที่เพื่อเปิดปฏิทิน...");
     dateInput.focus();
+    try { dateInput.click(); } catch(e) {}
     await realClick(dateInput);
 
-    // 1. รอให้ป๊อปอัปปฏิทินแสดงผลจริง (สูงสุด 1.5 วินาที)
+    // 1. รอให้ป๊อปอัปปฏิทินแสดงผลจริง (สูงสุด 2.0 วินาที)
     log("รอปฏิทินแสดงผล...");
     let popoverElement = await retryUntil("ค้นหาและรอคอนเทนเนอร์ปฏิทินแสดงจริง", () => {
       return findCalendarContainer(dateInput);
-    }, 1500, 300);
+    }, 2000, 300);
 
     // หากไม่เปิด ให้ลองส่งปุ่ม Enter และคลิกอินพุตร่วมกับไอคอนข้างเคียง
     if (!popoverElement) {
@@ -1062,10 +1069,12 @@ async function clickCalendarDay(dateInput, targetDate) {
       dateInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
       await realClick(dateInput);
       if (dateInput.parentElement) {
+        try { dateInput.parentElement.click(); } catch(e) {}
         await realClick(dateInput.parentElement);
       }
       const siblingIcon = dateInput.parentElement ? dateInput.parentElement.querySelector("svg, button, [class*='icon']") : null;
       if (siblingIcon) {
+        try { siblingIcon.click(); } catch(e) {}
         await realClick(siblingIcon);
       }
       popoverElement = await retryUntil("รอคอนเทนเนอร์ปฏิทินเปิดรอบสอง", () => {
@@ -1073,7 +1082,7 @@ async function clickCalendarDay(dateInput, targetDate) {
       }, 1500, 300);
     }
 
-    const targetDay = targetDate.getDate(); // เช่น 11
+    const targetDay = targetDate.getDate(); // เช่น 1
     let calendarContainer = popoverElement;
     
     if (!calendarContainer) {
@@ -1088,8 +1097,6 @@ async function clickCalendarDay(dateInput, targetDate) {
     const targetMonthIndex = targetDate.getMonth(); // 0-11
     const targetMonthNum = String(targetMonthIndex + 1).padStart(2, "0"); // "08"
     const targetMonthNumShort = String(targetMonthIndex + 1); // "8"
-    const targetYearEn = String(targetDate.getFullYear()); // "2026"
-    const targetYearTh = String(targetDate.getFullYear() + 543); // "2569"
 
     const targetMonthNameEn = monthNamesEn[targetMonthIndex];
     const targetMonthAbbrEn = targetMonthNameEn.slice(0, 3); // e.g. "aug"
