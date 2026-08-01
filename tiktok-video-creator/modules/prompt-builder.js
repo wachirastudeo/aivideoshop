@@ -128,10 +128,10 @@ const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to refere
 const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product and the presenter across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the presenter and background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). If a presenter is visible in the reference image, the presenter in the video (including their face, hair, clothing, gender, age, and overall appearance) must look exactly identical and consistent with the presenter depicted in the reference image across all scenes (Strictest rule: The face, hair, clothing, and overall appearance of the presenter in the video must match the presenter in the reference image exactly and remain identical throughout the entire video). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
 
 function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
-  const baseFidelity = "STRICT REFERENCE PHOTO & STILL IMAGE PRODUCT FIDELITY LOCK: The target product in every video scene MUST be reproduced 100% pixel-faithfully from the reference photo / still image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without any product distortion, morphing, redesign, or alteration.";
-  const collageRule = "STRICT RULE: Do NOT generate the video frame as a collage or grid. Each scene must be a single full-frame shot. Animate each panel from the reference collage sequentially with smooth camera movement and clean cuts.";
-  const singleSceneRule = "STRICT RULE: Do NOT generate the video frame as a collage or grid. Each scene must be a single full-frame shot with smooth camera movement and clean cuts.";
-  const newSceneEnv = "STRICT NEW REALISTIC BACKGROUND SCENE LOCK: You MUST generate a BRAND NEW, highly realistic, aesthetically composed background environment tailored to this product category (such as a modern living room for furniture, a cozy cafe for coffee/phone cases, a luxury bathroom for skincare, or a stylish workspace for gadgets). DO NOT copy or mirror the original reference photo background. Extract ONLY the target product and place it cleanly into this new realistic environment.";
+  const baseFidelity = "STRICT REFERENCE PHOTO PRODUCT FIDELITY LOCK: Reproduce the product 100% pixel-faithfully from the reference image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without distortion, morphing, redesign, or alteration.";
+  const collageRule = "STRICT RULE: Do NOT generate a collage or grid frame. Each scene must be a single full-frame shot. Animate each panel sequentially with smooth camera movement and clean cuts.";
+  const singleSceneRule = "STRICT RULE: Do NOT generate a collage or grid frame. Each scene must be a single full-frame shot with smooth camera movement and clean cuts.";
+  const newSceneEnv = "STRICT NEW REALISTIC BACKGROUND SCENE LOCK: Generate a BRAND NEW, realistic, aesthetically composed background environment tailored to this product category (living room for furniture, cafe for coffee/phone cases, bathroom for skincare, workspace for gadgets). DO NOT copy the reference photo background.";
 
   if (autoPresenter === "none") {
     return `IMPORTANT: Depict the product across different scenes. ${baseFidelity} ${newSceneEnv} ${collageRule}`;
@@ -186,7 +186,7 @@ const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (
 
 const TEXT_FREE_DIRECTION = "STRICT NO-TEXT RULE: Do not add any text overlays, subtitles, captions, price tags, banners, promotional copy, watermarks, CTA, or signs. Absolutely no on-screen text, writing, or numbers should be added. Keep the product's own printed text exactly as in reference, but do not add any new, extra, or unnecessary text.";
 
-const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT RULE: Do not write new text, labels, brand names, numbers, or gibberish on the product. If the reference is blank, keep it clean. Do not generate fake branding.";
+const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT THAI LANGUAGE ONLY & ZERO GIBBERISH LOCK: All visible text overlays, packaging writing, captions, signs, and spoken dialogue MUST be in 100% correct, flawless Thai script ONLY (ข้อความภาษาไทยถูกต้องเท่านั้น). ABSOLUTELY FORBIDDEN: Do NOT write or render foreign scripts (Chinese, Japanese, Korean, Arabic, etc.), distorted gibberish symbols, or fake pseudo-letters anywhere on the product, background, or video frame.";
 
 const STRICT_SHOP_LOGO_EXCLUSION_RULE = "CRITICAL RULE — STRICTLY FORBIDDEN: Do NOT copy, replicate, draw, or include any shop logos, store branding watermarks, seller profile logos, platform badges, e-commerce icons, or corner watermarks visible in the reference photo. Extract ONLY the physical product object itself. Absolutely NO shop logos, NO store names, NO watermarks, NO seller stamps, and NO platform icons anywhere on the generated image or video.";
 
@@ -1547,8 +1547,15 @@ export function resolveCaptionProductName(productInfo = {}) {
   );
 }
 
+export function stripForeignNonThaiScripts(value) {
+  return String(value || "")
+    .replace(/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\uac00-\ud7af\u0400-\u04ff\u0600-\u06ff]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function cleanCaptionText(value) {
-  return stripWeirdCaptionChars(removeCaptionBracketText(value));
+  return stripForeignNonThaiScripts(stripWeirdCaptionChars(removeCaptionBracketText(value)));
 }
 
 function removeCaptionBracketText(value) {

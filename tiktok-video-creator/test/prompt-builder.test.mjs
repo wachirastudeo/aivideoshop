@@ -14,7 +14,8 @@ import {
   truncateShopeeCaptionAndHashtags,
   isClothingProduct,
   isFurnitureProduct,
-  buildCategoryFidelityDirection
+  buildCategoryFidelityDirection,
+  stripForeignNonThaiScripts
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -459,6 +460,13 @@ check("phone case video prompt includes phone case fidelity lock", /STRICT PHONE
 
 const bagVid = buildVideoPrompt({ name: "กระเป๋าสะพายข้างหนังแท้สำหรับผู้หญิง" }, settings);
 check("bag video prompt includes bags fidelity lock", /STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK/i.test(bagVid), bagVid);
+
+// Test 17: Foreign character stripping & strict Thai language lock
+const strippedText = stripForeignNonThaiScripts("กระเป๋าถือแฟชั่น 现货 潮流包包 🔥เกรดพรีเมียม");
+check("stripForeignNonThaiScripts strips Chinese/CJK characters", strippedText === "กระเป๋าถือแฟชั่น 🔥เกรดพรีเมียม", strippedText);
+
+const sampleVidThai = buildVideoPrompt({ name: "กระเป๋าสะพาย" }, settings);
+check("video prompt includes strict Thai language and zero gibberish lock", /STRICT THAI LANGUAGE ONLY & ZERO GIBBERISH LOCK/i.test(sampleVidThai), sampleVidThai);
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
