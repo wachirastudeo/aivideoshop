@@ -128,22 +128,23 @@ const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to refere
 const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product and the presenter across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the presenter and background; do not enlarge, shrink, stretch, or warp it (Strictest rule: The product's size and relative scale in the video must match the reference image exactly; do not shrink or enlarge it). If a presenter is visible in the reference image, the presenter in the video (including their face, hair, clothing, gender, age, and overall appearance) must look exactly identical and consistent with the presenter depicted in the reference image across all scenes (Strictest rule: The face, hair, clothing, and overall appearance of the presenter in the video must match the presenter in the reference image exactly and remain identical throughout the entire video). STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
 
 function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
-  const baseFidelity = "Maintain absolute consistency for the product: its shape, proportions, colors, materials, printed logos, and text must be identical and in true scale relative to the surroundings in every scene; do not shrink, enlarge, stretch, or warp it.";
-  const collageRule = "STRICT RULE: Do NOT generate the video frame as a collage, grid, split-screen, or multi-panel composition. Each scene must be a single, full-frame shot showing only one angle at a time. Animate each panel from the reference collage sequentially as a full-screen scene with smooth camera movement and clean cuts.";
-  const singleSceneRule = "STRICT RULE: Do NOT generate the video frame as a collage, grid, split-screen, or multi-panel composition. Each scene must be a single, full-frame shot showing only one angle at a time. Animate the scenes with smooth camera movement and clean cuts.";
+  const baseFidelity = "STRICT REFERENCE PHOTO & STILL IMAGE PRODUCT FIDELITY LOCK: The target product in every video scene MUST be reproduced 100% pixel-faithfully from the reference photo / still image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without any product distortion, morphing, redesign, or alteration.";
+  const collageRule = "STRICT RULE: Do NOT generate the video frame as a collage or grid. Each scene must be a single full-frame shot. Animate each panel from the reference collage sequentially with smooth camera movement and clean cuts.";
+  const singleSceneRule = "STRICT RULE: Do NOT generate the video frame as a collage or grid. Each scene must be a single full-frame shot with smooth camera movement and clean cuts.";
+  const newSceneEnv = "STRICT NEW REALISTIC BACKGROUND SCENE LOCK: You MUST generate a BRAND NEW, highly realistic, aesthetically composed background environment tailored to this product category (such as a modern living room for furniture, a cozy cafe for coffee/phone cases, a luxury bathroom for skincare, or a stylish workspace for gadgets). DO NOT copy or mirror the original reference photo background. Extract ONLY the target product and place it cleanly into this new realistic environment.";
 
   if (autoPresenter === "none") {
-    return `IMPORTANT: The reference image is a collage grid. The video must follow this by depicting the product across different scenes/angles. ${baseFidelity} ${collageRule}`;
+    return `IMPORTANT: Depict the product across different scenes. ${baseFidelity} ${newSceneEnv} ${collageRule}`;
   }
   if (autoPresenter === "hands_only") {
-    return `IMPORTANT: The reference image is a collage grid. The video must follow this by depicting the product in an authentic first-person POV (point of view) perspective across different scenes/angles. ${baseFidelity} ${collageRule} STRICTLY FORBIDDEN: Do not show any face or head in the frame; keep the camera angle in a realistic first-person POV cropped below the neck showing hands, arms, or feet/legs interacting with or wearing the product naturally.`;
+    return `IMPORTANT: Depict the product in an authentic first-person POV perspective across different scenes. ${baseFidelity} ${newSceneEnv} ${collageRule} STRICTLY FORBIDDEN: Do not show any face or head in the frame; keep the camera angle in a realistic first-person POV cropped below the neck showing hands, arms, or feet/legs interacting with or wearing the product naturally.`;
   }
 
   if (hasModelRefImage) {
-    return `IMPORTANT: The reference image set includes a model photo. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} STRICT PRESENTER MATCH: The presenter in the video (including their face, hair, clothing, and overall appearance) MUST look exactly identical to the model depicted in the model reference photo across all scenes. ${singleSceneRule}`;
+    return `IMPORTANT: Depict the product and presenter across different scenes. ${baseFidelity} ${newSceneEnv} STRICT PRESENTER MATCH: The presenter in the video (including their face, hair, clothing, and overall appearance) MUST look exactly identical to the model depicted in the model reference photo across all scenes. ${singleSceneRule}`;
   }
 
-  return `IMPORTANT: The reference image depicts the product. The video must follow this by depicting the product and presenter across different scenes/angles. ${baseFidelity} CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The uploaded reference image is for product extraction only and may contain a seller, model, or person in the photo. The presenter generated in this video MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, skin tone, hairstyle, and overall appearance from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face or head of any person appearing in the reference photo under any circumstances. Always generate a completely new, authentic human face from scratch that bears zero resemblance to the reference photo. Keep the presenter's appearance fully consistent across all scenes. ${singleSceneRule}`;
+  return `IMPORTANT: Depict the product and presenter across different scenes. ${baseFidelity} ${newSceneEnv} CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The presenter generated in this video MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, hairstyle, and appearance from any person in the reference photo. ABSOLUTELY FORBIDDEN: Do NOT copy, mirror, or resemble the face of any person in the reference photo. Always generate a completely new human face from scratch. Keep presenter appearance consistent across all scenes. ${singleSceneRule}`;
 }
 
 
@@ -1321,13 +1322,13 @@ function inferPromptAutoOptions(productInfo = {}) {
 function inferRequiredProductLocation(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
 
-  // 1. Kitchen & Dishwashing & Cooking -> Modern Kitchen
+  // 1. Kitchen & Cooking -> Modern Kitchen
   if (/(ซิ้ง|ซิ้งค์|ซิงค์|อ่าง|อ่างล้าง|ล้างจาน|เครื่องล้างจาน|ครัว|เครื่องครัว|เตาอบ|ไมโครเวฟ|จาน|ชาม|หม้อ|กระทะ|sink|dishwasher|kitchenware|cookware|kitchen)/i.test(text)) {
     return "Modern Kitchen";
   }
 
-  // 2. Bathroom & Sanitaryware -> Modern Bathroom
-  if (/(สบู่|แชมพู|ยาสระผม|ฝักบัว|ก๊อกน้ำ|สุขภัณฑ์|ห้องน้ำ|ชักโครก|กระดาษชำระ|ผ้าเช็ดตัว|bathroom|shower|faucet|toilet|towel)/i.test(text)) {
+  // 2. Bathroom & Skincare & Cosmetics -> Modern Bathroom / Luxury Spa
+  if (/(สบู่|แชมพู|ยาสระผม|ฝักบัว|ก๊อกน้ำ|สุขภัณฑ์|ห้องน้ำ|ชักโครก|กระดาษชำระ|ผ้าเช็ดตัว|ครีม|เซรั่ม|สกินแคร์|บำรุง|กันแดด|น้ำหอม|รองพื้น|ลิป|เครื่องสำอาง|bathroom|shower|faucet|toilet|towel|skincare|serum|cream|cosmetics|lipstick|perfume)/i.test(text)) {
     return "Modern Bathroom";
   }
 
@@ -1336,27 +1337,37 @@ function inferRequiredProductLocation(productInfo = {}) {
     return "Cozy Bedroom";
   }
 
-  // 4. Coffee & Tea -> Cafe / Coffee Shop
-  if (/(กาแฟ|เมล็ดกาแฟ|ผงกาแฟ|ชา|โกโก้|แก้วกาแฟ|coffee|tea|cafe|coffee shop)/i.test(text)) {
+  // 4. Coffee, Tea, Beverages & Phone Cases -> Cafe / Coffee Shop
+  if (/(เคส|ไอโฟน|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|กาแฟ|เมล็ดกาแฟ|ผงกาแฟ|ชา|โกโก้|แก้วกาแฟ|เครื่องดื่ม|ถุงกาแฟ|phone case|phone cover|mobile case|mobile cover|coffee|tea|cafe|coffee shop|beverage)/i.test(text)) {
     return "Cafe / Coffee Shop";
   }
 
   // 5. Living Room Furniture -> Modern Living Room
-  if (/(โซฟา|ชั้นวางทีวี|ทีวี|โทรทัศน์|โต๊ะกลาง|ห้องนั่งเล่น|sofa|couch|tv cabinet|living room)/i.test(text)) {
+  if (/(โซฟา|ชั้นวางทีวี|ทีวี|โทรทัศน์|โต๊ะกลาง|ห้องนั่งเล่น|ตู้|ลิ้นชัก|ชั้นวาง|เตียง|เฟอร์นิเจอร์|sofa|couch|tv cabinet|living room|table|chair|furniture|shelf|cabinet)/i.test(text)) {
     return "Modern Living Room";
   }
 
-  // 6. Office & Desk -> Stylish Office
-  if (/(โต๊ะทำงาน|เก้าอี้ทำงาน|คอมพิวเตอร์|โน๊ตบุ๊ค|คีย์บอร์ด|เมาส์|หูฟัง|สำนักงาน|office|desk|computer|laptop|workspace)/i.test(text)) {
+  // 6. Office & Tech Gadgets -> Stylish Office
+  if (/(โต๊ะทำงาน|เก้าอี้ทำงาน|คอมพิวเตอร์|โน๊ตบุ๊ค|คีย์บอร์ด|เมาส์|หูฟัง|สำนักงาน|แกดเจ็ต|อิเล็กทรอนิกส์|office|desk|computer|laptop|workspace|gadget|headphone)/i.test(text)) {
     return "Stylish Office";
   }
 
-  // 7. General Storage & Furniture
-  if (/(ตู้|ลิ้นชัก|ชั้นวาง|เฟอร์นิเจอร์|cabinet|drawer|shelf|furniture|dresser)/i.test(text)) {
-    return "Modern Living Room";
+  // 7. Bags, Fashion Accessories & Eyewear -> Cafe / Coffee Shop
+  if (/(กระเป๋า|เป้|กระเป๋าถือ|กระเป๋าสะพาย|กระเป๋าสตางค์|แว่นตา|แว่นกันแดด|นาฬิกา|เครื่องประดับ|bag|backpack|wallet|purse|tote|handbag|crossbody|glasses|sunglasses|jewelry|watch|accessory)/i.test(text)) {
+    return "Cafe / Coffee Shop";
   }
 
-  return "";
+  // 8. Footwear -> Minimalist Studio / Urban Street
+  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
+    return "Minimalist Studio";
+  }
+
+  // 9. Clothing -> Minimalist Studio
+  if (isClothingProduct(text)) {
+    return "Minimalist Studio";
+  }
+
+  return "Clean Modern Studio";
 }
 
 function isFootwearProduct(productInfo = {}) {
