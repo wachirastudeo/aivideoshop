@@ -12,7 +12,9 @@ import {
   getDefaultSettings,
   getDefaultProductInfo,
   truncateShopeeCaptionAndHashtags,
-  isClothingProduct
+  isClothingProduct,
+  isFurnitureProduct,
+  buildCategoryFidelityDirection
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -439,6 +441,17 @@ check("pet spray image prompt includes brand logo & pattern fidelity lock", /Pre
 
 const petSprayVid = buildVideoPrompt({ name: "สเปรย์กำจัดเห็บหมัดหมา", category: "สัตว์เลี้ยง" }, settings);
 check("pet spray video prompt includes spray bottle fidelity lock", /SPRAY BOTTLE & PACKAGING LABEL FIDELITY LOCK/i.test(petSprayVid), petSprayVid);
+
+// Test 15: Furniture structural fidelity lock
+check("isFurnitureProduct detects table/chair/sofa/desk", isFurnitureProduct("โต๊ะทำงานพับได้ โซฟา 3 ที่นั่ง เก้าอี้ทานอาหาร"));
+check("isFurnitureProduct detects English furniture terms", isFurnitureProduct("modern wooden coffee table desk chair sofa"));
+
+const furnitureVid = buildVideoPrompt({ name: "โต๊ะทำงานไม้แท้ 120cm", category: "เฟอร์นิเจอร์" }, settings);
+check("furniture video prompt includes structural fidelity lock", /STRICT FURNITURE & INTERIOR STRUCTURAL FIDELITY LOCK/i.test(furnitureVid), furnitureVid);
+check("furniture video prompt includes zero dynamic warping rule", /ZERO DYNAMIC WARPING RULE/i.test(furnitureVid), furnitureVid);
+
+const sofaImg = buildImagePrompt({ name: "โซฟาปรับนอน 2 ที่นั่ง ผ้าฮอลแลนด์" }, settings);
+check("sofa image prompt includes furniture fidelity lock", /STRICT FURNITURE & INTERIOR STRUCTURAL FIDELITY LOCK/i.test(sofaImg), sofaImg);
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
