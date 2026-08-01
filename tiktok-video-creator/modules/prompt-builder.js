@@ -506,6 +506,11 @@ export function buildImagePrompt(productInfo, settings = {}) {
       : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment, hands, or presenter in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
   }
 
+  const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
+  const imageBackgroundDirection = handsOnly
+    ? HANDS_ONLY_BACKGROUND_DIRECTION
+    : `STRICT NEW REALISTIC BACKGROUND SCENE & RICH ATMOSPHERE LOCK: Extract ONLY the target product from the reference image, ignoring its original background entirely. Place the product into a BRAND NEW, highly realistic, aesthetically rich ${locationSetting} background scene. VIBRANT ATMOSPHERE & COLOR PALETTE: Enhance the background with warm, harmonious color tones, realistic depth of field, natural soft lighting, subtle architectural details, and high-end commercial staging tailored specifically to this product category. ABSOLUTELY FORBIDDEN: Do NOT copy, mirror, or reuse the original background from the reference photo. The background MUST be 100% brand new, authentic, rich, and visually captivating.`;
+
   const promptParts = [
     intro,
     styleFragment ? `Visual style: ${styleFragment}.` : "",
@@ -522,7 +527,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     PRODUCT_STRUCTURE_DIRECTION,
     categoryDirection,
     analysisDirection,
-    handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "Choose a clean, realistic, commercially appealing background that fits this product category.",
+    imageBackgroundDirection,
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     peopleDirection,
     productTextFidelityDirection,
