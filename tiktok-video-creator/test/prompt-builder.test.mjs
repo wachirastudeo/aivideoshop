@@ -484,6 +484,14 @@ check("kids bicycle prompt excludes dogs/pets", !/pet animal|\bdog\b/i.test(kids
 const chickenFeedVid = buildVideoPrompt({ name: "อาหารไก่ไข่ โปรตีนสูง 30 กก." }, settings);
 check("chicken feed video prompt excludes dogs/cats", !/pet animal|\bdog\b|\bcat\b/i.test(chickenFeedVid) && /POULTRY & LIVESTOCK FEED SPECIFIC RULE/i.test(chickenFeedVid), chickenFeedVid);
 
+// Test 20: Sunscreen & Sun Protection products (กันแดด, หมวกกันแดด) Outdoor Bright Sunlight Location & Presenter Gender Lock
+const sunscreenVid = buildVideoPrompt({ name: "ครีมกันแดดคุมมัน SPF50+ PA++++" }, settings);
+check("sunscreen prompt assigns bright sunny outdoor location", /Bright Sunny Outdoor Beach|Nature \/ Outdoor|sunny outdoor environment/i.test(sunscreenVid), sunscreenVid);
+check("sunscreen prompt includes sun protection scene lock", /SUN PROTECTION & SUN HAT SCENE LOCK/i.test(sunscreenVid), sunscreenVid);
+
+const menSunHatVid = buildVideoPrompt({ name: "หมวกกันแดดปีกกว้าง สำหรับผู้ชาย" }, settings);
+check("men's sun hat prompt includes male presenter and sunny outdoor location", /man|male/i.test(menSunHatVid) && /SUN PROTECTION & SUN HAT SCENE LOCK/i.test(menSunHatVid), menSunHatVid);
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }

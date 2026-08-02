@@ -591,6 +591,14 @@ function normalizeAutoOptions(value, productInfo = {}) {
   };
 }
 
+function detectGender(text = "") {
+  const isMen = /(ผู้ชาย|ชาย|บุรุษ|men|man|male|โกนหนวด|มีดโกน|เนกไท|บ็อกเซอร์|กางเกงในชาย|เสื้อเชิ้ตชาย|รองเท้าผู้ชาย|น้ำหอมผู้ชาย|ครีมผู้ชาย|โฟมผู้ชาย)/i.test(text);
+  const isWomen = /(ผู้หญิง|หญิง|สตรี|women|woman|female|ชุดเดรส|บรา|ยกทรง|กระโปรง|ลิปสติก|กระเป๋าถือผู้หญิง|ผ้าอนามัย)/i.test(text);
+  if (isMen && !isWomen) return "man";
+  if (isWomen && !isMen) return "woman";
+  return isMen ? "man" : "woman";
+}
+
 function inferAutoOptionsFromProduct(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
 
@@ -603,11 +611,26 @@ function inferAutoOptionsFromProduct(productInfo = {}) {
   if (/(ลด|sale|โปร|flash|discount|ถูก|ส่งฟรี)/i.test(text)) {
     return buildAutoOptions("flash-sale", "none", "hype", "Trendy", "Studio Minimal", "Push In Fast", "Whip Pan", "เหมาะกับโปรโมชันและการเร่งตัดสินใจ");
   }
-  if (/(ครีม|เซรั่ม|สกินแคร์|makeup|beauty|เครื่องสำอาง|น้ำหอม|jewelry|เครื่องประดับ)/i.test(text)) {
-    return buildAutoOptions("cinematic", "woman", "kind", "หรูหรา", "Luxury Showroom", "Slow Zoom In", "Fade", "สินค้าแนวความงามควรเน้นภาพพรีเมียมและรายละเอียดผิวสัมผัส");
+  if (/(กันแดด|หมวกกันแดด|หมวกปีกกว้าง|ปลอกแขนกันแดด|เสื้อกันแดด|เสื้อกัน uv|แว่นกันแดด|ร่มกันแดด|สเปรย์กันแดด|โลชั่นกันแดด|ครีมกันแดด|กันแดดหน้า|กันแดดตัว|sunscreen|sunblock|sun lotion|sun spray|sun hat|sun visor|sun glasses|sunglasses|spf)/i.test(text)) {
+    const gender = detectGender(text);
+    return buildAutoOptions(
+      "lifestyle",
+      gender,
+      "kind",
+      "สดใส",
+      "Nature / Outdoor",
+      "Slow Zoom In",
+      "Fade",
+      "สินค้ากันแดด/หมวกกันแดดควรแสดงในบรรยากาศกลางแจ้ง แสงแดดธรรมชาติ ชายหาด หรือสวนกลางแจ้ง พร้อมพรีเซนเตอร์ที่เหมาะกับกลุ่มเป้าหมาย"
+    );
   }
-  if (/(เสื้อ|กางเกง|กระเป๋า|แฟชั่น|wear|shirt|dress|bag)/i.test(text)) {
-    return buildAutoOptions("lifestyle", "woman", "fun", "Trendy", "Urban Street", "Handheld Shake", "Swipe", "สินค้าแฟชั่นเหมาะกับการเห็นการใช้งานจริง");
+  if (/(ครีม|เซรั่ม|สกินแคร์|makeup|beauty|เครื่องสำอาง|น้ำหอม|jewelry|เครื่องประดับ)/i.test(text)) {
+    const gender = detectGender(text);
+    return buildAutoOptions("cinematic", gender, "kind", "หรูหรา", "Luxury Showroom", "Slow Zoom In", "Fade", "สินค้าแนวความงามควรเน้นภาพพรีเมียมและรายละเอียดผิวสัมผัส");
+  }
+  if (/(เสื้อ|กางเกง|กระเป๋า|แฟชั่น|หมวก|wear|shirt|dress|bag|hat|cap)/i.test(text)) {
+    const gender = detectGender(text);
+    return buildAutoOptions("lifestyle", gender, "fun", "Trendy", "Urban Street", "Handheld Shake", "Swipe", "สินค้าแฟชั่นเหมาะกับการเห็นการใช้งานจริงโดยพรีเซนเตอร์ที่เหมาะกับสินค้า");
   }
   if (/(อาหารไก่|หัวอาหารไก่|อาหารนก|อาหารปลา|อาหารหมู|อาหารวัว|อาหารกุ้ง|chicken feed|poultry feed|fish food|bird food)/i.test(text)) {
     return buildAutoOptions(

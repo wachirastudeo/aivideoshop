@@ -207,7 +207,13 @@ export function isFarmPoultryProduct(text = "") {
   return /(อาหารไก่|หัวอาหารไก่|อาหารนก|อาหารปลา|อาหารหมู|อาหารวัว|อาหารกุ้ง|chicken feed|poultry feed|fish food|bird food)/i.test(String(text || ""));
 }
 
+export function isSunProtectionProduct(text = "") {
+  return /(กันแดด|หมวกกันแดด|หมวกปีกกว้าง|ปลอกแขนกันแดด|เสื้อกันแดด|เสื้อกัน uv|แว่นกันแดด|ร่มกันแดด|สเปรย์กันแดด|โลชั่นกันแดด|ครีมกันแดด|กันแดดหน้า|กันแดดตัว|sunscreen|sunblock|sun lotion|sun spray|sun hat|sun visor|sun glasses|sunglasses|spf)/i.test(String(text || ""));
+}
+
 const FARM_POULTRY_FEED_EXCLUSION_RULE = "POULTRY & LIVESTOCK FEED SPECIFIC RULE: This product is poultry/farm livestock feed (such as chicken feed). ABSOLUTELY FORBIDDEN: Do NOT render dogs, cats, puppies, kittens, or house pets in the scene under any circumstances. Present the product packaging and feed granules cleanly in a farm, warehouse, or natural outdoor environment.";
+
+const SUNSCREEN_FIDELITY_DIRECTION = "SUN PROTECTION & SUN HAT SCENE LOCK: Place sun protection products (sunscreen, sun hats, sun visors, sunglasses, UV sleeves/jackets) in a bright, beautiful sunny outdoor environment (such as a sunny beach, resort pool, sunlit terrace, sunny park, or outdoor garden with natural bright daylight). The scene MUST evoke fresh, vibrant sun protection in natural sunlight. STRICTLY FORBIDDEN: Do NOT place sun protection products or sun hats in dark indoors, windowless rooms, or dim shaded interiors.";
 
 /**
  * @description เลือก doodle style ตามประเภทสินค้าและกลุ่มเป้าหมาย
@@ -551,6 +557,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     categoryDirection,
     analysisDirection,
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
+    isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
     imageBackgroundDirection,
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     peopleDirection,
@@ -738,6 +745,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     categoryDirection,
     analysisDirection,
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
+    isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
@@ -1363,13 +1371,18 @@ function inferPromptAutoOptions(productInfo = {}) {
 function inferRequiredProductLocation(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
 
+  // 0. Sunscreen & Sun Protection -> Bright Sunny Outdoor Beach Resort
+  if (isSunProtectionProduct(text)) {
+    return "Bright Sunny Outdoor Beach Resort";
+  }
+
   // 1. Kitchen & Cooking -> Modern Kitchen
   if (/(ซิ้ง|ซิ้งค์|ซิงค์|อ่าง|อ่างล้าง|ล้างจาน|เครื่องล้างจาน|ครัว|เครื่องครัว|เตาอบ|ไมโครเวฟ|จาน|ชาม|หม้อ|กระทะ|sink|dishwasher|kitchenware|cookware|kitchen)/i.test(text)) {
     return "Modern Kitchen";
   }
 
   // 2. Bathroom & Skincare & Cosmetics -> Modern Bathroom / Luxury Spa
-  if (/(สบู่|แชมพู|ยาสระผม|ฝักบัว|ก๊อกน้ำ|สุขภัณฑ์|ห้องน้ำ|ชักโครก|กระดาษชำระ|ผ้าเช็ดตัว|ครีม|เซรั่ม|สกินแคร์|บำรุง|กันแดด|น้ำหอม|รองพื้น|ลิป|เครื่องสำอาง|bathroom|shower|faucet|toilet|towel|skincare|serum|cream|cosmetics|lipstick|perfume)/i.test(text)) {
+  if (/(สบู่|แชมพู|ยาสระผม|ฝักบัว|ก๊อกน้ำ|สุขภัณฑ์|ห้องน้ำ|ชักโครก|กระดาษชำระ|ผ้าเช็ดตัว|ครีม|เซรั่ม|สกินแคร์|บำรุง|น้ำหอม|รองพื้น|ลิป|เครื่องสำอาง|bathroom|shower|faucet|toilet|towel|skincare|serum|cream|cosmetics|lipstick|perfume)/i.test(text)) {
     return "Modern Bathroom";
   }
 
