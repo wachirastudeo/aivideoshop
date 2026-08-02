@@ -184,7 +184,7 @@ const GENERAL_PACKAGING_FIDELITY_DIRECTION = "UNIVERSAL PRODUCT & PACKAGING LABE
 const HOME_LIVING_FIDELITY_DIRECTION = "For home goods, kitchenware, tumblers, mugs, and bedding: preserve the exact item shape, handle, lid, material texture (ceramic, stainless steel, fabric), print pattern, and proportions.";
 const FURNITURE_FIDELITY_DIRECTION = "STRICT FURNITURE & INTERIOR STRUCTURAL FIDELITY LOCK: You MUST reproduce the furniture piece (table, chair, sofa, desk, cabinet, shelf, wardrobe, bed, armchair, or home decor) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D GEOMETRY & ARCHITECTURAL REALISM: All legs (strictly straight, vertical, and sturdy 4-leg or pedestal frame), tabletop thickness, armrests, seat cushion depth, backrest angle, wood grain orientation, upholstery fabric weave/leather texture, and metal joint hardware MUST be rendered 100% pixel-faithfully without any structural distortion or warping. ZERO DYNAMIC WARPING RULE: The furniture piece is 100% rigid architectural furniture resting flat and grounded on the floor. It must NEVER bend, melt, sway, stretch, warp, twist, float, or change shape as the camera moves. PHYSICAL PROPORTIONS & SCALE: Maintain true-to-life scale and proportions relative to the surrounding room, floor, walls, and any presenter standing or sitting near it. Do not distort legs or shrink/enlarge any component relative to the rest of the piece.";
 
-const SPEECH_DIRECTION = "STRICT SINGLE SPOKEN SCENE & ZERO REPETITION LOCK: Speak the generated Thai dialogue sentence EXACTLY ONCE in Scene 1 only. All subsequent scenes MUST remain completely silent with NO spoken voice and NO audio repetition. ABSOLUTELY FORBIDDEN: NEVER repeat, loop, re-say, echo, duplicate, or restart the spoken dialogue in any subsequent scene. At most ONE short natural Thai spoken line (maximum 5-8 words) in the whole clip, spoken strictly based on real product specifications without any exaggerated overclaims. No greeting — never say สวัสดี, หวัดดี, hello, or hi; go straight to the real product benefit.";
+const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION & ZERO REPETITION LOCK: Each scene in the video MUST have its own UNIQUE, DIFFERENT spoken sentence in Thai that flows naturally. ABSOLUTELY FORBIDDEN: NEVER repeat, loop, echo, or re-say the sentence spoken in the previous scene. Scene 2 MUST speak a NEW, DIFFERENT sentence from Scene 1; Scene 3 MUST speak a NEW, DIFFERENT sentence from Scene 2. Maintain a continuous, natural progressive voiceover across all scenes without repeating any phrase or sentence.";
 const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (no visible person). All spoken audio must be in Thai.";
 
 const TEXT_FREE_DIRECTION = "STRICT NO-TEXT RULE: Do not add any text overlays, subtitles, captions, price tags, banners, promotional copy, watermarks, CTA, or signs. Absolutely no on-screen text, writing, or numbers should be added. Keep the product's own printed text exactly as in reference, but do not add any new, extra, or unnecessary text.";
@@ -716,9 +716,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the presenter or surroundings.";
   }
 
+  const PROGRESSIVE_AUDIO_NARRATION_MANDATE = "CRITICAL AUDIO NARRATION RULE — UNIQUE PER-SCENE SENTENCES & ZERO REPETITION: Every scene (Scene 1, Scene 2, Scene 3, Scene 4) must feature a NEW, UNIQUE, DIFFERENT spoken sentence in Thai that naturally advances the product review. Scene 2 MUST NOT repeat Scene 1's words; Scene 3 MUST NOT repeat Scene 2's words. ABSOLUTELY FORBIDDEN: Do NOT repeat, loop, or re-play the sentence from the previous scene under any circumstances.";
+
   const promptParts = [
     `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
     styleFragment ? `Visual style: ${styleFragment}.` : "",
+    SPEECH_DIRECTION,
+    PROGRESSIVE_AUDIO_NARRATION_MANDATE,
     resolveMatchStillDirection(auto.presenter, hasModelRefImage),
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
@@ -742,10 +746,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
     .replace(/\d+-second\s*/g, "");
   sceneBreakdown = sceneBreakdown
-    .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, '$1 [AUDIO: SPOKEN THAI LINE PLAYS ONCE HERE IN SCENE 1 ONLY]')
-    .replace(/^(\s*-\s*Scene 2\b[^\n]*)/m, '$1 [AUDIO: STRICTLY SILENT - NO SPOKEN WORDS, NO REPEATED WORDS]')
-    .replace(/^(\s*-\s*Scene 3\b[^\n]*)/m, '$1 [AUDIO: STRICTLY SILENT - NO SPOKEN WORDS, NO REPEATED WORDS]')
-    .replace(/^(\s*-\s*Scene 4\b[^\n]*)/m, '$1 [AUDIO: STRICTLY SILENT - NO SPOKEN WORDS, NO REPEATED WORDS]');
+    .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 1 in Thai - Opening hook phrase]')
+    .replace(/^(\s*-\s*Scene 2\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 2 in Thai - MUST BE A NEW DIFFERENT SENTENCE FROM SCENE 1]')
+    .replace(/^(\s*-\s*Scene 3\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 3 in Thai - MUST BE A NEW DIFFERENT SENTENCE FROM SCENE 2]')
+    .replace(/^(\s*-\s*Scene 4\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 4 in Thai - MUST BE A NEW DIFFERENT SENTENCE FROM SCENE 3]');
   if (noPeople) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown on its own")
