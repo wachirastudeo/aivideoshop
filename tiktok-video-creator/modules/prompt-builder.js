@@ -210,9 +210,15 @@ export function isSunProtectionProduct(text = "") {
   return /(กันแดด|หมวกกันแดด|หมวกปีกกว้าง|ปลอกแขนกันแดด|เสื้อกันแดด|เสื้อกัน uv|แว่นกันแดด|ร่มกันแดด|สเปรย์กันแดด|โลชั่นกันแดด|ครีมกันแดด|กันแดดหน้า|กันแดดตัว|sunscreen|sunblock|sun lotion|sun spray|sun hat|sun visor|sun glasses|sunglasses|spf)/i.test(String(text || ""));
 }
 
+export function isHeadwearProduct(text = "") {
+  return /(โม่ง|โม่งกันแดด|โม่งคลุมหัว|โม่งขับรถ|หมวกโม่ง|ผ้าบัฟ|ผ้าบัฟฟ์|โม่งขี่มอไซค์|หมวกกันแดด|หมวก|หมวกกันน็อก|หมวกแคป|หมวกปีก|balaclava|buff|face mask|headwear|sun hood|riding hood|helmet|neck gaiter)/i.test(String(text || ""));
+}
+
 const FARM_POULTRY_FEED_EXCLUSION_RULE = "POULTRY & LIVESTOCK FEED SPECIFIC RULE: This product is poultry/farm livestock feed (such as chicken feed). ABSOLUTELY FORBIDDEN: Do NOT render dogs, cats, puppies, kittens, or house pets in the scene under any circumstances. Present the product packaging and feed granules cleanly in a farm, warehouse, or natural outdoor environment.";
 
 const SUNSCREEN_FIDELITY_DIRECTION = "SUN PROTECTION & SUN HAT SCENE LOCK: Place sun protection products (sunscreen, sun hats, sun visors, sunglasses, UV sleeves/jackets) in a bright, beautiful sunny outdoor environment (such as a sunlit park, outdoor garden, sunny promenade, outdoor cafe terrace, poolside, or beach with natural bright daylight). Vary the outdoor setting naturally. STRICTLY FORBIDDEN: Do NOT place sun protection products or sun hats in dark indoors, windowless rooms, or dim shaded interiors.";
+
+const HEADWEAR_NEVER_REMOVE_MANDATE = "STRICT HEADWEAR & BALACLAVA WEARING LOCK (ห้ามถอดโม่ง/หมวก/ผ้าบัฟเด็ดขาด): Presenter MUST keep the balaclava, sun hood, buff mask, helmet, or hat 100% fully worn and properly positioned on their head/face across ALL scenes. ABSOLUTELY FORBIDDEN: Presenter MUST NEVER remove, pull down, take off, unmask, lift, or adjust the balaclava, buff, hood, or hat at any point during the video. It must stay continuously worn on their head/face throughout the entire clip from start to finish.";
 
 /**
  * @description เลือก doodle style ตามประเภทสินค้าและกลุ่มเป้าหมาย
@@ -557,6 +563,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     analysisDirection,
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
     isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
+    isHeadwearProduct(productText) ? HEADWEAR_NEVER_REMOVE_MANDATE : "",
     imageBackgroundDirection,
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     peopleDirection,
@@ -745,6 +752,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     analysisDirection,
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
     isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
+    isHeadwearProduct(productText) ? HEADWEAR_NEVER_REMOVE_MANDATE : "",
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,

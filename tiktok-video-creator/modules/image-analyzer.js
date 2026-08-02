@@ -592,7 +592,7 @@ function normalizeAutoOptions(value, productInfo = {}) {
 }
 
 function detectGender(text = "") {
-  const isMen = /(ผู้ชาย|ชาย|บุรุษ|men|man|male|โกนหนวด|มีดโกน|เนกไท|บ็อกเซอร์|กางเกงในชาย|เสื้อเชิ้ตชาย|รองเท้าผู้ชาย|น้ำหอมผู้ชาย|ครีมผู้ชาย|โฟมผู้ชาย)/i.test(text);
+  const isMen = /(ผู้ชาย|ชาย|บุรุษ|men|man|male|ขี่มอเตอร์ไซค์|มอไซค์|ไรเดอร์|นักบิด|โกนหนวด|มีดโกน|เนกไท|บ็อกเซอร์|กางเกงในชาย|เสื้อเชิ้ตชาย|รองเท้าผู้ชาย|น้ำหอมผู้ชาย|ครีมผู้ชาย|โฟมผู้ชาย)/i.test(text);
   const isWomen = /(ผู้หญิง|หญิง|สตรี|women|woman|female|ชุดเดรส|บรา|ยกทรง|กระโปรง|ลิปสติก|กระเป๋าถือผู้หญิง|ผ้าอนามัย)/i.test(text);
   if (isMen && !isWomen) return "man";
   if (isWomen && !isMen) return "woman";
@@ -602,6 +602,20 @@ function detectGender(text = "") {
 function inferAutoOptionsFromProduct(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
 
+  if (/(โม่ง|โม่งกันแดด|โม่งคลุมหัว|โม่งขับรถ|หมวกโม่ง|ผ้าบัฟ|ผ้าบัฟฟ์|โม่งขี่มอไซค์|balaclava|buff|face mask|headwear|sun hood|riding hood|neck gaiter)/i.test(text)) {
+    const isExplicitWomen = /(ผู้หญิง|หญิง|สตรี|women|woman|female)/i.test(text);
+    const gender = isExplicitWomen ? "woman" : "man";
+    return buildAutoOptions(
+      "lifestyle",
+      gender,
+      "kind",
+      "เท่",
+      "Nature / Outdoor",
+      "Slow Zoom In",
+      "Fade",
+      "สินค้ากลุ่มโม่ง หมวก ผ้าบัฟ ต้องใช้พรีเซนเตอร์เพศตรงกับกลุ่มเป้าหมาย (ผู้ชาย) และสวมใส่โม่ง/หมวก/ผ้าบัฟไว้บนศีรษะตลอดเวลา ห้ามถอดออกเด็ดขาด"
+    );
+  }
   if (/(ตู้|ลิ้นชัก|ชั้นวาง|เฟอร์นิเจอร์|ห้องนั่งเล่น|ห้องนอน|cabinet|drawer|shelf|furniture|wardrobe|dresser)/i.test(text)) {
     return buildAutoOptions("review", "none", "professional", "Professional", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "เฟอร์นิเจอร์ควรแสดงเดี่ยวในพื้นที่ภายในที่สะอาดและเหมาะกับการใช้งานจริง");
   }

@@ -497,6 +497,11 @@ const modestFashionVid = buildVideoPrompt({ name: "เสื้อเชิ้�
 check("video prompt includes strict modest dress code lock forbidding risqué outfits", /STRICT MODEST & APPROPRIATE DRESS CODE LOCK|ห้ามชุดสุ่มเสี่ยง/i.test(modestFashionVid), modestFashionVid);
 check("video prompt forbids revealing cleavage/deep v-necks/micro-shorts", /No deep v-necks|no exposed cleavage|no micro-shorts/i.test(modestFashionVid), modestFashionVid);
 
+// Test 22: Balaclava / Headwear / Buff Presenter Gender & Never Remove Mandate (ห้ามถอดโม่ง/หมวก/ผ้าบัฟ)
+const balaclavaVid = buildVideoPrompt({ name: "โม่งคลุมหัวกันแดด ขี่มอเตอร์ไซค์" }, settings);
+check("balaclava prompt includes strict headwear never remove mandate", /STRICT HEADWEAR & BALACLAVA WEARING LOCK|ห้ามถอดโม่ง/i.test(balaclavaVid), balaclavaVid);
+check("balaclava prompt forbids taking off or removing headwear", /NEVER remove, pull down, take off, unmask/i.test(balaclavaVid), balaclavaVid);
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }
