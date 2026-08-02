@@ -609,9 +609,26 @@ function inferAutoOptionsFromProduct(productInfo = {}) {
   if (/(เสื้อ|กางเกง|กระเป๋า|แฟชั่น|wear|shirt|dress|bag)/i.test(text)) {
     return buildAutoOptions("lifestyle", "woman", "fun", "Trendy", "Urban Street", "Handheld Shake", "Swipe", "สินค้าแฟชั่นเหมาะกับการเห็นการใช้งานจริง");
   }
-  if (/(แมว|หมา|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|cat|dog|pet|kitten|puppy)/i.test(text)) {
-    const isCat = /(แมว|cat|kitten)/i.test(text);
-    return buildAutoOptions("review", isCat ? "cat" : "dog", "fun", "น่ารัก", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "สินค้าสัตว์เลี้ยงแนะนำพรีเซนเตอร์เป็นสัตว์เลี้ยงสุดน่ารัก");
+  if (/(อาหารไก่|หัวอาหารไก่|อาหารนก|อาหารปลา|อาหารหมู|อาหารวัว|อาหารกุ้ง|chicken feed|poultry feed|fish food|bird food)/i.test(text)) {
+    return buildAutoOptions(
+      "review",
+      "none",
+      "professional",
+      "Professional",
+      "Warehouse / Stockroom",
+      "Slow Zoom In",
+      "Cut ตรง",
+      "อาหารไก่/อาหารสัตว์ฟาร์มควรเน้นบรรจุภัณฑ์ เม็ดอาหาร และรายละเอียดความคุ้มค่าอย่างมืออาชีพ ห้ามใส่สุนัขหรือแมวในฉาก"
+    );
+  }
+  if (/(อาหารแมว|แมว|cat|kitten)/i.test(text)) {
+    return buildAutoOptions("review", "cat", "fun", "น่ารัก", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "สินค้าแมวแนะนำพรีเซนเตอร์เป็นน้องแมวสุดน่ารัก");
+  }
+  if (/(อาหารหมา|อาหารสุนัข|หมา|สุนัข|dog|puppy)/i.test(text)) {
+    return buildAutoOptions("review", "dog", "fun", "น่ารัก", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "สินค้าสุนัขแนะนำพรีเซนเตอร์เป็นน้องหมาสุดน่ารัก");
+  }
+  if (/(สัตว์เลี้ยง|pet)/i.test(text)) {
+    return buildAutoOptions("review", "none", "professional", "Professional", "Studio Minimal", "Slow Zoom In", "Cut ตรง", "สินค้าหมวดสัตว์เลี้ยงทั่วไปเน้นการโชว์สินค้าเดี่ยวอย่างเป็นมืออาชีพ");
   }
   if (/(จักรยานเด็ก|รถเด็ก|ของใช้เด็ก|ของเล่นเด็ก|คาร์ซีท|รถเข็นเด็ก|กระเป๋านักเรียน|เสื้อผ้าเด็ก|ชุดเด็ก|ของเล่น|เด็ก|kids|kid|toddler|baby|children)/i.test(text)) {
     const isOutdoor = /(จักรยาน|รถเด็ก|สกู๊ตเตอร์|รองเท้า|หมวก|สนาม|กระเป๋า|bike|bicycle|scooter|car|outdoor)/i.test(text);

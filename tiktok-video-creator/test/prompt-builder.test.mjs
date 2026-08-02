@@ -480,6 +480,10 @@ const kidsBikeVid = buildVideoPrompt({ name: "จักรยานเด็ก�
 check("kids bicycle prompt includes child and supervising parent", /child|kid/i.test(kidsBikeVid) && /parent|guardian/i.test(kidsBikeVid), kidsBikeVid);
 check("kids bicycle prompt excludes dogs/pets", !/pet animal|\bdog\b/i.test(kidsBikeVid), kidsBikeVid);
 
+// Test 19: Poultry/Farm Feed (อาหารไก่) Exclusion of Dogs & Cats
+const chickenFeedVid = buildVideoPrompt({ name: "อาหารไก่ไข่ โปรตีนสูง 30 กก." }, settings);
+check("chicken feed video prompt excludes dogs/cats", !/pet animal|\bdog\b|\bcat\b/i.test(chickenFeedVid) && /POULTRY & LIVESTOCK FEED SPECIFIC RULE/i.test(chickenFeedVid), chickenFeedVid);
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }
