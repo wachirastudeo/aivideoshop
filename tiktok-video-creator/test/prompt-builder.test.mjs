@@ -389,18 +389,18 @@ const vidFirstSceneNoPeopleHeavy = buildVideoPrompt({ name: "กระสอบ�
 check("video prompt with firstSceneNoPeople (heavy) contains strict exception for no people/hands", /STRICT EXCEPTION FOR SCENE 1: Do not show the presenter, any other people, or hands/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
 check("video prompt with firstSceneNoPeople (heavy) shows only product resting in Scene 1", /Scene 1.*Product-only shot.*rest on a flat surface/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
 
-// Test 8: modelRefImage enforcement
+// Test 8: modelRefImage & presenter face generation enforcement
 const vidNoModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
-check("video prompt without modelRefImage instructs AI NOT to copy face from product reference image", /CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION|CRITICAL RULE — EVERYDAY PRESENTER FACE/i.test(vidNoModelRef), vidNoModelRef);
+check("video prompt without modelRefImage instructs AI NOT to copy face from product reference image", /CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION/i.test(vidNoModelRef), vidNoModelRef);
 
 const vidWithModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
-check("video prompt with modelRefImage enforces exact model face match", /STRICT PRESENTER MATCH: The presenter in the video.*MUST look exactly identical to the model/i.test(vidWithModelRef), vidWithModelRef);
+check("video prompt with modelRefImage enforces brand new presenter face generation", /CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION/i.test(vidWithModelRef), vidWithModelRef);
 
 const imgNoModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
-check("image prompt without modelRefImage instructs AI to focus on clean product hero presentation", /Product Hero Focus|Product Focus/i.test(imgNoModelRef), imgNoModelRef);
+check("image prompt without modelRefImage instructs AI to focus on clean product hero presentation", /Product Hero Focus|Product Focus|BRAND NEW PRESENTER FACE/i.test(imgNoModelRef), imgNoModelRef);
 
 const imgWithModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
-check("image prompt with modelRefImage enforces exact model face match", /STRICT PRESENTER MATCH: A model reference image is provided/i.test(imgWithModelRef), imgWithModelRef);
+check("image prompt with modelRefImage enforces brand new presenter face generation", /CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION/i.test(imgWithModelRef), imgWithModelRef);
 
 // Test 9: Video prompt fidelity directions
 const sampleVideoPrompt = buildVideoPrompt({ name: "กระเป๋าเป้ลายการ์ตูน" }, settings);
