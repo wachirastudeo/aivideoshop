@@ -129,7 +129,7 @@ check("image prompt creates a new suitable background", /brand new|background th
 check("video prompt is multi-scene", /multi-scene|distinct scenes/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
 check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabinetVideo) && !/Urban Street/i.test(cabinetVideo));
 check("image prompt stays concise", cabinetImage.length < 12000, `length=${cabinetImage.length}`);
-check("video prompt stays concise", cabinetVideo.length < 15000, `length=${cabinetVideo.length}`);
+check("video prompt stays concise", cabinetVideo.length < 18000, `length=${cabinetVideo.length}`);
 
 // --- footwear fidelity: preserve the exact model while Auto includes a reviewer ---
 const shoe = {
@@ -501,6 +501,11 @@ check("video prompt forbids revealing cleavage/deep v-necks/micro-shorts", /No d
 const balaclavaVid = buildVideoPrompt({ name: "โม่งคลุมหัวกันแดด ขี่มอเตอร์ไซค์" }, settings);
 check("balaclava prompt includes strict headwear never remove mandate", /STRICT HEADWEAR & BALACLAVA WEARING LOCK|ห้ามถอดโม่ง/i.test(balaclavaVid), balaclavaVid);
 check("balaclava prompt forbids taking off or removing headwear", /NEVER remove, pull down, take off, unmask/i.test(balaclavaVid), balaclavaVid);
+
+// Test 23: No Donning & No Doffing Action Lock (ห้ามทำท่าถอดหรือสวมใส่)
+const videoPromptDonningCheck = buildVideoPrompt({ name: "หมวกกันแดด" }, settings);
+check("video prompt includes strict no-donning & no-doffing action lock", /STRICT NO-DONNING & NO-DOFFING ACTION LOCK|ห้ามทำท่าถอดหรือสวมใส่/i.test(videoPromptDonningCheck), videoPromptDonningCheck);
+check("video prompt forbids motioning to put on or take off items", /Do NOT depict any action, motion, or gesture of putting on|taking off/i.test(videoPromptDonningCheck), videoPromptDonningCheck);
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
