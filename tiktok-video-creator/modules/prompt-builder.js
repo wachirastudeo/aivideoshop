@@ -213,7 +213,7 @@ export function isSunProtectionProduct(text = "") {
 
 const FARM_POULTRY_FEED_EXCLUSION_RULE = "POULTRY & LIVESTOCK FEED SPECIFIC RULE: This product is poultry/farm livestock feed (such as chicken feed). ABSOLUTELY FORBIDDEN: Do NOT render dogs, cats, puppies, kittens, or house pets in the scene under any circumstances. Present the product packaging and feed granules cleanly in a farm, warehouse, or natural outdoor environment.";
 
-const SUNSCREEN_FIDELITY_DIRECTION = "SUN PROTECTION & SUN HAT SCENE LOCK: Place sun protection products (sunscreen, sun hats, sun visors, sunglasses, UV sleeves/jackets) in a bright, beautiful sunny outdoor environment (such as a sunny beach, resort pool, sunlit terrace, sunny park, or outdoor garden with natural bright daylight). The scene MUST evoke fresh, vibrant sun protection in natural sunlight. STRICTLY FORBIDDEN: Do NOT place sun protection products or sun hats in dark indoors, windowless rooms, or dim shaded interiors.";
+const SUNSCREEN_FIDELITY_DIRECTION = "SUN PROTECTION & SUN HAT SCENE LOCK: Place sun protection products (sunscreen, sun hats, sun visors, sunglasses, UV sleeves/jackets) in a bright, beautiful sunny outdoor environment (such as a sunlit park, outdoor garden, sunny promenade, outdoor cafe terrace, poolside, or beach with natural bright daylight). Vary the outdoor setting naturally. STRICTLY FORBIDDEN: Do NOT place sun protection products or sun hats in dark indoors, windowless rooms, or dim shaded interiors.";
 
 /**
  * @description เลือก doodle style ตามประเภทสินค้าและกลุ่มเป้าหมาย
@@ -1371,9 +1371,9 @@ function inferPromptAutoOptions(productInfo = {}) {
 function inferRequiredProductLocation(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
 
-  // 0. Sunscreen & Sun Protection -> Bright Sunny Outdoor Beach Resort
+  // 0. Sun Protection & Sun Hats -> Sunny Outdoor Setting
   if (isSunProtectionProduct(text)) {
-    return "Bright Sunny Outdoor Beach Resort";
+    return "Sunny Outdoor Setting (Park, Garden, Promenade, or Beach)";
   }
 
   // 1. Kitchen & Cooking -> Modern Kitchen
