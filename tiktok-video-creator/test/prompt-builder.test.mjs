@@ -475,6 +475,11 @@ check("stripForeignNonThaiScripts strips Chinese/CJK characters", strippedText =
 const sampleVidThai = buildVideoPrompt({ name: "กระเป๋าสะพาย" }, settings);
 check("video prompt includes strict Thai language and zero gibberish lock", /STRICT THAI LANGUAGE ONLY & ZERO GIBBERISH LOCK/i.test(sampleVidThai), sampleVidThai);
 
+// Test 18: Kids products (จักรยานเด็ก) Presenter & Parent Supervision Lock
+const kidsBikeVid = buildVideoPrompt({ name: "จักรยานเด็กทรงสปอร์ต ล้อ 16 นิ้ว" }, settings);
+check("kids bicycle prompt includes child and supervising parent", /child|kid/i.test(kidsBikeVid) && /parent|guardian/i.test(kidsBikeVid), kidsBikeVid);
+check("kids bicycle prompt excludes dogs/pets", !/pet animal|\bdog\b/i.test(kidsBikeVid), kidsBikeVid);
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }

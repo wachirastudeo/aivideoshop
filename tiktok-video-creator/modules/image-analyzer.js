@@ -613,8 +613,18 @@ function inferAutoOptionsFromProduct(productInfo = {}) {
     const isCat = /(แมว|cat|kitten)/i.test(text);
     return buildAutoOptions("review", isCat ? "cat" : "dog", "fun", "น่ารัก", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "สินค้าสัตว์เลี้ยงแนะนำพรีเซนเตอร์เป็นสัตว์เลี้ยงสุดน่ารัก");
   }
-  if (/(ของเล่น|เด็ก|น่ารัก|cute|toy|kid)/i.test(text)) {
-    return buildAutoOptions("trending-hook", "cartoon3d", "fun", "น่ารัก", "Modern Living Room", "Push In Fast", "Zoom Transition", "สินค้าน่ารักควรเปิดด้วย hook สนุกและภาพจำง่าย");
+  if (/(จักรยานเด็ก|รถเด็ก|ของใช้เด็ก|ของเล่นเด็ก|คาร์ซีท|รถเข็นเด็ก|กระเป๋านักเรียน|เสื้อผ้าเด็ก|ชุดเด็ก|ของเล่น|เด็ก|kids|kid|toddler|baby|children)/i.test(text)) {
+    const isOutdoor = /(จักรยาน|รถเด็ก|สกู๊ตเตอร์|รองเท้า|หมวก|สนาม|กระเป๋า|bike|bicycle|scooter|car|outdoor)/i.test(text);
+    return buildAutoOptions(
+      "lifestyle",
+      "child",
+      "kind",
+      "น่ารัก",
+      isOutdoor ? "Nature / Outdoor" : "Modern Living Room",
+      "Slow Zoom In",
+      "Cut ตรง",
+      "สินค้าเด็กต้องมีเด็กใช้งานสินค้าอย่างเป็นธรรมชาติในฉาก และมีผู้ปกครองคอยดูแลใกล้ชิดอย่างอบอุ่น"
+    );
   }
   if (/(ครัว|บ้าน|เครื่องใช้|organizer|storage|clean|ทำความสะอาด)/i.test(text)) {
     return buildAutoOptions("before-after", "none", "professional", "Professional", "Modern Living Room", "Pan Left to Right", "Swipe", "สินค้าใช้ในบ้านควรเห็นปัญหาก่อนใช้และผลลัพธ์หลังใช้");

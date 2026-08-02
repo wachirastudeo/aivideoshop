@@ -98,8 +98,8 @@ const PRESENTERS = {
   hands_only: "Realistic first-person POV (Point of View) perspective. Show the product being used, worn, or presented naturally with realistic anatomical hands (strictly 5 fingers per hand, natural ergonomic grip, clean skin texture, realistic knuckles) or feet/legs depending on product category. No face or head shown in the frame.",
   woman: "A young Thai woman reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/blouse AND long pants/jeans/skirt). She stands near or holds it gently, smiling at the camera.",
   man: "A young Thai man reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/polo AND long pants/jeans). He stands near or holds it gently, smiling at the camera.",
-  child: "A cute young Thai child (4-6 years old) naturally playing, eating, or interacting with the product, dressed in a complete child outfit (shirt and pants). The child is engrossed in the activity naturally.",
-  older_child: "A cute Thai older child (7-12 years old, kid) naturally playing, studying, or interacting with the product, dressed in a complete kid outfit (shirt and long pants/skirt). The child is engrossed naturally.",
+  child: "A cute young Thai child (4-6 years old) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
+  older_child: "A cute Thai older child (7-12 years old, kid) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
   living_product: "The product itself becomes a living character with cute 3D eyes and personality",
   dog: "A friendly Thai reviewer standing in full-body view modestly dressed in a complete outfit (shirt AND long pants) together with a cute dog, presenting the product in a bright indoor setting.",
@@ -107,6 +107,8 @@ const PRESENTERS = {
 };
 
 const THAI_PERSON_DIRECTION = "Natural Thai reviewer standing in a full-length shot, modestly dressed in a complete outfit (proper top AND long pants/skirt). The product must remain rigid and static; reviewer stands next to it gently.";
+
+const KIDS_WITH_PARENT_DIRECTION = "KIDS PRODUCT SCENE WITH CHILD & PARENT SUPERVISION: The scene MUST depict a happy young Thai child (kid/toddler) actively, safely, and naturally riding, playing with, wearing, or using the kids product (e.g. riding the kids bicycle, playing with the toy) in a bright, clean setting. The child is naturally enjoying and using the product naturally in the scene without hard-selling to the camera. Accompanying the child MUST BE a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby, supervising with love, warmth, and care. STRICTLY FORBIDDEN: Do NOT include dogs or unrelated pet animals. Do NOT show an isolated adult presenter without a child for kids products.";
 
 const FULL_BODY_PRESENTER_DIRECTION = "STRICT FULL-BODY SHOT & DECENT DRESS CODE: Presenter MUST be shown in a full-length head-to-toe standing view with head, torso, full legs, feet, and footwear fully visible on the floor. STRICT FULL OUTFIT REQUIREMENT: Presenter MUST wear a complete, modest FULL OUTFIT with BOTH a proper top (shirt/blouse/jacket) AND proper long bottoms (trousers/jeans/long pants/knee-length skirt). FORBIDDEN: incomplete outfits or improper attire.";
 
@@ -196,6 +198,10 @@ const NO_ADDED_PATTERNS_OR_GRAPHICS_RULE = "STRICT PLAIN & SOLID-COLOR PRODUCT R
 const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new design details, buttons, stripes, logos, or decorations not on the reference. Render any texture finish (matte, glossy, metallic, fabric) or gradient with 100% precision. Do not compromise product accuracy for style.";
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
+
+export function isKidsProduct(text = "") {
+  return /(จักรยานเด็ก|รถเด็ก|ของใช้เด็ก|ของเล่นเด็ก|คาร์ซีท|รถเข็นเด็ก|กระเป๋านักเรียน|เสื้อผ้าเด็ก|ชุดเด็ก|ของเล่น|เด็ก|kids|kid|toddler|baby|children)/i.test(String(text || ""));
+}
 
 /**
  * @description เลือก doodle style ตามประเภทสินค้าและกลุ่มเป้าหมาย
@@ -430,11 +436,15 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
   const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
 
+  const isKids = isKidsProduct(productText) || ["child", "older_child", "baby", "toddler"].includes(auto.presenter);
+
   let peopleDirection = "";
   if (handsOnly) {
     peopleDirection = `${HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}`;
   } else if (isAnimal) {
     peopleDirection = `Pet Animal: A cute, friendly pet animal (${auto.presenter === "cat" ? "cat" : "dog"}) sitting next to or interacting naturally with the product in a bright, clean indoor setting. ${ANIMAL_PRESENTER_DIRECTION}`;
+  } else if (isKids && auto.presenter !== "none") {
+    peopleDirection = `${KIDS_WITH_PARENT_DIRECTION}`;
   } else if (auto.presenter && auto.presenter !== "none") {
     if (hasModelRefImage) {
       let presenterInstruction = PRESENTERS[auto.presenter] || PRESENTERS.none;
@@ -743,9 +753,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `a reviewer together with a ${animalName} sitting next to the product`)
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `a reviewer together with a ${animalName}`)
       .replace(/\bhands\b/gi, "hands");
-  } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
-    let childDesc = "a cute young child";
-    let childAction = "playing and doing activities naturally with the product";
+  } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter) || isKidsProduct(productText)) {
+    let childDesc = "a happy young Thai child (kid/toddler)";
+    let childAction = "actively riding, playing with, or using the kids product naturally in the scene";
     if (auto.presenter === "baby") {
       childDesc = "a cute baby";
       childAction = "crawling or sitting naturally near the product";
@@ -753,12 +763,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       childDesc = "a cute toddler";
       childAction = "playing or interacting naturally with the product";
     } else if (auto.presenter === "older_child") {
-      childDesc = "a cute older child";
-      childAction = "using or playing with the product naturally";
+      childDesc = "a cute older child/kid";
+      childAction = "riding or using the product naturally in the scene";
     }
+    const parentCare = "accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care (no hard selling)";
     sceneBreakdown = sceneBreakdown
-      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `${childDesc} ${childAction}`)
-      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, childDesc);
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `${childDesc} ${childAction}, ${parentCare}`)
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `${childDesc} together with a supervising parent`);
   }
 
   // Adjust prompt for heavy/large products to prevent unnatural holding/lifting
