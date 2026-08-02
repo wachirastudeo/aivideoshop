@@ -492,6 +492,11 @@ check("sunscreen prompt includes sun protection scene lock", /SUN PROTECTION & S
 const menSunHatVid = buildVideoPrompt({ name: "หมวกกันแดดปีกกว้าง สำหรับผู้ชาย" }, settings);
 check("men's sun hat prompt includes male presenter and sunny outdoor location", /man|male/i.test(menSunHatVid) && /SUN PROTECTION & SUN HAT SCENE LOCK/i.test(menSunHatVid), menSunHatVid);
 
+// Test 21: Modest Dress Code Lock (ห้ามชุดสุ่มเสี่ยง/วาบหวิว)
+const modestFashionVid = buildVideoPrompt({ name: "เสื้อเชิ้ตลายดอก" }, { ...settings, presenter: "woman" });
+check("video prompt includes strict modest dress code lock forbidding risqué outfits", /STRICT MODEST & APPROPRIATE DRESS CODE LOCK|ห้ามชุดสุ่มเสี่ยง/i.test(modestFashionVid), modestFashionVid);
+check("video prompt forbids revealing cleavage/deep v-necks/micro-shorts", /No deep v-necks|no exposed cleavage|no micro-shorts/i.test(modestFashionVid), modestFashionVid);
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }
