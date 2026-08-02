@@ -216,11 +216,17 @@ export function isHeadwearProduct(text = "") {
   return /(โม่ง|โม่งกันแดด|โม่งคลุมหัว|โม่งขับรถ|หมวกโม่ง|ผ้าบัฟ|ผ้าบัฟฟ์|โม่งขี่มอไซค์|หมวกกันแดด|หมวก|หมวกกันน็อก|หมวกแคป|หมวกปีก|balaclava|buff|face mask|headwear|sun hood|riding hood|helmet|neck gaiter)/i.test(String(text || ""));
 }
 
+export function isFullFaceCoveringProduct(text = "") {
+  return /(โม่ง|โม่งคลุมหน้า|โม่งคลุมหมดหน้า|โม่งปิดปาก|ผ้าปิดปาก|ผ้าปิดจมูก|หน้ากากอนามัย|แมสก์|หน้ากาก|balaclava|full face balaclava|face mask|ski mask|mouth mask|gaiter)/i.test(String(text || ""));
+}
+
 const FARM_POULTRY_FEED_EXCLUSION_RULE = "POULTRY & LIVESTOCK FEED SPECIFIC RULE: This product is poultry/farm livestock feed (such as chicken feed). ABSOLUTELY FORBIDDEN: Do NOT render dogs, cats, puppies, kittens, or house pets in the scene under any circumstances. Present the product packaging and feed granules cleanly in a farm, warehouse, or natural outdoor environment.";
 
 const SUNSCREEN_FIDELITY_DIRECTION = "SUN PROTECTION & SUN HAT SCENE LOCK: Place sun protection products (sunscreen, sun hats, sun visors, sunglasses, UV sleeves/jackets) in a bright, beautiful sunny outdoor environment (such as a sunlit park, outdoor garden, sunny promenade, outdoor cafe terrace, poolside, or beach with natural bright daylight). Vary the outdoor setting naturally. STRICTLY FORBIDDEN: Do NOT place sun protection products or sun hats in dark indoors, windowless rooms, or dim shaded interiors.";
 
 const HEADWEAR_NEVER_REMOVE_MANDATE = "STRICT HEADWEAR & BALACLAVA WEARING LOCK (ห้ามถอดโม่ง/หมวก/ผ้าบัฟเด็ดขาด): Presenter MUST keep the balaclava, sun hood, buff mask, helmet, or hat 100% fully worn and properly positioned on their head/face across ALL scenes. ABSOLUTELY FORBIDDEN: Presenter MUST NEVER remove, pull down, take off, unmask, lift, or adjust the balaclava, buff, hood, or hat at any point during the video. It must stay continuously worn on their head/face throughout the entire clip from start to finish.";
+
+const FULL_FACE_COVERAGE_LOCK = "STRICT FABRIC MOUTH-COVERING LOCK (ปิดปากมิดชิดธรรมชาติ ห้ามเห็นปาก/ห้ามขยับปากใต้ผ้า): The fabric of the balaclava/mask MUST remain 100% solid, smooth, opaque, and completely covering the mouth, lips, nose, and chin naturally across ALL frames. ABSOLUTELY FORBIDDEN & CRITICAL MOTION RULE: Do NOT show visible lips, mouth opening, lip-sync movement, or mouth contours deforming through the fabric when speaking. All Thai narration MUST be an off-screen/over-fabric voiceover with the fabric remaining completely smooth, static, and solid over the mouth without any mouth opening or lip distortion.";
 
 /**
  * @description เลือก doodle style ตามประเภทสินค้าและกลุ่มเป้าหมาย
@@ -566,6 +572,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
     isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
     isHeadwearProduct(productText) ? HEADWEAR_NEVER_REMOVE_MANDATE : "",
+    isFullFaceCoveringProduct(productText) ? FULL_FACE_COVERAGE_LOCK : "",
     imageBackgroundDirection,
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     peopleDirection,
@@ -756,6 +763,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
     isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
     isHeadwearProduct(productText) ? HEADWEAR_NEVER_REMOVE_MANDATE : "",
+    isFullFaceCoveringProduct(productText) ? FULL_FACE_COVERAGE_LOCK : "",
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
@@ -974,7 +982,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
     : "present the product's value proposition, features, or name naturally in Thai";
 
-  const speechDir = `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. FORBIDDEN: no exaggerated claims, no greetings (never say "สวัสดี", "หวัดดี", "hello", "hi"), no price/discounts ("ราคา", "บาท", "ลด"), no quantities ("กรัม", "kg", "มล."), no CTA ("สั่งได้เลย", "กดลิงก์"). Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
+  const speechDir = isFullFaceCoveringProduct(productText)
+    ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. FORBIDDEN: no exaggerated claims, no greetings, no price/discounts, no quantities, no CTA. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
+    : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. FORBIDDEN: no exaggerated claims, no greetings (never say "สวัสดี", "หวัดดี", "hello", "hi"), no price/discounts ("ราคา", "บาท", "ลด"), no quantities ("กรัม", "kg", "มล."), no CTA ("สั่งได้เลย", "กดลิงก์"). Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
   const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {

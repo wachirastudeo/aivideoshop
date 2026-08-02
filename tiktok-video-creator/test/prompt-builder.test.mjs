@@ -507,6 +507,11 @@ const videoPromptDonningCheck = buildVideoPrompt({ name: "หมวกกัน�
 check("video prompt includes strict no-donning & no-doffing action lock", /STRICT NO-DONNING & NO-DOFFING ACTION LOCK|ห้ามทำท่าถอดหรือสวมใส่/i.test(videoPromptDonningCheck), videoPromptDonningCheck);
 check("video prompt forbids motioning to put on or take off items", /Do NOT depict any action, motion, or gesture of putting on|taking off/i.test(videoPromptDonningCheck), videoPromptDonningCheck);
 
+// Test 24: Full Face Balaclava / Mask Fabric Mouth Coverage Lock (ปิดปากมิดชิดธรรมชาติ ห้ามเห็นปาก/ขยับปากใต้ผ้า)
+const fullBalaclavaVid = buildVideoPrompt({ name: "โม่งคลุมหมดหน้า ป้องกัน UV" }, settings);
+check("full balaclava prompt includes fabric mouth covering lock", /STRICT FABRIC MOUTH-COVERING LOCK|ปิดปากมิดชิดธรรมชาติ/i.test(fullBalaclavaVid), fullBalaclavaVid);
+check("full balaclava prompt forbids visible lips/mouth opening through fabric", /Do NOT show visible lips, mouth opening, lip-sync movement/i.test(fullBalaclavaVid), fullBalaclavaVid);
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }
