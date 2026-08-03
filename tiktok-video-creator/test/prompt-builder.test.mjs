@@ -193,7 +193,7 @@ check(
 );
 check(
   "explicit child mode selects child presenter",
-  /Presenter: A cute young Thai child \(4-6 years old\)/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, { ...settings, presenter: "child" }))
+  /Presenter: A cute young Thai child \(4-6 years old, kindergarten age/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, { ...settings, presenter: "child" }))
 );
 check(
   "explicit child presenter narrator is mother voice",
@@ -222,6 +222,14 @@ check(
 check(
   "explicit child presenter narration does not sound like commercial product review",
   /NOT sound like a commercial product review or sales pitch/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, { ...settings, presenter: "child" }))
+);
+check(
+  "child presenter strictly enforces kindergarten minimum age (4-6 years old, no babies/toddlers)",
+  /strictly no baby or toddler under 4 years old/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, { ...settings, presenter: "child" }))
+);
+check(
+  "kids product scene direction enforces kindergarten minimum age",
+  /strictly no babies or toddlers under kindergarten age/i.test(buildImagePrompt({ name: "จักรยานเด็ก", productId: "kids-bike" }, { ...settings, presenter: "child" }))
 );
 
 
@@ -418,6 +426,12 @@ check("hands_only video prompt contains background setting or aesthetics", /Cafe
 const caseAutoVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
 check("phone case product Auto presenter recommends hands_only", /STRICTLY FORBIDDEN: Do not show any face or head in the frame/i.test(caseAutoVid), caseAutoVid);
 check("phone case product Auto location recommends Cafe \/ Coffee Shop setting", /Cafe \/ Coffee Shop/i.test(caseAutoVid), caseAutoVid);
+check("phone case product video prompt contains multi-angle multi-shot mandate", /MULTI-ANGLE PHONE CASE SHOT MANDATE/i.test(caseAutoVid), caseAutoVid);
+check("no-presenter or hands_only presenter defaults voice narration to female narrator", /young Thai female|off-screen young Thai woman narrator/i.test(caseAutoVid), caseAutoVid);
+
+const magneticCaseVid = buildVideoPrompt({ name: "เคสแม่เหล็กวงกลม ชาร์จไร้สาย ยึดขาตั้ง" }, settings);
+check("magnetic phone case prompt includes built-in magnetic ring feature lock", /BUILT-IN MAGNETIC RING \(MAGSAFE\) FEATURE LOCK/i.test(magneticCaseVid), magneticCaseVid);
+check("magnetic phone case prompt forbids external stick-ons or separate plates", /no extra attachments or stick-ons required/i.test(magneticCaseVid), magneticCaseVid);
 
 // Test 12: Clothing front-only view lock
 const clothingVid = buildVideoPrompt({ name: "เสื้อยืดคอกลมแฟชั่น", category: "เสื้อผ้า" }, settings);

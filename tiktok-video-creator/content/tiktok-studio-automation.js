@@ -16,7 +16,7 @@ const TIKTOK_SELECTORS = {
   captionEditor: '[data-e2e="caption_container"] .public-DraftEditor-content[contenteditable="true"], .notranslate.public-DraftEditor-content[contenteditable="true"], div[contenteditable="true"]',
   locationSearch: '[data-e2e="poi_container"] input[placeholder="Search locations"]',
   visibilityCombo: '[data-e2e="video_visibility_container"] button[role="combobox"]',
-  scheduleContainer: '[data-e2e="schedule_container"], [class*="scheduled-picker" i], [class*="schedule-picker" i], [class*="scheduled-container" i], [class*="schedule-container" i]',
+  scheduleContainer: '[data-e2e="schedule_container"]',
   postNowRadio: 'input[name="postSchedule"][value="post_now"]',
   scheduleRadio: 'input[name="postSchedule"][value="schedule"]',
   addLinkContainer: '[data-e2e="anchor_container"]',
@@ -30,7 +30,7 @@ const TIKTOK_SELECTORS = {
 
 const TIKTOK_TEXT = {
   saveDraft: ["save draft", "save as draft", "save to drafts", "บันทึกฉบับร่าง", "บันทึกแบบร่าง"],
-  post: ["post", "publish", "schedule", "โพสต์", "เผยแพร่", "ตั้งเวลา", "ตั้งเวลาโพสต์"],
+  post: ["post", "publish", "โพสต์", "เผยแพร่"],
   confirm: ["save anyway", "confirm", "continue", "post now", "ยืนยัน", "บันทึกต่อไป", "โพสต์เลย", "โพสต์ทันที"],
 };
 
@@ -122,14 +122,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 });
 
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && changes.tiktokStopRequested?.newValue === true) {
-    stopRequested = true;
-    isRunning = false;
-    log("ได้รับคำสั่งหยุดงานผ่าน storage");
-  }
-});
-
 } // end guard __tiktokStudioListenerAdded
 
 // ──────────────────────────────────────────────
@@ -158,7 +150,6 @@ async function handleVideoUpload(payload = {}) {
       productId = "",
       productUrl = "",
       productName = "",
-      isCustomProductName,
       filename = "",
       aiGenerated,
       allowComment,
@@ -169,21 +160,21 @@ async function handleVideoUpload(payload = {}) {
 
     assertNotStopped();
     await discardRecoveryDraftIfNeeded();
-    await sleep(1000);
+    await sleep(1500 + Math.random() * 1500);
     assertNotStopped();
     sendPipelineLog("info", "กำลังอัปโหลดวิดีโอ...");
     await uploadVideoFromUrl(videoUrl, filename || buildVideoFilename({ productId }));
-    await sleep(1000);
+    await sleep(2000 + Math.random() * 1500);
     assertNotStopped();
     sendPipelineLog("info", "รอ TikTok ประมวลผลวิดีโอ...");
     await waitForUploadFinished();
-    await sleep(1000);
+    await sleep(2500 + Math.random() * 2000);
     assertNotStopped();
     await fillCaptionAndHashtags(caption, hashtags);
-    await sleep(1000);
+    await sleep(2000 + Math.random() * 1500);
     assertNotStopped();
-    const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, isCustomProductName, aiGenerated, allowComment, allowReuse });
-    await sleep(1000);
+    const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, aiGenerated, allowComment, allowReuse });
+    await sleep(2000 + Math.random() * 1500);
     assertNotStopped();
 
     if (mode === "post") {
@@ -471,7 +462,6 @@ async function verifyFileAccepted(input, file) {
   const deadline = Date.now() + 15000;
   let hadInputFile = false;
   while (Date.now() < deadline) {
-    assertNotStopped();
     const hasInputFile = input.files?.length > 0;
     if (hasInputFile) hadInputFile = true;
     const bodyText = normalizeText(document.body.innerText);
@@ -553,27 +543,39 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   editor.focus();
   await realClick(editor);
   await sleep(150 + Math.random() * 150);
-
-  // 1. ลบข้อความที่ค้างอยู่ในช่องทั้งหมดเสมอ (ป้องกันชื่อไฟล์ตกค้าง)
   selectAllEditable(editor);
   document.execCommand("delete", false);
-  await sleep(200);
+  await sleep(150 + Math.random() * 100);
 
-  // ป้องกันการใส่แฮชแท็กซ้ำสองรอบ (ทั้งใน caption และ hashtags)
-  const safeCaption = String(caption || "").trim();
-  const normTags = normalizeHashtags(hashtags);
-  const rawFullText = [safeCaption, ...normTags].filter(Boolean).join(" ");
-  const fullText = deduplicateHashtagsInText(rawFullText);
-
-  if (fullText) {
-    await humanTypeWords(editor, fullText);
+  if (caption) {
+    for (let i = 0; i < caption.length; i++) {
+      document.execCommand("insertText", false, caption[i]);
+      await sleep(15 + Math.random() * 35);
+    }
   }
   await sleep(200 + Math.random() * 150);
 
-  // ปิด popup แนะนำแฮชแท็ก ไม่งั้นพอ focus หลุด (กดโพส) TikTok จะ commit suggestion ทับ
+  for (const rawTag of normalizeHashtags(hashtags)) {
+    assertNotStopped();
+    const tag = String(rawTag || "").replace(/^#/, "").trim();
+    if (!tag) continue;
+    
+    const tagString = ` #${tag}`;
+    for (let i = 0; i < tagString.length; i++) {
+      document.execCommand("insertText", false, tagString[i]);
+      await sleep(15 + Math.random() * 35);
+    }
+    
+    await sleep(200 + Math.random() * 150);
+    // ปิด popup แนะนำแฮชแท็ก ไม่งั้นพอ focus หลุด (กดโพส) TikTok จะ commit suggestion ทับ
+    dismissCaptionSuggestion(editor);
+    await sleep(100 + Math.random() * 100);
+  }
+
+  // เคาะ popup ที่อาจค้างเป็นรอบสุดท้าย แล้วค่อยยิง input/change ให้ DraftJS อัปเดต state
   dismissCaptionSuggestion(editor);
   await sleep(150);
-  editor.dispatchEvent(new Event("input", { bubbles: true }));
+  editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: " " }));
   editor.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
@@ -591,7 +593,7 @@ async function applyUploadSettings(settings) {
   assertNotStopped();
   
   const productRequired = Boolean(String(settings.productId || settings.productUrl || "").trim());
-  const productAdded = await applyProductLink(settings.productId, settings.productUrl, settings.productName, settings.isCustomProductName);
+  const productAdded = await applyProductLink(settings.productId, settings.productUrl, settings.productName);
   await sleep(2000 + Math.random() * 2000);
   assertNotStopped();
   if (productRequired && !productAdded) {
@@ -651,7 +653,7 @@ function isTabActive(tab) {
   );
 }
 
-async function applyProductLink(productId, productUrl, productName, isCustomProductName) {
+async function applyProductLink(productId, productUrl, productName) {
   const productKey = String(productId || productUrl || "").trim();
   if (!productKey) return true; // ไม่ได้ระบุสินค้า ไม่ถือว่าพลาด
 
@@ -781,7 +783,7 @@ async function applyProductLink(productId, productUrl, productName, isCustomProd
   // STEP 8: แก้ชื่อ (clean) — ตั้งชื่อสินค้าใหม่ที่ตัดอักขระแปลกๆ ออก
   if (titleInput) {
     const existingTitle = titleInput.value;
-    const finalTitle = await buildProductLinkTitle(isCustomProductName ? productName : (selectedRowTitle || productName), existingTitle, isCustomProductName);
+    const finalTitle = await buildProductLinkTitle(selectedRowTitle || productName, existingTitle);
     titleInput.focus();
     try { titleInput.select(); } catch (_) {}
     await typeIntoInput(titleInput, finalTitle);
@@ -976,80 +978,53 @@ function pressEnter(el) {
   }
 }
 
-// วางข้อความลง input แบบ React-aware ทันทีโดยไม่ต้องพิมพ์ทีละตัวอักษร
+// พิมพ์ลง input แบบ React-aware เลียนแบบการกดทีละปุ่มของมนุษย์พร้อมดีเลย์สุ่ม
 async function typeIntoInput(input, value) {
   input.focus();
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-  if (setter) setter.call(input, value);
-  else input.value = value;
+  if (setter) setter.call(input, "");
+  else input.value = "";
+  input.dispatchEvent(new InputEvent("input", { bubbles: true, data: "", inputType: "deleteContentBackward" }));
 
-  input.dispatchEvent(new InputEvent("input", { bubbles: true, data: value, inputType: "insertText" }));
+  if (!value) {
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
+
+  let currentValue = "";
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i];
+    currentValue += char;
+
+    const keyOpts = {
+      key: char,
+      code: char.charCodeAt(0) ? `Key${char.toUpperCase()}` : "",
+      bubbles: true,
+      cancelable: true,
+    };
+
+    input.dispatchEvent(new KeyboardEvent("keydown", keyOpts));
+    input.dispatchEvent(new KeyboardEvent("keypress", keyOpts));
+
+    if (setter) setter.call(input, currentValue);
+    else input.value = currentValue;
+
+    input.dispatchEvent(new InputEvent("input", { bubbles: true, data: char, inputType: "insertText" }));
+    input.dispatchEvent(new KeyboardEvent("keyup", keyOpts));
+
+    // ดีเลย์สุ่มระหว่าง 40ms ถึง 120ms ต่อหนึ่งตัวอักษร
+    await sleep(40 + Math.random() * 80);
+  }
+
   input.dispatchEvent(new Event("change", { bubbles: true }));
   await sleep(150 + Math.random() * 150);
-}
-
-function findScheduleToggle() {
-  let radio = document.querySelector(TIKTOK_SELECTORS.scheduleRadio);
-  if (radio && isVisible(radio)) return radio;
-
-  radio = [...document.querySelectorAll('input[type="radio"], input[type="checkbox"], [role="radio"], [role="switch"]')].find(input => {
-    if (!isVisible(input)) return false;
-    const val = (input.value || "").toLowerCase();
-    const name = (input.name || "").toLowerCase();
-    const id = (input.id || "").toLowerCase();
-    const e2e = (input.getAttribute("data-e2e") || "").toLowerCase();
-    return val.includes("schedule") || name.includes("schedule") || id.includes("schedule") || e2e.includes("schedule");
-  });
-  if (radio) return radio;
-
-  const candidates = [...document.querySelectorAll('label, button, [role="radio"], [role="switch"], [class*="radio" i], [class*="switch" i], [class*="schedule" i]')].filter(isVisible);
-  const matched = candidates.find(el => {
-    const text = (el.textContent || "").trim().toLowerCase();
-    return text.includes("schedule video") || text.includes("schedule post") || text.includes("ตั้งเวลาโพสต์") || text.includes("ตั้งเวลาวิดีโอ") || text.includes("ตั้งเวลา");
-  });
-
-  if (matched) {
-    const childInput = matched.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"], [role="switch"]');
-    return childInput || matched;
-  }
-
-  return null;
-}
-
-function findPostNowToggle() {
-  let radio = document.querySelector(TIKTOK_SELECTORS.postNowRadio);
-  if (radio && isVisible(radio)) return radio;
-
-  radio = [...document.querySelectorAll('input[type="radio"], input[type="checkbox"], [role="radio"], [role="switch"]')].find(input => {
-    if (!isVisible(input)) return false;
-    const val = (input.value || "").toLowerCase();
-    const name = (input.name || "").toLowerCase();
-    const id = (input.id || "").toLowerCase();
-    const e2e = (input.getAttribute("data-e2e") || "").toLowerCase();
-    return val.includes("now") || name.includes("now") || id.includes("now") || e2e.includes("now") || e2e.includes("post_now");
-  });
-  if (radio) return radio;
-
-  const candidates = [...document.querySelectorAll('label, button, [role="radio"], [role="switch"], [class*="radio" i], [class*="switch" i]')].filter(isVisible);
-  const matched = candidates.find(el => {
-    const text = (el.textContent || "").trim().toLowerCase();
-    return text.includes("post now") || text.includes("โพสต์เลย") || text.includes("โพสต์ทันที");
-  });
-
-  if (matched) {
-    const childInput = matched.querySelector('input[type="radio"], input[type="checkbox"], [role="radio"], [role="switch"]');
-    return childInput || matched;
-  }
-
-  return null;
 }
 
 async function applyScheduleSettings(postType, scheduleTime) {
   if (!postType || postType === "draft") return;
 
   if (postType === "now") {
-    const nowRadio = findPostNowToggle();
-    if (nowRadio) await setRadioState(nowRadio, true);
+    await setRadioState(document.querySelector(TIKTOK_SELECTORS.postNowRadio), true);
     return;
   }
 
@@ -1061,16 +1036,8 @@ async function applyScheduleSettings(postType, scheduleTime) {
     throw new Error("scheduleTime is required when postType is schedule");
   }
 
-  log(`กำลังเปิดการทำงานตั้งเวลาโพสต์ (Schedule mode)...`);
-  const schedRadio = findScheduleToggle();
-  if (schedRadio) {
-    log(`พบสวิตช์/ปุ่มตั้งเวลาโพสต์ -> คลิกเปิดโหมดตั้งเวลา`);
-    await setRadioState(schedRadio, true);
-    await sleep(800);
-  } else {
-    log(`⚠️ ไม่พบปุ่มวิทยุตั้งเวลาโดยตรง พยายามค้นหาช่องกรอกวันที่และเวลาในหน้าเว็บทันที...`);
-  }
-
+  await setRadioState(document.querySelector(TIKTOK_SELECTORS.scheduleRadio), true);
+  await sleep(800);
   await fillScheduleTime(scheduleTime);
 }
 
@@ -1081,829 +1048,56 @@ async function setRadioState(input, desired) {
   await sleep(350);
 }
 
-function getElementClassName(el) {
-  if (!el) return "";
-  if (typeof el.className === "string") return el.className.toLowerCase();
-  if (el.className && typeof el.className.baseVal === "string") return el.className.baseVal.toLowerCase();
-  return (el.getAttribute("class") || "").toLowerCase();
-}
-
-function findCalendarContainer(dateInput) {
-  // ค้นหาป๊อปอัปปฏิทินที่กำลังแสดงผลลอยอยู่บนหน้าจอ โดยต้องไม่อยู่ซ้อนข้างใน dateInput
-  const allContainers = [...document.querySelectorAll('div, span, [role="dialog"], [role="tooltip"], [role="grid"], section')].filter(el => {
-    if (!isVisible(el)) return false;
-    if (dateInput && el.contains(dateInput)) return false; // ป๊อปอัปจริงต้องแยกอยู่นอก dateInput
-    
-    // ตรวจหาจำนวนเซลล์วันที่ ต้องมีไม่ต่ำกว่า 15 ปุ่มหรือเซลล์
-    const cellCount = el.querySelectorAll('button, [role="gridcell"], td, [class*="cell" i], [class*="date" i]').length;
-    return cellCount >= 15;
-  });
-
-  if (allContainers.length === 0) return null;
-
-  // คัดเลือกคลาสปฏิทินที่มีลำดับ z-index สูงสุดหรือมีคลาสเฉพาะ
-  allContainers.sort((a, b) => {
-    const classA = getElementClassName(a);
-    const classB = getElementClassName(b);
-    const hasCalA = classA.includes("calendar") || classA.includes("popover") || classA.includes("picker");
-    const hasCalB = classB.includes("calendar") || classB.includes("popover") || classB.includes("picker");
-    if (hasCalA && !hasCalB) return -1;
-    if (!hasCalA && hasCalB) return 1;
-    return 0;
-  });
-
-  return allContainers[0];
-}
-
-async function clickCalendarDay(dateInput, targetDate) {
-  try {
-    log("คลิกที่ช่องวันที่เพื่อเปิดปฏิทิน...");
-    dateInput.focus();
-    try { dateInput.click(); } catch(e) {}
-    await realClick(dateInput);
-
-    // 1. รอให้ป๊อปอัปปฏิทินแสดงผลจริง (สูงสุด 2.0 วินาที)
-    log("รอปฏิทินแสดงผล...");
-    let popoverElement = await retryUntil("ค้นหาและรอคอนเทนเนอร์ปฏิทินแสดงจริง", () => {
-      return findCalendarContainer(dateInput);
-    }, 2000, 300);
-
-    // หากไม่เปิด ให้ลองส่งปุ่ม Enter และคลิกอินพุตร่วมกับไอคอนข้างเคียง
-    if (!popoverElement) {
-      log("ไม่พบปฏิทิน, ลองยิงคีย์บอร์ด Enter และคลิกอินพุตร่วมกับไอคอนข้างเคียง...");
-      dateInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-      await realClick(dateInput);
-      if (dateInput.parentElement) {
-        try { dateInput.parentElement.click(); } catch(e) {}
-        await realClick(dateInput.parentElement);
-      }
-      const siblingIcon = dateInput.parentElement ? dateInput.parentElement.querySelector("svg, button, [class*='icon']") : null;
-      if (siblingIcon) {
-        try { siblingIcon.click(); } catch(e) {}
-        await realClick(siblingIcon);
-      }
-      popoverElement = await retryUntil("รอคอนเทนเนอร์ปฏิทินเปิดรอบสอง", () => {
-        return findCalendarContainer(dateInput);
-      }, 1500, 300);
-    }
-
-    const targetDay = targetDate.getDate(); // เช่น 1
-    let calendarContainer = popoverElement;
-    
-    if (!calendarContainer) {
-      log("ไม่พบตารางปฏิทินที่แยกอิสระ ยกเลิกการจิ้มปฏิทินเพื่อเลี่ยงการคลิกตำแหน่งผิดพลาด");
-      return false;
-    }
-    
-    const monthNamesEn = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
-    const monthNamesTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-    const monthAbbrsTh = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
-
-    const targetMonthIndex = targetDate.getMonth(); // 0-11
-    const targetMonthNum = String(targetMonthIndex + 1).padStart(2, "0"); // "08"
-    const targetMonthNumShort = String(targetMonthIndex + 1); // "8"
-
-    const targetMonthNameEn = monthNamesEn[targetMonthIndex];
-    const targetMonthAbbrEn = targetMonthNameEn.slice(0, 3); // e.g. "aug"
-    const targetMonthNameTh = monthNamesTh[targetMonthIndex];
-    const targetMonthAbbrTh = monthAbbrsTh[targetMonthIndex];
-
-    // ตรวจสอบและเปลี่ยนเดือนได้สูงสุด 6 ครั้ง (เผื่อต้องข้ามไปเดือนหน้า)
-    for (let m = 0; m < 6; m++) {
-      assertNotStopped();
-      let headerEl = calendarContainer.querySelector('[class*="header" i], [class*="title" i], [class*="month" i], [class*="caption" i], [class*="head" i]');
-      if (!headerEl) {
-        // Fallback: ค้นหา Element ด้านในส่วนบนปฏิทินที่มีชื่อเดือนไทย/อังกฤษ
-        const cr = calendarContainer.getBoundingClientRect();
-        const allDivSpans = [...calendarContainer.querySelectorAll('div, span, p, h1, h2, h3, h4, h5, h6, button')].filter(el => {
-          if (!isVisible(el)) return false;
-          const r = el.getBoundingClientRect();
-          return r.top < cr.top + cr.height * 0.35; // สโคปเฉพาะ 35% ด้านบนของปฏิทิน
-        });
-        headerEl = allDivSpans.find(el => {
-          const txt = el.textContent.toLowerCase();
-          return monthNamesEn.some(mName => txt.includes(mName)) || 
-                 monthNamesTh.some(mName => txt.includes(mName)) || 
-                 monthAbbrsTh.some(mName => txt.includes(mName));
-        });
-      }
-      
-      const headerText = headerEl ? headerEl.textContent.toLowerCase() : "";
-
-      const hasTargetMonth = headerText.includes(targetMonthNameEn) || 
-                             headerText.includes(targetMonthAbbrEn) || 
-                             headerText.includes(targetMonthNameTh) || 
-                             headerText.includes(targetMonthAbbrTh) ||
-                             headerText.includes(`-${targetMonthNum}`) ||
-                             headerText.includes(`/${targetMonthNum}`) ||
-                             headerText.includes(`${targetMonthNum}/`) ||
-                             headerText.includes(`${targetMonthNumShort}/`);
-
-      if (hasTargetMonth) {
-        log(`พบเดือนเป้าหมายในปฏิทินเรียบร้อย: ${targetMonthNameEn} (${targetMonthNameTh})`);
-        break;
-      }
-      
-      log(`เดือนในปฏิทินปัจจุบัน (${headerText || "ไม่ระบุ"}) ยังไม่ตรงกับเป้าหมาย (${targetMonthNameEn} / ${targetMonthNameTh}), กำลังเปลี่ยนเดือน...`);
-      
-      // ค้นหาปุ่มนำทางบริเวณส่วนหัวของปฏิทิน (สโคปเฉพาะพื้นที่ 35% ด้านบน เพื่อเลี่ยงคลาส UI layout เช่น text-right หรือ margin-right)
-      const cr = calendarContainer.getBoundingClientRect();
-      const headerNavElements = [...calendarContainer.querySelectorAll('button, svg, [role="button"], a, [class*="btn" i], [class*="icon" i], [class*="arrow" i], [class*="chevron" i], [class*="next" i]')].filter(el => {
-        if (!isVisible(el)) return false;
-        const r = el.getBoundingClientRect();
-        return r.top >= cr.top - 10 && r.top < cr.top + cr.height * 0.35 && r.width > 0 && r.height > 0;
-      });
-
-      let nextButton = headerNavElements.find(el => {
-        const className = getElementClassName(el);
-        const testId = (el.getAttribute("data-testid") || "").toLowerCase();
-        const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
-        const iconName = (el.getAttribute("data-icon") || "").toLowerCase();
-        const title = (el.getAttribute("title") || "").toLowerCase();
-
-        // ข้ามปุ่มเปลี่ยนปี (Next Year >>)
-        if (ariaLabel.includes("year") || title.includes("year") || className.includes("year") || testId.includes("year")) {
-          return false;
-        }
-
-        return ariaLabel.includes("next") || ariaLabel.includes("right") || ariaLabel.includes("ถัดไป") ||
-               title.includes("next") || title.includes("right") || title.includes("ถัดไป") ||
-               className.includes("next") || testId.includes("next") ||
-               iconName.includes("right") || iconName.includes("next") ||
-               (!iconName.includes("arrowdown") && className.includes("arrow-right"));
-      });
-
-      // Fallback: หากไม่เจอปุ่มโดยตรง ให้เลือกปุ่มขวาสุดของพื้นที่หัวข้อปฏิทินตามตำแหน่งจริงบนหน้าจอ
-      if (!nextButton && headerNavElements.length > 0) {
-        headerNavElements.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-        if (headerNavElements.length >= 4) {
-          nextButton = headerNavElements[headerNavElements.length - 2];
-        } else {
-          nextButton = headerNavElements[headerNavElements.length - 1];
-        }
-      }
-
-      if (nextButton) {
-        log("พบปุ่มถัดไป คลิกเปลี่ยนเดือน...");
-        const clickableEl = nextButton.closest('button, [role="button"], a, [class*="btn" i], [class*="icon" i]') || nextButton;
-        try {
-          clickableEl.click();
-        } catch (e) {}
-        await realClick(clickableEl);
-        if (clickableEl !== nextButton) {
-          try {
-            nextButton.click();
-          } catch (e) {}
-        }
-        await sleep(800); // พักรอให้แอนิเมชันปฏิทินเปลี่ยนเดือนเสร็จสิ้น
-
-        // Refresh container reference incase DOM re-rendered after month change
-        const freshContainer = findCalendarContainer(dateInput);
-        if (freshContainer) {
-          calendarContainer = freshContainer;
-        }
-      } else {
-        log("ไม่พบปุ่มถัดไปสำหรับเปลี่ยนเดือน");
-        break;
-      }
-    }
-
-    log(`ค้นหาปุ่มวันในปฏิทิน: ${targetDay}`);
-    let allElements = [...calendarContainer.querySelectorAll('button, [role="gridcell"], [role="button"], td, span, div')]
-      .filter(el => {
-        if (!isVisible(el)) return false;
-        const text = el.textContent.trim();
-        const num = parseInt(text, 10);
-        return !isNaN(num) && num === targetDay && (text === String(targetDay) || text === "0" + targetDay);
-      });
-
-    // จัดลำดับ: เอาปุ่มหรือช่องตารางไว้ก่อน span/div ทั่วไป เพื่อให้คลิกโดนเป้าหมายจริงๆ ไม่ใช่ตัวหนังสือซ้อนด้านใน
-    allElements.sort((a, b) => {
-      const tagA = a.tagName.toLowerCase();
-      const tagB = b.tagName.toLowerCase();
-      const roleA = a.getAttribute("role") || "";
-      const roleB = b.getAttribute("role") || "";
-      
-      const isInteractiveA = tagA === "button" || tagA === "td" || roleA === "gridcell" || roleA === "button";
-      const isInteractiveB = tagB === "button" || tagB === "td" || roleB === "gridcell" || roleB === "button";
-      
-      if (isInteractiveA && !isInteractiveB) return -1;
-      if (!isInteractiveA && isInteractiveB) return 1;
-      return 0;
-    });
-
-    const activeCandidates = allElements.filter(el => {
-      if (!el || el.nodeType !== 1) return false;
-      const className = getElementClassName(el);
-      
-      // 1. ตรวจสอบรายละเอียดจาก aria-label หรือ title เพื่อคัดวันต่างเดือนออก (เช่น กรกฎาคม ปนกับ มิถุนายน)
-      const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
-      const title = (el.getAttribute("title") || "").toLowerCase();
-      const textToCheck = `${ariaLabel} ${title}`.trim();
-      
-      if (textToCheck) {
-        const hasTargetMonthInAttr = textToCheck.includes(targetMonthNameEn) || 
-                                     textToCheck.includes(targetMonthAbbrEn) || 
-                                     textToCheck.includes(targetMonthNameTh) || 
-                                     textToCheck.includes(targetMonthAbbrTh);
-        
-        // ถ้าปุ่มมีการระบุเดือนใน attribute แต่ดันไม่ตรงกับเดือนเป้าหมาย -> คัดทิ้งทันที
-        if (!hasTargetMonthInAttr) {
-          // เช็คว่าในข้อความมีการระบุเดือนอื่นจริงไหม (ถ้ามีเดือนอื่นที่ไม่ใช่เป้าหมายปะปนอยู่ ให้คัดออก)
-          const hasAnyMonthName = monthNamesEn.some(m => textToCheck.includes(m)) ||
-                                  monthNamesTh.some(m => textToCheck.includes(m)) ||
-                                  monthAbbrsTh.some(m => textToCheck.includes(m));
-          if (hasAnyMonthName) {
-            return false;
-          }
-        }
-      }
-
-      // 2. คัดกรองจากชื่อ Class และ Attributes ของวันขอบนอก (outside/prev/next/sibling/muted/disabled)
-      const isDisabledAttr = el.getAttribute("aria-disabled") === "true" || el.hasAttribute("disabled");
-      const isOutside = className.includes("outside") || 
-                        className.includes("prev") || 
-                        className.includes("next") || 
-                        className.includes("other") || 
-                        className.includes("disabled") || 
-                        className.includes("muted") ||
-                        className.includes("inactive") ||
-                        className.includes("sibling") ||
-                        isDisabledAttr;
-      
-      const parentClassName = getElementClassName(el.parentElement);
-      const parentIsOutside = parentClassName.includes("outside") || 
-                              parentClassName.includes("prev") || 
-                              parentClassName.includes("next") || 
-                              parentClassName.includes("other") || 
-                              parentClassName.includes("disabled") || 
-                              parentClassName.includes("muted") ||
-                              parentClassName.includes("inactive") ||
-                              parentClassName.includes("sibling");
-      
-      const style = window.getComputedStyle(el);
-      const color = style.color || "";
-      const opacity = style.opacity || "";
-      let isMuted = color.includes("rgba") || 
-                      opacity === "0.5" || 
-                      color === "rgb(153, 153, 153)" ||
-                      color === "rgb(187, 187, 187)" ||
-                      color === "rgb(186, 186, 186)";
-      
-      if (!isMuted) {
-        const childSpans = el.querySelectorAll("span, div, p");
-        for (const child of childSpans) {
-          const childStyle = window.getComputedStyle(child);
-          const childColor = childStyle.color || "";
-          const childOpacity = childStyle.opacity || "";
-          if (childColor.includes("rgba") || childOpacity === "0.5" || 
-              childColor === "rgb(153, 153, 153)" || 
-              childColor === "rgb(187, 187, 187)" || 
-              childColor === "rgb(186, 186, 186)") {
-            isMuted = true;
-            break;
-          }
-        }
-      }
-      
-      return !isOutside && !parentIsOutside && !isMuted;
-    });
-
-    const now = new Date();
-    const isTargetNextMonth = (targetDate.getFullYear() > now.getFullYear()) ||
-                              (targetDate.getFullYear() === now.getFullYear() && targetDate.getMonth() > now.getMonth());
-
-    let bestCandidate = null;
-    if (activeCandidates.length > 0) {
-      if (activeCandidates.length === 1) {
-        bestCandidate = activeCandidates[0];
-      } else {
-        bestCandidate = isTargetNextMonth
-          ? activeCandidates[activeCandidates.length - 1]
-          : activeCandidates[0];
-      }
-    } else if (allElements.length > 0) {
-      if (allElements.length === 1) {
-        bestCandidate = allElements[0];
-      } else {
-        bestCandidate = isTargetNextMonth
-          ? allElements[allElements.length - 1]
-          : allElements[0];
-      }
-    }
-
-    if (bestCandidate) {
-      log(`พบปุ่มวันในปฏิทินแล้ว คลิกวัน: ${targetDay}`);
-      try {
-        bestCandidate.click();
-      } catch (e) {}
-      await realClick(bestCandidate);
-      
-      // คลิกตัวหนังสือกึ่งกลางปุ่มเพิ่ม (Dual Day Click) เพื่อกระตุ้น React event handler
-      const innerTextEl = [...bestCandidate.querySelectorAll('*')].find(el => el.textContent.trim() === String(targetDay));
-      if (innerTextEl && innerTextEl !== bestCandidate) {
-        log("ลองคลิกตัวหนังสือกึ่งกลางปุ่มเพิ่มเติม...");
-        try {
-          innerTextEl.click();
-        } catch (e) {}
-        await realClick(innerTextEl);
-      }
-      
-      await sleep(500);
-      return true;
-    }
-  } catch (e) {
-    console.error("error in clickCalendarDay:", e);
-  }
-  return false;
-}
-
 async function fillScheduleTime(scheduleTime) {
-  let date;
-  const match = String(scheduleTime).match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
-  if (match) {
-    date = new Date(
-      parseInt(match[1], 10),
-      parseInt(match[2], 10) - 1,
-      parseInt(match[3], 10),
-      parseInt(match[4], 10),
-      parseInt(match[5], 10),
-      0, 0
-    );
-  } else {
-    date = new Date(scheduleTime);
-  }
-
+  const date = new Date(scheduleTime);
   if (Number.isNaN(date.getTime())) {
     throw new Error(`invalid scheduleTime: ${scheduleTime}`);
   }
 
-  // หากเวลาที่กำหนดน้อยกว่า 20 นาทีจากตอนนี้ (รวมถึงอดีต) -> ปรับเป็นเวลาล่วงหน้า 30 นาที
-  const now = new Date();
-  if (date.getTime() < now.getTime() + 20 * 60 * 1000) {
-    log(`⚠️ เวลาที่กำหนด (${scheduleTime}) อยู่ในอดีตหรือน้อยกว่า 20 นาที -> ปรับเป็นเวลาล่วงหน้า 30 นาที`);
-    date = new Date(now.getTime() + 30 * 60 * 1000);
-    date.setMinutes(Math.ceil(date.getMinutes() / 5) * 5);
-    date.setSeconds(0);
-    date.setMilliseconds(0);
-    // หาก ceil ทำให้นาที = 60 -> ขยับชั่วโมง
-    if (date.getMinutes() >= 60) {
-      date.setHours(date.getHours() + 1);
-      date.setMinutes(0);
-    }
-  }
-
-  const targetHH = String(date.getHours()).padStart(2, "0");
-  const targetMM = String(date.getMinutes()).padStart(2, "0");
-  const targetTimeStr = `${targetHH}:${targetMM}`;
-  const targetY = date.getFullYear();
-  const targetM = String(date.getMonth() + 1).padStart(2, "0");
-  const targetD = String(date.getDate()).padStart(2, "0");
-  const targetDateStr = `${targetY}-${targetM}-${targetD}`;
-
-  log(`📅 เป้าหมาย: วันที่=${targetDateStr}, เวลา=${targetTimeStr}`);
-
   const container = document.querySelector(TIKTOK_SELECTORS.scheduleContainer) || document;
-  
-  const dateRegex = /\d{4}[-\/\.]\d{1,2}[-\/\.]\d{1,2}|\d{1,2}[-\/\.]\d{1,2}[-\/\.]\d{2,4}|\d{1,2}\s+[A-Za-zก-ฮ.]+\s+\d{2,4}/;
-  const timeRegex = /\d{1,2}:\d{2}/;
-
-  const allInputs = [...container.querySelectorAll("input")];
-  const allElements = [...container.querySelectorAll("input, button, [role='combobox'], [role='haspopup'], [role='textbox'], div, span, p")].filter(isVisible);
-
-  let dateInput = allInputs.find(input => {
-    const val = (input.value || "").trim();
-    const ph = (input.placeholder || "").trim();
-    const name = (input.name || "").trim();
-    const aria = (input.getAttribute("aria-label") || "").trim();
-    const classStr = getElementClassName(input);
-    const testId = (input.getAttribute("data-testid") || input.getAttribute("data-e2e") || "").trim();
-    return dateRegex.test(val) || /date|calendar|schedule-date|datepicker/i.test(ph + name + aria + classStr + testId);
-  });
-
-  let timeInput = allInputs.find(input => {
-    const val = (input.value || "").trim();
-    const ph = (input.placeholder || "").trim();
-    const name = (input.name || "").trim();
-    const aria = (input.getAttribute("aria-label") || "").trim();
-    const classStr = getElementClassName(input);
-    const testId = (input.getAttribute("data-testid") || input.getAttribute("data-e2e") || "").trim();
-    return timeRegex.test(val) || /time|clock|schedule-time|timepicker/i.test(ph + name + aria + classStr + testId);
-  });
-
-  if (!dateInput) {
-    dateInput = allElements.find(el => {
-      const val = (el.value || el.textContent || "").trim();
-      const ph = (el.placeholder || el.getAttribute("aria-label") || "").trim();
-      const classStr = getElementClassName(el);
-      return (dateRegex.test(val) || /date|calendar|datepicker/i.test(ph + classStr)) && !val.includes(":");
-    });
-  }
-
-  if (!timeInput) {
-    timeInput = allElements.find(el => {
-      const val = (el.value || el.textContent || "").trim();
-      const ph = (el.placeholder || el.getAttribute("aria-label") || "").trim();
-      const classStr = getElementClassName(el);
-      return (timeRegex.test(val) || /time|clock|timepicker/i.test(ph + classStr)) && !val.includes("-") && !val.includes("/");
-    });
-  }
-
-  if (!dateInput || !timeInput) {
-    const pickerCandidates = [...container.querySelectorAll("input, button, [role='combobox'], [role='haspopup'], [class*='picker' i], [class*='select' i], [class*='input' i]")].filter(isVisible);
-    const uniquePickers = pickerCandidates.filter((el, idx) => {
-      return !pickerCandidates.some((other, oIdx) => oIdx !== idx && other.contains(el));
-    });
-    
-    for (const p of uniquePickers) {
-      const text = (p.value || p.textContent || "").trim();
-      const cls = getElementClassName(p) + p.innerHTML;
-      if (!timeInput && (text.includes(":") || /clock|time/i.test(cls))) {
-        timeInput = p;
-      } else if (!dateInput && (dateRegex.test(text) || /calendar|date/i.test(cls))) {
-        dateInput = p;
-      }
-    }
-  }
-
-  if (dateInput && timeInput) {
-    const valDate = (dateInput.value || dateInput.textContent || "").trim();
-    const valTime = (timeInput.value || timeInput.textContent || "").trim();
-    if (valDate.includes(":") || valTime.includes("-") || valTime.includes("/")) {
-      log("🔄 สลับช่องกรอกข้อมูล Date/Time ให้ถูกต้องตามข้อความจริง");
-      const temp = dateInput;
-      dateInput = timeInput;
-      timeInput = temp;
-    }
-  }
-
-  log(`กำลังกรอกค่าวันที่และเวลา: Date=${targetDateStr}, Time=${targetTimeStr}`);
-
-  // ======= STEP 1: ตั้งวันที่ก่อน (DATE FIRST) =======
-  if (dateInput) {
-    log(`กำลังปรับเลือกวันที่ก่อน: ${targetDateStr}`);
-    // ลองคลิกปฏิทินก่อน
-    const clicked = await clickCalendarDay(dateInput, date);
-    // ยืนยันค่าหลังคลิกด้วยการ set input value โดยตรง
-    await setTuxInputValue(dateInput, targetDateStr);
-    await sleep(800);
-    // ตรวจสอบว่าค่าที่แสดงตรงกับที่ต้องการ
-    const shownDate = (dateInput.value || dateInput.textContent || "").trim();
-    if (shownDate && !shownDate.includes(targetD)) {
-      log(`⚠️ วันที่แสดง (${shownDate}) ไม่ตรงกับเป้าหมาย (${targetDateStr}) -> ลอง set อีกครั้ง`);
-      await setTuxInputValue(dateInput, targetDateStr);
-      await sleep(500);
-    }
-  }
-
-  // ======= STEP 2: ตั้งเวลาตามหลัง (TIME SECOND) =======
-  if (timeInput) {
-    log(`กำลังปรับเลือกเวลาตามหลัง: ${targetTimeStr}`);
-    // ลองผ่าน custom time picker popover ก่อน
-    const pickerSet = await setTuxTimePickerValue(timeInput, targetTimeStr);
-    await sleep(400);
-    // ตรวจสอบว่าค่าที่แสดงตรงกับที่ต้องการ
-    const shownTime = (timeInput.value || timeInput.textContent || "").trim();
-    const timeOk = shownTime.startsWith(targetTimeStr) || shownTime === targetTimeStr;
-    if (!timeOk) {
-      log(`⚠️ เวลาที่แสดง (${shownTime}) ไม่ตรงกับเป้าหมาย (${targetTimeStr}) -> ลอง keyboard input โดยตรง`);
-      await setTimeByKeyboard(timeInput, targetTimeStr);
-      await sleep(400);
-    }
-  }
-
-  await sleep(500);
-}
-
-async function setTuxTimePickerValue(input, targetTime) {
-  if (!input) return false;
-
-  const parts = targetTime.split(":");
-  if (parts.length !== 2) return false;
-  const hrNum = parseInt(parts[0], 10);
-  const hrStr = String(hrNum).padStart(2, "0");
-  const minVal = parseInt(parts[1], 10);
-  const clampedMin = Math.min(55, Math.max(0, minVal));
-  const minStr = String(clampedMin).padStart(2, "0");
-  const fullTimeStr = `${hrStr}:${minStr}`;
-
-  // วิธีที่ 1: พยายาม type ตรงๆ ก่อน (เร็วที่สุด)
-  const typed = await setTimeByKeyboard(input, fullTimeStr);
-  const shownAfterType = (input.value || input.textContent || "").trim();
-  if (typed && (shownAfterType === fullTimeStr || shownAfterType.startsWith(fullTimeStr))) {
-    log(`✅ ตั้งเวลา ${fullTimeStr} สำเร็จด้วยวิธี keyboard`);
-    return true;
-  }
-
-  // วิธีที่ 2: เปิด popover แล้วคลิกตัวเลือก
-  input.focus();
-  await realClick(input);
-  await sleep(500);
-
-  // ค้นหา popover เวลาที่กำลังเปิดอยู่
-  const popovers = [...document.querySelectorAll('div, section, [role="dialog"], [role="listbox"], [role="tooltip"], [class*="popover" i], [class*="picker" i], [class*="time" i], [class*="dropdown" i]')].filter(el => {
-    if (!isVisible(el)) return false;
-    if (input.contains(el)) return false;
-    const text = el.textContent || "";
-    // popover เวลาต้องมีตัวเลขชั่วโมงหลายๆ ตัว
-    return (text.includes("00") && text.includes("01") && text.includes("02"));
-  });
-
-  const timePopover = popovers[0] || null;
-
-  if (timePopover) {
-    const columns = [...timePopover.querySelectorAll('ul, [role="listbox"], [class*="column" i], [class*="list" i], [class*="scroll" i], [class*="wrapper" i]')].filter(isVisible);
-
-    if (columns.length >= 2) {
-      const hourCol = columns[0];
-      const minCol = columns[1];
-
-      const hourOpt = [...hourCol.querySelectorAll('li, div, span, [role="option"]')].find(el => {
-        const txt = el.textContent.trim();
-        return txt === hrStr || txt === String(hrNum);
-      });
-      if (hourOpt) { await realClick(hourOpt); await sleep(200); }
-
-      const minOpt = [...minCol.querySelectorAll('li, div, span, [role="option"]')].find(el => {
-        const txt = el.textContent.trim();
-        return txt === minStr || txt === String(clampedMin);
-      });
-      if (minOpt) { await realClick(minOpt); await sleep(200); }
-    } else {
-      // Fallback column detection
-      const allOptions = [...timePopover.querySelectorAll('.tiktok-timepicker-left, .tiktok-timepicker-right, li, button, [role="option"], [class*="item" i], div, span')].filter(isVisible);
-      const hourOpt = allOptions.find(el => {
-        const txt = el.textContent.trim();
-        return (txt === hrStr || txt === String(hrNum)) && (!el.firstElementChild || el.classList.contains("tiktok-timepicker-left"));
-      });
-      if (hourOpt) { await realClick(hourOpt); await sleep(200); }
-
-      const minOpt = allOptions.find(el => {
-        const txt = el.textContent.trim();
-        return (txt === minStr || txt === String(clampedMin)) && (!el.firstElementChild || el.classList.contains("tiktok-timepicker-right"));
-      });
-      if (minOpt) { await realClick(minOpt); await sleep(200); }
-    }
-    // ปิด popover
-    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 27, bubbles: true }));
-    await sleep(200);
-  }
-
-  // ซิงค์ค่าเวลากลับเข้าอินพุตโดยตรงเป็น fallback สุดท้าย
-  await setTuxInputValue(input, fullTimeStr);
-  return true;
-}
-
-// ตั้งเวลาผ่านการพิมพ์ keyboard โดยตรงเข้าอินพุต
-async function setTimeByKeyboard(input, targetTime) {
-  if (!input) return false;
-  try {
-    const isReadonly = input.hasAttribute("readonly");
-    if (isReadonly) input.removeAttribute("readonly");
-
-    input.focus();
-    await realClick(input);
-    await sleep(200);
-
-    // เลือกข้อความทั้งหมดก่อนพิมพ์ทับ
-    input.select && input.select();
-    input.setSelectionRange && input.setSelectionRange(0, (input.value || "").length);
-    await sleep(100);
-
-    // พิมพ์ค่าทีละตัวอักษรผ่าน KeyboardEvent
-    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-    if (nativeSetter) nativeSetter.call(input, targetTime);
-    else input.value = targetTime;
-
-    // แจ้ง React ว่าค่าเปลี่ยน
-    const tracker = input._valueTracker;
-    if (tracker) tracker.setValue("");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    await sleep(150);
-
-    // กด Enter เพื่อยืนยัน
-    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 13, bubbles: true }));
-    input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", keyCode: 13, bubbles: true }));
-    await sleep(150);
-
-    input.dispatchEvent(new Event("blur", { bubbles: true }));
-    input.blur();
-    await sleep(150);
-
-    if (isReadonly) input.setAttribute("readonly", "readonly");
-    return true;
-  } catch (e) {
-    console.warn("setTimeByKeyboard error:", e);
-    return false;
-  }
-}
-
-async function setTuxInputValue(input, value) {
-  if (!input) return;
-  
-  input.focus();
-  await realClick(input);
-  await sleep(300);
-
-  const tagName = input.tagName.toLowerCase();
-  if (tagName !== "input" && tagName !== "textarea") {
-    log(`setTuxInputValue: ไม่ใช่อินพุต (${tagName}), จะตั้งค่าทาง textContent แทน`);
-    input.textContent = value;
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    await sleep(200);
+  const inputs = [...container.querySelectorAll("input")].filter(isVisible);
+  if (!inputs.length) {
+    log("ไม่พบช่องตั้งเวลา จะปล่อยให้ TikTok ใช้ค่าเดิมหลังเลือก Schedule");
     return;
   }
 
-  const isReadonly = input.hasAttribute("readonly");
-  if (isReadonly) {
-    input.removeAttribute("readonly");
+  const dateInput = inputs.find((input) => input.type === "date") || inputs[0];
+  const timeInput = inputs.find((input) => input.type === "time") || inputs[1];
+  const yyyyMmDd = toInputDate(date);
+  const hhMm = toInputTime(date);
+
+  const readonlyDateSet = setReadonlyInputValue(/^\d{4}-\d{2}-\d{2}$/, yyyyMmDd);
+  const readonlyTimeSet = setReadonlyInputValue(/^\d{2}:\d{2}$/, hhMm);
+  if (readonlyDateSet || readonlyTimeSet) {
+    await sleep(300);
+    return;
   }
 
-  const lastValue = input.value;
-  
-  // 1. วิธีหลัก: เรียกใช้ native setter ของเบราว์เซอร์เพื่อข้ามระบบดักจับของ React
-  try {
-    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-    nativeSetter.call(input, value);
-  } catch (e) {
-    console.warn("nativeSetter failed, falling back to direct assignment:", e);
-    input.value = value;
-  }
-
-  // 2. ซิงค์กับระบบแทร็กเกอร์เฉพาะของ React
-  try {
-    const tracker = input._valueTracker;
-    if (tracker) {
-      tracker.setValue(lastValue);
-    }
-  } catch (e) {}
-
-  // 3. ยิงสัญญาณ event ให้ React ทราบว่าค่าอินพุตเปลี่ยนแปลง
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  input.dispatchEvent(new Event("change", { bubbles: true }));
-
-  // 4. ลองรัน execCommand เผื่อกรณีพิเศษเพิ่มเติม
-  try {
-    input.select();
-    input.setSelectionRange(0, input.value.length);
-    document.execCommand('insertText', false, value);
-  } catch (e) {}
-  await sleep(200);
-
-  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-  input.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-  input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
-  await sleep(200);
-
-  // ส่งปุ่ม Escape เพื่อปิดหน้าต่างปฏิทินให้เคลียร์ฉากหน้า
-  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
-  input.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
-  await sleep(200);
-
-  if (isReadonly) {
-    input.setAttribute("readonly", "readonly");
-  }
-  
-  input.dispatchEvent(new Event("blur", { bubbles: true }));
-  input.blur();
-  await sleep(300);
+  setInputValue(dateInput, yyyyMmDd);
+  if (timeInput) setInputValue(timeInput, hhMm);
 }
 
-function formatLikeDefault(defaultStr, targetDate) {
-  const y = targetDate.getFullYear();
-  const m = String(targetDate.getMonth() + 1).padStart(2, "0");
-  const d = String(targetDate.getDate()).padStart(2, "0");
-
-  if (!defaultStr || typeof defaultStr !== "string") {
-    return `${y}-${m}-${d}`;
-  }
-
-  const cleanDefault = defaultStr.trim();
-  if (!cleanDefault) return `${y}-${m}-${d}`;
-
-  let separator = "-";
-  if (cleanDefault.includes("/")) separator = "/";
-  else if (cleanDefault.includes(".")) separator = ".";
-
-  const parts = cleanDefault.split(separator);
-  if (parts.length !== 3) {
-    return `${y}-${m}-${d}`;
-  }
-
-  // ค้นหาตำแหน่งของปี 4 หลัก
-  let yearIdx = parts.findIndex(p => p.length === 4);
-  if (yearIdx === -1) {
-    const nums = parts.map(p => parseInt(p, 10));
-    yearIdx = nums.findIndex(n => n > 1900 || n > 2400); // รองรับปีพุทธศักราช
-    if (yearIdx === -1) yearIdx = 2;
-  }
-
-  const defaultYearNum = parseInt(parts[yearIdx], 10);
-  const isBuddhist = defaultYearNum > 2400;
-
-  let dayIdx = -1;
-  let monthIdx = -1;
-
-  if (yearIdx === 0) {
-    monthIdx = 1;
-    dayIdx = 2;
-  } else {
-    // แยกกรณี DD MM YYYY หรือ MM DD YYYY
-    const p0 = parseInt(parts[0], 10);
-    const p1 = parseInt(parts[1], 10);
-
-    // เช็คกรณีที่เป็นชื่อเดือนแบบย่อ/เต็ม (เช่น "ก.ค.", "jul")
-    const isTextP0 = /[a-zA-Zก-๙]/.test(parts[0]);
-    const isTextP1 = /[a-zA-Zก-๙]/.test(parts[1]);
-
-    if (isTextP0) {
-      monthIdx = 0;
-      dayIdx = 1;
-    } else if (isTextP1) {
-      monthIdx = 1;
-      dayIdx = 0;
-    } else if (p0 > 12) {
-      // p0 มากกว่า 12 มั่นใจได้ว่าเป็น วันที่ แน่นอน
-      dayIdx = 0;
-      monthIdx = 1;
-    } else if (p1 > 12) {
-      // p1 มากกว่า 12 มั่นใจได้ว่าเป็น วันที่ แน่นอน
-      monthIdx = 0;
-      dayIdx = 1;
-    } else {
-      // ถ้าทั้งสองค่า <= 12 ให้ประเมินจากภาษาเบราว์เซอร์
-      const locale = (navigator.language || "th-TH").toLowerCase();
-      if (locale.includes("us")) {
-        // ภาษาแบบ US มักจะเป็น MM/DD/YYYY
-        monthIdx = 0;
-        dayIdx = 1;
-      } else {
-        // ภาษาอื่นๆ และไทย มักจะเป็น DD/MM/YYYY
-        dayIdx = 0;
-        monthIdx = 1;
-      }
-    }
-  }
-
-  const targetYear = targetDate.getFullYear() + (isBuddhist ? 543 : 0);
-  const targetMonth = targetDate.getMonth(); // 0-11
-  const targetDay = targetDate.getDate();
-
-  const formattedParts = [];
-  formattedParts[yearIdx] = String(targetYear);
-  formattedParts[dayIdx] = String(targetDay).padStart(parts[dayIdx].length, "0");
-
-  // แปลงเดือนให้ตรงกับหน้าเว็บเดิม (ตัวเลข ชื่อย่อ หรือชื่อเต็ม)
-  const origMonthStr = parts[monthIdx];
-  if (/[a-zA-Z]/.test(origMonthStr)) {
-    const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const monthsEnAbbr = monthsEn.map(m => m.slice(0, 3));
-    const isFull = origMonthStr.length > 3;
-    formattedParts[monthIdx] = isFull ? monthsEn[targetMonth] : monthsEnAbbr[targetMonth];
-  } else if (/[ก-๙]/.test(origMonthStr)) {
-    const monthsTh = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-    const monthsThAbbr = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
-    const isFull = origMonthStr.length > 4;
-    formattedParts[monthIdx] = isFull ? monthsTh[targetMonth] : monthsThAbbr[targetMonth];
-  } else {
-    formattedParts[monthIdx] = String(targetMonth + 1).padStart(origMonthStr.length, "0");
-  }
-
-  return formattedParts.join(separator);
+function toInputDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-function formatTimeLikeDefault(_defaultStr, targetDate) {
-  const hh = String(targetDate.getHours()).padStart(2, "0");
-  const mm = String(targetDate.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
+function toInputTime(date) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
 function setInputValue(input, value) {
   if (!input) return;
   input.focus();
-
-  // React 15+ value tracker to ensure React detects the programmatic value change
-  const tracker = input._valueTracker;
-  if (tracker) {
-    tracker.setValue(value);
-  }
-
-  const prototype = Object.getPrototypeOf(input);
-  const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set || 
-                 Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set ||
-                 Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-
-  if (setter) {
-    setter.call(input, value);
-  } else {
-    input.value = value;
-  }
-
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  if (setter) setter.call(input, value);
+  else input.value = value;
   input.dispatchEvent(new Event("input", { bubbles: true }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
-  input.dispatchEvent(new Event("blur", { bubbles: true }));
   input.blur();
 }
 
@@ -2057,24 +1251,31 @@ async function fillCaption(caption, hashtags) {
   await realClick(captionEl);
   await sleep(150 + Math.random() * 150);
 
-  // 1. ลบข้อความที่ค้างอยู่ในช่องทั้งหมดเสมอ (ป้องกันชื่อไฟล์ตกค้าง)
-  selectAllEditable(captionEl);
-  document.execCommand("delete", false);
-  await sleep(200);
+  // ล้างข้อความเก่า
+  document.execCommand("selectAll");
+  document.execCommand("delete");
+  await sleep(150 + Math.random() * 100);
 
-  // ป้องกันการใส่แฮชแท็กซ้ำสองรอบ (ทั้งใน caption และ hashtags)
-  const safeCaption = String(caption || "").trim();
-  const normTags = normalizeHashtags(hashtags);
-  const rawFullText = [safeCaption, ...normTags].filter(Boolean).join(" ");
-  const fullText = deduplicateHashtagsInText(rawFullText);
-
-  if (fullText) {
-    await humanTypeWords(captionEl, fullText);
+  // พิมพ์ caption แบบทีละตัวอักษรเพื่อความสมจริง
+  if (caption) {
+    for (let i = 0; i < caption.length; i++) {
+      document.execCommand("insertText", false, caption[i]);
+      await sleep(15 + Math.random() * 35);
+    }
   }
   await sleep(200 + Math.random() * 150);
 
-  dismissCaptionSuggestion(captionEl);
-  await sleep(150);
+  // เพิ่ม hashtags
+  for (const tag of normalizeHashtags(hashtags)) {
+    const normalized = tag.startsWith("#") ? tag : `#${tag}`;
+    const tagString = ` ${normalized}`;
+    for (let i = 0; i < tagString.length; i++) {
+      document.execCommand("insertText", false, tagString[i]);
+      await sleep(15 + Math.random() * 35);
+    }
+    await sleep(200 + Math.random() * 150);
+  }
+
   captionEl.dispatchEvent(new Event("input", { bubbles: true }));
   captionEl.dispatchEvent(new Event("change", { bubbles: true }));
 }
@@ -2257,19 +1458,14 @@ function findSelectableProduct(productId, productUrl) {
 // TikTok จำกัดชื่อสินค้า 30 ตัวอักษร
 const PRODUCT_TITLE_MAX = 30;
 
-async function buildProductLinkTitle(productName, fallbackTitle, isCustomProductName) {
-  if (isCustomProductName) {
-    // หากเป็นชื่อสินค้าที่ผู้ใช้กำหนดเอง (Custom) ให้ตัดเครื่องหมายแปลกปลอมแล้วส่งกลับได้เลยโดยไม่ต้องตัดตามช่องว่างหรือทำอย่างอื่น
-    const safe = stripWeirdChars(productName) || "สินค้า";
-    return truncateProductTitle(safe, PRODUCT_TITLE_MAX);
-  }
+async function buildProductLinkTitle(productName, fallbackTitle) {
   const userName = String(productName || "").trim();
   // ถ้า user กำหนดชื่อมา ใช้ชื่อนั้นหลัง clean; ถ้าไม่ เอาชื่อที่ TikTok เติมไว้มา clean
   const base = cleanProductTitle(userName) || cleanProductTitle(fallbackTitle);
-  // ดึงคำแรกก่อนหน้าช่องว่างใดๆ เพื่อให้ชื่อสั้นกระชับที่สุดตามต้องการ
-  const firstWord = base.split(/\s+/)[0] || "";
-  const safe = stripWeirdChars(firstWord) || "สินค้า";
-  return truncateProductTitle(safe, PRODUCT_TITLE_MAX);
+  const safe = stripWeirdChars(base) || "สินค้า";
+  const fallback = truncateProductTitle(safe, PRODUCT_TITLE_MAX);
+  const aiTitle = await generateProductLinkTitleWithAi(base, fallback);
+  return truncateProductTitle(stripWeirdChars(cleanProductTitle(aiTitle)) || fallback, PRODUCT_TITLE_MAX);
 }
 
 function cleanProductTitle(raw) {
@@ -2501,47 +1697,6 @@ function normalizeHashtags(value) {
   return tags;
 }
 
-function deduplicateHashtagsInText(text) {
-  if (!text) return "";
-  const words = text.split(/\s+/);
-  const seenHashtags = new Set();
-  const cleanWords = [];
-  for (const word of words) {
-    if (word.startsWith("#")) {
-      const cleanTag = word.toLowerCase().replace(/[^a-zA-Z0-9_\u0e00-\u0e7f]/g, "");
-      if (seenHashtags.has(cleanTag)) {
-        continue;
-      }
-      seenHashtags.add(cleanTag);
-    }
-    cleanWords.push(word);
-  }
-  return cleanWords.join(" ");
-}
-
-async function humanTypeWords(editor, text) {
-  if (!text) return;
-  const segments = text.split("\n");
-  for (let s = 0; s < segments.length; s++) {
-    if (stopRequested) return;
-    if (s > 0) {
-      document.execCommand("insertLineBreak", false, null);
-      await sleep(120 + Math.random() * 180);
-    }
-    const words = segments[s].split(" ").filter(Boolean);
-    for (let i = 0; i < words.length; i++) {
-      if (stopRequested) return;
-      const word = words[i] + (i < words.length - 1 ? " " : "");
-      document.execCommand("insertText", false, word);
-      // หน่วงเวลาสั้นๆ ระหว่างคำ (40-130ms)
-      await sleep(40 + Math.random() * 90);
-      if (i > 0 && i % (8 + Math.floor(Math.random() * 7)) === 0) {
-        await sleep(300 + Math.random() * 500);
-      }
-    }
-  }
-}
-
 function selectAllEditable(element) {
   const range = document.createRange();
   range.selectNodeContents(element);
@@ -2552,34 +1707,12 @@ function selectAllEditable(element) {
 }
 
 async function realClick(element) {
-  if (!element) return;
-  
-  let target = element;
-  let rect = target.getBoundingClientRect();
-  
-  // หาก element มีขนาดเป็น 0 (เช่น input type=radio ที่ถูกซ่อนเพื่อแต่งสไตล์เอง) ให้หาพาเรนต์ที่กว้างยาวมากกว่า 0 เพื่อคลิกแทน
-  if (rect.width === 0 || rect.height === 0) {
-    let parent = target.parentElement;
-    for (let depth = 0; depth < 5; depth++) {
-      if (!parent || parent.tagName.toLowerCase() === "body") break;
-      const pRect = parent.getBoundingClientRect();
-      if (pRect.width > 0 && pRect.height > 0) {
-        log(`realClick: target ขนาดเป็น 0, เปลี่ยนเป้าหมายไปคลิกที่พาเรนต์ (${parent.tagName})`);
-        target = parent;
-        rect = pRect;
-        break;
-      }
-      parent = parent.parentElement;
-    }
-  }
-
-  target.scrollIntoView({ block: "nearest", inline: "nearest" });
+  element.scrollIntoView({ block: "nearest", inline: "nearest" });
 
   // 1) Jitter delay before clicking (mimicking human reaction time)
   await sleep(150 + Math.random() * 250);
 
-  // ดึง rect ล่าสุดหลัง scroll เผื่อตำแหน่งเปลี่ยน
-  rect = target.getBoundingClientRect();
+  const rect = element.getBoundingClientRect();
   const px = rect.width * 0.2;
   const py = rect.height * 0.2;
   const clickX = rect.left + px + Math.random() * (rect.width - px * 2);
@@ -2615,79 +1748,45 @@ async function realClick(element) {
   });
 
   // Hover events
-  target.dispatchEvent(new PointerEvent("pointerover", pointerOpts()));
-  target.dispatchEvent(new MouseEvent("mouseover", baseOpts()));
-  target.dispatchEvent(new PointerEvent("pointermove", pointerOpts()));
-  target.dispatchEvent(new MouseEvent("mousemove", baseOpts()));
+  element.dispatchEvent(new PointerEvent("pointerover", pointerOpts()));
+  element.dispatchEvent(new MouseEvent("mouseover", baseOpts()));
+  element.dispatchEvent(new PointerEvent("pointermove", pointerOpts()));
+  element.dispatchEvent(new MouseEvent("mousemove", baseOpts()));
 
   // Small delay before mouse down
   await sleep(30 + Math.random() * 50);
 
   // Press down
-  target.dispatchEvent(new PointerEvent("pointerdown", { ...pointerOpts(), pressure: 0.5, buttons: 1 }));
-  target.dispatchEvent(new MouseEvent("mousedown", { ...baseOpts(), buttons: 1 }));
-
-  // Focus target if focusable
-  if (typeof target.focus === "function") {
-    target.focus();
-  }
+  element.dispatchEvent(new PointerEvent("pointerdown", { ...pointerOpts(), pressure: 0.5, buttons: 1 }));
+  element.dispatchEvent(new MouseEvent("mousedown", { ...baseOpts(), buttons: 1 }));
 
   // Hold mouse press for 40-90ms
   await sleep(40 + Math.random() * 50);
 
   // Release
-  target.dispatchEvent(new PointerEvent("pointerup", pointerOpts()));
-  target.dispatchEvent(new MouseEvent("mouseup", baseOpts()));
-  target.dispatchEvent(new MouseEvent("click", baseOpts()));
+  element.dispatchEvent(new PointerEvent("pointerup", pointerOpts()));
+  element.dispatchEvent(new MouseEvent("mouseup", baseOpts()));
+  element.dispatchEvent(new MouseEvent("click", baseOpts()));
 
   // Jitter after click finishes
   await sleep(100 + Math.random() * 150);
 }
 
-let currentMouseX = window.innerWidth / 2;
-let currentMouseY = window.innerHeight / 2;
-document.addEventListener("mousemove", (e) => {
-  currentMouseX = e.clientX;
-  currentMouseY = e.clientY;
-}, { passive: true });
-
-function easeInOutQuad(t) {
-  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-}
-
-function getBezierPoints(x0, y0, x3, y3, steps) {
-  const points = [];
-  const dx = x3 - x0;
-  const dy = y3 - y0;
-  const p1x = x0 + dx * 0.25 + (Math.random() - 0.5) * 120;
-  const p1y = y0 + dy * 0.25 + (Math.random() - 0.5) * 120;
-  const p2x = x0 + dx * 0.75 + (Math.random() - 0.5) * 120;
-  const p2y = y0 + dy * 0.75 + (Math.random() - 0.5) * 120;
-  for (let i = 1; i <= steps; i++) {
-    const t = easeInOutQuad(i / steps);
-    const mt = 1 - t;
-    const x = mt * mt * mt * x0 + 3 * mt * mt * t * p1x + 3 * mt * t * t * p2x + t * t * t * x3;
-    const y = mt * mt * mt * y0 + 3 * mt * mt * t * p1y + 3 * mt * t * t * p2y + t * t * t * y3;
-    points.push({ x, y });
-  }
-  return points;
-}
-
 async function simulateMouseTrail(targetX, targetY) {
-  const startX = currentMouseX;
-  const startY = currentMouseY;
-  const distance = Math.hypot(targetX - startX, targetY - startY);
-  if (distance < 5) return;
-  const steps = Math.max(8, Math.min(30, Math.floor(distance / 20)));
-  const points = getBezierPoints(startX, startY, targetX, targetY, steps);
-  for (let i = 0; i < points.length; i++) {
-    const { x, y } = points[i];
+  const startX = targetX + (Math.random() - 0.5) * 120;
+  const startY = targetY + (Math.random() - 0.5) * 80;
+  const steps = 3 + Math.floor(Math.random() * 3);
+
+  for (let i = 1; i <= steps; i++) {
+    const ratio = i / steps;
+    const currentX = startX + (targetX - startX) * ratio + (Math.random() - 0.5) * 4;
+    const currentY = startY + (targetY - startY) * ratio + (Math.random() - 0.5) * 4;
     const opts = {
       bubbles: true,
-      clientX: x,
-      clientY: y,
-      screenX: x + window.screenX,
-      screenY: y + window.screenY,
+      clientX: currentX,
+      clientY: currentY,
+      screenX: currentX + window.screenX,
+      screenY: currentY + window.screenY,
       pointerId: 1,
       pointerType: "mouse",
       isPrimary: true,
@@ -2696,15 +1795,9 @@ async function simulateMouseTrail(targetX, targetY) {
       view: window,
     };
     document.dispatchEvent(new PointerEvent("pointermove", opts));
-    document.dispatchEvent(new MouseEvent("mousemove", {
-      ...opts,
-      movementX: i > 0 ? x - points[i - 1].x : 0,
-      movementY: i > 0 ? y - points[i - 1].y : 0
-    }));
-    await sleep(6 + Math.random() * 8);
+    document.dispatchEvent(new MouseEvent("mousemove", { ...opts, movementX: 1, movementY: 1 }));
+    await sleep(10 + Math.random() * 15);
   }
-  currentMouseX = targetX;
-  currentMouseY = targetY;
 }
 
 let logSeq = 0;

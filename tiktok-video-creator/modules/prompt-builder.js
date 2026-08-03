@@ -98,7 +98,7 @@ const PRESENTERS = {
   hands_only: "Realistic first-person POV (Point of View) perspective. Show the product being used, worn, or presented naturally with realistic anatomical hands (strictly 5 fingers per hand, natural ergonomic grip, clean skin texture, realistic knuckles) or feet/legs depending on product category. No face or head shown in the frame.",
   woman: "A young Thai woman reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/blouse AND long pants/jeans/skirt). She stands near or holds it gently, smiling at the camera.",
   man: "A young Thai man reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/polo AND long pants/jeans). He stands near or holds it gently, smiling at the camera.",
-  child: "A cute young Thai child (4-6 years old) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
+  child: "A cute young Thai child (4-6 years old, kindergarten age, strictly no baby or toddler under 4 years old) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
   older_child: "A cute Thai older child (7-12 years old, kid) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
   living_product: "The product itself becomes a living character with cute 3D eyes and personality",
@@ -108,7 +108,7 @@ const PRESENTERS = {
 
 const THAI_PERSON_DIRECTION = "Natural Thai reviewer standing in a full-length shot, modestly dressed in a complete outfit (proper top AND long pants/skirt). The product must remain rigid and static; reviewer stands next to it gently.";
 
-const KIDS_WITH_PARENT_DIRECTION = "KIDS PRODUCT SCENE WITH CHILD & PARENT SUPERVISION: The scene MUST depict a happy young Thai child (kid/toddler) actively, safely, and naturally riding, playing with, wearing, or using the kids product (e.g. riding the kids bicycle, playing with the toy) in a bright, clean setting. The child is naturally enjoying and using the product naturally in the scene without hard-selling to the camera. Accompanying the child MUST BE a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby, supervising with love, warmth, and care. STRICTLY FORBIDDEN: Do NOT include dogs or unrelated pet animals. Do NOT show an isolated adult presenter without a child for kids products.";
+const KIDS_WITH_PARENT_DIRECTION = "KIDS PRODUCT SCENE WITH CHILD & PARENT SUPERVISION: The scene MUST depict a happy young Thai kindergarten child (4-6 years old or older, strictly no babies or toddlers under kindergarten age) actively, safely, and naturally riding, playing with, wearing, or using the kids product (e.g. riding the kids bicycle, playing with the toy) in a bright, clean setting. The child is naturally enjoying and using the product naturally in the scene without hard-selling to the camera. Accompanying the child MUST BE a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby, supervising with love, warmth, and care. STRICTLY FORBIDDEN: Do NOT include dogs or unrelated pet animals. Do NOT show an isolated adult presenter without a child for kids products.";
 
 const STRICT_MODEST_DRESS_CODE_MANDATE = "STRICT MODEST & APPROPRIATE DRESS CODE LOCK (ห้ามชุดสุ่มเสี่ยง/วาบหวิว): Presenters and models MUST wear clean, elegant, modest, everyday commercial attire (such as casual shirts, blouses, t-shirts, jackets, jeans, trousers, or modest knee-length skirts/dresses). STRICTLY FORBIDDEN: Do NOT generate revealing, immodest, risqué, suggestive, or provocative outfits. No deep v-necks, no exposed cleavage, no strapless tops, no crop tops showing stomach, no micro-shorts, no see-through/sheer clothing, no underwear/lingerie, and no tight/revealing swimwear. Always keep clothing respectable, professional, and 100% appropriate for commercial advertising.";
 
@@ -177,7 +177,7 @@ const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glass
 const BEAUTY_SKINCARE_FIDELITY_DIRECTION = "For cosmetics, skincare, and personal care (creams, serums, lipsticks, bottles, tubes, compacts): preserve the exact container bottle/jar/tube shape, dispenser cap/pump type, brand logo, printed text, label artwork, and formula texture. Do not alter container proportions, lid type, or packaging design.";
 const COFFEE_BAG_FIDELITY_DIRECTION = "STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK: The product is a printed coffee bag or coffee bean pouch. You MUST reproduce the EXACT printed front label artwork, brand logo, emblem, typography, font style, exact Thai/English brand text, weight markings (e.g. 200g/250g/500g), coffee bean illustrations, roasting badges, degassing valve, seal crimp edges, and pouch shape (e.g., gusseted pouch or flat-bottom bag) 100% pixel-faithfully as shown in the reference image. Maintain the exact label background color, logo placement, badge alignment, and printed text layout without redrawing, altering, replacing, simplifying, changing fonts, or writing gibberish on the label.";
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
-const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, and edge bevels MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
+const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, edge bevels, AND any built-in magnetic ring (MagSafe ring) MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, magnetic ring circle, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
 const JEWELRY_FIDELITY_DIRECTION = "For jewelry/watches, preserve exact gemstone cuts, metal luster/shade, chain link style, clasp, watch face indices, and sub-dials. Do not alter craftsmanship details.";
 const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK: You MUST reproduce the bag (handbag, backpack, tote bag, shoulder bag, cross-body bag, wallet, or pouch) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: All bag silhouettes, strap/handle drop lengths, zipper pulls, metal clasps, buckles, stitching lines, and pocket placements MUST be rendered 100% pixel-faithfully without structural warping. MATERIAL TEXTURE & PRINTED ARTWORK: Preserve exact leather grain, canvas weave, nylon sheen, quilted pattern, brand monogram, logo plaque, or printed artwork. ZERO DEFORMATION RULE: The bag must maintain its true 3D structure and form naturally without melting, twisting, stretching, or morphing across video frames.";
 const FOOD_BEVERAGE_FIDELITY_DIRECTION = "For food, beverages, coffee, and supplements: preserve the exact pouch/bottle/jar packaging shape, printed artwork, label text, and food presentation. Do not warp packaging dimensions or branding.";
@@ -219,6 +219,18 @@ export function isHeadwearProduct(text = "") {
 export function isFullFaceCoveringProduct(text = "") {
   return /(โม่ง|โม่งคลุมหน้า|โม่งคลุมหมดหน้า|โม่งปิดปาก|ผ้าปิดปาก|ผ้าปิดจมูก|หน้ากากอนามัย|แมสก์|หน้ากาก|balaclava|full face balaclava|face mask|ski mask|mouth mask|gaiter)/i.test(String(text || ""));
 }
+
+export function isPhoneCaseProduct(text = "") {
+  return /(เคส|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|phone case|phone cover|mobile case|mobile cover|magsafe)/i.test(String(text || ""));
+}
+
+export function isMagneticPhoneCaseProduct(text = "") {
+  return /(แม่เหล็ก|magsafe|วงกลม|ชาร์จไร้สาย|wireless charge|magnetic|ขาตั้งยึด|ยึดแม่เหล็ก)/i.test(String(text || ""));
+}
+
+const PHONE_CASE_MULTI_SHOT_MANDATE = "MULTI-ANGLE PHONE CASE SHOT MANDATE (โชว์หลายมุมหลายช็อต): The video MUST showcase the phone case across multiple distinct close-up angles (Scene 1: Full back cover artwork & built-in magnetic ring design, Scene 2: Close-up zoom of camera lens cutout border & side button covers, Scene 3: Bottom charging port cutout & edge finish, Scene 4: Full phone case fitted elegantly). Provide sequential multi-shot coverage highlighting every angle, built-in magnetic ring feature, and detail of the phone case.";
+
+const MAGNETIC_PHONE_CASE_FIDELITY_MANDATE = "BUILT-IN MAGNETIC RING (MAGSAFE) FEATURE LOCK (วงกลมแม่เหล็กในตัว ชาร์จไร้สาย/ยึดขาตั้งง่าย): The circular ring on the back of the case is a built-in magnetic ring (MagSafe ring) integrated directly into the case for wireless charging alignment and magnetic stand mounting. Render this circular magnetic ring crisp, clean, centered, and 100% built-in seamlessly into the case back. ABSOLUTELY FORBIDDEN: Do NOT render external stick-on pads, separate adhesive magnetic plates, or extra stick-on accessories. The magnetic ring is 100% built-in to the case itself — no extra attachments or stick-ons required.";
 
 const FARM_POULTRY_FEED_EXCLUSION_RULE = "POULTRY & LIVESTOCK FEED SPECIFIC RULE: This product is poultry/farm livestock feed (such as chicken feed). ABSOLUTELY FORBIDDEN: Do NOT render dogs, cats, puppies, kittens, or house pets in the scene under any circumstances. Present the product packaging and feed granules cleanly in a farm, warehouse, or natural outdoor environment.";
 
@@ -764,12 +776,14 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
     isHeadwearProduct(productText) ? HEADWEAR_NEVER_REMOVE_MANDATE : "",
     isFullFaceCoveringProduct(productText) ? FULL_FACE_COVERAGE_LOCK : "",
+    isPhoneCaseProduct(productText) ? PHONE_CASE_MULTI_SHOT_MANDATE : "",
+    isMagneticPhoneCaseProduct(productText) ? MAGNETIC_PHONE_CASE_FIDELITY_MANDATE : "",
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     locationStr ? `Location setting: Place the product in a brand new, realistic ${locationStr} background location. DO NOT use or match the original reference image background.` : (handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "Choose a clean, realistic, commercially appealing background that fits this product category. ALWAYS generate a new, non-matching background location."),
   ];
-  let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60))
+  let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60), productText)
     .replace(/\d+-second\s*/g, "");
   sceneBreakdown = sceneBreakdown
     .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 1 in Thai - Opening hook phrase]')
@@ -792,16 +806,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `a reviewer together with a ${animalName}`)
       .replace(/\bhands\b/gi, "hands");
   } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter) || isKidsProduct(productText)) {
-    let childDesc = "a happy young Thai child (kid/toddler)";
+    let childDesc = "a happy young Thai kindergarten child (4-6 years old, strictly no baby or toddler)";
     let childAction = "actively riding, playing with, or using the kids product naturally in the scene";
-    if (auto.presenter === "baby") {
-      childDesc = "a cute baby";
-      childAction = "crawling or sitting naturally near the product";
-    } else if (auto.presenter === "toddler") {
-      childDesc = "a cute toddler";
+    if (auto.presenter === "baby" || auto.presenter === "toddler") {
+      childDesc = "a cute young Thai kindergarten child (4-6 years old, strictly no baby or toddler)";
       childAction = "playing or interacting naturally with the product";
     } else if (auto.presenter === "older_child") {
-      childDesc = "a cute older child/kid";
+      childDesc = "a cute older child/kid (7-12 years old)";
       childAction = "riding or using the product naturally in the scene";
     }
     const parentCare = "accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care (no hard selling)";
@@ -941,11 +952,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const toneDesc = VOICE_TONES[auto.voiceTone] || VOICE_TONES.Auto;
 
   // Derive a speaker identity from the presenter setting so the AI voice matches the character
-  let speakerIdentity = "a natural Thai speaker";
+  let speakerIdentity = "a clear, friendly young Thai woman narrator";
   if (auto.presenter === "woman") {
     speakerIdentity = "a young Thai woman";
   } else if (auto.presenter === "man") {
     speakerIdentity = "a young Thai man";
+  } else if (auto.presenter === "none" || auto.presenter === "hands_only") {
+    speakerIdentity = "a clear, warm, friendly off-screen young Thai woman narrator";
   } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
     if (auto.presenter === "older_child") {
       speakerIdentity = "a caring Thai mother narrating warm thoughts about her school-aged child interacting with the product. The voice and script must be age-appropriate for an older child and must never use baby-talk, baby words, or speak/sound like a small child";
@@ -966,13 +979,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const matchVoiceRule = (auto.presenter === "dog" || auto.presenter === "cat")
     ? "the voice age, gender, and speech style must match the on-screen Thai presenter presenting the product with their pet"
     : (auto.presenter === "none" || auto.presenter === "hands_only")
-      ? "the voice must sound like a professional off-screen Thai narrator presenting the product. Since no presenter's face or body is shown on screen, ensure the voice is a clear, friendly voiceover narration."
+      ? "the voice must sound like a clear, warm, friendly off-screen young Thai female narrator presenting the product. Since no presenter's face or body is shown on screen, ensure the voice is explicitly a female voiceover narration."
       : (["baby", "toddler", "child", "older_child"].includes(auto.presenter))
         ? "the voice must sound like a caring Thai mother narrating warm and loving thoughts about her child on screen. The voice must be an adult mother's voice, and the narration must NEVER use baby-talk, baby words, or sound like a young child"
         : "the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter)";
 
   const voiceMatchEnd = (auto.presenter === "none" || auto.presenter === "hands_only")
-    ? "ensure the voice is a natural Thai speaker delivering a clear off-screen voiceover narration."
+    ? "ensure the voice is a natural young Thai female speaker delivering a clear off-screen voiceover narration."
     : (["baby", "toddler", "child", "older_child"].includes(auto.presenter))
       ? "ensure the voice is a natural Thai speaker whose voice matches the off-screen mother narrator."
       : "ensure the voice is a natural Thai speaker whose voice perfectly matches the character identity of the presenter.";
@@ -985,7 +998,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const speechDir = isFullFaceCoveringProduct(productText)
     ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. FORBIDDEN: no exaggerated claims, no greetings, no price/discounts, no quantities, no CTA. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
     : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. FORBIDDEN: no exaggerated claims, no greetings (never say "สวัสดี", "หวัดดี", "hello", "hi"), no price/discounts ("ราคา", "บาท", "ลด"), no quantities ("กรัม", "kg", "มล."), no CTA ("สั่งได้เลย", "กดลิงก์"). Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
-  const voiceoverDir = "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
+  const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only")
+    ? "Voiceover: Add a clear, friendly off-screen Thai female voiceover narration speaking in Thai."
+    : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
     let handsInstructions = `${handsDir}\n${HANDS_ONLY_FACE_EXCLUSION}`;
@@ -1030,9 +1045,18 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   return promptParts.filter(Boolean).join("\n");
 }
 
-function getMultiSceneDescription(videoStyle, productName, locationStr, mood) {
+function getMultiSceneDescription(videoStyle, productName, locationStr, mood, productText = "") {
   const loc = locationStr ? ` in a ${locationStr} setting` : "";
   const moodStyle = mood ? ` with ${mood} lighting` : "";
+
+  if (isPhoneCaseProduct(productText || productName) || isMagneticPhoneCaseProduct(productText || productName)) {
+    return [
+      "This video must consist of multiple sequential scenes with clear cuts/transitions showing the phone case from multiple distinct close-up angles:",
+      `- Scene 1 (Full Back Artwork & Built-in Magnetic Ring Hook): A clear 3-second opening shot showcasing the full back cover design, pattern, and built-in magnetic ring (MagSafe ring) of ${productName}${loc}${moodStyle}.`,
+      `- Scene 2 (Camera Cutout & Edge Details): A 3-second macro close-up zoom on the camera lens cutout border, side button covers, and edge bevels.`,
+      `- Scene 3 (Fitted View & Port Cutouts): A 2-second final scene showing the phone case fitted snugly on a smartphone, highlighting the built-in magnetic ring (for wireless charging and magnetic stand alignment) and bottom charging port cutout.`
+    ].join("\n");
+  }
 
   switch (videoStyle) {
     case "sales":
@@ -1156,8 +1180,9 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
   if (/(ครีม|เซรั่ม|ลิป|ลิปสติก|สกินแคร์|บำรุง|กันแดด|แชมพู|สบู่|น้ำหอม|แป้ง|รองพื้น|บลัชออน|แต่งหน้า|เครื่องสำอาง|cosmetics|skincare|serum|cream|lotion|lipstick|lipgloss|shampoo|cleanser|perfume|makeup|foundation)/i.test(text)) {
     return `${BEAUTY_SKINCARE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
-  if (/(เคส|ไอโฟน|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|phone case|phone cover|mobile case|mobile cover|gadget)/i.test(text)) {
-    return `${PHONE_CASE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  if (/(เคส|ไอโฟน|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|phone case|phone cover|mobile case|mobile cover|gadget)/i.test(text) || isMagneticPhoneCaseProduct(text)) {
+    const extraMag = isMagneticPhoneCaseProduct(text) ? `\n${MAGNETIC_PHONE_CASE_FIDELITY_MANDATE}` : "";
+    return `${PHONE_CASE_FIDELITY_DIRECTION}${extraMag}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (/(มือถือ|หูฟัง|บลูทูธ|สายชาร์จ|พาวเวอร์แบงค์|พัดลม|อิเล็กทรอนิกส์|earphone|headphone|bluetooth|charger|powerbank|fan|electronic|appliance)/i.test(text)) {
     return `${ELECTRONICS_GADGETS_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;

@@ -50,6 +50,7 @@
     },
     {
       "js": [
+        "content/tiktok-studio-automation.js",
         "content/tiktok-post-loader.js"
       ],
       "matches": [

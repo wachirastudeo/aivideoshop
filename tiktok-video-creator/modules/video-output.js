@@ -60,6 +60,41 @@ export async function scheduleVideo(videoUrl, productInfo, minutesOffset = 0) {
   return sendVideoToTikTokStudio(videoUrl, productInfo, "schedule", minutesOffset);
 }
 
+function parseFlexibleDate(str) {
+  if (!str) return null;
+  if (str instanceof Date) return isNaN(str.getTime()) ? null : str;
+  const s = String(str).trim();
+
+  // 1) YYYY-MM-DD or YYYY/MM/DD
+  let match = s.match(/^(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (match) {
+    const y = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10) - 1;
+    const d = parseInt(match[3], 10);
+    const hh = parseInt(match[4] || "0", 10);
+    const mm = parseInt(match[5] || "0", 10);
+    const ss = parseInt(match[6] || "0", 10);
+    const dt = new Date(y, m, d, hh, mm, ss);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  // 2) DD/MM/YYYY or DD-MM-YYYY (e.g. 04/08/2026)
+  match = s.match(/^(\d{1,2})[-\/\.](\d{1,2})[-\/\.](\d{4})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (match) {
+    const d = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10) - 1;
+    const y = parseInt(match[3], 10);
+    const hh = parseInt(match[4] || "0", 10);
+    const mm = parseInt(match[5] || "0", 10);
+    const ss = parseInt(match[6] || "0", 10);
+    const dt = new Date(y, m, d, hh, mm, ss);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  const fallback = new Date(s);
+  return isNaN(fallback.getTime()) ? null : fallback;
+}
+
 export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "post", minutesOffset = 0) {
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const { creatorState = {} } = await chrome.storage.local.get("creatorState");
@@ -74,20 +109,7 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     : "";
 
   if (scheduleTime) {
-    let dt;
-    const match = String(scheduleTime).match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
-    if (match) {
-      dt = new Date(
-        parseInt(match[1], 10),
-        parseInt(match[2], 10) - 1,
-        parseInt(match[3], 10),
-        parseInt(match[4], 10),
-        parseInt(match[5], 10),
-        0, 0
-      );
-    } else {
-      dt = new Date(scheduleTime);
-    }
+    let dt = parseFlexibleDate(scheduleTime);
     if (!Number.isNaN(dt.getTime())) {
       if (minutesOffset > 0) {
         dt.setMinutes(dt.getMinutes() + minutesOffset);

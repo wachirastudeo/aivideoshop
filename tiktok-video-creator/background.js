@@ -1106,7 +1106,7 @@ function sleep(ms) {
 
 const TIKTOK_STUDIO_UPLOAD_URL = "https://www.tiktok.com/tiktokstudio/upload";
 const VIDEO_PREP_RETRY_ATTEMPTS = 2;
-const VIDEO_PREP_RETRY_DELAY_MS = 60000;
+const VIDEO_PREP_RETRY_DELAY_MS = 3000;
 
 // ─── TikTok Studio: Send draft/post ผ่าน Page UI Automation บนหน้า upload ──────
 async function sendTikTokDraft(payload) {
@@ -1137,15 +1137,7 @@ async function sendTikTokDraft(payload) {
     const mimeType = preparedVideo.mimeType || "video/mp4";
 
     // 3. ตรวจสอบและ Inject Content Script สำหรับควบคุมหน้าเว็บ
-    try {
-      await chrome.tabs.sendMessage(tabId, { type: "TIKTOK_STUDIO_PING" });
-    } catch (_) {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ["content/tiktok-studio-automation.js"]
-      });
-      await sleep(500);
-    }
+    await ensureTikTokStudioContentScript(tabId);
 
     // 4. ส่งข้อมูลไปให้ Content Script ดำเนินการอัปโหลดและกรอกรายละเอียด
     await notify("TikTok Automation", "กำลังเริ่มขั้นตอนอัปโหลดและกรอกข้อมูลอัตโนมัติ...");
@@ -1433,6 +1425,24 @@ function buildTikTokVideoFilename(productInfo = {}) {
   return `${safeId}_${date}_tiktok.mp4`;
 }
 
+async function ensureTikTokStudioContentScript(tabId) {
+  for (let i = 0; i < 8; i += 1) {
+    try {
+      const res = await chrome.tabs.sendMessage(tabId, { type: "TIKTOK_STUDIO_PING" });
+      if (res?.pong) return true;
+    } catch (_) {}
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content/tiktok-studio-automation.js"]
+      });
+    } catch (_) {}
+    await sleep(400);
+  }
+  return false;
+}
+
 async function openTikTokStudioUploadTab() {
   const uploadTabs = [
     ...(await chrome.tabs.query({ url: "https://www.tiktok.com/tiktokstudio/upload*" })),
@@ -1470,7 +1480,14 @@ async function openTikTokStudioUploadTab() {
 
   const newTab = await chrome.tabs.create({ url: TIKTOK_STUDIO_UPLOAD_URL, active: true });
   await waitForTabComplete(newTab.id);
-  await sleep(3000);
+  await sleep(1500);
+
+  const checkTab = await chrome.tabs.get(newTab.id).catch(() => null);
+  if (checkTab?.url && (/login|passport/i.test(checkTab.url))) {
+    await notify("TikTok Studio", "กรุณาเข้าสู่ระบบ (Login) TikTok ในแท็บที่เปิดขึ้นมาก่อนดำเนินการ");
+    throw new Error("ยังไม่ได้เข้าสู่ระบบ TikTok (กรุณา Login ในแท็บที่เปิดขึ้นมา)");
+  }
+
   await chrome.storage.local.set({ activeTikTokTabId: newTab.id });
   await ensureDebuggerAttached(newTab.id).catch(() => {});
   return newTab.id;
