@@ -183,6 +183,7 @@ const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "STRICT BAGS & ACCESSORIES STRUCTURA
 const FOOD_BEVERAGE_FIDELITY_DIRECTION = "For food, beverages, coffee, and supplements: preserve the exact pouch/bottle/jar packaging shape, printed artwork, label text, and food presentation. Do not warp packaging dimensions or branding.";
 const GENERAL_PACKAGING_FIDELITY_DIRECTION = "UNIVERSAL PRODUCT & PACKAGING LABEL FIDELITY LOCK: You MUST reproduce the target product EXACTLY as shown in the reference image. Preserve its 100% exact 3D form, packaging shape, container type, brand logo, printed text, front label artwork, graphic illustrations, typography, color scheme, and texture. Copy the reference image pixel-faithfully; do NOT redesign, simplify, alter, recolor, or warp the product or its packaging in any way.";
 const HOME_LIVING_FIDELITY_DIRECTION = "For home goods, kitchenware, tumblers, mugs, and bedding: preserve the exact item shape, handle, lid, material texture (ceramic, stainless steel, fabric), print pattern, and proportions.";
+const TUMBLER_BOTTLE_FIDELITY_DIRECTION = "STRICT TUMBLER & WATER BOTTLE FIDELITY LOCK: You MUST reproduce the tumbler, mug, or water bottle EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: The exact cylindrical taper, height-to-width ratio, handle shape and placement (if any), lid type, straw (if present), spout, and bottom base MUST be rendered 100% pixel-faithfully without warping. EXACT MATERIAL & ARTWORK: Preserve the exact material finish (matte, glossy stainless steel, gradient colors, powder coating) and any printed brand logos or patterns perfectly. ZERO DEFORMATION RULE: The cup must remain 100% rigid, perfectly cylindrical, and static without melting, denting, or shifting dimensions across video frames.";
 const FURNITURE_FIDELITY_DIRECTION = "STRICT FURNITURE & INTERIOR STRUCTURAL FIDELITY LOCK: You MUST reproduce the furniture piece (table, chair, sofa, desk, cabinet, shelf, wardrobe, bed, armchair, or home decor) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D GEOMETRY & ARCHITECTURAL REALISM: All legs (strictly straight, vertical, and sturdy 4-leg or pedestal frame), tabletop thickness, armrests, seat cushion depth, backrest angle, wood grain orientation, upholstery fabric weave/leather texture, and metal joint hardware MUST be rendered 100% pixel-faithfully without any structural distortion or warping. ZERO DYNAMIC WARPING RULE: The furniture piece is 100% rigid architectural furniture resting flat and grounded on the floor. It must NEVER bend, melt, sway, stretch, warp, twist, float, or change shape as the camera moves. PHYSICAL PROPORTIONS & SCALE: Maintain true-to-life scale and proportions relative to the surrounding room, floor, walls, and any presenter standing or sitting near it. Do not distort legs or shrink/enlarge any component relative to the rest of the piece.";
 
 const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION & ZERO REPETITION LOCK: Each scene in the video MUST have its own UNIQUE, DIFFERENT spoken sentence in Thai that flows naturally. ABSOLUTELY FORBIDDEN: NEVER repeat, loop, echo, or re-say the sentence spoken in the previous scene. Scene 2 MUST speak a NEW, DIFFERENT sentence from Scene 1; Scene 3 MUST speak a NEW, DIFFERENT sentence from Scene 2. Maintain a continuous, natural progressive voiceover across all scenes without repeating any phrase or sentence.";
@@ -647,6 +648,84 @@ function getProductSpecificScaleInstruction(text = "") {
   
   return "";
 }
+/**
+ * @description เลือก Hook เด็ดๆ ตามหมวดหมู่สินค้า
+ * @param {object} productInfo
+ * @returns {string[]} อาเรย์ของประโยค Hook
+ */
+function resolveProductHook(productInfo = {}) {
+  const text = [
+    productInfo.name || "",
+    productInfo.category || "",
+    productInfo.targetGroup || "",
+    productInfo.highlights || ""
+  ].join(" ").toLowerCase();
+
+  // Tumbler / Mug
+  if (/(แก้ว|กระบอกน้ำ|ชากาแฟ|tumbler|mug|cup|bottle)/i.test(text)) {
+    return [
+      "สายชากาแฟ ไม่มีใบนี้ไม่ได้แล้วจริงๆ",
+      "ใครเป็นมนุษย์ออฟฟิศที่ติดน้ำหวาน ต้องมีใบนี้ติดโต๊ะ",
+      "เบื่อไหม ซื้อกาแฟมายังไม่ทันหมดแก้ว น้ำแข็งละลายจนจืดซะแล้ว",
+      "ตั้งแต่มีแก้วใบนี้ ก็ลืมแก้วทุกใบที่เคยซื้อมาเลย",
+      "ลองพิสูจน์แล้ว แก้วใบนี้ใส่น้ำแข็งทิ้งไว้ข้ามคืน สรุปว่า"
+    ];
+  }
+
+  // Beauty / Skincare
+  if (/(ครีม|เซรั่ม|ลิป|แป้ง|มาสก์|สกินแคร์|เมคอัพ|beauty|skincare|cosmetic)/i.test(text)) {
+    return [
+      "กู้ผิวพังให้ปังได้ง่ายๆ ด้วยไอเทมนี้",
+      "เคล็ดลับผิวสวยที่บล็อกเกอร์ไม่ค่อยบอกคุณ",
+      "ใครที่มีปัญหาผิว รีบดูคลิปนี้ให้จบ",
+      "บอกลาหน้าโทรม แค่มีกระปุกนี้ติดโต๊ะเครื่องแป้ง",
+      "ของดีบอกต่อ ใช้จริงไม่จกตา"
+    ];
+  }
+  
+  // Fashion / Clothing
+  if (/(เสื้อ|กางเกง|กระโปรง|รองเท้า|กระเป๋า|แฟชั่น|เดรส|fashion|clothing|clothes)/i.test(text)) {
+    return [
+      "ชุดนี้ใส่แล้วพรางหุ่นสุดๆ ใครเห็นก็ต้องทัก",
+      "แมทช์ลุคได้ทุกลุค ไม่มีติดตู้ไม่ได้แล้ว",
+      "สายแฟชั่นห้ามพลาด ตัวนี้คือไอเทมกันตาย",
+      "หมดปัญหาคิดไม่ออกว่าจะใส่อะไรดี",
+      "เนื้อผ้าดีมาก ทรงสวยเป๊ะ ตรงปกไม่จกตา"
+    ];
+  }
+
+  // Tech / Gadgets
+  if (/(โทรศัพท์|มือถือ|แล็ป|คอม|ลำโพง|หูฟัง|ชาร์จ|กล้อง|tech|phone|gadget)/i.test(text)) {
+    return [
+      "ไอเทมสุดล้ำ ที่จะทำให้ชีวิตคุณง่ายขึ้น 10 เท่า",
+      "สายไอทีต้องจัด ตัวนี้สเปคคุ้มเกินราคามาก",
+      "ใครชอบความสะดวกสบาย ไม่มีตัวนี้ถือว่าพลาด",
+      "ฟีเจอร์จัดเต็มขนาดนี้ ไม่ซื้อไม่ได้แล้ว",
+      "แก้ปัญหาจุกจิกกวนใจ ด้วยแก็ดเจ็ตตัวนี้เลย"
+    ];
+  }
+
+  // Food / Snack
+  if (/(อาหาร|ขนม|กาแฟ|เครื่องดื่ม|น้ำ|food|snack|drink)/i.test(text)) {
+    return [
+      "อร่อยแสงออกปาก ใครสายกินต้องมามุง",
+      "หยุดกินไม่ได้เลย อร่อยจนต้องตุนไว้",
+      "ของอร่อยที่สายกินห้ามพลาดเด็ดขาด",
+      "ใครหิวตอนดึก สิ่งนี้คือคำตอบ",
+      "อร่อยแถมมีประโยชน์ ต้องลองเลย"
+    ];
+  }
+
+  return [
+    "ไอเทมลับที่ใช้เองแล้วเวิร์คมาก",
+    "บอกลาปัญหาเดิมๆ ไปได้เลยเมื่อเจอสิ่งนี้",
+    "ของมันต้องมี พลาดไม่ได้แล้ว",
+    "เคล็ดลับที่ทำให้ชีวิตง่ายขึ้นเยอะ",
+    "ใครกำลังลังเล ดูคลิปนี้ให้จบก่อน",
+    "หยุดก่อน ถ้าคุณยังไม่รู้จักสิ่งนี้",
+    "ลองใช้มาสักพักแล้ว ประทับใจสุดๆ"
+  ];
+}
 
 /**
  * @description สร้าง prompt วิดีโอสำหรับ Phase 2
@@ -662,7 +741,8 @@ function generateThaiDialogue(productInfo, settings, auto) {
     const parts = productInfo.highlights.split(/[,\n;]/);
     phrase = parts[0].trim();
   } else {
-    phrase = "สินค้าตัวนี้ดีมากๆ";
+    const defaultPhrases = resolveProductHook(productInfo);
+    phrase = defaultPhrases[Math.floor(Math.random() * defaultPhrases.length)];
   }
   
   // ลบอิโมจิและอักขระพิเศษ
@@ -672,7 +752,14 @@ function generateThaiDialogue(productInfo, settings, auto) {
   const ending = isMan ? "ครับ" : "ค่ะ";
   
   if (!phrase.endsWith("ค่ะ") && !phrase.endsWith("ครับ") && !phrase.endsWith("เลย") && !phrase.endsWith("นะ")) {
-    phrase = phrase + ` ดีมากๆ เลย${ending}`;
+    const endingPhrases = [
+      ` น่าใช้สุดๆ ${ending}`,
+      ` ต้องลองเลย${ending}`,
+      ` ห้ามพลาดเด็ดขาด${ending}`,
+      ` ของมันต้องมีจริงๆ ${ending}`,
+      ` ตอบโจทย์มาก${ending}`
+    ];
+    phrase = phrase + endingPhrases[Math.floor(Math.random() * endingPhrases.length)];
   }
   return phrase;
 }
@@ -1196,7 +1283,10 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
   if (/(กาแฟ|ชา|โกโก้|ขนม|อาหาร|อาหารเสริม|วิตามิน|คอลลาเจน|อาหารหมา|อาหารแมว|coffee|tea|snack|food|supplement|vitamin|collagen|pet food)/i.test(text)) {
     return `${FOOD_BEVERAGE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
-  if (/(แก้ว|ขวด|กระติก|แก้วเก็บความเย็น|หมอน|ผ้าห่ม|ที่นอน|ผ้าม่าน|เครื่องครัว|tumbler|mug|cup|bottle|flask|pillow|blanket|kitchenware|home)/i.test(text)) {
+  if (/(แก้ว|กระบอกน้ำ|ชากาแฟ|กระติก|แก้วเก็บความเย็น|tumbler|mug|cup|bottle|flask)/i.test(text)) {
+    return `${TUMBLER_BOTTLE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (/(หมอน|ผ้าห่ม|ที่นอน|ผ้าม่าน|เครื่องครัว|pillow|blanket|kitchenware|home)/i.test(text)) {
     return `${HOME_LIVING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   if (/(สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ลาย|ลายพิมพ์|พิมพ์ลาย|sticker|decal|poster|canvas|printed|graphic|pattern|illustration)/i.test(text)) {
