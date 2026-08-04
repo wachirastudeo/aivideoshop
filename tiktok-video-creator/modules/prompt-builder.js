@@ -123,7 +123,7 @@ const ANIMAL_PRESENTER_DIRECTION = "Show a friendly Thai reviewer standing toget
 
 const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, patterns, print designs, graphical illustrations, logos, labels, and parts. The pattern, artwork, and visual print on the product (especially for phone cases, clothes, or printed goods) must be 100% identical, keeping the same graphics, colors, and layout without any modification or hallucination. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.";
 
-const PRODUCT_ISOLATION_DIRECTION = "CRITICAL ISOLATION RULE — EXTRACT ONLY THE PRODUCT, 100% NEW SCENE & BACKGROUND: The attached reference photo is used SOLELY to define the main product (its exact 3D shape, logo, branding, colors, and printed text). You MUST ISOLATE AND EXTRACT ONLY THE PRODUCT ITSELF. STRICTLY FORBIDDEN: Do NOT copy, mirror, simulate, resemble, or recreate any portion of the background scene, environment, room, walls, floor, table surface, lighting style, or surrounding prop elements from the reference photo. Place the identical target product into an ENTIRELY NEW, FRESH, DIFFERENT, and UNRELATED scene setting (e.g. a cozy aesthetic cafe, modern stylish room, or clean countertop with completely new decor elements). The background scene and all surrounding environment items MUST BE 100% DIFFERENT from the reference photo. ONLY THE PRODUCT ITSELF MATCHES THE REFERENCE PHOTO.";
+const PRODUCT_ISOLATION_DIRECTION = "CRITICAL ISOLATION RULE — EXTRACT ONLY THE PRODUCT: You must cut out and extract ONLY the product from the reference photo, completely discarding the original background. Place the exact same product into a new scene. STRICT RESTRICTION: When extracting the product, you MUST NOT redraw, redesign, mutate, or alter the product's shape, logo, patterns, branding, or colors. The product must be transferred exactly as it is, maintaining 100% pixel-faithful identity to the reference image.";
 
 const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Never add, remove, or rearrange them.";
 
@@ -183,7 +183,7 @@ const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "STRICT BAGS & ACCESSORIES STRUCTURA
 const FOOD_BEVERAGE_FIDELITY_DIRECTION = "For food, beverages, coffee, and supplements: preserve the exact pouch/bottle/jar packaging shape, printed artwork, label text, and food presentation. Do not warp packaging dimensions or branding.";
 const GENERAL_PACKAGING_FIDELITY_DIRECTION = "UNIVERSAL PRODUCT & PACKAGING LABEL FIDELITY LOCK: You MUST reproduce the target product EXACTLY as shown in the reference image. Preserve its 100% exact 3D form, packaging shape, container type, brand logo, printed text, front label artwork, graphic illustrations, typography, color scheme, and texture. Copy the reference image pixel-faithfully; do NOT redesign, simplify, alter, recolor, or warp the product or its packaging in any way.";
 const HOME_LIVING_FIDELITY_DIRECTION = "For home goods, kitchenware, tumblers, mugs, and bedding: preserve the exact item shape, handle, lid, material texture (ceramic, stainless steel, fabric), print pattern, and proportions.";
-const TUMBLER_BOTTLE_FIDELITY_DIRECTION = "STRICT TUMBLER & WATER BOTTLE FIDELITY LOCK: You MUST reproduce the tumbler, mug, or water bottle EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: The exact cylindrical taper, height-to-width ratio, handle shape and placement (if any), lid type, straw (if present), spout, and bottom base MUST be rendered 100% pixel-faithfully without warping. EXACT MATERIAL & ARTWORK: Preserve the exact material finish (matte, glossy stainless steel, gradient colors, powder coating) and any printed brand logos or patterns perfectly. ZERO DEFORMATION RULE: The cup must remain 100% rigid, perfectly cylindrical, and static without melting, denting, or shifting dimensions across video frames.";
+const TUMBLER_BOTTLE_FIDELITY_DIRECTION = "STRICT TUMBLER & WATER BOTTLE FIDELITY LOCK: You MUST reproduce the tumbler, mug, or water bottle EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: The exact cylindrical taper, height-to-width ratio, handle shape and placement (if any), lid type, straw (if present), spout, and bottom base MUST be rendered 100% pixel-faithfully without warping. EXACT MATERIAL & ARTWORK: Preserve the exact material finish (matte, glossy stainless steel, gradient colors, powder coating) and ALL printed surface artwork, brand logos, cartoon characters, and patterns 100% pixel-faithfully. ZERO DEFORMATION RULE: The cup must remain 100% rigid, perfectly cylindrical, and static without melting, denting, or shifting dimensions across video frames.";
 const FURNITURE_FIDELITY_DIRECTION = "STRICT FURNITURE & INTERIOR STRUCTURAL FIDELITY LOCK: You MUST reproduce the furniture piece (table, chair, sofa, desk, cabinet, shelf, wardrobe, bed, armchair, or home decor) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D GEOMETRY & ARCHITECTURAL REALISM: All legs (strictly straight, vertical, and sturdy 4-leg or pedestal frame), tabletop thickness, armrests, seat cushion depth, backrest angle, wood grain orientation, upholstery fabric weave/leather texture, and metal joint hardware MUST be rendered 100% pixel-faithfully without any structural distortion or warping. ZERO DYNAMIC WARPING RULE: The furniture piece is 100% rigid architectural furniture resting flat and grounded on the floor. It must NEVER bend, melt, sway, stretch, warp, twist, float, or change shape as the camera moves. PHYSICAL PROPORTIONS & SCALE: Maintain true-to-life scale and proportions relative to the surrounding room, floor, walls, and any presenter standing or sitting near it. Do not distort legs or shrink/enlarge any component relative to the rest of the piece.";
 
 const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION & ZERO REPETITION LOCK: Each scene in the video MUST have its own UNIQUE, DIFFERENT spoken sentence in Thai that flows naturally. ABSOLUTELY FORBIDDEN: NEVER repeat, loop, echo, or re-say the sentence spoken in the previous scene. Scene 2 MUST speak a NEW, DIFFERENT sentence from Scene 1; Scene 3 MUST speak a NEW, DIFFERENT sentence from Scene 2. Maintain a continuous, natural progressive voiceover across all scenes without repeating any phrase or sentence.";
@@ -465,12 +465,10 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
 
-  const isSingleMode = settings?.imageMode === "single" || settings?.singleFrame === true || settings?.singleFrame === "true";
+  const isSingleMode = true; // FORCE SINGLE MODE ALWAYS: Prevents "4-panel grid" hallucination (ไม่ต้องตอนภาพ/แบ่งภาพ)
 
   // Phase 1 STILL IMAGE: ALWAYS use a single full-frame high-resolution hero product photograph to ensure 100% exact product fidelity, sharp label text, and exact brand logo reproduction without multi-panel grid compression distortion.
-  const intro = isSingleMode
-    ? `A high-fidelity single full-frame authentic smartphone camera photograph in a vertical 9:16 layout, showing ${productName} clearly in the center with 100% exact, crystal-clear, 1-to-1 pixel-faithful reference product replica, brand logo, and printed packaging text. Rendered with natural everyday mobile camera quality, completely avoiding artificial commercial studio lighting, hyper-processed gloss, or ad staging.`
-    : `A high-fidelity multi-angle 4-panel grid photograph in a vertical 9:16 layout, showing 4 distinct angles of ${productName} (front view, side view, detail close-up, and lifestyle view) with 100% exact, crystal-clear, 1-to-1 pixel-faithful product details, brand logo, and printed packaging text. Rendered with natural everyday mobile camera quality. ZERO DISTORTION LOCK: Maintain 100% exact 1-to-1 product shape, colors, logo, and artwork fidelity across all 4 panels without warping or redesigning.`;
+  const intro = `A high-fidelity single full-frame authentic smartphone camera photograph in a vertical 9:16 layout, showing ${productName} clearly in the center with 100% exact, crystal-clear, 1-to-1 pixel-faithful reference product replica, brand logo, and printed packaging text. Rendered with natural everyday mobile camera quality, completely avoiding artificial commercial studio lighting, hyper-processed gloss, or ad staging.`;
 
   const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
   const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
@@ -565,11 +563,10 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
   const imageBackgroundDirection = handsOnly
     ? HANDS_ONLY_BACKGROUND_DIRECTION
-    : `STRICT NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE LOCK: Extract ONLY the target product from the reference image, ignoring its original background entirely. Place the product into a BRAND NEW, highly realistic ${locationSetting} background scene. NATURAL SMARTPHONE ATMOSPHERE: Enhance the background with clean, organic everyday lighting, realistic depth of field, authentic real-life textures, and a believable environment tailored specifically to this product category. FORBIDDEN: Do NOT use hyper-processed commercial studio gloss, fake HDR sheen, or artificial CGI lighting. The scene MUST look authentic, natural, and grounded in real life.`;
+    : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: After extracting ONLY the target product from the reference image, place it into a BRAND NEW, highly realistic ${locationSetting} background scene. NATURAL SMARTPHONE ATMOSPHERE: Enhance the background with clean, organic everyday lighting, realistic depth of field, authentic real-life textures, and a believable environment tailored specifically to this product category. FORBIDDEN: Do NOT use hyper-processed commercial studio gloss, fake HDR sheen, or artificial CGI lighting. The scene MUST look authentic, natural, and grounded in real life.`;
 
   const promptParts = [
     intro,
-    styleFragment ? `Visual style: ${styleFragment}.` : "",
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
     PRODUCT_ISOLATION_DIRECTION,
@@ -1483,8 +1480,8 @@ function inferPromptAutoOptions(productInfo = {}) {
   if (/(เสื้อ|กางเกง|กระเป๋า|แฟชั่น|wear|shirt|dress|bag)/i.test(text)) {
     return promptAutoOptions("lifestyle", "woman", "fun", "Trendy", "Urban Street", "Handheld Shake", "Swipe", "Fashion product, optimized for in-use lifestyle context");
   }
-  if (/(แมว|หมา|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|cat|dog|pet|kitten|puppy)/i.test(text)) {
-    const isCat = /(แมว|cat|kitten)/i.test(text);
+  if (/(แมว|หมา(?!ย|ก|ด|ล่า)|สุนัข|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b)/i.test(text)) {
+    const isCat = /(แมว|\bcat\b|\bkitten\b)/i.test(text);
     return promptAutoOptions("review", isCat ? "cat" : "dog", "fun", "น่ารัก", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "Pet product, shown with a reviewer together with a cute matching pet animal in a clean indoor setting");
   }
   if (/(ของเล่น|เด็ก|น่ารัก|cute|toy|kid)/i.test(text)) {
@@ -1595,8 +1592,8 @@ function pickAutoReviewer(productInfo = {}) {
     return isFather ? "man" : "woman";
   }
 
-  if (/(แมว|หมา|สัตว์เลี้ยง|สุนัข|อาหารแมว|อาหารหมา|cat|dog|pet|kitten|puppy)/i.test(productText)) {
-    const isCat = /(แมว|cat|kitten)/i.test(productText);
+  if (/(แมว|หมา|สัตว์เลี้ยง|สุนัข|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b)/i.test(productText)) {
+    const isCat = /(แมว|\bcat\b|\bkitten\b)/i.test(productText);
     return isCat ? "cat" : "dog";
   }
 
