@@ -196,6 +196,7 @@ const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT THAI LANGUAGE ONLY & ZERO
 const STRICT_SHOP_LOGO_EXCLUSION_RULE = "CRITICAL RULE — STRICTLY FORBIDDEN: Do NOT copy, replicate, draw, or include any shop logos, store branding watermarks, seller profile logos, platform badges, e-commerce icons, or corner watermarks visible in the reference photo. Extract ONLY the physical product object itself. Absolutely NO shop logos, NO store names, NO watermarks, NO seller stamps, and NO platform icons anywhere on the generated image or video.";
 
 const NO_ADDED_PATTERNS_OR_GRAPHICS_RULE = "STRICT PLAIN & SOLID-COLOR PRODUCT RULE: If the reference product is plain, blank, or solid-colored without printed graphics, patterns, or logos, you MUST keep the product 100% PLAIN, SOLID-COLOR, and CLEAN. Strictly FORBIDDEN: Do NOT invent, add, or draw any extra patterns, stripes, graphics, logos, prints, or decorations that do not exist on the reference photo.";
+const NO_HALLUCINATED_BRAND_LOGOS_RULE = "ZERO HALLUCINATED BRANDS & LOGOS: Strictly FORBIDDEN to generate, invent, or place any brand names, text, typography, emblems, or logos on the product surface if they do NOT exist in the original reference image. Do NOT add random brands, gibberish text marks, or fake logos to the product.";
 
 const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new design details, buttons, stripes, logos, or decorations not on the reference. Render any texture finish (matte, glossy, metallic, fabric) or gradient with 100% precision. Do not compromise product accuracy for style.";
 
@@ -593,6 +594,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
+    NO_HALLUCINATED_BRAND_LOGOS_RULE,
     textDirection
   ];
 
@@ -868,6 +870,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
+    NO_HALLUCINATED_BRAND_LOGOS_RULE,
     locationStr ? `Location setting: Place the product in a brand new, realistic ${locationStr} background location. DO NOT use or match the original reference image background.` : (handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "Choose a clean, realistic, commercially appealing background that fits this product category. ALWAYS generate a new, non-matching background location."),
   ];
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60), productText)
@@ -1083,8 +1086,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     : "present the product's value proposition, features, or name naturally in Thai";
 
   const speechDir = isFullFaceCoveringProduct(productText)
-    ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. FORBIDDEN: no exaggerated claims, no greetings, no price/discounts, no quantities, no CTA. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
-    : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. FORBIDDEN: no exaggerated claims, no greetings (never say "สวัสดี", "หวัดดี", "hello", "hi"), no price/discounts ("ราคา", "บาท", "ลด"), no quantities ("กรัม", "kg", "มล."), no CTA ("สั่งได้เลย", "กดลิงก์"). Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
+    ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. FORBIDDEN: no exaggerated claims, no brand names or product names (DO NOT speak the brand name or product name), no greetings, no price/discounts, no quantities, no CTA. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
+    : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. FORBIDDEN: no exaggerated claims, no brand names or product names (DO NOT speak the brand name or product name), no greetings (never say "สวัสดี", "หวัดดี", "hello", "hi"), no price/discounts ("ราคา", "บาท", "ลด"), no quantities ("กรัม", "kg", "มล."), no CTA ("สั่งได้เลย", "กดลิงก์"). Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
   const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only")
     ? "Voiceover: Add a clear, friendly off-screen Thai female voiceover narration speaking in Thai."
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
