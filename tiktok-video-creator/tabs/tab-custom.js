@@ -314,6 +314,20 @@ function syncScheduleTimeVisibility() {
   if (container) {
     container.style.display = action === "schedule" ? "block" : "none";
   }
+
+  // Update preview
+  const dateVal = getValue("custom-post-schedule-date");
+  const timeVal = getValue("custom-post-schedule-time");
+  const previewEl = document.getElementById("custom-post-schedule-preview");
+  if (previewEl) {
+    if (dateVal && timeVal) {
+      previewEl.textContent = `ตรงกับวันที่บน TikTok: ${dateVal} เวลา ${timeVal}`;
+      previewEl.style.display = "block";
+    } else {
+      previewEl.style.display = "none";
+    }
+  }
+
   const intervalContainer = document.querySelector("#custom-schedule-interval-container");
   if (intervalContainer) {
     intervalContainer.style.display = action === "schedule" ? "block" : "none";

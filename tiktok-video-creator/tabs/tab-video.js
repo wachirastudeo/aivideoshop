@@ -307,6 +307,19 @@ function syncScheduleTimeVisibility() {
   if (container) {
     container.style.display = action === "schedule" ? "block" : "none";
   }
+
+  // Update preview
+  const dateVal = getValue("post-schedule-date");
+  const timeVal = getValue("post-schedule-time");
+  const previewEl = document.getElementById("post-schedule-preview");
+  if (previewEl) {
+    if (dateVal && timeVal) {
+      previewEl.textContent = `ตรงกับวันที่บน TikTok: ${dateVal} เวลา ${timeVal}`;
+      previewEl.style.display = "block";
+    } else {
+      previewEl.style.display = "none";
+    }
+  }
 }
 
 function syncVideoTextSettingsVisibility() {

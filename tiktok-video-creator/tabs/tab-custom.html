@@ -138,10 +138,11 @@
 
         <!-- ตั้งเวลาโพสต์ -->
         <label class="field" id="custom-schedule-time-container" style="display: none;">
-          <span class="field__label">เวลาที่ต้องการโพสต์</span>
-          <div style="display: flex; gap: 8px;">
-            <input id="custom-post-schedule-date" class="input" type="date" style="flex: 1;">
-            <input id="custom-post-schedule-time" class="input" type="time" style="flex: 1;">
+          <span class="field__label">เวลาที่ต้องการโพสต์ <span class="field__hint" style="font-weight: normal; margin-left: 4px;">(รูปแบบแสดงตามภาษาของเครื่อง)</span></span>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <input id="custom-post-schedule-date" class="input" type="date" style="width: 100%;">
+            <input id="custom-post-schedule-time" class="input" type="time" style="width: 100%;">
+            <div id="custom-post-schedule-preview" class="field__hint" style="color: #ff3b30; margin-top: -4px; display: none;"></div>
           </div>
         </label>
 

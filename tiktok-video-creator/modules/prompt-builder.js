@@ -123,6 +123,10 @@ const ANIMAL_PRESENTER_DIRECTION = "Show a friendly Thai reviewer standing toget
 
 const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, patterns, print designs, graphical illustrations, logos, labels, and parts. The pattern, artwork, and visual print on the product (especially for phone cases, clothes, or printed goods) must be 100% identical, keeping the same graphics, colors, and layout without any modification or hallucination. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.";
 
+const LABEL_EXACT_COPY_MANDATE = "⚠️ ABSOLUTE LABEL & COLOR FIDELITY MANDATE — HIGHEST PRIORITY RULE: The product label, packaging, printed surface, AND all product colors MUST be reproduced as an EXACT 1-to-1 COPY from the reference photo. FORBIDDEN ACTIONS: (1) Do NOT redraw, redesign, or reinterpret the label artwork. (2) Do NOT change any font or letter shape on the label. (3) Do NOT alter, add, remove, or rearrange any graphic elements or icons. (4) Do NOT shift any element's position on the label. (5) Do NOT change the label background color, border, or color scheme. (6) Do NOT replace the original label with a generic version. (7) Do NOT shift, tint, darken, brighten, or reinterpret any product color — reproduce every hue, saturation, and brightness EXACTLY as seen in the reference photo. The reference photo is the ONLY acceptable source — treat every color and every label element as a pixel-for-pixel photographic stamp.";
+
+const COLOR_EXACT_LOCK = "STRICT COLOR REPRODUCTION LOCK: Every color on the product — packaging background color, text ink color, logo color, pattern fill colors, gradient transitions — MUST match the reference image EXACTLY. FORBIDDEN: Do NOT warm up or cool down tones, do NOT darken or brighten any area, do NOT change saturation, do NOT substitute one color for another. The product's own surface colors must remain 100% identical to the reference regardless of the new background lighting.";
+
 const PRODUCT_ISOLATION_DIRECTION = "CRITICAL ISOLATION RULE — EXTRACT ONLY THE PRODUCT: You must cut out and extract ONLY the product from the reference photo, completely discarding the original background. Place the exact same product into a new scene. STRICT RESTRICTION: When extracting the product, you MUST NOT redraw, redesign, mutate, or alter the product's shape, logo, patterns, branding, or colors. The product must be transferred exactly as it is, maintaining 100% pixel-faithful identity to the reference image.";
 
 const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Never add, remove, or rearrange them.";
@@ -157,6 +161,8 @@ const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pa
 
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: You MUST reproduce the clothing item EXACTLY as depicted in the reference image. Preserve its 100% exact garment cut, silhouette, neckline style (crewneck, V-neck, polo collar, hoodie, scoop neck), sleeve length (short sleeve, long sleeve, sleeveless), sleeve cut, fabric material texture (cotton, denim, knit, silk, linen, fleece), color shade, wash, buttons, zippers, pockets, and stitching. EXACT PRINTED GRAPHICS & PATTERNS: Any chest logo, printed artwork, typography, graphic illustrations, embroidery, brand crest, or pattern (stripes, plaid, floral, tie-dye) MUST be reproduced 100% pixel-faithfully in the exact same location, size, and colors. STRICTLY FORBIDDEN: Do NOT simplify, alter, redesign, recolor, or change the clothing item. Do NOT convert a printed shirt into a plain shirt, do NOT change sleeve length, and do NOT alter the collar or cut. The garment worn by the presenter must remain 100% identical and static across all video frames without any morphing or shifting. FRONT-ONLY VIEW LOCK: The presenter must face forward showing the front design of the garment. Do NOT show back-facing angles or 360-degree rotations.";
 
+const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference image pixel-for-pixel. Do NOT shift, alter, tint, recolor, or replace original colors or graphics under any lighting or environment effect. Every color zone — background fill, text color, graphic element colors, border colors — must remain exactly as shown in the reference photo.";
+
 export function isClothingProduct(text = "") {
   const clean = String(text || "").toLowerCase();
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(clean)) {
@@ -170,7 +176,8 @@ export function isClothingProduct(text = "") {
 
 const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "STRICT LOGO & PRINTED TEXT FIDELITY LOCK: Reproduce all printed surface artwork, brand logos, typography, font styles, symbols, badges, illustrations, and packaging text EXACTLY as in the reference image. Maintain the exact text placement, letter alignment, font weight, line spacing, logo proportion, and colors. Copy it 100% pixel-faithfully; NEVER redraw with a different font, NEVER restyle, simplify, omit, alter, or replace any logo or text. For video frames, all printed text and logos must remain static and crisp on the product surface.";
 
-const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference. Do NOT shift, alter, recolor, or replace original colors or graphics under any lighting or environment effect.";
+
+
 
 const SPRAY_BOTTLE_FIDELITY_DIRECTION = "SPRAY BOTTLE & PACKAGING LABEL FIDELITY LOCK: The product is a spray bottle, pump spray, aerosol canister, or liquid grooming bottle. You MUST reproduce the EXACT bottle shape, trigger/spray pump nozzle type, cap style, liquid container color, and printed front label artwork 100% pixel-faithfully as shown in the reference image. Preserve the exact brand logo, product name typography, printed graphics, patterns, illustrations, animal mascot graphics, and label colors. Do NOT draw a plain generic bottle, do NOT omit or change the brand logo/pattern, and do NOT alter the spray nozzle shape or label design.";
 const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glasses must be perfectly proportioned to a human face, head, or hands. Do not make the glasses abnormally large, tiny, or out-of-scale relative to the presenter. Maintain the exact frame shape, lens color/transparency, bridge width, and temple length.";
@@ -191,12 +198,17 @@ const VOICEOVER_DIRECTION = "Add a natural Thai off-screen voiceover narration (
 
 const TEXT_FREE_DIRECTION = "STRICT NO-TEXT RULE: Do not add any text overlays, subtitles, captions, price tags, banners, promotional copy, watermarks, CTA, or signs. Absolutely no on-screen text, writing, or numbers should be added. Keep the product's own printed text exactly as in reference, but do not add any new, extra, or unnecessary text.";
 
+const NO_ADDED_PATTERNS_OR_GRAPHICS_RULE = "⚠️ STRICT PLAIN PRODUCT LOCK: If the reference product is plain, blank, solid-colored, or lacks printed graphics/patterns, you MUST keep the generated product 100% PLAIN, BLANK, and CLEAN. Strictly FORBIDDEN: Do NOT invent, add, or draw any extra patterns, stripes, graphics, logos, prints, or decorations whatsoever.";
+const NO_HALLUCINATED_BRAND_LOGOS_RULE = "⚠️ ZERO HALLUCINATION MANDATE: Strictly FORBIDDEN to generate, invent, or place any brand names, text, typography, letters, emblems, or logos on the product surface if they do NOT exist in the original reference image. If the product is blank in the reference, it MUST remain completely blank. Do NOT add random brands, gibberish text, or fake logos.";
+
+const ENGRAVED_EMBOSSED_FIDELITY_DIRECTION = "STRICT ENGRAVED, EMBOSSED & SURFACE-CARVED PATTERN FIDELITY LOCK: If the product has engraved, embossed, debossed, etched, laser-carved, or relief-carved surface patterns, textures, or artwork (ลวดลายฉลัก/สลัก/นูน), you MUST reproduce every line, groove, motif, and depth relief 100% pixel-faithfully as shown in the reference image. STRICTLY FORBIDDEN: Do NOT redraw the pattern with simplified lines, do NOT round off sharp edges, do NOT add extra ornamental details, and do NOT change the spacing, proportions, or depth of any carved element. The engraved pattern must match the reference exactly in layout, shape, thickness of lines, and overall design without any artistic interpretation or hallucination. Preserve the exact metallic, ceramic, wood, or material surface finish that carries these carvings.";
+
 const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT THAI LANGUAGE ONLY & ZERO GIBBERISH LOCK: All visible text overlays, packaging writing, captions, signs, and spoken dialogue MUST be in 100% correct, flawless Thai script ONLY (ข้อความภาษาไทยถูกต้องเท่านั้น). ABSOLUTELY FORBIDDEN: Do NOT write or render foreign scripts (Chinese, Japanese, Korean, Arabic, etc.), distorted gibberish symbols, or fake pseudo-letters anywhere on the product, background, or video frame.";
 
 const STRICT_SHOP_LOGO_EXCLUSION_RULE = "CRITICAL RULE — STRICTLY FORBIDDEN: Do NOT copy, replicate, draw, or include any shop logos, store branding watermarks, seller profile logos, platform badges, e-commerce icons, or corner watermarks visible in the reference photo. Extract ONLY the physical product object itself. Absolutely NO shop logos, NO store names, NO watermarks, NO seller stamps, and NO platform icons anywhere on the generated image or video.";
 
-const NO_ADDED_PATTERNS_OR_GRAPHICS_RULE = "STRICT PLAIN & SOLID-COLOR PRODUCT RULE: If the reference product is plain, blank, or solid-colored without printed graphics, patterns, or logos, you MUST keep the product 100% PLAIN, SOLID-COLOR, and CLEAN. Strictly FORBIDDEN: Do NOT invent, add, or draw any extra patterns, stripes, graphics, logos, prints, or decorations that do not exist on the reference photo.";
-const NO_HALLUCINATED_BRAND_LOGOS_RULE = "ZERO HALLUCINATED BRANDS & LOGOS: Strictly FORBIDDEN to generate, invent, or place any brand names, text, typography, emblems, or logos on the product surface if they do NOT exist in the original reference image. Do NOT add random brands, gibberish text marks, or fake logos to the product.";
+
+
 
 const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new design details, buttons, stripes, logos, or decorations not on the reference. Render any texture finish (matte, glossy, metallic, fabric) or gradient with 100% precision. Do not compromise product accuracy for style.";
 
@@ -286,12 +298,12 @@ function resolveDoodleStyle(productInfo = {}) {
   }
 
   // Baby / Kids / Toys
-  if (/(เด็ก|ทารก|ของเล่น|baby|kid|children|toy|infant|toddler)/i.test(text)) {
+  if (/(เด็ก|ทารก|ของเล่น|\\bbaby\\b|\\bkid\\b|\\bchildren\\b|\\btoy\\b|\\binfant\\b|\\btoddler\\b)/i.test(text)) {
     return "tiny hearts 💖, small star doodles ⭐, and cute sparkles ✨";
   }
 
   // Pet
-  if (/(สัตว์เลี้ยง|หมา|แมว|สุนัข|pet|dog|cat|animal)/i.test(text)) {
+  if (/(สัตว์เลี้ยง|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|แมว|สุนัข|\\bpet\\b|\\bdog\\b|\\bcat\\b|\\banimal\\b)/i.test(text)) {
     return "tiny paw print doodles 🐾, small hearts 💖, and sparkles ✨";
   }
 
@@ -565,13 +577,20 @@ export function buildImagePrompt(productInfo, settings = {}) {
     ? HANDS_ONLY_BACKGROUND_DIRECTION
     : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: After extracting ONLY the target product from the reference image, place it into a BRAND NEW, highly realistic ${locationSetting} background scene. NATURAL SMARTPHONE ATMOSPHERE: Enhance the background with clean, organic everyday lighting, realistic depth of field, authentic real-life textures, and a believable environment tailored specifically to this product category. FORBIDDEN: Do NOT use hyper-processed commercial studio gloss, fake HDR sheen, or artificial CGI lighting. The scene MUST look authentic, natural, and grounded in real life.`;
 
+  const hasEngravedPattern = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(productText);
+
   const promptParts = [
+    LABEL_EXACT_COPY_MANDATE,
+    COLOR_EXACT_LOCK,
+    NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
+    NO_HALLUCINATED_BRAND_LOGOS_RULE,
     intro,
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
     PRODUCT_ISOLATION_DIRECTION,
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
+    hasEngravedPattern ? ENGRAVED_EMBOSSED_FIDELITY_DIRECTION : "",
     FULL_PRODUCT_VISIBILITY_DIRECTION,
     scaleInstruction,
     "Critical: The generated image must maintain absolute fidelity to the product shape, colors, branding, and text (100% identical). Do not redesign, warp, or modify structure. Strictest rule: The product must look exactly like the reference photo, pixel-for-pixel.",
@@ -590,8 +609,6 @@ export function buildImagePrompt(productInfo, settings = {}) {
     productTextFidelityDirection,
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
-    NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
-    NO_HALLUCINATED_BRAND_LOGOS_RULE,
     textDirection
   ];
 
@@ -839,6 +856,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const PROGRESSIVE_AUDIO_NARRATION_MANDATE = "CRITICAL AUDIO NARRATION RULE — UNIQUE PER-SCENE SENTENCES & ZERO REPETITION: Every scene (Scene 1, Scene 2, Scene 3, Scene 4) must feature a NEW, UNIQUE, DIFFERENT spoken sentence in Thai that naturally advances the product review. Scene 2 MUST NOT repeat Scene 1's words; Scene 3 MUST NOT repeat Scene 2's words. ABSOLUTELY FORBIDDEN: Do NOT repeat, loop, or re-play the sentence from the previous scene under any circumstances.";
 
   const promptParts = [
+    LABEL_EXACT_COPY_MANDATE,
+    COLOR_EXACT_LOCK,
+    NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
+    NO_HALLUCINATED_BRAND_LOGOS_RULE,
     `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     SPEECH_DIRECTION,
@@ -866,8 +887,6 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     isMagneticPhoneCaseProduct(productText) ? MAGNETIC_PHONE_CASE_FIDELITY_MANDATE : "",
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
-    NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
-    NO_HALLUCINATED_BRAND_LOGOS_RULE,
     locationStr ? `Location setting: Place the product in a brand new, realistic ${locationStr} background location. DO NOT use or match the original reference image background.` : (handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "Choose a clean, realistic, commercially appealing background that fits this product category. ALWAYS generate a new, non-matching background location."),
   ];
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60), productText)
@@ -1083,8 +1102,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     : "present the product's value proposition, features, or name naturally in Thai";
 
   const speechDir = isFullFaceCoveringProduct(productText)
-    ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. FORBIDDEN: no exaggerated claims, no brand names or product names (DO NOT speak the brand name or product name), no greetings, no price/discounts, no quantities, no CTA. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
-    : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. FORBIDDEN: no exaggerated claims, no brand names or product names (DO NOT speak the brand name or product name), no greetings (never say "สวัสดี", "หวัดดี", "hello", "hi"), no price/discounts ("ราคา", "บาท", "ลด"), no quantities ("กรัม", "kg", "มล."), no CTA ("สั่งได้เลย", "กดลิงก์"). Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
+    ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. STRICT SPEECH RULE: Do NOT repeat any words, phrases, or sentences. Speak naturally ONCE. FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย", "ว้าว"). DO NOT speak brand/product names, prices, quantities, or CTAs. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
+    : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. STRICT SPEECH RULE: Speak naturally and DO NOT repeat any words, phrases, or sentences (NO loops, NO stuttering). FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย"). DO NOT speak brand/product names, prices, quantities, or CTAs. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
   const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only")
     ? "Voiceover: Add a clear, friendly off-screen Thai female voiceover narration speaking in Thai."
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
@@ -1128,6 +1147,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   } else {
     promptParts.push(`${NO_PEOPLE_DIRECTION} ${voiceoverDir} ${speechDir}`);
   }
+
+  promptParts.push("STRICT ACTION RULE: Do NOT perform a thumbs up gesture (ห้ามยกนิ้วโป้ง/ยกนิ้วเยี่ยม) as it looks unnatural. Keep all poses and hand gestures completely natural and relaxed.");
 
   return promptParts.filter(Boolean).join("\n");
 }
@@ -1249,6 +1270,7 @@ export function isFurnitureProduct(text = "") {
 
 export function buildCategoryFidelityDirection(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`.toLowerCase();
+  const hasEngraving = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(text);
   if (/(สเปรย์|ฉีด|ละออง|สเปรย์อาบน้ำ|ดับกลิ่น|สเปรย์แมว|สเปรย์หมา|spray|aerosol|mist|atomizer|pump\s*bottle)/i.test(text)) {
     return `${SPRAY_BOTTLE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
@@ -1290,9 +1312,12 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
     return `${HOME_LIVING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   if (/(สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ลาย|ลายพิมพ์|พิมพ์ลาย|sticker|decal|poster|canvas|printed|graphic|pattern|illustration)/i.test(text)) {
-    return PRINTED_GRAPHIC_FIDELITY_DIRECTION;
+    return hasEngraving
+      ? `${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${ENGRAVED_EMBOSSED_FIDELITY_DIRECTION}`
+      : PRINTED_GRAPHIC_FIDELITY_DIRECTION;
   }
-  return `${GENERAL_PACKAGING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  const baseDirection = `${GENERAL_PACKAGING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  return hasEngraving ? `${baseDirection}\n${ENGRAVED_EMBOSSED_FIDELITY_DIRECTION}` : baseDirection;
 }
 
 function cleanEnglishProductName(title) {
@@ -1480,7 +1505,7 @@ function inferPromptAutoOptions(productInfo = {}) {
   if (/(เสื้อ|กางเกง|กระเป๋า|แฟชั่น|wear|shirt|dress|bag)/i.test(text)) {
     return promptAutoOptions("lifestyle", "woman", "fun", "Trendy", "Urban Street", "Handheld Shake", "Swipe", "Fashion product, optimized for in-use lifestyle context");
   }
-  if (/(แมว|หมา(?!ย|ก|ด|ล่า)|สุนัข|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b)/i.test(text)) {
+  if (/(แมว|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|สุนัข|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b)/i.test(text)) {
     const isCat = /(แมว|\bcat\b|\bkitten\b)/i.test(text);
     return promptAutoOptions("review", isCat ? "cat" : "dog", "fun", "น่ารัก", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "Pet product, shown with a reviewer together with a cute matching pet animal in a clean indoor setting");
   }
@@ -1592,7 +1617,7 @@ function pickAutoReviewer(productInfo = {}) {
     return isFather ? "man" : "woman";
   }
 
-  if (/(แมว|หมา|สัตว์เลี้ยง|สุนัข|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b)/i.test(productText)) {
+  if (/(แมว|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|สัตว์เลี้ยง|สุนัข|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b)/i.test(productText)) {
     const isCat = /(แมว|\bcat\b|\bkitten\b)/i.test(productText);
     return isCat ? "cat" : "dog";
   }

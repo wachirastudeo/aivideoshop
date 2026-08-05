@@ -305,10 +305,11 @@
               <input id="post-custom-product-name" class="input" type="text" placeholder="เว้นว่างไว้เพื่อใช้คำแรกของชื่อสินค้าตามปกติ">
             </label>
             <label class="field" id="schedule-time-container" style="display: none;">
-              <span class="field__label">เวลาที่ต้องการโพสต์</span>
+              <span class="field__label">เวลาที่ต้องการโพสต์ <span class="field__hint" style="font-weight: normal; margin-left: 4px;">(รูปแบบแสดงตามภาษาของเครื่อง)</span></span>
               <div style="display: flex; flex-direction: column; gap: 8px;">
                 <input id="post-schedule-date" class="input" type="date" style="width: 100%;">
                 <input id="post-schedule-time" class="input" type="time" style="width: 100%;">
+                <div id="post-schedule-preview" class="field__hint" style="color: #ff3b30; margin-top: -4px; display: none;"></div>
                 <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
                   <span class="field__hint" style="white-space: nowrap; margin-bottom: 0;">ระยะห่างคิว:</span>
                   <input id="post-schedule-interval" class="input" type="number" min="1" max="1440" style="width: 80px;" value="10">
