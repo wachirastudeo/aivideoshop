@@ -2546,11 +2546,14 @@ async function runPipeline(payload, runOptions = {}) {
         const result = await waitForResult(resultPhase, {
             restartGeneration: restartInitialGeneration
         });
+        if (!result?.mediaUrl) {
+            throw new Error(`Flow ไม่คืน URL ของผลลัพธ์ ${resultPhase === "image" ? "ภาพ" : "วิดีโอ"}`);
+        }
         if (resultPhase === "image") {
             imageResult = { imgUrl: result.mediaUrl, imgTileId: result.tileId };
         }
 
-        if (phase === "combined" && result.tileId) {
+        if (phase === "combined") {
             const videoPrompt = typeof prompt === "object" ? prompt.videoPrompt : prompt;
             if (!videoPrompt) throw new Error("ไม่มี prompt สำหรับสร้างวิดีโอ Phase 2");
             log("🎯 ได้รูปภาพแล้ว! รอก่อนสัก 5-10 วินาทีตามที่กำหนด (เพื่อเลี่ยงการส่งคำสั่งเร็วเกินไป)...");
