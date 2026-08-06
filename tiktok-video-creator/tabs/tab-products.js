@@ -19,12 +19,22 @@ export async function initProductsTab(injectedHelpers) {
   bindManualEvents();
   bindProductEvents();
 
-  const stored = await chrome.storage.local.get(["pullSource"]);
+  const stored = await chrome.storage.local.get(["pullSource", "tiktokProductsCache"]);
   let activeSource = stored.pullSource;
   if (activeSource !== "shopee" && activeSource !== "manual" && activeSource !== "tiktok") {
     activeSource = "tiktok";
   }
   applySource(activeSource);
+
+  // Keep the last successful TikTok pull so switching tabs does not blank the catalog.
+  if (activeSource === "tiktok" && products.length === 0) {
+    const cache = stored.tiktokProductsCache;
+    if (Array.isArray(cache?.products) && cache.products.length > 0) {
+      products = cache.products;
+      nextPageToken = cache.nextPageToken || "";
+      renderProducts();
+    }
+  }
 
   if (products.length > 0) {
     renderProducts();
@@ -32,7 +42,7 @@ export async function initProductsTab(injectedHelpers) {
     const loadAll = document.querySelector("#load-all-products");
     if (loadMore) loadMore.hidden = !nextPageToken;
     if (loadAll) loadAll.hidden = !nextPageToken;
-  } else {
+  } else if (activeSource === "tiktok") {
     await loadProducts({ reset: true, silent: true });
   }
 }
@@ -547,6 +557,7 @@ async function loadProducts({ reset = false, silent = false } = {}) {
     const result = response;
     products = reset ? result.products : [...products, ...result.products];
     nextPageToken = result.nextPageToken;
+    await persistTikTokProductsCache();
     renderProducts();
     if (loadMore) loadMore.hidden = !nextPageToken;
     if (loadAll) loadAll.hidden = !nextPageToken;
@@ -587,6 +598,7 @@ async function loadAllProducts() {
       if (!response?.ok) throw new Error(response?.error || "ไม่สามารถดึงสินค้าได้");
       products = [...products, ...response.products];
       nextPageToken = response.nextPageToken;
+      await persistTikTokProductsCache();
       renderProducts();
     }
     helpers.showStatus(`ดึงสินค้าเสร็จสิ้นทั้งหมด ${products.length} ชิ้น!`, "success");
@@ -598,6 +610,16 @@ async function loadAllProducts() {
     if (loadMore) loadMore.hidden = !nextPageToken;
     if (loadAll) loadAll.hidden = !nextPageToken;
   }
+}
+
+async function persistTikTokProductsCache() {
+  await chrome.storage.local.set({
+    tiktokProductsCache: {
+      products,
+      nextPageToken,
+      savedAt: Date.now()
+    }
+  });
 }
 
 /**
