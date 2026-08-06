@@ -1904,8 +1904,17 @@ export function buildPostHashtags(productInfo = {}, defaults = {}) {
   const tags = normalizeHashtags([...baseTags, ...nameTags], 5);
   if (!isPhoneCaseProduct(`${productInfo.name || ""} ${productInfo.category || ""}`)) return tags;
 
-  // Keep the Burmese phone-case tag at the end without exceeding TikTok's five-tag limit.
-  return normalizeHashtags([...tags.filter(tag => tag.toLowerCase() !== "#ဖုန်းကာဗာ".toLowerCase()).slice(0, 4), "#ဖုန်းကာဗာ"], 5);
+  const phoneCaseText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const relatedBurmeseTags = [
+    /iphone/i.test(phoneCaseText) ? "#iPhoneကာဗာ" : "#မိုဘိုင်းဖုန်း",
+    /အကြည်|ใส|clear|transparent/i.test(phoneCaseText) ? "#ဖုန်းကာဗာအကြည်" : "#ဖုန်းကာဗာ"
+  ];
+
+  // Keep relevant Burmese phone-case tags at the end without exceeding five tags.
+  return normalizeHashtags([
+    ...tags.filter(tag => !relatedBurmeseTags.some(related => tag.toLowerCase() === related.toLowerCase())).slice(0, 3),
+    ...relatedBurmeseTags
+  ], 5);
 }
 
 function resolveRawProductName(productInfo = {}) {

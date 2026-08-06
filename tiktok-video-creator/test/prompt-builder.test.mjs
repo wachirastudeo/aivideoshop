@@ -63,7 +63,10 @@ const phoneCaseTags = buildPostHashtags(
   { name: "เคสโทรศัพท์ iPhone 16" },
   { hashtags: ["#TikTokShop", "#เคสมือถือ"] }
 );
-check("phone case hashtags append Burmese phone-case tag", phoneCaseTags.at(-1) === "#ဖုန်းကာဗာ", `tags=${JSON.stringify(phoneCaseTags)}`);
+check("phone case hashtags append Burmese phone-case tags", phoneCaseTags.includes("#iPhoneကာဗာ") && phoneCaseTags.includes("#ဖုန်းကာဗာ"), `tags=${JSON.stringify(phoneCaseTags)}`);
+check("phone case hashtags stay within five tags", phoneCaseTags.length <= 5, `tags=${JSON.stringify(phoneCaseTags)}`);
+const iPhoneCaseTags = buildPostHashtags({ name: "เคส iPhone 16 ใส" }, { hashtags: ["#TikTokShop"] });
+check("iPhone case hashtags use Burmese iPhone and clear-case terms", iPhoneCaseTags.includes("#iPhoneကာဗာ") && iPhoneCaseTags.includes("#ဖုန်းကာဗာအကြည်"), `tags=${JSON.stringify(iPhoneCaseTags)}`);
 const nonCaseTags = buildPostHashtags({ name: "แก้วเก็บความเย็น" }, { hashtags: ["#TikTokShop"] });
 check("non-phone-case hashtags do not append Burmese phone-case tag", !nonCaseTags.includes("#ဖုန်းကာဗာ"), `tags=${JSON.stringify(nonCaseTags)}`);
 const posePostTags = buildPostHashtags(
