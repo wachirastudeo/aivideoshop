@@ -155,6 +155,8 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
 
 const REALISM_AND_PHYSICS_DIRECTION = "STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. Product remains rigid, solid, and static: no morphing, warping, bending, or melting. SMARTPHONE CAMERA LOOK: Organic natural lighting, authentic everyday UGC feel, avoiding hyper-processed commercial studio gloss or artificial CGI sheen.";
 
+const NATURAL_PRODUCT_INTERACTION_DIRECTION = "STRICT REALISTIC & NATURAL PRODUCT INTERACTION LOCK (การใช้งานสิ่งของสมจริงเป็นธรรมชาติ): Product usage, holding, handling, touch, and gestures MUST be 100% realistic, ergonomic, and grounded in natural human physics. Hold, wear, or present items with authentic ergonomics (e.g., holding cups/tumblers by handles, holding phone cases naturally, applying skincare softly, wearing bags comfortably). Strictly FORBIDDEN: floating items in mid-air, awkward claw grips squeezing products, magician gestures, or warping object physics.";
+
 const NO_PUTTING_ON_OR_TAKING_OFF_MANDATE = "STRICT ALWAYS-WORN RULE (ให้ใส่ไว้เลย ห้ามทำท่าถอดหรือสวมใส่): Presenter MUST ALREADY BE FULLY WEARING or holding the item steadily right from the very first frame of every scene. ABSOLUTELY FORBIDDEN: Do NOT depict any action of putting on, pulling over head, slipping on, buttoning up, taking off, pulling down, removing, or unmasking any clothing, balaclava, hat, shoes, or accessories. Presenter simply stands, poses, or gestures naturally while wearing the item.";
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
@@ -873,6 +875,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     FULL_PRODUCT_VISIBILITY_DIRECTION,
     "Critical: The generated video must maintain absolute fidelity to the original product. Its shape, colors, materials, branding, and text must be 100% identical and remain completely consistent, static, and unchanged across all scenes. Do not redesign, warp, morph, or modify the product's structure in any way.",
     REALISM_AND_PHYSICS_DIRECTION,
+    NATURAL_PRODUCT_INTERACTION_DIRECTION,
     NO_PUTTING_ON_OR_TAKING_OFF_MANDATE,
     scaleInstruction,
     specificScale,
