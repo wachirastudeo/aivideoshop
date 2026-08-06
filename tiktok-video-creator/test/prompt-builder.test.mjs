@@ -349,12 +349,14 @@ check("video prompt with no presenter has no positive presenter/person reference
 const vidPresenterHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("video prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(vidPresenterHands), vidPresenterHands);
+check("video prompt with hands_only globally locks two hands across all scenes", /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(vidPresenterHands) && /Never add a third hand/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only strictly forbids faces", /STRICTLY FORBIDDEN: Do not show any face|FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
 
 const vidPresenterUnboxingHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
 check("video prompt with unboxing_hands uses hands-only unboxing presenter mode", /STRICT HANDS-ONLY UNBOXING PRESENTER MODE/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("video prompt with unboxing_hands opens box and reveals product", /opening a shipping box|opening the product box/i.test(vidPresenterUnboxingHands) && /revealing the exact target product inside the box|reveals the exact product inside the box/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("video prompt with unboxing_hands strictly forbids face and full person", /No face, head, torso, full body/i.test(vidPresenterUnboxingHands) && /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+check("unboxing video globally locks two hands across all scenes", /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
 check("image prompt with text enabled shows only clipText phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled), imgTextEnabled);
