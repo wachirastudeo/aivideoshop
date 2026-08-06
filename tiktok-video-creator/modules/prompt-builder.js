@@ -1598,10 +1598,13 @@ function pickAutoReviewer(productInfo = {}) {
 
   const isFather = /(ผู้ชาย|บุรุษ|คุณพ่อ|พ่อ|man|men|male|boy|boys|father|dad)/i.test(productText);
 
+  const isPetProduct = /(สัตว์|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|แมว|สุนัข|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b|\banimal\b)/i.test(productText);
+
   // AUTO PRESENTER RULE: Forbidden to pick child presenters (child/older_child).
   // If auto recommended presenter was a child, map to parent (father/mother) instead.
   const recommended = productInfo.autoOptions?.presenter;
-  if (["woman", "man", "hands_only", "dog", "cat"].includes(recommended)) return recommended;
+  if (["woman", "man", "hands_only"].includes(recommended)) return recommended;
+  if ((recommended === "dog" || recommended === "cat") && isPetProduct) return recommended;
   if (recommended === "baby" || recommended === "toddler" || recommended === "child" || recommended === "older_child") {
     return isFather ? "man" : "woman";
   }
@@ -1617,7 +1620,7 @@ function pickAutoReviewer(productInfo = {}) {
     return isFather ? "man" : "woman";
   }
 
-  if (/(แมว|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|สัตว์เลี้ยง|สุนัข|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b)/i.test(productText)) {
+  if (isPetProduct) {
     const isCat = /(แมว|\bcat\b|\bkitten\b)/i.test(productText);
     return isCat ? "cat" : "dog";
   }

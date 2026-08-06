@@ -526,6 +526,13 @@ const fullBalaclavaVid = buildVideoPrompt({ name: "โม่งคลุมห�
 check("full balaclava prompt includes fabric mouth covering lock", /STRICT FABRIC MOUTH-COVERING LOCK|ปิดปากมิดชิดธรรมชาติ/i.test(fullBalaclavaVid), fullBalaclavaVid);
 check("full balaclava prompt forbids visible lips/mouth opening through fabric", /Do NOT show visible lips, mouth opening, lip-sync movement/i.test(fullBalaclavaVid), fullBalaclavaVid);
 
+// Test 25: Pet Keyword Restriction Lock for Dog/Cat Presenter
+const nonPetProdWithDogRec = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น 500ml", autoOptions: { presenter: "dog" } }, settings);
+check("non-pet product overrides recommended dog presenter", !/cute dog|pet animal/i.test(nonPetProdWithDogRec), nonPetProdWithDogRec);
+
+const petProdWithDogRec = buildVideoPrompt({ name: "อาหารหมาพันธุ์เล็ก 1kg", autoOptions: { presenter: "dog" } }, settings);
+check("pet product keeps recommended dog presenter", /cute dog|pet animal/i.test(petProdWithDogRec), petProdWithDogRec);
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }
