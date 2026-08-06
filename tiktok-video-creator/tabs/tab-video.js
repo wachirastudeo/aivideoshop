@@ -204,7 +204,7 @@ function syncSettingsForm() {
   syncCustomLocationVisibility();
   syncScheduleTimeVisibility();
   syncCustomPresenterVisibility();
-  persistState();
+  return persistState();
 }
 
 function updateSettings(patch) {
@@ -290,7 +290,7 @@ function normalizeSettings(value) {
     aspectRatio: value.aspectRatio || "9:16",
     videoRefMode: value.videoRefMode === "ingredients" ? "ingredients" : "frames",
     flowGenMode: ["video", "image"].includes(value.flowGenMode) ? value.flowGenMode : "combined",
-    postAction: value.postAction === "both" ? "draft" : (value.postAction || "post"),
+    postAction: value.postAction === "both" ? "draft" : (["download", "draft", "post", "schedule"].includes(value.postAction) ? value.postAction : "post"),
     postNoLink: Boolean(value.postNoLink),
     postRandomCaptionHook: value.postRandomCaptionHook !== undefined ? Boolean(value.postRandomCaptionHook) : true,
     postCustomProductName: (value.postCustomProductName || "").trim(),
@@ -807,7 +807,7 @@ async function processQueue() {
     helpers.showStatus("ยังไม่มีสินค้าในคิว", "error");
     return;
   }
-  syncSettingsForm();
+  await syncSettingsForm();
   // clip-text is now optional and will be generated automatically if left empty
 
   isProcessing = true;
@@ -1282,8 +1282,16 @@ async function handlePost(product) {
 }
 
 async function getPostAction() {
-  const { settings: syncSettings = {} } = await chrome.storage.sync.get("settings");
-  return settings.postAction || syncSettings.postDefaults?.afterCreateAction || "post";
+  const [{ settings: syncSettings = {} }, { creatorState = {} }] = await Promise.all([
+    chrome.storage.sync.get("settings"),
+    chrome.storage.local.get("creatorState")
+  ]);
+  const candidates = [
+    creatorState.settings?.postAction,
+    settings.postAction,
+    syncSettings.postDefaults?.afterCreateAction
+  ];
+  return candidates.find((value) => ["download", "draft", "post", "schedule"].includes(value)) || "post";
 }
 
 function getActionButtonText(action) {
