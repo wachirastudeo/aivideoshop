@@ -1901,7 +1901,11 @@ export function normalizeHashtags(value, maxTags = 5) {
 export function buildPostHashtags(productInfo = {}, defaults = {}) {
   const baseTags = normalizeHashtags(defaults.hashtags, 4);
   const nameTags = buildProductNameHashtags(productInfo);
-  return normalizeHashtags([...baseTags, ...nameTags], 5);
+  const tags = normalizeHashtags([...baseTags, ...nameTags], 5);
+  if (!isPhoneCaseProduct(`${productInfo.name || ""} ${productInfo.category || ""}`)) return tags;
+
+  // Keep the Burmese phone-case tag at the end without exceeding TikTok's five-tag limit.
+  return normalizeHashtags([...tags.filter(tag => tag.toLowerCase() !== "#ဖုန်းကာဗာ".toLowerCase()).slice(0, 4), "#ဖုန်းကာဗာ"], 5);
 }
 
 function resolveRawProductName(productInfo = {}) {

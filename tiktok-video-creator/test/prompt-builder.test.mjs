@@ -59,6 +59,13 @@ eq(
 const postTags = buildPostHashtags(prodA, { hashtags: ["#tiktokshop", "#ของดีบอกต่อ"] });
 check("post hashtags <= 5", normalizeHashtags(postTags).length <= 5, `tags=${JSON.stringify(postTags)}`);
 check("post hashtags include base tag", postTags.some(t => /tiktokshop/i.test(t)), `tags=${JSON.stringify(postTags)}`);
+const phoneCaseTags = buildPostHashtags(
+  { name: "เคสโทรศัพท์ iPhone 16" },
+  { hashtags: ["#TikTokShop", "#เคสมือถือ"] }
+);
+check("phone case hashtags append Burmese phone-case tag", phoneCaseTags.at(-1) === "#ဖုန်းကာဗာ", `tags=${JSON.stringify(phoneCaseTags)}`);
+const nonCaseTags = buildPostHashtags({ name: "แก้วเก็บความเย็น" }, { hashtags: ["#TikTokShop"] });
+check("non-phone-case hashtags do not append Burmese phone-case tag", !nonCaseTags.includes("#ဖုန်းကာဗာ"), `tags=${JSON.stringify(nonCaseTags)}`);
 const posePostTags = buildPostHashtags(
   { name: "POSE รองเท้านวด Relax Air EVA" },
   { hashtags: ["#TikTokShop", "#ของดีบอกต่อ"] }
