@@ -150,6 +150,7 @@ async function handleVideoUpload(payload = {}) {
       productId = "",
       productUrl = "",
       productName = "",
+      isCustomProductName = false,
       filename = "",
       aiGenerated,
       allowComment,
@@ -173,7 +174,7 @@ async function handleVideoUpload(payload = {}) {
     await fillCaptionAndHashtags(caption, hashtags);
     await sleep(2000 + Math.random() * 1500);
     assertNotStopped();
-    const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, aiGenerated, allowComment, allowReuse });
+    const settingsResult = await applyUploadSettings({ postType, scheduleTime, location, privacy, productId, productUrl, productName, isCustomProductName, aiGenerated, allowComment, allowReuse });
     await sleep(2000 + Math.random() * 1500);
     assertNotStopped();
 
@@ -593,7 +594,7 @@ async function applyUploadSettings(settings) {
   assertNotStopped();
   
   const productRequired = Boolean(String(settings.productId || settings.productUrl || "").trim());
-  const productAdded = await applyProductLink(settings.productId, settings.productUrl, settings.productName);
+  const productAdded = await applyProductLink(settings.productId, settings.productUrl, settings.productName, settings.isCustomProductName);
   await sleep(2000 + Math.random() * 2000);
   assertNotStopped();
   if (productRequired && !productAdded) {
@@ -653,7 +654,7 @@ function isTabActive(tab) {
   );
 }
 
-async function applyProductLink(productId, productUrl, productName) {
+async function applyProductLink(productId, productUrl, productName, isCustomProductName = false) {
   const productKey = String(productId || productUrl || "").trim();
   if (!productKey) return true; // ไม่ได้ระบุสินค้า ไม่ถือว่าพลาด
 
@@ -783,7 +784,9 @@ async function applyProductLink(productId, productUrl, productName) {
   // STEP 8: แก้ชื่อ (clean) — ตั้งชื่อสินค้าใหม่ที่ตัดอักขระแปลกๆ ออก
   if (titleInput) {
     const existingTitle = titleInput.value;
-    const finalTitle = await buildProductLinkTitle(selectedRowTitle || productName, existingTitle);
+    const finalTitle = isCustomProductName
+      ? (truncateProductTitle(stripWeirdChars(cleanProductTitle(productName)), PRODUCT_TITLE_MAX) || "สินค้า")
+      : await buildProductLinkTitle(selectedRowTitle || productName, existingTitle);
     titleInput.focus();
     try { titleInput.select(); } catch (_) {}
     await typeIntoInput(titleInput, finalTitle);

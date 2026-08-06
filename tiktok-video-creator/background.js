@@ -1157,6 +1157,7 @@ async function sendTikTokDraft(payload) {
         productId: payload.productId || "",
         productUrl,
         productName: payload.productName || "",
+        isCustomProductName: Boolean(payload.isCustomProductName),
         caption,
         hashtags: finalHashtags,
         mode,
