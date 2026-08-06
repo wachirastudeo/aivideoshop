@@ -512,8 +512,6 @@ function bindProductEvents() {
       .map(buildSelectedProductPayload);
     const stored = await chrome.storage.local.get("creatorState");
     const creatorState = stored.creatorState || {};
-    if (!creatorState.settings) creatorState.settings = {};
-    creatorState.settings.postAction = "post";
     await chrome.storage.local.set({
       selectedProduct: selectedArray[0],
       productQueue: selectedArray,
@@ -806,8 +804,6 @@ async function selectProduct(product) {
 
   const stored = await chrome.storage.local.get("creatorState");
   const creatorState = stored.storedCreatorState || stored.creatorState || {};
-  if (!creatorState.settings) creatorState.settings = {};
-  creatorState.settings.postAction = "post";
   await chrome.storage.local.set({
     selectedProduct,
     productQueue: [selectedProduct],
