@@ -108,9 +108,20 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
     ? (localSettings.postScheduleTime || postDefaults.scheduleTime || "")
     : "";
 
+  if (mode === "schedule") {
+    if (!scheduleTime) throw new Error("กรุณาเลือกวันและเวลาสำหรับการตั้งเวลาโพสต์");
+    const requestedDate = parseFlexibleDate(scheduleTime);
+    if (!requestedDate || Number.isNaN(requestedDate.getTime())) {
+      throw new Error(`เวลาตั้งโพสต์ไม่ถูกต้อง: ${scheduleTime}`);
+    }
+    if (requestedDate.getTime() <= Date.now()) {
+      throw new Error("เวลาตั้งโพสต์ต้องเป็นเวลาในอนาคต");
+    }
+  }
+
   if (scheduleTime) {
     let dt = parseFlexibleDate(scheduleTime);
-    if (!Number.isNaN(dt.getTime())) {
+    if (dt && !Number.isNaN(dt.getTime())) {
       if (minutesOffset > 0) {
         dt.setMinutes(dt.getMinutes() + minutesOffset);
       }

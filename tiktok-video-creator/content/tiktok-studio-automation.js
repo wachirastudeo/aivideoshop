@@ -1024,7 +1024,10 @@ async function applyScheduleSettings(postType, scheduleTime) {
   if (!postType || postType === "draft") return;
 
   if (postType === "now") {
-    await setRadioState(document.querySelector(TIKTOK_SELECTORS.postNowRadio), true);
+    const postNowRadio = document.querySelector(TIKTOK_SELECTORS.postNowRadio);
+    if (!postNowRadio) throw new Error("ไม่พบตัวเลือกโพสต์ทันทีใน TikTok Studio");
+    await setRadioState(postNowRadio, true);
+    if (!isRadioSelected(postNowRadio)) throw new Error("เลือกโหมดโพสต์ทันทีใน TikTok Studio ไม่สำเร็จ");
     return;
   }
 
@@ -1036,16 +1039,23 @@ async function applyScheduleSettings(postType, scheduleTime) {
     throw new Error("scheduleTime is required when postType is schedule");
   }
 
-  await setRadioState(document.querySelector(TIKTOK_SELECTORS.scheduleRadio), true);
+  const scheduleRadio = document.querySelector(TIKTOK_SELECTORS.scheduleRadio);
+  if (!scheduleRadio) throw new Error("ไม่พบตัวเลือกตั้งเวลาโพสต์ใน TikTok Studio");
+  await setRadioState(scheduleRadio, true);
+  if (!isRadioSelected(scheduleRadio)) throw new Error("เลือกโหมดตั้งเวลาโพสต์ใน TikTok Studio ไม่สำเร็จ");
   await sleep(800);
   await fillScheduleTime(scheduleTime);
 }
 
 async function setRadioState(input, desired) {
-  if (!input) return;
+  if (!input) throw new Error("ไม่พบตัวเลือกโหมดโพสต์ใน TikTok Studio");
   if (Boolean(input.checked) === Boolean(desired)) return;
   await realClick(input);
   await sleep(350);
+}
+
+function isRadioSelected(input) {
+  return Boolean(input?.checked) || input?.getAttribute("aria-checked") === "true" || input?.closest("[role=radio]")?.getAttribute("aria-checked") === "true";
 }
 
 async function fillScheduleTime(scheduleTime) {
@@ -1065,9 +1075,10 @@ async function fillScheduleTime(scheduleTime) {
   log(`📅 ตั้งเวลา target: ${targetDateStr} ${targetTimeStr}`);
 
   // Date picker
-  const dateInput = findReadonlyInputByPattern(/^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$/) || document.querySelectorAll('input.TUXTextInputCore-input')[0];
+  const scheduleRoot = document.querySelector(TIKTOK_SELECTORS.scheduleContainer) || document;
+  const dateInput = findReadonlyInputByPattern(/^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$/, scheduleRoot) || scheduleRoot.querySelectorAll('input.TUXTextInputCore-input')[0];
   if (!dateInput) {
-    log("warn", "ℹ ไม่เจอ date input");
+    throw new Error("ไม่พบช่องวันที่สำหรับตั้งเวลาโพสต์ใน TikTok Studio");
   } else {
     log("click เปิด calendar");
     dateInput.focus();
@@ -1075,14 +1086,15 @@ async function fillScheduleTime(scheduleTime) {
     await sleep(1200);
 
     const datePicked = await pickCalendarDate(targetDate);
+    if (!datePicked) throw new Error("เลือกวันที่ตั้งโพสต์ใน TikTok Studio ไม่สำเร็จ");
     log(`✓ click วันในปฏิทิน: ${datePicked ? "สำเร็จ" : "ไม่สำเร็จ"}`);
     await sleep(600);
   }
 
   // Time picker
-  const timeInput = findReadonlyInputByPattern(/^\d{2}:\d{2}$/) || document.querySelectorAll('input.TUXTextInputCore-input')[1];
+  const timeInput = findReadonlyInputByPattern(/^\d{2}:\d{2}$/, scheduleRoot) || scheduleRoot.querySelectorAll('input.TUXTextInputCore-input')[1];
   if (!timeInput) {
-    log("warn", "ℹ ไม่เจอ time input");
+    throw new Error("ไม่พบช่องเวลาสำหรับตั้งเวลาโพสต์ใน TikTok Studio");
   } else {
     log("click เปิด time dropdown");
     timeInput.focus();
@@ -1090,6 +1102,7 @@ async function fillScheduleTime(scheduleTime) {
     await sleep(1000);
 
     const timePicked = await pickTimeHourMinute(hh, min);
+    if (!timePicked) throw new Error("เลือกเวลาตั้งโพสต์ใน TikTok Studio ไม่สำเร็จ");
     log(`✓ เลือก ${hh}:${min}: ${timePicked ? "สำเร็จ" : "ไม่สำเร็จ"}`);
     await sleep(600);
   }
@@ -1101,8 +1114,8 @@ async function fillScheduleTime(scheduleTime) {
   await sleep(500);
 }
 
-function findReadonlyInputByPattern(pattern) {
-  const inputs = document.querySelectorAll('input.TUXTextInputCore-input[readonly], input[readonly][type="text"], input.TUXTextInputCore-input');
+function findReadonlyInputByPattern(pattern, root = document) {
+  const inputs = root.querySelectorAll('input.TUXTextInputCore-input[readonly], input[readonly][type="text"], input.TUXTextInputCore-input');
   for (const input of inputs) {
     if (pattern.test(input.value)) return input;
   }
