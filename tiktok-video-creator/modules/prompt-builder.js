@@ -96,6 +96,7 @@ const PRESENTERS = {
   Auto: "Realistic cinematic shot. Prefer product-only views. If a presenter is shown, they must stand near or gesture towards the product without complex handling.",
   none: "No humans. Focus entirely on the product resting stably in a realistic setting with smooth camera movement.",
   hands_only: "Realistic first-person POV (Point of View) perspective. Show the product being used, worn, or presented naturally with realistic anatomical hands (strictly 5 fingers per hand, natural ergonomic grip, clean skin texture, realistic knuckles) or feet/legs depending on product category. No face or head shown in the frame.",
+  unboxing_hands: "Realistic first-person POV hands-only unboxing presenter. Show only natural human hands opening the product box/package and revealing the product inside. No face, head, torso, or full body shown.",
   woman: "A young Thai woman reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/blouse AND long pants/jeans/skirt). She stands near or holds it gently, smiling at the camera.",
   man: "A young Thai man reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/polo AND long pants/jeans). He stands near or holds it gently, smiling at the camera.",
   child: "A cute young Thai child (4-6 years old, kindergarten age, strictly no baby or toddler under 4 years old) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
@@ -117,11 +118,17 @@ const FULL_BODY_PRESENTER_DIRECTION = "STRICT FULL-BODY SHOT & DECENT MODEST DRE
 const FULL_PRODUCT_VISIBILITY_DIRECTION = "STRICT FULL PRODUCT VISIBILITY & NO CROPPING RULE: The ENTIRE product (including all top, bottom, left, right, side edges, legs, handles, doors, shelves, and structural frame) MUST be 100% fully visible inside the frame. ABSOLUTELY NO CROPPING or cutting off any edge or portion of the product. For large or bulky items (such as cabinets, wardrobes, kitchen sinks, dishwashers, refrigerators, sofas, desks, or shelves), use a wide-angle framing (wide camera shot) with ample breathing space around all four edges of the product so that the ENTIRE full cabinet/sink/furniture piece is completely captured in the frame without any part chopped off.";
 
 const HANDS_DIRECTION = "NATURAL HUMAN HAND REALISM & AUTHENTIC REVIEW POSES: Realistic first-person POV (Point of View) perspective. Show authentic, natural human hands and forearms holding, supporting, or presenting the product in a realistic, comfortable review pose. NATURAL HAND POSES & GESTURES: Hands must use authentic, relaxed, ergonomic holding poses — such as gently supporting the product from the bottom or sides, holding it steadily with a natural grip, softly turning it to show texture, or gesturing naturally toward details. ALWAYS keep the main brand logo, product title, and printed front artwork 100% visible without hands blocking or covering them. STRICTLY FORBIDDEN POSES: awkward claw grips squeezing the product, fingers covering key printed logos or text, unnaturally contorted wrists, impossible arm angles, or hands floating detached in mid-air. The hands must look 100% realistic, organic, and human with natural skin texture, realistic knuckles, soft fingernails, and natural wrist alignment. STRICT MAXIMUM TWO-HAND COUNT LOCK: The frame must contain AT MOST 2 human hands in total (strictly 1 left hand and 1 right hand, or 1 single hand). ABSOLUTELY FORBIDDEN & CRITICAL RULE: NEVER render 3 hands, NEVER render a third hand, NEVER render floating extra hands, duplicated hands, extra arms, or more than 2 hands under any circumstances across all frames. Each hand must have strictly exactly 5 fingers with natural fingernails, clean skin texture, realistic knuckles, and wrist joints; no extra fingers, no distorted digits, no clipping into the product.";
+const UNBOXING_HANDS_DIRECTION = "STRICT HANDS-ONLY UNBOXING PRESENTER MODE: First-person POV tabletop unboxing video. Show ONLY realistic human hands and forearms opening a shipping box or product box, lifting the lid/flaps, removing tissue paper/bubble wrap/protective insert, and revealing the exact target product inside the box. The product must become clearly visible after the box opens and remain the hero focus. No face, head, torso, full body, or on-screen presenter may appear at any time. Keep the scene natural, satisfying, tactile, and realistic, like a TikTok unboxing review shot from the presenter's point of view.";
+const UNBOXING_REVEAL_SEQUENCE = "MANDATORY UNBOXING ACTION SEQUENCE: Scene 1 shows a closed box/package on a table with only hands entering frame. Scene 2 shows the hands opening the box flaps/lid and gently removing protective packaging. Scene 3 reveals the exact product inside the box, fully visible and sharp. Scene 4 shows the hands lifting or presenting the product near the open box without covering logos, labels, printed artwork, or key product details. STRICTLY FORBIDDEN: do not show a face or full person, do not replace the product with generic packaging, do not leave the product hidden inside the box.";
 const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE — FIRST-PERSON POV FACE EXCLUSION: Close-up or medium POV shot cropped below the neck or from a first-person angle. No full face, facial features, or head are visible in the frame.";
 const HANDS_ONLY_BACKGROUND_DIRECTION = "BACKGROUND AESTHETICS: The background must be a beautiful, warm, authentic modern setting (such as a cozy aesthetic cafe, stylish workspace, realistic indoor room, or natural outdoor path appropriate for the product) with a soft-focus shallow depth of field (cinematic bokeh blur). Keep the POV perspective, product, and interacting hands/feet/body parts in crisp, sharp focus.";
 const ANIMAL_PRESENTER_DIRECTION = "Show a friendly Thai reviewer standing together with a cute consistent pet animal (cat or dog as specified) in the frame interacting with or standing near the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
+const NO_UNREQUESTED_ANIMALS_DIRECTION = "No animals unless explicitly selected.";
 
 const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, patterns, print designs, graphical illustrations, logos, labels, and parts. The pattern, artwork, and visual print on the product (especially for phone cases, clothes, or printed goods) must be 100% identical, keeping the same graphics, colors, and layout without any modification or hallucination. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.";
+const REFERENCE_IMAGE_HIGHEST_PRIORITY = "REFERENCE PHOTO OVERRIDES TEXT: Match the attached product exactly. If text conflicts, follow the photo. Never substitute or redesign it.";
+const REFERENCE_COMPOSITING_DIRECTION = "BACKGROUND-ONLY EDIT: Keep the reference product unchanged; replace only the background.";
+const IMAGE_AUTO_ANIMAL_EXCLUSION = "IMAGE AUTO MODE: No dog, cat, puppy, kitten, or other animal unless the user explicitly selected dog or cat presenter.";
 
 const LABEL_EXACT_COPY_MANDATE = "⚠️ ABSOLUTE LABEL & COLOR FIDELITY MANDATE — HIGHEST PRIORITY RULE: The product label, packaging, printed surface, AND all product colors MUST be reproduced as an EXACT 1-to-1 COPY from the reference photo. FORBIDDEN ACTIONS: (1) Do NOT redraw, redesign, or reinterpret the label artwork. (2) Do NOT change any font or letter shape on the label. (3) Do NOT alter, add, remove, or rearrange any graphic elements or icons. (4) Do NOT shift any element's position on the label. (5) Do NOT change the label background color, border, or color scheme. (6) Do NOT replace the original label with a generic version. (7) Do NOT shift, tint, darken, brighten, or reinterpret any product color — reproduce every hue, saturation, and brightness EXACTLY as seen in the reference photo. The reference photo is the ONLY acceptable source — treat every color and every label element as a pixel-for-pixel photographic stamp.";
 
@@ -148,14 +155,18 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
   if (autoPresenter === "hands_only") {
     return `IMPORTANT: Depict the product in an authentic first-person POV perspective across different scenes. ${baseFidelity} ${newSceneEnv} ${collageRule} STRICTLY FORBIDDEN: Do not show any face or head in the frame; keep the camera angle in a realistic first-person POV cropped below the neck showing hands, arms, or feet/legs interacting with or wearing the product naturally.`;
   }
+  if (autoPresenter === "unboxing_hands") {
+    return `IMPORTANT: Depict the product in an authentic first-person POV unboxing sequence across different scenes. ${baseFidelity} ${newSceneEnv} ${collageRule} STRICTLY FORBIDDEN: Do not show any face, head, torso, full body, presenter, or reviewer in the frame; show only hands opening the box/package and revealing the exact product inside.`;
+  }
 
   return `IMPORTANT: Depict the product and presenter across different scenes. ${baseFidelity} ${newSceneEnv} ${brandNewFaceRule} ${singleSceneRule}`;
 }
 
 
-const REALISM_AND_PHYSICS_DIRECTION = "STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. Product remains rigid, solid, and static: no morphing, warping, bending, or melting. SMARTPHONE CAMERA LOOK: Organic natural lighting, authentic everyday UGC feel, avoiding hyper-processed commercial studio gloss or artificial CGI sheen.";
+const REALISM_AND_PHYSICS_DIRECTION = "STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. Product remains rigid, solid, and static: no morphing, warping, melting, wobbling, floating, or self-animating. SMARTPHONE CAMERA LOOK: organic UGC lighting, real lens perspective, natural exposure, no CGI sheen.";
 
-const NATURAL_PRODUCT_INTERACTION_DIRECTION = "STRICT REALISTIC & NATURAL PRODUCT INTERACTION LOCK (การใช้งานสิ่งของสมจริงเป็นธรรมชาติ): Product usage, holding, handling, touch, and gestures MUST be 100% realistic, ergonomic, and grounded in natural human physics. Hold, wear, or present items with authentic ergonomics (e.g., holding cups/tumblers by handles, holding phone cases naturally, applying skincare softly, wearing bags comfortably). Strictly FORBIDDEN: floating items in mid-air, awkward claw grips squeezing products, magician gestures, or warping object physics.";
+const NATURAL_PRODUCT_INTERACTION_DIRECTION = "STRICT REALISTIC & NATURAL PRODUCT INTERACTION LOCK (การใช้งานสิ่งของสมจริงเป็นธรรมชาติ): Handling must be ergonomic and grounded in human physics. Hold cups by handles, phone cases naturally, skincare softly, bags comfortably. FORBIDDEN: floating items, claw grips, magician gestures, or warped object physics.";
+const OBJECT_REALISM_DIRECTION = "REAL-WORLD OBJECT PHYSICS: Product has real weight, volume, hard edges, and stable contact points. It must rest on a surface, in a hand, or against support with believable gravity, contact shadows, occlusion, reflections, and scale. Only camera/hands/packaging may move; product must not wiggle, resize, self-rotate, or act like a character.";
 
 const NO_PUTTING_ON_OR_TAKING_OFF_MANDATE = "STRICT ALWAYS-WORN RULE (ให้ใส่ไว้เลย ห้ามทำท่าถอดหรือสวมใส่): Presenter MUST ALREADY BE FULLY WEARING or holding the item steadily right from the very first frame of every scene. ABSOLUTELY FORBIDDEN: Do NOT depict any action of putting on, pulling over head, slipping on, buttoning up, taking off, pulling down, removing, or unmasking any clothing, balaclava, hat, shoes, or accessories. Presenter simply stands, poses, or gestures naturally while wearing the item.";
 
@@ -474,10 +485,12 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const isHeavy = isHeavyProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(productText);
 
-  const handsOnly = auto.presenter === "hands_only";
+  const isUnboxingHands = auto.presenter === "unboxing_hands";
+  const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
   const noPeople = !(auto.presenter && auto.presenter !== "none");
 
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
+  const explicitlySelectedAnimal = settings?.presenter === "dog" || settings?.presenter === "cat";
 
   const isSingleMode = true; // FORCE SINGLE MODE ALWAYS: Prevents "4-panel grid" hallucination (ไม่ต้องตอนภาพ/แบ่งภาพ)
 
@@ -491,7 +504,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   let peopleDirection = "";
   if (handsOnly) {
-    peopleDirection = `${HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}`;
+    peopleDirection = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}`;
   } else if (isAnimal) {
     peopleDirection = `Pet Animal: A cute, friendly pet animal (${auto.presenter === "cat" ? "cat" : "dog"}) sitting next to or interacting naturally with the product in a bright, clean indoor setting. ${ANIMAL_PRESENTER_DIRECTION}`;
   } else if (isKids && auto.presenter !== "none") {
@@ -530,7 +543,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     : `${TEXT_FREE_DIRECTION}\nFinal check: ensure no added text or numbers exist in the output.`;
 
 
-  const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
+  const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle) && !isUnboxingHands
     ? "review"
     : auto.videoStyle;
 
@@ -582,6 +595,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const hasEngravedPattern = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(productText);
 
   const promptParts = [
+    REFERENCE_IMAGE_HIGHEST_PRIORITY,
+    REFERENCE_COMPOSITING_DIRECTION,
     LABEL_EXACT_COPY_MANDATE,
     COLOR_EXACT_LOCK,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
@@ -602,6 +617,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
     categoryDirection,
     analysisDirection,
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
+    explicitlySelectedAnimal ? "" : NO_UNREQUESTED_ANIMALS_DIRECTION,
+    explicitlySelectedAnimal ? "" : IMAGE_AUTO_ANIMAL_EXCLUSION,
     isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
     isHeadwearProduct(productText) ? HEADWEAR_NEVER_REMOVE_MANDATE : "",
     isFullFaceCoveringProduct(productText) ? FULL_FACE_COVERAGE_LOCK : "",
@@ -803,15 +820,19 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isClothing = isClothingProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(productText);
 
-  const handsOnly = auto.presenter === "hands_only";
+  const isUnboxingHands = auto.presenter === "unboxing_hands";
+  const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
   const noPeople = !(auto.presenter && auto.presenter !== "none");
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
+  const explicitlySelectedAnimal = settings?.presenter === "dog" || settings?.presenter === "cat";
   const animalName = auto.presenter === "cat" ? "cute cat" : "cute dog";
   const firstSceneNoPeople = (settings?.firstSceneNoPeople === true || settings?.firstSceneNoPeople === "true");
   const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
   const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
 
-  const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
+  const sceneStyle = isUnboxingHands
+    ? "unboxing"
+    : (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
     ? "review"
     : auto.videoStyle;
 
@@ -873,9 +894,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
     FULL_PRODUCT_VISIBILITY_DIRECTION,
-    "Critical: The generated video must maintain absolute fidelity to the original product. Its shape, colors, materials, branding, and text must be 100% identical and remain completely consistent, static, and unchanged across all scenes. Do not redesign, warp, morph, or modify the product's structure in any way.",
+    "Critical: Keep product shape, colors, materials, branding, and text 100% identical and static across all scenes; no redesign, warp, morph, or structural changes.",
     REALISM_AND_PHYSICS_DIRECTION,
     NATURAL_PRODUCT_INTERACTION_DIRECTION,
+    OBJECT_REALISM_DIRECTION,
     NO_PUTTING_ON_OR_TAKING_OFF_MANDATE,
     scaleInstruction,
     specificScale,
@@ -883,6 +905,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     categoryDirection,
     analysisDirection,
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
+    explicitlySelectedAnimal ? "" : NO_UNREQUESTED_ANIMALS_DIRECTION,
     isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
     isHeadwearProduct(productText) ? HEADWEAR_NEVER_REMOVE_MANDATE : "",
     isFullFaceCoveringProduct(productText) ? FULL_FACE_COVERAGE_LOCK : "",
@@ -906,8 +929,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   } else if (handsOnly) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "hands holding and presenting the product")
-      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, "hands holding the product")
-      .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, "hands holding the product");
+    if (!isUnboxingHands) {
+      sceneBreakdown = sceneBreakdown
+        .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
+    }
   } else if (isAnimal) {
     sceneBreakdown = sceneBreakdown
       .replace(/- Scene 1 \(([^)]+)\): ([^\n]+)/i, `- Scene 1 ($1 - Pet Opening): A 3-second opening scene featuring a ${animalName} sitting next to or interacting naturally with ${productName} right from the start.`)
@@ -991,8 +1017,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   promptParts.push(
     `Use distinct scenes with hard cuts; split the ${durationSeconds}s evenly across the scenes below.`,
     `STRICT LIMIT: The video must contain AT MOST 3 to 4 sequential scenes/shots. Do not generate too many scenes, cuts, or edits. Keep the storytelling simple and clean.`,
+    isUnboxingHands ? UNBOXING_REVEAL_SEQUENCE : "",
     sceneBreakdown,
-    `Subtle ${compactPromptText(auto.cameraMovement, 80)}; keep every shot sharp, clearly visible, and stable. Realistic motion only — no morphing, duplication, or impossible action.`
+    `Subtle ${compactPromptText(auto.cameraMovement, 80)}; camera movement should feel like a real handheld/tripod shot while the product remains physically stable. Keep shots sharp and clearly visible. No morphing, duplication, floating, or impossible action.`
   );
 
   const videoUserPhrase = settings?.clipText ? sanitizeText(String(settings.clipText).trim()) : "";
@@ -1066,7 +1093,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     speakerIdentity = "a young Thai woman";
   } else if (auto.presenter === "man") {
     speakerIdentity = "a young Thai man";
-  } else if (auto.presenter === "none" || auto.presenter === "hands_only") {
+  } else if (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands") {
     speakerIdentity = "a clear, warm, friendly off-screen young Thai woman narrator";
   } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
     if (auto.presenter === "older_child") {
@@ -1087,13 +1114,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   
   const matchVoiceRule = (auto.presenter === "dog" || auto.presenter === "cat")
     ? "the voice age, gender, and speech style must match the on-screen Thai presenter presenting the product with their pet"
-    : (auto.presenter === "none" || auto.presenter === "hands_only")
+    : (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands")
       ? "the voice must sound like a clear, warm, friendly off-screen young Thai female narrator presenting the product. Since no presenter's face or body is shown on screen, ensure the voice is explicitly a female voiceover narration."
       : (["baby", "toddler", "child", "older_child"].includes(auto.presenter))
         ? "the voice must sound like a caring Thai mother narrating warm and loving thoughts about her child on screen. The voice must be an adult mother's voice, and the narration must NEVER use baby-talk, baby words, or sound like a young child"
         : "the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter)";
 
-  const voiceMatchEnd = (auto.presenter === "none" || auto.presenter === "hands_only")
+  const voiceMatchEnd = (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands")
     ? "ensure the voice is a natural young Thai female speaker delivering a clear off-screen voiceover narration."
     : (["baby", "toddler", "child", "older_child"].includes(auto.presenter))
       ? "ensure the voice is a natural Thai speaker whose voice matches the off-screen mother narrator."
@@ -1107,12 +1134,12 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const speechDir = isFullFaceCoveringProduct(productText)
     ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. STRICT SPEECH RULE: Speak naturally at an unhurried, relaxed pace (do NOT rush or speak too fast). Do NOT repeat any words, phrases, or sentences. Speak naturally ONCE. FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย", "ว้าว"). DO NOT speak brand/product names, prices, quantities, or CTAs. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
     : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. STRICT SPEECH RULE: Speak naturally at an unhurried, relaxed pace (do NOT rush or speak too fast). DO NOT repeat any words, phrases, or sentences (NO loops, NO stuttering). FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย"). DO NOT speak brand/product names, prices, quantities, or CTAs. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
-  const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only")
+  const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands")
     ? "Voiceover: Add a clear, friendly off-screen Thai female voiceover narration speaking in Thai."
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
-    let handsInstructions = `${handsDir}\n${HANDS_ONLY_FACE_EXCLUSION}`;
+    let handsInstructions = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : handsDir}\n${HANDS_ONLY_FACE_EXCLUSION}`;
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;
       if (!isHoldable) {
@@ -1460,11 +1487,19 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
     : {};
   const requiredLocation = inferRequiredProductLocation(productInfo);
   const footwear = isFootwearProduct(productInfo);
+  const productText = [productInfo.name, productInfo.originalName, productInfo.category, productInfo.highlights]
+    .filter(Boolean)
+    .join(" ");
+  const isPetProduct = /(สัตว์เลี้ยง|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|แมว|สุนัข|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b|\banimal\b)/i.test(productText);
+  const autoPresenter = pickAutoReviewer(productInfo);
+  const safeAutoPresenter = (autoPresenter === "dog" || autoPresenter === "cat")
+    ? "woman"
+    : autoPresenter;
   return {
     videoStyle: isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle,
     // Auto always includes a real reviewer. People-free output is only allowed
     // when the user explicitly selects the "none" presenter option.
-    presenter: isAuto(settings.presenter) ? pickAutoReviewer(productInfo) : settings.presenter,
+    presenter: isAuto(settings.presenter) ? safeAutoPresenter : settings.presenter,
     customPresenter: sanitizeText(settings.customPresenter),
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,

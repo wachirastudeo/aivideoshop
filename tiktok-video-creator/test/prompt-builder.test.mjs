@@ -298,6 +298,8 @@ const heavyRiceVideo = buildVideoPrompt(heavyRice, settings);
 check("heavy product weight 10kg detected for image", /Real scale./i.test(heavyRiceImage), heavyRiceImage);
 check("heavy product weight 10kg detected for video", /Real scale./i.test(heavyRiceVideo), heavyRiceVideo);
 check("heavy product weight 10kg uses realistic medium scale instructions", /realistic medium scale relative to the presenter, never as a tiny packet or a giant sack/i.test(heavyRiceVideo), heavyRiceVideo);
+check("video prompt enforces real-world object gravity and contact shadows", /REAL-WORLD OBJECT PHYSICS/i.test(heavyRiceVideo) && /believable gravity, contact shadows/i.test(heavyRiceVideo), heavyRiceVideo);
+check("video prompt allows camera movement but keeps product physically stable", /camera movement should feel like a real/i.test(heavyRiceVideo) && /product remains physically stable/i.test(heavyRiceVideo), heavyRiceVideo);
 
 const heavyCement = { name: "ปูนซีเมนต์ 50kg" };
 const heavyCementVideo = buildVideoPrompt(heavyCement, settings);
@@ -338,6 +340,11 @@ const vidPresenterHands = buildVideoPrompt({ name: "ลิปสติก" }, { 
 check("video prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only strictly forbids faces", /STRICTLY FORBIDDEN: Do not show any face|FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
+
+const vidPresenterUnboxingHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
+check("video prompt with unboxing_hands uses hands-only unboxing presenter mode", /STRICT HANDS-ONLY UNBOXING PRESENTER MODE/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+check("video prompt with unboxing_hands opens box and reveals product", /opening a shipping box|opening the product box/i.test(vidPresenterUnboxingHands) && /revealing the exact target product inside the box|reveals the exact product inside the box/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+check("video prompt with unboxing_hands strictly forbids face and full person", /No face, head, torso, full body/i.test(vidPresenterUnboxingHands) && /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
 check("image prompt with text enabled shows only clipText phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled), imgTextEnabled);
@@ -441,16 +448,15 @@ check("clothing video prompt forbids back view and turning around", /do NOT show
 const clothingImg = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาว", category: "แฟชั่น" }, settings);
 check("clothing image prompt enforces front-facing shot distribution", /front shot|front-facing/i.test(clothingImg), clothingImg);
 
-// Test 13: Pet products Auto/dog/cat presenter includes both reviewer and pet animal
+// Test 13: Auto never selects dog/cat; animal presenters are explicit opt-in only
 const petFoodAutoVid = buildVideoPrompt({ name: "อาหารแมวพรีเมียม 1.2kg" }, { ...settings, presenter: "Auto" });
-check("cat pet product Auto presenter includes reviewer and cat", /reviewer/i.test(petFoodAutoVid) && /cat/i.test(petFoodAutoVid), petFoodAutoVid);
-check("cat pet product opens Scene 1 showing cat right away", /Scene 1[\s\S]*cute cat/i.test(petFoodAutoVid), petFoodAutoVid);
+check("cat pet product Auto presenter excludes animal", !/cute cat|cute dog|Pet Opening/i.test(petFoodAutoVid), petFoodAutoVid);
 
 const petCollarAutoVid = buildVideoPrompt({ name: "ปลอกคอสัตว์เลี้ยงพรีเมียม", category: "สัตว์เลี้ยง" }, { ...settings, presenter: "Auto" });
-check("generic pet product Auto presenter picks dog pet animal", /reviewer/i.test(petCollarAutoVid) && /dog/i.test(petCollarAutoVid), petCollarAutoVid);
+check("generic pet product Auto presenter excludes animal", !/cute cat|cute dog|Pet Opening/i.test(petCollarAutoVid), petCollarAutoVid);
 
 const petFoodAutoOptVid = buildVideoPrompt({ name: "อาหารสัตว์", autoOptions: { presenter: "cat" } }, { ...settings, presenter: "Auto" });
-check("autoOptions cat presenter is preserved in Auto presenter mode", /reviewer/i.test(petFoodAutoOptVid) && /cat/i.test(petFoodAutoOptVid), petFoodAutoOptVid);
+check("autoOptions cat cannot override Auto animal exclusion", !/cute cat|cute dog|Pet Opening/i.test(petFoodAutoOptVid), petFoodAutoOptVid);
 
 const dogToyVid = buildVideoPrompt({ name: "ของเล่นสุนัข" }, { ...settings, presenter: "dog" });
 check("dog pet product explicit presenter includes reviewer and dog", /reviewer/i.test(dogToyVid) && /dog/i.test(dogToyVid), dogToyVid);
@@ -531,11 +537,30 @@ const nonPetProdWithDogRec = buildVideoPrompt({ name: "แก้วน้ำเ�
 check("non-pet product overrides recommended dog presenter", !/cute dog|pet animal/i.test(nonPetProdWithDogRec), nonPetProdWithDogRec);
 
 const petProdWithDogRec = buildVideoPrompt({ name: "อาหารหมาพันธุ์เล็ก 1kg", autoOptions: { presenter: "dog" } }, settings);
-check("pet product keeps recommended dog presenter", /cute dog|pet animal/i.test(petProdWithDogRec), petProdWithDogRec);
+check("pet product does not keep unselected recommended dog presenter", !/cute dog|pet animal/i.test(petProdWithDogRec), petProdWithDogRec);
+
+// Test 26: Animals are never invented unless the user explicitly selects dog/cat presenter
+const genericAutoImg = buildImagePrompt({ name: "generic water bottle", autoOptions: { presenter: "dog" } }, { ...settings, presenter: "Auto" });
+check("generic Auto image prompt blocks unrequested animals", /No animals unless explicitly selected/i.test(genericAutoImg) && !/Pet Animal:|cute dog/i.test(genericAutoImg), genericAutoImg);
+
+const genericAutoVid = buildVideoPrompt({ name: "generic water bottle", autoOptions: { presenter: "dog" } }, { ...settings, presenter: "Auto" });
+check("generic Auto video prompt blocks unrequested animals", /No animals unless explicitly selected/i.test(genericAutoVid) && !/Pet Opening|cute dog/i.test(genericAutoVid), genericAutoVid);
+
+const petAutoImg = buildImagePrompt({ name: "อาหารสุนัข premium", autoOptions: { presenter: "dog" } }, { ...settings, presenter: "Auto" });
+check("Auto image mode never resolves to an animal presenter", /IMAGE AUTO MODE: No dog, cat/i.test(petAutoImg) && !/Pet Animal:|cute dog/i.test(petAutoImg), petAutoImg);
+
+const explicitDogVid = buildVideoPrompt({ name: "generic water bottle" }, { ...settings, presenter: "dog" });
+check("explicit dog presenter remains opt-in", /cute dog|pet animal/i.test(explicitDogVid) && !/STRICT ANIMAL EXCLUSION LOCK/i.test(explicitDogVid), explicitDogVid);
+
+const fidelityImg = buildImagePrompt({ name: "black insulated bottle", category: "drinkware" }, { ...settings, presenter: "none" });
+check("image prompt treats reference photo as highest-priority product source", /REFERENCE PHOTO OVERRIDES TEXT/i.test(fidelityImg), fidelityImg);
+check("image prompt uses background-only compositing instead of product redesign", /BACKGROUND-ONLY EDIT/i.test(fidelityImg), fidelityImg);
+
+const fidelityVid = buildVideoPrompt({ name: "black insulated bottle", category: "drinkware" }, { ...settings, presenter: "none" });
+check("video prompt keeps strict reference product fidelity", /STRICT PRODUCT FIDELITY LOCK/i.test(fidelityVid), fidelityVid);
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
-

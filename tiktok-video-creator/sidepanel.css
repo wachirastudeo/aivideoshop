@@ -485,6 +485,7 @@ html[data-mode="tab"] .app-shell {
   border-radius: 8px;
   background-color: #121215;
   color: var(--text);
+  -webkit-text-fill-color: var(--text);
   font-size: 12px;
   transition: all 0.15s ease;
 }
@@ -493,11 +494,36 @@ html[data-mode="tab"] .app-shell {
   appearance: none;
   -webkit-appearance: none;
   padding-right: 34px;
+  color-scheme: dark;
   background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 16px 16px;
   cursor: pointer;
+}
+
+.select option,
+.select optgroup {
+  background-color: #121215;
+  color: #f4f4f5;
+  -webkit-text-fill-color: #f4f4f5;
+}
+
+.select option:checked,
+.select option:hover {
+  background-color: #202026;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+@media (forced-colors: active) {
+  .select,
+  .select option,
+  .select optgroup {
+    background-color: Canvas;
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
 }
 
 .select:hover {
@@ -1807,5 +1833,3 @@ html[data-mode="tab"] .activity-log {
 .flow-job.is-collapsed .collapse-toggle svg {
   transform: rotate(-90deg);
 }
-
-
