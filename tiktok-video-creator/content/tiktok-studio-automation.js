@@ -548,9 +548,10 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   document.execCommand("delete", false);
   await sleep(150 + Math.random() * 100);
 
-  if (caption) {
-    for (let i = 0; i < caption.length; i++) {
-      document.execCommand("insertText", false, caption[i]);
+  const cleanCaption = sanitizeCaption(caption);
+  if (cleanCaption) {
+    for (let i = 0; i < cleanCaption.length; i++) {
+      document.execCommand("insertText", false, cleanCaption[i]);
       await sleep(15 + Math.random() * 35);
     }
   }
@@ -1847,6 +1848,14 @@ function normalizeHashtags(value) {
   }
 
   return tags;
+}
+
+function sanitizeCaption(value) {
+  return String(value || "")
+    .replace(/#{2,}/g, " ")
+    .replace(/#+[\p{L}\p{M}\p{N}_]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function selectAllEditable(element) {
