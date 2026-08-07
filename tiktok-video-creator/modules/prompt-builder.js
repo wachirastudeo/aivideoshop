@@ -1636,7 +1636,7 @@ function inferRequiredProductLocation(productInfo = {}) {
 
   // 8. Footwear -> Minimalist Studio / Urban Street
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
-    return "Minimalist Studio";
+    return "Clean realistic urban street or minimalist footwear showroom floor, with the shoes clearly visible and no unrelated props";
   }
 
   // 9. Clothing -> Minimalist Studio

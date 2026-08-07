@@ -577,7 +577,8 @@ const autoBackgroundCases = [
   ["cat food", /Clean pet-friendly home interior/i],
   ["toy", /Bright safe children's playroom/i],
   ["car phone holder", /Realistic clean car interior/i],
-  ["laptop stand", /Neat modern desk workspace/i]
+  ["laptop stand", /Neat modern desk workspace/i],
+  ["running shoes", /Clean realistic urban street or minimalist footwear showroom floor/i]
 ];
 for (const [name, expectedLocation] of autoBackgroundCases) {
   const autoImage = buildImagePrompt({ name }, { ...settings, location: "Auto", presenter: "Auto" });
