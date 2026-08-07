@@ -571,6 +571,20 @@ check("image prompt uses background-only compositing instead of product redesign
 const fidelityVid = buildVideoPrompt({ name: "black insulated bottle", category: "drinkware" }, { ...settings, presenter: "none" });
 check("video prompt keeps strict reference product fidelity", /STRICT PRODUCT FIDELITY LOCK/i.test(fidelityVid), fidelityVid);
 
+// Test 27: Auto background must match the product category.
+const autoBackgroundCases = [
+  ["water bottle", /Bright realistic outdoor park or fitness setting/i],
+  ["cat food", /Clean pet-friendly home interior/i],
+  ["toy", /Bright safe children's playroom/i],
+  ["car phone holder", /Realistic clean car interior/i],
+  ["laptop stand", /Neat modern desk workspace/i]
+];
+for (const [name, expectedLocation] of autoBackgroundCases) {
+  const autoImage = buildImagePrompt({ name }, { ...settings, location: "Auto", presenter: "Auto" });
+  const autoVideo = buildVideoPrompt({ name }, { ...settings, location: "Auto", presenter: "Auto" });
+  check(`Auto background matches ${name} category`, expectedLocation.test(autoImage + autoVideo) && /BACKGROUND COMPATIBILITY LOCK/i.test(autoImage), autoImage + autoVideo);
+}
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }

@@ -142,6 +142,7 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Neve
 const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to reference: never stretch, squash, enlarge, or shrink it. The physical size of the product must be realistic and true-to-life compared to the environment, hands, or presenter. Do not make the product abnormally large or out-of-scale relative to the surroundings (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
 
 const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the background; do not enlarge, shrink, stretch, or warp it. STRICT BRAND NEW PRESENTER FACE LOCK: If a presenter is shown in the scene, the presenter in the video MUST feature an ENTIRELY BRAND NEW, UNIQUE face and appearance generated from scratch. ABSOLUTELY FORBIDDEN: NEVER copy, clone, mirror, or replicate the face, hair, or facial features of any person appearing in the reference photo. Always generate a completely new human face from scratch. Keep the newly generated presenter's appearance consistent across all scenes. STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
+const BACKGROUND_COMPATIBILITY_LOCK = "BACKGROUND COMPATIBILITY LOCK: The environment, surface, props, colors, and lighting must make physical and commercial sense for the exact product. Use only category-relevant objects. Do not place unrelated food, pets, plants, sports gear, bathroom items, kitchen tools, vehicles, or decorative props in the scene. Never let the background compete with, hide, recolor, or imply an incorrect use for the product.";
 
 function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
   const baseFidelity = "STRICT REFERENCE PHOTO PRODUCT FIDELITY LOCK: Reproduce the product 100% pixel-faithfully from the reference image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without distortion, morphing, redesign, or alteration.";
@@ -151,16 +152,16 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
   const brandNewFaceRule = "CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The presenter/model generated in this image/video MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, hairstyle, and facial features from any person appearing in the uploaded reference photo. ABSOLUTELY FORBIDDEN: Do NOT copy, clone, mirror, or resemble the face or identity of any person shown in the uploaded reference image under any circumstances. Always generate a brand new presenter face from scratch while keeping presenter appearance consistent across all generated scenes.";
 
   if (autoPresenter === "none") {
-    return `IMPORTANT: Depict the product across different scenes. ${baseFidelity} ${newSceneEnv} ${collageRule}`;
+    return `IMPORTANT: Depict the product across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${collageRule}`;
   }
   if (autoPresenter === "hands_only") {
-    return `IMPORTANT: Depict the product in an authentic first-person POV perspective across different scenes. ${baseFidelity} ${newSceneEnv} ${collageRule} STRICTLY FORBIDDEN: Do not show any face or head in the frame; keep the camera angle in a realistic first-person POV cropped below the neck showing hands, arms, or feet/legs interacting with or wearing the product naturally.`;
+    return `IMPORTANT: Depict the product in an authentic first-person POV perspective across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${collageRule} STRICTLY FORBIDDEN: Do not show any face or head in the frame; keep the camera angle in a realistic first-person POV cropped below the neck showing hands, arms, or feet/legs interacting with or wearing the product naturally.`;
   }
   if (autoPresenter === "unboxing_hands") {
-    return `IMPORTANT: Depict the product in an authentic first-person POV unboxing sequence across different scenes. ${baseFidelity} ${newSceneEnv} ${collageRule} STRICTLY FORBIDDEN: Do not show any face, head, torso, full body, presenter, or reviewer in the frame; show only hands opening the box/package and revealing the exact product inside.`;
+    return `IMPORTANT: Depict the product in an authentic first-person POV unboxing sequence across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${collageRule} STRICTLY FORBIDDEN: Do not show any face, head, torso, full body, presenter, or reviewer in the frame; show only hands opening the box/package and revealing the exact product inside.`;
   }
 
-  return `IMPORTANT: Depict the product and presenter across different scenes. ${baseFidelity} ${newSceneEnv} ${brandNewFaceRule} ${singleSceneRule}`;
+  return `IMPORTANT: Depict the product and presenter across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${brandNewFaceRule} ${singleSceneRule}`;
 }
 
 
@@ -590,7 +591,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
   const imageBackgroundDirection = handsOnly
-    ? HANDS_ONLY_BACKGROUND_DIRECTION
+    ? `${HANDS_ONLY_BACKGROUND_DIRECTION} Place the product in this category-appropriate setting: ${locationSetting}. Do not replace it with a generic cafe, desk, studio, or outdoor background unless that setting is appropriate for the exact product.`
     : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: After extracting ONLY the target product from the reference image, place it into a BRAND NEW, highly realistic ${locationSetting} background scene. NATURAL SMARTPHONE ATMOSPHERE: Enhance the background with clean, organic everyday lighting, realistic depth of field, authentic real-life textures, and a believable environment tailored specifically to this product category. FORBIDDEN: Do NOT use hyper-processed commercial studio gloss, fake HDR sheen, or artificial CGI lighting. The scene MUST look authentic, natural, and grounded in real life.`;
 
   const hasEngravedPattern = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(productText);
@@ -600,6 +601,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     REFERENCE_COMPOSITING_DIRECTION,
     LABEL_EXACT_COPY_MANDATE,
     COLOR_EXACT_LOCK,
+    BACKGROUND_COMPATIBILITY_LOCK,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     NO_HALLUCINATED_BRAND_LOGOS_RULE,
     intro,
@@ -889,6 +891,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     SPEECH_DIRECTION,
     PROGRESSIVE_AUDIO_NARRATION_MANDATE,
     resolveMatchStillDirection(auto.presenter, hasModelRefImage),
+    BACKGROUND_COMPATIBILITY_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
     PRODUCT_ISOLATION_DIRECTION,
@@ -1571,6 +1574,29 @@ function inferRequiredProductLocation(productInfo = {}) {
   // 0. Sun Protection & Sun Hats -> Sunny Outdoor Setting
   if (isSunProtectionProduct(text)) {
     return "Sunny Outdoor Setting (Park, Garden, Promenade, or Beach)";
+  }
+
+  // Product-specific environments must win over broad lifestyle defaults.
+  if (/(water bottle|thermos|tumbler|flask|กระบอกน้ำ|แก้วน้ำ|ขวดน้ำ|แก้วเก็บความเย็น)/i.test(text)) {
+    return "Bright realistic outdoor park or fitness setting with a clean bench or gym surface";
+  }
+  if (/(pet|animal|cat|kitten|dog|puppy|อาหารแมว|อาหารหมา|ปลอกคอ|สัตว์เลี้ยง)/i.test(text)) {
+    return "Clean pet-friendly home interior with a neutral floor and simple pet-care context";
+  }
+  if (/(baby|infant|newborn|toddler|kid|kids|child|toy|เด็ก|ทารก|ของเล่น)/i.test(text)) {
+    return "Bright safe children's playroom or nursery with clean age-appropriate surroundings";
+  }
+  if (/(car|auto|vehicle|motorcycle|motorbike|รถยนต์|มอเตอร์ไซค์|อุปกรณ์รถ)/i.test(text)) {
+    return "Realistic clean car interior or organized garage workspace appropriate for the vehicle accessory";
+  }
+  if (/(snack|food|drink|beverage|ขนม|อาหาร|เครื่องดื่ม|น้ำผลไม้)/i.test(text)) {
+    return "Clean natural kitchen countertop or dining table with food-safe presentation";
+  }
+  if (/(laptop|computer|keyboard|mouse|headphone|charger|cable|อุปกรณ์ไอที|คอมพิวเตอร์|หูฟัง|สายชาร์จ)/i.test(text)) {
+    return "Neat modern desk workspace with realistic office lighting and no unrelated props";
+  }
+  if (/(garden|plant|flower|outdoor|camping|hiking|ต้นไม้|ดอกไม้|สวน|แคมป์|เดินป่า)/i.test(text)) {
+    return "Natural outdoor garden or clean campsite setting suited to the product's actual use";
   }
 
   // 1. Kitchen & Cooking -> Modern Kitchen
