@@ -559,7 +559,7 @@ async function fillCaptionAndHashtags(caption, hashtags) {
 
   for (const rawTag of normalizeHashtags(hashtags)) {
     assertNotStopped();
-    const tag = String(rawTag || "").replace(/^#/, "").trim();
+    const tag = String(rawTag || "").replace(/^#+/, "").trim();
     if (!tag) continue;
     
     const tagString = ` #${tag}`;
@@ -1420,7 +1420,7 @@ async function fillCaption(caption, hashtags) {
 
   // เพิ่ม hashtags
   for (const tag of normalizeHashtags(hashtags)) {
-    const normalized = tag.startsWith("#") ? tag : `#${tag}`;
+    const normalized = `#${String(tag || "").replace(/^#+/, "").trim()}`;
     const tagString = ` ${normalized}`;
     for (let i = 0; i < tagString.length; i++) {
       document.execCommand("insertText", false, tagString[i]);
