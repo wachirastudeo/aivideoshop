@@ -143,6 +143,7 @@ const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to refere
 
 const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the background; do not enlarge, shrink, stretch, or warp it. STRICT BRAND NEW PRESENTER FACE LOCK: If a presenter is shown in the scene, the presenter in the video MUST feature an ENTIRELY BRAND NEW, UNIQUE face and appearance generated from scratch. ABSOLUTELY FORBIDDEN: NEVER copy, clone, mirror, or replicate the face, hair, or facial features of any person appearing in the reference photo. Always generate a completely new human face from scratch. Keep the newly generated presenter's appearance consistent across all scenes. STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
 const BACKGROUND_COMPATIBILITY_LOCK = "BACKGROUND COMPATIBILITY LOCK: The environment, surface, props, colors, and lighting must make physical and commercial sense for the exact product. Use only category-relevant objects. Do not place unrelated food, pets, plants, sports gear, bathroom items, kitchen tools, vehicles, or decorative props in the scene. Never let the background compete with, hide, recolor, or imply an incorrect use for the product.";
+const FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK = "HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE: The entire still-image scene MUST be clearly outdoors in open air, such as an outdoor home driveway, front yard, quiet neighborhood street, or park path. Use outdoor pavement, concrete, grass, or natural daylight. The shoe must be grounded on the outdoor surface or naturally worn on a visible foot outside. ABSOLUTELY FORBIDDEN: indoor rooms, houses, bedrooms, entryways, closets, shoe shelves, retail interiors, cafes, studios, indoor floors, or studio backdrops. If any other instruction conflicts with this, keep the shoe outdoors.";
 
 function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
   const baseFidelity = "STRICT REFERENCE PHOTO PRODUCT FIDELITY LOCK: Reproduce the product 100% pixel-faithfully from the reference image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without distortion, morphing, redesign, or alteration.";
@@ -486,6 +487,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const isFootwear = isFootwearProduct(productInfo);
   const isHeavy = isHeavyProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(productText);
 
@@ -595,6 +597,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const imageBackgroundDirection = handsOnly
     ? `${HANDS_ONLY_BACKGROUND_DIRECTION} Place the product in this category-appropriate setting: ${locationSetting}. Do not replace it with a generic cafe, desk, studio, or outdoor background unless that setting is appropriate for the exact product.`
     : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: After extracting ONLY the target product from the reference image, place it into a BRAND NEW, highly realistic ${locationSetting} background scene. NATURAL SMARTPHONE ATMOSPHERE: Enhance the background with clean, organic everyday lighting, realistic depth of field, authentic real-life textures, and a believable environment tailored specifically to this product category. FORBIDDEN: Do NOT use hyper-processed commercial studio gloss, fake HDR sheen, or artificial CGI lighting. The scene MUST look authentic, natural, and grounded in real life.`;
+  const stillBackgroundDirection = isFootwear
+    ? `${FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK}\n${imageBackgroundDirection}`
+    : imageBackgroundDirection;
 
   const hasEngravedPattern = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(productText);
 
@@ -627,7 +632,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isSunProtectionProduct(productText) ? SUNSCREEN_FIDELITY_DIRECTION : "",
     isHeadwearProduct(productText) ? HEADWEAR_NEVER_REMOVE_MANDATE : "",
     isFullFaceCoveringProduct(productText) ? FULL_FACE_COVERAGE_LOCK : "",
-    imageBackgroundDirection,
+    stillBackgroundDirection,
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     peopleDirection,
     productTextFidelityDirection,
@@ -1515,6 +1520,7 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
   const productText = [productInfo.name, productInfo.originalName, productInfo.category, productInfo.highlights]
     .filter(Boolean)
     .join(" ");
+  const outdoorOnlyProduct = footwear || isOutdoorRideProduct(productText);
   const isPetProduct = /(สัตว์เลี้ยง|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|แมว|สุนัข|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b|\banimal\b)/i.test(productText);
   const autoPresenter = pickAutoReviewer(productInfo);
   const safeAutoPresenter = (autoPresenter === "dog" || autoPresenter === "cat")
@@ -1528,7 +1534,7 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
     customPresenter: sanitizeText(settings.customPresenter),
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
-    location: isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location,
+    location: outdoorOnlyProduct ? requiredLocation : (isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location),
     customLocation: sanitizeText(settings.customLocation),
     cameraMovement: isAuto(settings.cameraMovement) ? (footwear ? "Slow Zoom In" : (recommended.cameraMovement || inferred.cameraMovement)) : settings.cameraMovement,
     transition: isAuto(settings.transition) ? (recommended.transition || inferred.transition) : settings.transition,
@@ -1557,7 +1563,7 @@ function inferPromptAutoOptions(productInfo = {}) {
     return promptAutoOptions("review", "none", "professional", "Professional", "Modern Living Room", "Slow Zoom In", "Cut ตรง", "Furniture product, shown alone in a clean realistic interior suited to its use");
   }
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
-    return promptAutoOptions("review", "none", "professional", "Trendy", "Urban Street", "Slow Zoom In", "Cut ตรง", "Footwear product, shown clearly without a presenter to preserve its exact model");
+    return promptAutoOptions("review", "none", "professional", "Trendy", "Outdoor Home Driveway or Park Path", "Slow Zoom In", "Cut ตรง", "Footwear product, shown outdoors where shoes are realistically used, without a presenter to preserve its exact model");
   }
   if (isOutdoorRideProduct(text)) {
     return promptAutoOptions("review", "none", "fun", "Natural", "Outdoor Home Driveway or Park Path", "Slow Zoom In", "Cut ตรง", "Ride-on product, shown outdoors where it is realistically used");
@@ -1663,7 +1669,7 @@ function inferRequiredProductLocation(productInfo = {}) {
 
   // 8. Footwear -> Minimalist Studio / Urban Street
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
-    return "Clean realistic urban street or minimalist footwear showroom floor, with an optional home entryway or shoe shelf display, with the shoes clearly visible at true human-foot scale and no unrelated props";
+    return "Outdoor home driveway, front yard, quiet neighborhood street, or park path with safe open space; shoes clearly visible at true human-foot scale; never inside a house, bedroom, entryway, closet, shoe shelf, showroom, cafe, or studio";
   }
 
   // 9. Clothing -> Minimalist Studio

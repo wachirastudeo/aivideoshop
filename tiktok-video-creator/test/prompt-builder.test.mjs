@@ -152,8 +152,10 @@ const shoeVideo = buildVideoPrompt(shoe, settings);
 check("shoe prompt locks shoe-specific geometry", /toe shape[\s\S]*sole thickness[\s\S]*lace pattern/i.test(shoeImage));
 check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.test(shoeImage));
 check("shoe prompt locks realistic human-foot scale", /STRICT FOOTWEAR SCALE & PLACEMENT LOCK/i.test(shoeImage) && /true foot-sized proportions/i.test(shoeImage));
-check("shoe prompt uses a suitable footwear location", /urban street|home entryway|shoe shelf|footwear showroom floor/i.test(shoeImage + shoeVideo));
+check("shoe prompt uses an outdoor footwear location", /outdoor home driveway|front yard|quiet neighborhood street|park path/i.test(shoeImage + shoeVideo));
 check("shoe prompt rejects oversized placement", /do not enlarge the shoe to furniture-scale/i.test(shoeImage));
+check("shoe prompt rejects indoor locations", /never inside a house|bedroom|entryway|closet|shoe shelf|showroom|cafe|studio/i.test(shoeImage));
+check("shoe still image has highest-priority outdoor background lock", /HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE/i.test(shoeImage) && /outdoor pavement|concrete|grass|natural daylight/i.test(shoeImage));
 check("shoe video Auto includes a reviewer", /Presenter: (?:A young Thai woman reviewer|A young Thai man reviewer)/i.test(shoeVideo));
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
@@ -593,13 +595,19 @@ const autoBackgroundCases = [
   ["toy", /Bright safe children's playroom/i],
   ["car phone holder", /Realistic clean car interior/i],
   ["laptop stand", /Neat modern desk workspace/i],
-  ["running shoes", /Clean realistic urban street or minimalist footwear showroom floor/i]
+  ["running shoes", /Outdoor home driveway|front yard|quiet neighborhood street|park path/i]
 ];
 for (const [name, expectedLocation] of autoBackgroundCases) {
   const autoImage = buildImagePrompt({ name }, { ...settings, location: "Auto", presenter: "Auto" });
   const autoVideo = buildVideoPrompt({ name }, { ...settings, location: "Auto", presenter: "Auto" });
   check(`Auto background matches ${name} category`, expectedLocation.test(autoImage + autoVideo) && /BACKGROUND COMPATIBILITY LOCK/i.test(autoImage), autoImage + autoVideo);
 }
+
+const shoeWithWrongSavedLocation = buildImagePrompt(
+  { name: "รองเท้าวิ่งผู้หญิง", productId: "wrong-location-shoe" },
+  { ...settings, location: "Modern Living Room" }
+);
+check("shoe still image overrides a wrong saved indoor location", /outdoor home driveway|front yard|quiet neighborhood street|park path/i.test(shoeWithWrongSavedLocation) && !/Modern Living Room/i.test(shoeWithWrongSavedLocation));
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
