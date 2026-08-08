@@ -38,7 +38,7 @@ let preGenMediaKeys = new Set();
 let lastSentTopic = "";
 let _overlay = null;
 
-function log(msg) {
+function log(msg, options = {}) {
     if (!_overlay) {
         _overlay = document.createElement("div");
         _overlay.style.cssText = "position:fixed;z-index:2147483647;left:16px;bottom:16px;" +
@@ -60,15 +60,13 @@ function log(msg) {
         .trim()
         .toLowerCase();
 
-    if (topic === lastSentTopic) {
+    if (!options.forceSidePanel && topic === lastSentTopic) {
         return; // หัวข้อเดิม ข้ามการส่งไป Side Panel
     }
     lastSentTopic = topic;
 
-    // ล้างตัวเลขเวลาถอยหลังและจุดเพื่อความสวยงามใน Side Panel
+    // คงตัวเลขเวลาไว้ใน Side Panel เพื่อให้ผู้ใช้เห็นว่าแต่ละช่วงพัก/รอใช้เวลาประมาณเท่าไร
     const sidePanelMessage = msg
-        .replace(/\b\d+\s*s\b/gi, "")
-        .replace(/\(~?\d+\s*s?\)/gi, "")
         .replace(/\.+$/g, "") // ลบจุดท้ายข้อความ
         .replace(/\s+/g, " ")
         .trim();
@@ -85,6 +83,15 @@ function log(msg) {
 }
 function removeOverlay() { _overlay?.remove(); _overlay = null; }
 
+function formatDelaySeconds(ms) {
+    const seconds = Math.max(1, Math.round(ms / 1000));
+    return seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
+}
+
+function logDelay(ms) {
+    log(`⏳ พัก/รอประมาณ ${formatDelaySeconds(ms)}...`, { forceSidePanel: true });
+}
+
 // ── Timing ───────────────────────────────────────────────────
 const sleep = (ms) => {
     let finalMs = ms;
@@ -94,6 +101,10 @@ const sleep = (ms) => {
     }
     const jitterFactor = finalMs >= 300 ? (0.75 + Math.random() * 0.50) : 1.0; // 0.75 to 1.25
     const totalMs = Math.min(10000, Math.round(finalMs * jitterFactor)); // จำกัดเพดานสูงสุดไม่เกิน 10 วินาทีตามที่ผู้ใช้กำหนด
+
+    if (totalMs >= 2500) {
+        logDelay(totalMs);
+    }
 
     if (document.hidden) {
         // หากหน้าต่างถูกซ่อน/ย่อไว้ ให้ใช้ setTimeout ตัวเดียวตรงๆ

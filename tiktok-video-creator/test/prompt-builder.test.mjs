@@ -151,6 +151,9 @@ const shoeImage = buildImagePrompt(shoe, settings);
 const shoeVideo = buildVideoPrompt(shoe, settings);
 check("shoe prompt locks shoe-specific geometry", /toe shape[\s\S]*sole thickness[\s\S]*lace pattern/i.test(shoeImage));
 check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.test(shoeImage));
+check("shoe prompt locks realistic human-foot scale", /STRICT FOOTWEAR SCALE & PLACEMENT LOCK/i.test(shoeImage) && /true foot-sized proportions/i.test(shoeImage));
+check("shoe prompt uses a suitable footwear location", /urban street|home entryway|shoe shelf|footwear showroom floor/i.test(shoeImage + shoeVideo));
+check("shoe prompt rejects oversized placement", /do not enlarge the shoe to furniture-scale/i.test(shoeImage));
 check("shoe video Auto includes a reviewer", /Presenter: (?:A young Thai woman reviewer|A young Thai man reviewer)/i.test(shoeVideo));
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
@@ -375,6 +378,14 @@ const coffeeVideo = buildVideoPrompt(coffeeProduct, settings);
 check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeImage), coffeeImage);
 check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeVideo), coffeeVideo);
 
+// --- small tech accessory scale tests ---
+const mouseProduct = { name: "ไร้สาย Gaming Mouse RGB", category: "computer accessory" };
+const mouseImage = buildImagePrompt(mouseProduct, settings);
+const mouseVideo = buildVideoPrompt(mouseProduct, settings);
+check("mouse image prompt has strict small tech accessory scale lock", /STRICT SMALL TECH ACCESSORY SCALE LOCK/i.test(mouseImage) && /mouse is about palm-sized/i.test(mouseImage), mouseImage);
+check("mouse video prompt has strict small tech accessory scale lock", /STRICT SMALL TECH ACCESSORY SCALE LOCK/i.test(mouseVideo) && /do not enlarge it into a giant object/i.test(mouseVideo), mouseVideo);
+check("mouse prompt uses desk-sized context instead of generic oversized scale", /desk-sized tech accessory|desk surface/i.test(mouseImage + mouseVideo), mouseImage + mouseVideo);
+
 // --- image prompt single full-frame format test ---
 const imgLimit = buildImagePrompt({ name: "พัดลมไร้สาย" }, settings);
 check("image prompt specifies single full-frame product layout", /multi-angle 4-panel grid photograph|single full-frame authentic smartphone camera photograph/i.test(imgLimit), imgLimit);
@@ -509,8 +520,12 @@ check("video prompt includes strict Thai language and zero gibberish lock", /STR
 
 // Test 18: Kids products (จักรยานเด็ก) Presenter & Parent Supervision Lock
 const kidsBikeVid = buildVideoPrompt({ name: "จักรยานเด็กทรงสปอร์ต ล้อ 16 นิ้ว" }, settings);
+const kidsBikeImg = buildImagePrompt({ name: "จักรยานเด็กทรงสปอร์ต ล้อ 16 นิ้ว" }, settings);
 check("kids bicycle prompt includes child and supervising parent", /child|kid/i.test(kidsBikeVid) && /parent|guardian/i.test(kidsBikeVid), kidsBikeVid);
 check("kids bicycle prompt excludes dogs/pets", !/pet animal|\bdog\b/i.test(kidsBikeVid), kidsBikeVid);
+check("kids bicycle video prompt uses outdoor location", /outdoor home driveway|front yard|park path|quiet neighborhood street/i.test(kidsBikeVid), kidsBikeVid);
+check("kids bicycle image prompt uses outdoor location", /outdoor home driveway|front yard|park path|quiet neighborhood street/i.test(kidsBikeImg), kidsBikeImg);
+check("kids bicycle prompts do not use indoor nursery/playroom location", !/Bright safe children's playroom or nursery/i.test(kidsBikeVid + kidsBikeImg), kidsBikeVid + kidsBikeImg);
 
 // Test 19: Poultry/Farm Feed (อาหารไก่) Exclusion of Dogs & Cats
 const chickenFeedVid = buildVideoPrompt({ name: "อาหารไก่ไข่ โปรตีนสูง 30 กก." }, settings);

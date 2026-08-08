@@ -173,6 +173,7 @@ const OBJECT_REALISM_DIRECTION = "REAL-WORLD OBJECT PHYSICS: Product has real we
 const NO_PUTTING_ON_OR_TAKING_OFF_MANDATE = "STRICT ALWAYS-WORN RULE (ให้ใส่ไว้เลย ห้ามทำท่าถอดหรือสวมใส่): Presenter MUST ALREADY BE FULLY WEARING or holding the item steadily right from the very first frame of every scene. ABSOLUTELY FORBIDDEN: Do NOT depict any action of putting on, pulling over head, slipping on, buttoning up, taking off, pulling down, removing, or unmasking any clothing, balaclava, hat, shoes, or accessories. Presenter simply stands, poses, or gestures naturally while wearing the item.";
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
+const SHOE_SCALE_DIRECTION = "STRICT FOOTWEAR SCALE & PLACEMENT LOCK: This is a real human shoe, not a giant prop or miniature toy. Preserve true foot-sized proportions and the exact single-shoe/pair count. Show it at realistic scale relative to a human foot, leg, hand, shoe box, floor, shelf, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge the shoe to furniture-scale, make it tiny, or place it in an unrelated oversized environment. Keep the shoe grounded on a realistic floor, shelf, or naturally worn on a foot.";
 
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: You MUST reproduce the clothing item EXACTLY as depicted in the reference image. Preserve its 100% exact garment cut, silhouette, neckline style (crewneck, V-neck, polo collar, hoodie, scoop neck), sleeve length (short sleeve, long sleeve, sleeveless), sleeve cut, fabric material texture (cotton, denim, knit, silk, linen, fleece), color shade, wash, buttons, zippers, pockets, and stitching. EXACT PRINTED GRAPHICS & PATTERNS: Any chest logo, printed artwork, typography, graphic illustrations, embroidery, brand crest, or pattern (stripes, plaid, floral, tie-dye) MUST be reproduced 100% pixel-faithfully in the exact same location, size, and colors. STRICTLY FORBIDDEN: Do NOT simplify, alter, redesign, recolor, or change the clothing item. Do NOT convert a printed shirt into a plain shirt, do NOT change sleeve length, and do NOT alter the collar or cut. The garment worn by the presenter must remain 100% identical and static across all video frames without any morphing or shifting. FRONT-ONLY VIEW LOCK: The presenter must face forward showing the front design of the garment. Do NOT show back-facing angles or 360-degree rotations.";
 
@@ -199,6 +200,7 @@ const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glass
 const BEAUTY_SKINCARE_FIDELITY_DIRECTION = "For cosmetics, skincare, and personal care (creams, serums, lipsticks, bottles, tubes, compacts): preserve the exact container bottle/jar/tube shape, dispenser cap/pump type, brand logo, printed text, label artwork, and formula texture. Do not alter container proportions, lid type, or packaging design.";
 const COFFEE_BAG_FIDELITY_DIRECTION = "STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK: The product is a printed coffee bag or coffee bean pouch. You MUST reproduce the EXACT printed front label artwork, brand logo, emblem, typography, font style, exact Thai/English brand text, weight markings (e.g. 200g/250g/500g), coffee bean illustrations, roasting badges, degassing valve, seal crimp edges, and pouch shape (e.g., gusseted pouch or flat-bottom bag) 100% pixel-faithfully as shown in the reference image. Maintain the exact label background color, logo placement, badge alignment, and printed text layout without redrawing, altering, replacing, simplifying, changing fonts, or writing gibberish on the label.";
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
+const SMALL_TECH_ACCESSORY_SCALE_DIRECTION = "STRICT SMALL TECH ACCESSORY SCALE LOCK: This product is a real desk-sized tech accessory, not a large appliance or oversized prop. Preserve true physical scale: a mouse is about palm-sized (roughly 10-13cm long), a keyboard is desk-width and slim, earbuds fit in the ear or charging case, a charger/cable is small enough to hold in one hand, and a headset/headphones fit naturally on a human head or rest on a desk. Show it at realistic size relative to hands, a laptop, keyboard, desk surface, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge it into a giant object, appliance, bag-sized item, or furniture-scale prop; do not shrink it into a tiny toy.";
 const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, edge bevels, AND any built-in magnetic ring (MagSafe ring) MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, magnetic ring circle, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
 const JEWELRY_FIDELITY_DIRECTION = "For jewelry/watches, preserve exact gemstone cuts, metal luster/shade, chain link style, clasp, watch face indices, and sub-dials. Do not alter craftsmanship details.";
 const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK: You MUST reproduce the bag (handbag, backpack, tote bag, shoulder bag, cross-body bag, wallet, or pouch) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: All bag silhouettes, strap/handle drop lengths, zipper pulls, metal clasps, buckles, stitching lines, and pocket placements MUST be rendered 100% pixel-faithfully without structural warping. MATERIAL TEXTURE & PRINTED ARTWORK: Preserve exact leather grain, canvas weave, nylon sheen, quilted pattern, brand monogram, logo plaque, or printed artwork. ZERO DEFORMATION RULE: The bag must maintain its true 3D structure and form naturally without melting, twisting, stretching, or morphing across video frames.";
@@ -675,8 +677,24 @@ function isHeavyProduct(text = "") {
   return getProductWeightCategory(text) !== "light";
 }
 
+function isOutdoorRideProduct(text = "") {
+  return /(จักรยาน|รถสามล้อ|สกู๊ตเตอร์|สกูตเตอร์|สเก็ตบอร์ด|โรลเลอร์เบลด|รถเด็กถีบ|balance\s*bike|bicycle|bike|tricycle|scooter|skateboard|rollerblade|ride-?on)/i.test(String(text || "").toLowerCase());
+}
+
+function isSmallTechAccessoryProduct(text = "") {
+  return /(เมาส์|เม้าส์|คีย์บอร์ด|แป้นพิมพ์|หูฟัง|เอียร์บัด|สายชาร์จ|หัวชาร์จ|แท่นชาร์จ|พาวเวอร์แบงค์|แผ่นรองเมาส์|อุปกรณ์ไอที|อุปกรณ์คอม|mouse|keyboard|keycap|headset|headphone|earphone|earbud|earbuds|charger|charging\s*(?:cable|brick|adapter|dock|stand)|cable|powerbank|power\s*bank|mousepad|mouse\s*pad|computer\s*accessory|desk\s*accessory|tech\s*accessory)/i.test(String(text || "").toLowerCase());
+}
+
 function getProductSpecificScaleInstruction(text = "") {
   const clean = text.toLowerCase();
+
+  if (isSmallTechAccessoryProduct(clean)) {
+    return SMALL_TECH_ACCESSORY_SCALE_DIRECTION;
+  }
+
+  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(clean)) {
+    return SHOE_SCALE_DIRECTION;
+  }
   
   // Detect coffee bags, pouches, sachets, packets (ถุงกาแฟ, ซองกาแฟ, 200g, 250g, 500g)
   const isSmallPouch = /(กาแฟ|ชา|ผง|ถุง|ซอง|ห่อ|เมล็ด|coffee|tea|powder|pouch|bag|sachet|pack|packet|200\s*g|250\s*g|500\s*g|gr?a?m|กรัม)/i.test(clean);
@@ -1309,7 +1327,7 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
     return `${SPRAY_BOTTLE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
-    return `${SHOE_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+    return `${SHOE_FIDELITY_DIRECTION}\n${SHOE_SCALE_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (isClothingProduct(text)) {
     return `${CLOTHING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
@@ -1326,6 +1344,9 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
   if (/(เคส|ไอโฟน|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|phone case|phone cover|mobile case|mobile cover|gadget)/i.test(text) || isMagneticPhoneCaseProduct(text)) {
     const extraMag = isMagneticPhoneCaseProduct(text) ? `\n${MAGNETIC_PHONE_CASE_FIDELITY_MANDATE}` : "";
     return `${PHONE_CASE_FIDELITY_DIRECTION}${extraMag}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (isSmallTechAccessoryProduct(text)) {
+    return `${ELECTRONICS_GADGETS_FIDELITY_DIRECTION}\n${SMALL_TECH_ACCESSORY_SCALE_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   if (/(มือถือ|หูฟัง|บลูทูธ|สายชาร์จ|พาวเวอร์แบงค์|พัดลม|อิเล็กทรอนิกส์|earphone|headphone|bluetooth|charger|powerbank|fan|electronic|appliance)/i.test(text)) {
     return `${ELECTRONICS_GADGETS_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
@@ -1538,6 +1559,9 @@ function inferPromptAutoOptions(productInfo = {}) {
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text)) {
     return promptAutoOptions("review", "none", "professional", "Trendy", "Urban Street", "Slow Zoom In", "Cut ตรง", "Footwear product, shown clearly without a presenter to preserve its exact model");
   }
+  if (isOutdoorRideProduct(text)) {
+    return promptAutoOptions("review", "none", "fun", "Natural", "Outdoor Home Driveway or Park Path", "Slow Zoom In", "Cut ตรง", "Ride-on product, shown outdoors where it is realistically used");
+  }
   if (/(ลด|sale|โปร|flash|discount|ถูก|ส่งฟรี)/i.test(text)) {
     return promptAutoOptions("flash-sale", "none", "hype", "Trendy", "Studio Minimal", "Push In Fast", "Whip Pan", "Promotion-led product, optimized for urgency and fast conversion");
   }
@@ -1582,6 +1606,9 @@ function inferRequiredProductLocation(productInfo = {}) {
   }
   if (/(pet|animal|cat|kitten|dog|puppy|อาหารแมว|อาหารหมา|ปลอกคอ|สัตว์เลี้ยง)/i.test(text)) {
     return "Clean pet-friendly home interior with a neutral floor and simple pet-care context";
+  }
+  if (isOutdoorRideProduct(text)) {
+    return "Realistic outdoor home driveway, front yard, quiet neighborhood street, or park path with safe open space; never an indoor room, nursery, bedroom, cafe, or studio";
   }
   if (/(baby|infant|newborn|toddler|kid|kids|child|toy|เด็ก|ทารก|ของเล่น)/i.test(text)) {
     return "Bright safe children's playroom or nursery with clean age-appropriate surroundings";
@@ -1636,7 +1663,7 @@ function inferRequiredProductLocation(productInfo = {}) {
 
   // 8. Footwear -> Minimalist Studio / Urban Street
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
-    return "Clean realistic urban street or minimalist footwear showroom floor, with the shoes clearly visible and no unrelated props";
+    return "Clean realistic urban street or minimalist footwear showroom floor, with an optional home entryway or shoe shelf display, with the shoes clearly visible at true human-foot scale and no unrelated props";
   }
 
   // 9. Clothing -> Minimalist Studio
