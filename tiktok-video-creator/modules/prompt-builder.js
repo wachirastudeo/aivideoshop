@@ -152,7 +152,7 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
   const collageRule = "STRICT RULE: Do NOT generate a collage or grid frame. Each scene must be a single full-frame shot. Animate each panel sequentially with smooth camera movement and clean cuts.";
   const singleSceneRule = "STRICT RULE: Do NOT generate a collage or grid frame. Each scene must be a single full-frame shot with smooth camera movement and clean cuts.";
   const newSceneEnv = "STRICT NEW REALISTIC BACKGROUND SCENE LOCK: Generate a BRAND NEW, realistic, aesthetically composed background environment tailored to this product category (living room for furniture, cafe for coffee/phone cases, bathroom for skincare, workspace for gadgets). DO NOT copy the reference photo background.";
-  const brandNewFaceRule = "CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The presenter/model generated in this image/video MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, hairstyle, and facial features from any person appearing in the uploaded reference photo. ABSOLUTELY FORBIDDEN: Do NOT copy, clone, mirror, or resemble the face or identity of any person shown in the uploaded reference image under any circumstances. Always generate a brand new presenter face from scratch while keeping presenter appearance consistent across all generated scenes.";
+  const presenterContinuityRule = "CRITICAL PRESENTER CONTINUITY LOCK: If the attached reference frame contains the fictional presenter generated for this product, preserve that exact same presenter in the video. Keep the same gender, face, age, skin tone, hairstyle, outfit, and overall identity across the still image and every video scene. ABSOLUTELY FORBIDDEN: Do NOT switch from male to female or female to male, do not replace the presenter, and do not introduce another person. If the uploaded product photo contains an unrelated real person, do not copy that person's identity; use the selected fictional Thai presenter instead.";
 
   if (autoPresenter === "none") {
     return `IMPORTANT: Depict the product across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${collageRule}`;
@@ -164,7 +164,7 @@ function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
     return `IMPORTANT: Depict the product in an authentic first-person POV unboxing sequence across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${collageRule} STRICTLY FORBIDDEN: Do not show any face, head, torso, full body, presenter, or reviewer in the frame; show only hands opening the box/package and revealing the exact product inside.`;
   }
 
-  return `IMPORTANT: Depict the product and presenter across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${brandNewFaceRule} ${singleSceneRule}`;
+    return `IMPORTANT: Depict the product and presenter across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${presenterContinuityRule} ${singleSceneRule}`;
 }
 
 
@@ -1233,7 +1233,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
       personDir = "Natural Thai child character. The product must remain rigid, static, and completely unchanged; the child stands next to it, plays with it, or holds it gently without deforming it. The child must NOT speak to the camera, must NOT speak any dialogue, and must NOT review the product directly; all spoken dialogue in this video is strictly an off-screen voiceover by a caring Thai mother.";
     }
-    const faceMatchRule = "CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The uploaded reference image is for product extraction only and may contain a seller, model, or person in the photo. The presenter generated in this video MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, skin tone, hairstyle, and overall appearance from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face or head of any person appearing in the reference photo under any circumstances. Always generate a completely new, authentic human face from scratch that bears zero resemblance to the reference photo.";
+    const faceMatchRule = "CRITICAL PRESENTER CONTINUITY LOCK: Use the exact same fictional presenter identity as the still image/reference frame throughout this video. Preserve the same gender, face, age, skin tone, hairstyle, outfit, and overall appearance. ABSOLUTELY FORBIDDEN: Do NOT switch from male to female or female to male, do not replace the presenter, and do not introduce another person. If the uploaded product photo contains an unrelated real person, do not copy that person's identity; use the selected fictional Thai presenter instead.";
     let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${FULL_BODY_PRESENTER_DIRECTION} ${faceMatchRule} (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes).`;
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;

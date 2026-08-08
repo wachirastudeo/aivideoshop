@@ -441,12 +441,12 @@ const vidFirstSceneNoPeopleHeavy = buildVideoPrompt({ name: "กระสอบ�
 check("video prompt with firstSceneNoPeople (heavy) contains strict exception for no people/hands", /STRICT EXCEPTION FOR SCENE 1: Do not show the presenter, any other people, or hands/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
 check("video prompt with firstSceneNoPeople (heavy) shows only product resting in Scene 1", /Scene 1.*Product-only shot.*rest on a flat surface/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
 
-// Test 8: modelRefImage & presenter face generation enforcement
+// Test 8: modelRefImage & presenter continuity enforcement
 const vidNoModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
-check("video prompt without modelRefImage instructs AI NOT to copy face from product reference image", /CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION/i.test(vidNoModelRef), vidNoModelRef);
+check("video prompt without modelRefImage preserves presenter identity", /CRITICAL PRESENTER CONTINUITY LOCK/i.test(vidNoModelRef) && /Do NOT switch from male to female or female to male/i.test(vidNoModelRef), vidNoModelRef);
 
 const vidWithModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
-check("video prompt with modelRefImage enforces brand new presenter face generation", /CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION/i.test(vidWithModelRef), vidWithModelRef);
+check("video prompt with modelRefImage preserves presenter identity", /CRITICAL PRESENTER CONTINUITY LOCK/i.test(vidWithModelRef) && /same fictional presenter identity/i.test(vidWithModelRef), vidWithModelRef);
 
 const imgNoModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
 check("image prompt without modelRefImage instructs AI to focus on clean product hero presentation", /Product Hero Focus|Product Focus|BRAND NEW PRESENTER FACE/i.test(imgNoModelRef), imgNoModelRef);
@@ -475,6 +475,10 @@ check("Auto presenter is attractive and age-appropriate", /naturally attractive|
 
 const caseAutoImg = buildImagePrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
 check("phone case image Auto uses a fictional Thai presenter", /Presenter: A fictional adult Thai (?:woman|man) reviewer/i.test(caseAutoImg) && /THAI HUMAN IDENTITY LOCK/i.test(caseAutoImg), caseAutoImg);
+const caseImagePresenter = caseAutoImg.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
+const caseVideoPresenter = caseAutoVid.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
+check("Auto still and video use the same presenter gender", caseImagePresenter === caseVideoPresenter, `${caseImagePresenter} vs ${caseVideoPresenter}`);
+check("video preserves the still presenter identity", /CRITICAL PRESENTER CONTINUITY LOCK/i.test(caseAutoVid) && /Do NOT switch from male to female or female to male/i.test(caseAutoVid), caseAutoVid);
 
 const magneticCaseVid = buildVideoPrompt({ name: "เคสแม่เหล็กวงกลม ชาร์จไร้สาย ยึดขาตั้ง" }, settings);
 check("magnetic phone case prompt includes built-in magnetic ring feature lock", /BUILT-IN MAGNETIC RING \(MAGSAFE\) FEATURE LOCK/i.test(magneticCaseVid), magneticCaseVid);
