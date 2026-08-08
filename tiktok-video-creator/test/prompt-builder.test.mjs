@@ -274,6 +274,8 @@ check("formatPrice non-empty", typeof fp === "string" && fp.length > 0, `fp=${fp
 
 // --- normalizeHashtags dedup + cap ---
 eq("normalizeHashtags dedup+cap", normalizeHashtags(["#a", "#a", "#b", "#c", "#d", "#e", "#f"], 3), ["#a", "#b", "#c"]);
+eq("normalizeHashtags removes repeated hash prefixes", normalizeHashtags(["##TikTokShop", "###ของดีบอกต่อ"]), ["#TikTokShop", "#ของดีบอกต่อ"]);
+eq("normalizeHashtags splits space-separated tags", normalizeHashtags("##TikTokShop #ของดีบอกต่อ"), ["#TikTokShop", "#ของดีบอกต่อ"]);
 
 // --- omni-flash: multi-scene description ---
 const omniSettings = { ...settings, videoModel: "omni-flash", videoStyle: "sales" };
@@ -550,6 +552,18 @@ check("video prompt forbids revealing cleavage/deep v-necks/micro-shorts", /No d
 const balaclavaVid = buildVideoPrompt({ name: "โม่งคลุมหัวกันแดด ขี่มอเตอร์ไซค์" }, settings);
 check("balaclava prompt includes strict headwear never remove mandate", /STRICT HEADWEAR & BALACLAVA WEARING LOCK|ห้ามถอดโม่ง/i.test(balaclavaVid), balaclavaVid);
 check("balaclava prompt forbids taking off or removing headwear", /NEVER remove, pull down, take off, unmask/i.test(balaclavaVid), balaclavaVid);
+
+// --- vehicle accessories require the matching vehicle in the scene ---
+const motorcycleHelmetImage = buildImagePrompt({ name: "หมวกกันน็อคมอเตอร์ไซค์" }, settings);
+const motorcycleHelmetVideo = buildVideoPrompt({ name: "หมวกกันน็อคมอเตอร์ไซค์" }, settings);
+check("motorcycle helmet image includes real motorcycle context", /STRICT VEHICLE ACCESSORY CONTEXT LOCK/i.test(motorcycleHelmetImage) && /real motorcycle or scooter/i.test(motorcycleHelmetImage), motorcycleHelmetImage);
+check("motorcycle helmet video uses motorcycle location", /Outdoor motorcycle driveway|roadside|parking area/i.test(motorcycleHelmetVideo) && !/Realistic clean car interior/i.test(motorcycleHelmetVideo), motorcycleHelmetVideo);
+
+const motorcycleTopBoxImage = buildImagePrompt({ name: "กล่องท้ายมอเตอร์ไซค์" }, settings);
+check("motorcycle top box image requires attachment to a motorcycle", /shown on, attached to, or directly beside a real motorcycle/i.test(motorcycleTopBoxImage) && /matching motorcycle/i.test(motorcycleTopBoxImage), motorcycleTopBoxImage);
+
+const carAccessoryImage = buildImagePrompt({ name: "ที่วางโทรศัพท์ในรถยนต์" }, settings);
+check("car accessory image includes real car context", /shown inside, attached to, or directly beside a real car/i.test(carAccessoryImage) && /actual car clearly visible/i.test(carAccessoryImage), carAccessoryImage);
 
 // Test 23: No Donning & No Doffing Action Lock (ห้ามทำท่าถอดหรือสวมใส่)
 const videoPromptDonningCheck = buildVideoPrompt({ name: "หมวกกันแดด" }, settings);

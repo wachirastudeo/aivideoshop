@@ -142,7 +142,8 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Neve
 const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to reference: never stretch, squash, enlarge, or shrink it. The physical size of the product must be realistic and true-to-life compared to the environment, hands, or presenter. Do not make the product abnormally large or out-of-scale relative to the surroundings (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
 
 const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the background; do not enlarge, shrink, stretch, or warp it. STRICT BRAND NEW PRESENTER FACE LOCK: If a presenter is shown in the scene, the presenter in the video MUST feature an ENTIRELY BRAND NEW, UNIQUE face and appearance generated from scratch. ABSOLUTELY FORBIDDEN: NEVER copy, clone, mirror, or replicate the face, hair, or facial features of any person appearing in the reference photo. Always generate a completely new human face from scratch. Keep the newly generated presenter's appearance consistent across all scenes. STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
-const BACKGROUND_COMPATIBILITY_LOCK = "BACKGROUND COMPATIBILITY LOCK: The environment, surface, props, colors, and lighting must make physical and commercial sense for the exact product. Use only category-relevant objects. Do not place unrelated food, pets, plants, sports gear, bathroom items, kitchen tools, vehicles, or decorative props in the scene. Never let the background compete with, hide, recolor, or imply an incorrect use for the product.";
+const BACKGROUND_COMPATIBILITY_LOCK = "BACKGROUND COMPATIBILITY LOCK: The environment, surface, props, colors, and lighting must make physical and commercial sense for the exact product. Use only category-relevant objects. Do not place unrelated food, pets, plants, sports gear, bathroom items, kitchen tools, vehicles, or decorative props in the scene. For vehicle accessories, the matching vehicle is a required relevant context object. Never let the background compete with, hide, recolor, or imply an incorrect use for the product.";
+const VEHICLE_ACCESSORY_CONTEXT_DIRECTION = "STRICT VEHICLE ACCESSORY CONTEXT LOCK: The matching real vehicle MUST be clearly visible and correctly matched to the product. Motorcycle accessories (helmet, motorcycle top box, rear case, rack, pannier, phone mount, or motorcycle part) MUST be shown on, attached to, or directly beside a real motorcycle or scooter; show enough of the motorcycle to make the use unmistakable. Car accessories MUST be shown inside, attached to, or directly beside a real car; show the relevant dashboard, seat, trunk, door, windshield, or exterior body. ABSOLUTELY FORBIDDEN: Do not show a motorcycle/car accessory alone on a generic desk, empty studio floor, unrelated room, cafe, or mismatched vehicle. Keep the product as the hero while the matching vehicle provides clear real-world context.";
 const FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK = "HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE: The entire still-image scene MUST be clearly outdoors in open air, such as an outdoor home driveway, front yard, quiet neighborhood street, or park path. Use outdoor pavement, concrete, grass, or natural daylight. The shoe must be grounded on the outdoor surface or naturally worn on a visible foot outside. ABSOLUTELY FORBIDDEN: indoor rooms, houses, bedrooms, entryways, closets, shoe shelves, retail interiors, cafes, studios, indoor floors, or studio backdrops. If any other instruction conflicts with this, keep the shoe outdoors.";
 
 function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
@@ -488,6 +489,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const isFootwear = isFootwearProduct(productInfo);
+  const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const isHeavy = isHeavyProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(productText);
 
@@ -609,6 +611,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     LABEL_EXACT_COPY_MANDATE,
     COLOR_EXACT_LOCK,
     BACKGROUND_COMPATIBILITY_LOCK,
+    vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     NO_HALLUCINATED_BRAND_LOGOS_RULE,
     intro,
@@ -688,6 +691,17 @@ function isOutdoorRideProduct(text = "") {
 
 function isSmallTechAccessoryProduct(text = "") {
   return /(เมาส์|เม้าส์|คีย์บอร์ด|แป้นพิมพ์|หูฟัง|เอียร์บัด|สายชาร์จ|หัวชาร์จ|แท่นชาร์จ|พาวเวอร์แบงค์|แผ่นรองเมาส์|อุปกรณ์ไอที|อุปกรณ์คอม|mouse|keyboard|keycap|headset|headphone|earphone|earbud|earbuds|charger|charging\s*(?:cable|brick|adapter|dock|stand)|cable|powerbank|power\s*bank|mousepad|mouse\s*pad|computer\s*accessory|desk\s*accessory|tech\s*accessory)/i.test(String(text || "").toLowerCase());
+}
+
+function getVehicleAccessoryContext(text = "") {
+  const clean = String(text || "").toLowerCase();
+  if (/(มอเตอร์ไซค์|มอเตอร์ไซด์|มอไซค์|motorcycle|motorbike|กล่องท้าย|กล่องมอเตอร์ไซค์|กล่องสัมภาระมอเตอร์ไซค์|top\s*box|tail\s*box|pannier|saddlebag|หมวกกันน็อค|หมวกกันน็อก|หมวกมอเตอร์ไซค์|motorcycle\s*helmet)/i.test(clean)) {
+    return "motorcycle";
+  }
+  if (/(รถยนต์|รถเก๋ง|รถกระบะ|รถยนต์นั่ง|car|auto|automotive|vehicle|car\s*accessory|car\s*phone\s*holder|car\s*mount|dashboard\s*mount|อุปกรณ์รถยนต์|ที่วางโทรศัพท์ในรถ|ที่ยึดโทรศัพท์ในรถ)/i.test(clean)) {
+    return "car";
+  }
+  return "";
 }
 
 function getProductSpecificScaleInstruction(text = "") {
@@ -840,6 +854,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   ].filter(Boolean);
  
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const weightCategory = getProductWeightCategory(productText);
   const isHeavy = weightCategory !== "light";
   const isImmobile = weightCategory === "immobile";
@@ -915,6 +930,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     PROGRESSIVE_AUDIO_NARRATION_MANDATE,
     resolveMatchStillDirection(auto.presenter, hasModelRefImage),
     BACKGROUND_COMPATIBILITY_LOCK,
+    vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
     PRODUCT_ISOLATION_DIRECTION,
@@ -1520,7 +1536,9 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
   const productText = [productInfo.name, productInfo.originalName, productInfo.category, productInfo.highlights]
     .filter(Boolean)
     .join(" ");
+  const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const outdoorOnlyProduct = footwear || isOutdoorRideProduct(productText);
+  const contextLockedProduct = outdoorOnlyProduct || Boolean(vehicleAccessoryContext);
   const isPetProduct = /(สัตว์เลี้ยง|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|แมว|สุนัข|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b|\banimal\b)/i.test(productText);
   const autoPresenter = pickAutoReviewer(productInfo);
   const safeAutoPresenter = (autoPresenter === "dog" || autoPresenter === "cat")
@@ -1534,7 +1552,7 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
     customPresenter: sanitizeText(settings.customPresenter),
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
-    location: outdoorOnlyProduct ? requiredLocation : (isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location),
+    location: contextLockedProduct ? requiredLocation : (isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location),
     customLocation: sanitizeText(settings.customLocation),
     cameraMovement: isAuto(settings.cameraMovement) ? (footwear ? "Slow Zoom In" : (recommended.cameraMovement || inferred.cameraMovement)) : settings.cameraMovement,
     transition: isAuto(settings.transition) ? (recommended.transition || inferred.transition) : settings.transition,
@@ -1555,6 +1573,14 @@ function resolvePromptLocation(auto = {}) {
 
 function inferPromptAutoOptions(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
+  const vehicleAccessoryContext = getVehicleAccessoryContext(text);
+
+  if (vehicleAccessoryContext === "motorcycle") {
+    return promptAutoOptions("review", "none", "professional", "Natural", "Outdoor Motorcycle Driveway or Roadside", "Slow Zoom In", "Cut ตรง", "Motorcycle accessory, shown on or beside a real motorcycle or scooter so its real-world use is unmistakable");
+  }
+  if (vehicleAccessoryContext === "car") {
+    return promptAutoOptions("review", "none", "professional", "Professional", "Realistic Car Interior or Driveway", "Slow Zoom In", "Cut ตรง", "Car accessory, shown inside or beside a real car with the relevant vehicle context clearly visible");
+  }
 
   if (/(ซิ้ง|ซิ้งค์|ซิงค์|อ่าง|อ่างล้าง|ล้างจาน|เครื่องล้างจาน|ครัว|เครื่องครัว|เตาอบ|ไมโครเวฟ|จาน|ชาม|หม้อ|กระทะ|sink|dishwasher|kitchenware|cookware|kitchen)/i.test(text)) {
     return promptAutoOptions("review", "none", "professional", "Professional", "Modern Kitchen", "Slow Zoom In", "Cut ตรง", "Kitchen product, shown in a clean modern kitchen setting suited to its use");
@@ -1600,6 +1626,7 @@ function inferPromptAutoOptions(productInfo = {}) {
 
 function inferRequiredProductLocation(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
+  const vehicleAccessoryContext = getVehicleAccessoryContext(text);
 
   // 0. Sun Protection & Sun Hats -> Sunny Outdoor Setting
   if (isSunProtectionProduct(text)) {
@@ -1616,11 +1643,14 @@ function inferRequiredProductLocation(productInfo = {}) {
   if (isOutdoorRideProduct(text)) {
     return "Realistic outdoor home driveway, front yard, quiet neighborhood street, or park path with safe open space; never an indoor room, nursery, bedroom, cafe, or studio";
   }
+  if (vehicleAccessoryContext === "motorcycle") {
+    return "Outdoor motorcycle driveway, roadside, parking area, or garage entrance with a real motorcycle or scooter clearly visible; show the accessory on, attached to, or directly beside the matching motorcycle; never a generic desk, empty studio, unrelated room, cafe, or car-only setting";
+  }
+  if (vehicleAccessoryContext === "car") {
+    return "Realistic clean car interior, driveway, parking area, or open garage entrance with the actual car clearly visible; show the accessory inside, attached to, or directly beside the matching car; never a generic desk, empty studio, unrelated room, cafe, or motorcycle-only setting";
+  }
   if (/(baby|infant|newborn|toddler|kid|kids|child|toy|เด็ก|ทารก|ของเล่น)/i.test(text)) {
     return "Bright safe children's playroom or nursery with clean age-appropriate surroundings";
-  }
-  if (/(car|auto|vehicle|motorcycle|motorbike|รถยนต์|มอเตอร์ไซค์|อุปกรณ์รถ)/i.test(text)) {
-    return "Realistic clean car interior or organized garage workspace appropriate for the vehicle accessory";
   }
   if (/(snack|food|drink|beverage|ขนม|อาหาร|เครื่องดื่ม|น้ำผลไม้)/i.test(text)) {
     return "Clean natural kitchen countertop or dining table with food-safe presentation";
@@ -1934,7 +1964,9 @@ function findNestedProductUrl(value, seen = new Set()) {
 }
 
 export function normalizeHashtags(value, maxTags = 5) {
-  const rawTags = Array.isArray(value) ? value : String(value || "").split(",");
+  const rawTags = Array.isArray(value)
+    ? value.flatMap((tag) => String(tag || "").split(/[\s,]+/))
+    : String(value || "").split(/[\s,]+/);
   const seen = new Set();
   const tags = [];
   const limit = Math.max(1, Number.parseInt(maxTags, 10) || 5);

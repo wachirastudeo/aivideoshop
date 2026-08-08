@@ -1524,7 +1524,9 @@ async function notify(title, message) {
 }
 
 function normalizeHashtags(value) {
-  const rawTags = Array.isArray(value) ? value : String(value || "").split(",");
+  const rawTags = Array.isArray(value)
+    ? value.flatMap((tag) => String(tag || "").split(/[\s,]+/))
+    : String(value || "").split(/[\s,]+/);
   const seen = new Set();
   const tags = [];
 

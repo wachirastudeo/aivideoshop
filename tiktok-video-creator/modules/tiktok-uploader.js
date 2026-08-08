@@ -117,7 +117,10 @@ async function uploadChunks(uploadUrl, blob) {
 
 // ── Step 5: Publish draft ─────────────────────────────────────────────────
 async function publishDraft({ endpoint, uploadId, caption, hashtags, csrfToken }) {
-  const captionWithTags = [caption, ...hashtags.map(t => t.startsWith("#") ? t : `#${t}`)].join(" ").trim();
+  const captionWithTags = [
+    caption,
+    ...hashtags.map((tag) => `#${String(tag || "").replace(/^#+/, "").trim()}`).filter((tag) => tag !== "#")
+  ].join(" ").trim();
 
   const res = await fetch(endpoint, {
     method: "POST",

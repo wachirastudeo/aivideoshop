@@ -55,7 +55,7 @@ function normalizeHashtags(value) {
     .split(/[,\s]+/)
     .map((tag) => tag.trim())
     .filter(Boolean)
-    .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`))
+    .map((tag) => `#${tag.replace(/^#+/, "")}`)
     .join(" ");
 }
 
