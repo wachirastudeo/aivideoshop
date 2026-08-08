@@ -94,12 +94,14 @@ check("video prompt is 9:16 vertical", /9:16|vertical/i.test(vid));
 check("default video forbids added scene text", /do not add any new, extra, or unnecessary text/i.test(vid), vid);
 check("default video preserves the product's own printed text", /Keep the product's own printed text/i.test(vid), vid);
 check("video prompt starts with Thai advertisement prefix", /^สร้างวิดีโอโฆษณารีวิวสินค้า/i.test(vid), vid);
+check("default video puts no-text rule before style instructions", vid.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < vid.indexOf("Visual style:"), vid);
 
 // --- image prompt: fidelity + sharp focus ---
 const img = buildImagePrompt({ name: "ครีมบำรุงผิว", highlights: "" }, settings);
 check("image prompt mentions fidelity", /preserve its exact shape/i.test(img));
 check("image prompt sharp focus", /sharp and clearly visible|sharp focus/i.test(img));
 check("reference image keeps product text but forbids added text", /Keep the product's own printed text[\s\S]*do not add any new, extra, or unnecessary text/i.test(img), img);
+check("default image puts no-text rule before product instructions", img.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < img.indexOf("REFERENCE PHOTO OVERRIDES TEXT"), img);
 
 const staleTextSettings = {
   ...settings,
@@ -110,6 +112,8 @@ const staleTextSettings = {
 };
 const staleTextVideo = buildVideoPrompt({ name: "รองเท้าทดสอบ" }, staleTextSettings);
 check("disabled text ignores stale promotion and CTA", !/ลด 50%|กดซื้อเลย/.test(staleTextVideo), staleTextVideo);
+const staleTextVideoStyle = staleTextVideo.match(/Visual style: ([\s\S]*?)(?=\n|$)/i)?.[1] || "";
+check("text-disabled video removes conflicting style overlay instructions", !/text overlays?|text hook overlay|countdown timer graphic|bold promotion text/i.test(staleTextVideoStyle), staleTextVideoStyle);
 
 const enabledTextVideo = buildVideoPrompt(
   { name: "รองเท้าทดสอบ" },
@@ -138,8 +142,8 @@ check("image prompt rejects source-scene objects", /100% NEW SCENE & BACKGROUND|
 check("image prompt creates a new suitable background", /brand new|background that fits this product category/i.test(cabinetImage));
 check("video prompt is multi-scene", /multi-scene|distinct scenes/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
 check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabinetVideo) && !/Urban Street/i.test(cabinetVideo));
-check("image prompt stays concise", cabinetImage.length < 12000, `length=${cabinetImage.length}`);
-check("video prompt stays concise", cabinetVideo.length < 18000, `length=${cabinetVideo.length}`);
+check("image prompt stays concise", cabinetImage.length < 14000, `length=${cabinetImage.length}`);
+check("video prompt stays concise", cabinetVideo.length < 21000, `length=${cabinetVideo.length}`);
 
 // --- footwear fidelity: preserve the exact model while Auto includes a reviewer ---
 const shoe = {
@@ -156,10 +160,10 @@ check("shoe prompt uses an outdoor footwear location", /outdoor home driveway|fr
 check("shoe prompt rejects oversized placement", /do not enlarge the shoe to furniture-scale/i.test(shoeImage));
 check("shoe prompt rejects indoor locations", /never inside a house|bedroom|entryway|closet|shoe shelf|showroom|cafe|studio/i.test(shoeImage));
 check("shoe still image has highest-priority outdoor background lock", /HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE/i.test(shoeImage) && /outdoor pavement|concrete|grass|natural daylight/i.test(shoeImage));
-check("shoe video Auto includes a reviewer", /Presenter: (?:A young Thai woman reviewer|A young Thai man reviewer)/i.test(shoeVideo));
+check("shoe video Auto includes a reviewer", /Presenter: (?:A fictional adult Thai woman reviewer|A fictional adult Thai man reviewer)/i.test(shoeVideo));
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
-check("shoe prompts remain concise", shoeImage.length < 10000 && shoeVideo.length < 15000, `image=${shoeImage.length} video=${shoeVideo.length}`);
+check("shoe prompts remain concise", shoeImage.length < 15000 && shoeVideo.length < 21000, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
 // --- default behavior: UGC style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
@@ -167,18 +171,18 @@ const generalReviewB = buildVideoPrompt({ name: "เครื่องชงก�
 check("default style is UGC testimonial", settings.videoStyle === "testimonial");
 check("default video uses UGC testimonial", /UGC testimonial/i.test(generalReviewA));
 check("Auto reviewer is stable per product", generalReviewA === generalReviewB);
-check("Auto reviewer is male or female", /Presenter: (?:A young Thai woman reviewer|A young Thai man reviewer)/i.test(generalReviewA));
+check("Auto reviewer is male or female", /Presenter: (?:A fictional adult Thai woman reviewer|A fictional adult Thai man reviewer)/i.test(generalReviewA));
 check(
   "women product selects Thai woman reviewer",
-  /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง", productId: "women-shoe" }, settings))
+  /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง", productId: "women-shoe" }, settings))
 );
 check(
   "tools product selects Thai man reviewer",
-  /Presenter: A young Thai man reviewer/i.test(buildVideoPrompt({ name: "สว่านไฟฟ้าสำหรับช่าง", productId: "power-drill" }, settings))
+  /Presenter: A fictional adult Thai man reviewer/i.test(buildVideoPrompt({ name: "สว่านไฟฟ้าสำหรับช่าง", productId: "power-drill" }, settings))
 );
 check(
   "AI real-reviewer recommendation is respected",
-  /Presenter: A young Thai man reviewer/i.test(buildVideoPrompt({
+  /Presenter: A fictional adult Thai man reviewer/i.test(buildVideoPrompt({
     name: "น้ำหอมรุ่นใหม่",
     productId: "recommended-man",
     autoOptions: { presenter: "man" }
@@ -188,19 +192,19 @@ check(
 // Child presenter age-group auto detection tests — Auto mode MUST pick parents (woman/man)
 check(
   "baby product name in Auto presenter mode falls back to parent (woman) presenter",
-  /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "นมผงเด็กแรกเกิด", productId: "baby-milk" }, settings))
+  /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({ name: "นมผงเด็กแรกเกิด", productId: "baby-milk" }, settings))
 );
 check(
   "toddler product name in Auto presenter mode falls back to parent (woman) presenter",
-  /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "ห่วงยางเด็กหัดเดินเตาะแตะ", productId: "toddler-ring" }, settings))
+  /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({ name: "ห่วงยางเด็กหัดเดินเตาะแตะ", productId: "toddler-ring" }, settings))
 );
 check(
   "older child product name in Auto presenter mode selects parent (woman) presenter",
-  /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "กระเป๋านักเรียนประถมเด็กโต", productId: "older-child-bag" }, settings))
+  /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({ name: "กระเป๋านักเรียนประถมเด็กโต", productId: "older-child-bag" }, settings))
 );
 check(
   "general child/toy product name in Auto presenter mode selects parent (woman) presenter",
-  /Presenter: A young Thai woman reviewer/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, settings))
+  /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, settings))
 );
 check(
   "explicit older_child mode selects older_child presenter",
@@ -263,6 +267,12 @@ const customPresenterPrompt = buildVideoPrompt(
   { ...settings, presenter: "กรอกเอง", customPresenter: "a chef wearing a white hat" }
 );
 check("custom presenter option injects custom presenter text", /Presenter: a chef wearing a white hat/i.test(customPresenterPrompt), customPresenterPrompt);
+
+const policySafeCustomPresenter = buildVideoPrompt(
+  { name: "เสื้อเชิ้ตผู้หญิง", productId: "policy-custom" },
+  { ...settings, presenter: "กรอกเอง", customPresenter: "looks like Lisa BLACKPINK, wearing a white shirt" }
+);
+check("custom presenter likeness request is neutralized", /a fictional adult commercial model/i.test(policySafeCustomPresenter) && !/Lisa|BLACKPINK|looks like/i.test(policySafeCustomPresenter), policySafeCustomPresenter);
 
 // --- auto presenter/location inference by category (beauty -> reviewer) ---
 const vidBeauty = buildVideoPrompt({ name: "เซรั่มหน้าใส วิตามินซี", highlights: "" }, settings);
@@ -456,12 +466,15 @@ check("hands_only image prompt has soft-focus cinematic bokeh blur instruction",
 const handsOnlyVid = buildVideoPrompt({ name: "เคสมือถือ" }, { ...settings, presenter: "hands_only" });
 check("hands_only video prompt contains background setting or aesthetics", /Cafe \/ Coffee Shop|BACKGROUND AESTHETICS/i.test(handsOnlyVid), handsOnlyVid);
 
-// Test 11: Phone case product infers hands_only and Cafe/Coffee Shop setting
+// Test 11: Auto mode always uses a Thai presenter and keeps the inferred setting
 const caseAutoVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
-check("phone case product Auto presenter recommends hands_only", /STRICTLY FORBIDDEN: Do not show any face or head in the frame/i.test(caseAutoVid), caseAutoVid);
+check("phone case product Auto uses a fictional Thai presenter", /Presenter: A fictional adult Thai (?:woman|man) reviewer/i.test(caseAutoVid) && /THAI HUMAN IDENTITY LOCK/i.test(caseAutoVid), caseAutoVid);
 check("phone case product Auto location recommends Cafe \/ Coffee Shop setting", /Cafe \/ Coffee Shop/i.test(caseAutoVid), caseAutoVid);
 check("phone case product video prompt contains multi-angle multi-shot mandate", /MULTI-ANGLE PHONE CASE SHOT MANDATE/i.test(caseAutoVid), caseAutoVid);
-check("no-presenter or hands_only presenter defaults voice narration to female narrator", /young Thai female|off-screen young Thai woman narrator/i.test(caseAutoVid), caseAutoVid);
+check("Auto presenter is attractive and age-appropriate", /naturally attractive|beautiful or handsome|age-appropriate/i.test(caseAutoVid), caseAutoVid);
+
+const caseAutoImg = buildImagePrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
+check("phone case image Auto uses a fictional Thai presenter", /Presenter: A fictional adult Thai (?:woman|man) reviewer/i.test(caseAutoImg) && /THAI HUMAN IDENTITY LOCK/i.test(caseAutoImg), caseAutoImg);
 
 const magneticCaseVid = buildVideoPrompt({ name: "เคสแม่เหล็กวงกลม ชาร์จไร้สาย ยึดขาตั้ง" }, settings);
 check("magnetic phone case prompt includes built-in magnetic ring feature lock", /BUILT-IN MAGNETIC RING \(MAGSAFE\) FEATURE LOCK/i.test(magneticCaseVid), magneticCaseVid);
@@ -471,9 +484,11 @@ check("magnetic phone case prompt forbids external stick-ons or separate plates"
 const clothingVid = buildVideoPrompt({ name: "เสื้อยืดคอกลมแฟชั่น", category: "เสื้อผ้า" }, settings);
 check("clothing video prompt enforces front-only view lock", /STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK/i.test(clothingVid), clothingVid);
 check("clothing video prompt forbids back view and turning around", /do NOT show the back view|CLOTHING FRONT-ONLY RULE/i.test(clothingVid), clothingVid);
+check("clothing video prompt blocks public figure likeness", /PUBLIC FIGURE \/ LIKENESS SAFETY LOCK/i.test(clothingVid) && /APPAREL MODEL SAFETY/i.test(clothingVid) && /fictional adult/i.test(clothingVid), clothingVid);
 
 const clothingImg = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาว", category: "แฟชั่น" }, settings);
 check("clothing image prompt enforces front-facing shot distribution", /front shot|front-facing/i.test(clothingImg), clothingImg);
+check("clothing image prompt blocks public figure likeness", /PUBLIC FIGURE \/ LIKENESS SAFETY LOCK/i.test(clothingImg) && /APPAREL MODEL SAFETY/i.test(clothingImg), clothingImg);
 
 // Test 13: Auto never selects dog/cat; animal presenters are explicit opt-in only
 const petFoodAutoVid = buildVideoPrompt({ name: "อาหารแมวพรีเมียม 1.2kg" }, { ...settings, presenter: "Auto" });
