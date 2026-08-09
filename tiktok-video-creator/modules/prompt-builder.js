@@ -182,9 +182,14 @@ const NO_PUTTING_ON_OR_TAKING_OFF_MANDATE = "WEARABLE PRODUCT CONTINUITY: The pr
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 const SHOE_SCALE_DIRECTION = "STRICT FOOTWEAR SCALE & PLACEMENT LOCK: This is a real human shoe, not a giant prop or miniature toy. Preserve true foot-sized proportions and the exact single-shoe/pair count. Show it at realistic scale relative to a human foot, leg, hand, shoe box, floor, shelf, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge the shoe to furniture-scale, make it tiny, or place it in an unrelated oversized environment. Keep the shoe grounded on a realistic floor, shelf, or naturally worn on a foot.";
 
-const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: You MUST reproduce the clothing item EXACTLY as depicted in the reference image. Preserve its 100% exact garment cut, silhouette, neckline style (crewneck, V-neck, polo collar, hoodie, scoop neck), sleeve length (short sleeve, long sleeve, sleeveless), sleeve cut, fabric material texture (cotton, denim, knit, silk, linen, fleece), color shade, wash, buttons, zippers, pockets, and stitching. EXACT PRINTED GRAPHICS & PATTERNS: Any chest logo, printed artwork, typography, graphic illustrations, embroidery, brand crest, or pattern (stripes, plaid, floral, tie-dye) MUST be reproduced 100% pixel-faithfully in the exact same location, size, and colors. STRICTLY FORBIDDEN: Do NOT simplify, alter, redesign, recolor, or change the clothing item. Do NOT convert a printed shirt into a plain shirt, do NOT change sleeve length, and do NOT alter the collar or cut. The garment worn by the presenter must remain 100% identical and static across all video frames without any morphing or shifting. FRONT-ONLY VIEW LOCK: The presenter must face forward showing the front design of the garment. Do NOT show back-facing angles or 360-degree rotations.";
+const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: Match the reference garment's type, cut, fit, length, neckline or waistband, sleeves or legs, fabric, color, print, logo, seams, pockets, and fasteners. Keep those visible design details consistent while allowing natural fabric drape and ordinary movement. Show the front design clearly and do not use a back-facing or 360-degree spin.";
+const APPAREL_REFERENCE_USE_DIRECTION = "APPAREL REFERENCE USE: Treat the attached image as the authoritative reference for the garment itself. Reproduce that exact garment as the featured clothing item, preserving its cut, fit, length, neckline, sleeves, fabric, seams, pockets, fasteners, colors, print, logo, and every visible design detail. When a presenter is selected, the presenter is already wearing the exact reference garment naturally. When no presenter is selected, display the full-size garment naturally on a hanger, mannequin, or clean flat lay.";
+const APPAREL_SCALE_DIRECTION = "APPAREL SCALE: Show the garment at realistic full-size human clothing scale, naturally fitted on the selected presenter or displayed at its true wearable size. Preserve the reference garment's exact proportions and fit.";
+const APPAREL_VISIBILITY_DIRECTION = "APPAREL VISIBILITY: Keep the complete featured garment and its important front details clearly visible without covering it with hands, hair, outerwear, or props.";
+const APPAREL_FABRIC_PHYSICS_DIRECTION = "NATURAL FABRIC PHYSICS: The garment is flexible fabric with believable drape, folds, seams, and gentle motion caused by the presenter's body. Keep its design, cut, proportions, colors, graphics, and construction unchanged while the fabric moves naturally.";
 const APPAREL_PRESENTER_FRAME_CONTINUITY = "APPAREL PRESENTER FRAME CONTINUITY: Keep the presenter's complete head, neck, torso, arms, legs, and feet anatomically connected and fully inside the frame throughout every shot. Preserve comfortable space above the head and below the feet. The complete head and body must remain visible in the final frame before each hard cut and the first frame after each hard cut. Use instantaneous hard cuts only; never crossfade, dissolve, wipe, morph, or interpolate the presenter between scenes. Never crop, hide, detach, or make the head or any body part disappear during a scene change.";
 const FICTIONAL_CAST_DIRECTION = "HUMAN CAST: Use a generic fictional commercial presenter according to the selected presenter mode.";
+const INDEPENDENT_FICTIONAL_CAST_DIRECTION = "INDEPENDENT FICTIONAL CAST: Generate the selected fictional presenter independently. Use the product reference only for garment design details; choose the presenter and setting from the selected options.";
 const APPAREL_FICTIONAL_MODEL_DIRECTION = "APPAREL MODEL SAFETY: For clothing, fashion, bags, or accessories, use only a fictional adult commercial fit model or product-only mannequin-style presentation.";
 
 const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference image pixel-for-pixel. Do NOT shift, alter, tint, recolor, or replace original colors or graphics under any lighting or environment effect. Every color zone — background fill, text color, graphic element colors, border colors — must remain exactly as shown in the reference photo.";
@@ -198,6 +203,23 @@ export function isClothingProduct(text = "") {
     return false;
   }
   return /(เสื้อ|กางเกง|กระโปรง|ชุด|เดรส|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|เสื้อผ้า|แฟชั่น|เข็มขัด|หมวก|ถุงเท้า|กางเกงยีนส์|ชุดเดรส|ชุดเซ็ท|ชุดกระโปรง|ผ้าพันคอ|ผ้าคลุม|clothing|clothes|apparel|dress|shirt|tshirt|tee|pants|trousers|jacket|hoodie|skirt|outfit|garment|fashion|\bwear\b|suit|coat|\btop\b|\bbottom\b)/i.test(clean);
+}
+
+function getApparelWearDirection(text = "", selectedPresenter = "") {
+  const clean = String(text || "").toLowerCase();
+  const gender = detectExplicitProductGender(clean) || (["woman", "man"].includes(selectedPresenter) ? selectedPresenter : "");
+  const model = gender === "man" ? "adult male model" : gender === "woman" ? "adult female model" : "selected adult model";
+
+  if (/(เดรส|จั๊มสูท|ชุดหมี|dress|jumpsuit|romper|one.?piece)/i.test(clean)) {
+    return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference one-piece garment once as intended. Let the model choose simple shoes and accessories naturally.`;
+  }
+  if (/(กางเกง|กระโปรง|เลกกิ้ง|ยีนส์|ขาสั้น|ขาสามส่วน|pants|trousers|shorts|leggings|jeans|skirt|bottoms?)/i.test(clean)) {
+    return `APPAREL WEARING MODE: The ${model} naturally wears exactly one pair of the exact reference garment as the sole visible bottom garment. Let the model choose a simple matching top naturally. Do not add another pair of trousers, shorts, leggings, or a skirt over or under it.`;
+  }
+  if (/(เสื้อ|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|shirt|tshirt|tee|top|jacket|hoodie|sweater|blouse|coat)/i.test(clean)) {
+    return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once as the sole visible featured top. Let the model choose a simple matching bottom naturally and do not add another top over it.`;
+  }
+  return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once in the normal way for that garment type. Let the model choose a simple complementary outfit naturally without layering a duplicate garment of the same type.`;
 }
 
 const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "STRICT LOGO & PRINTED TEXT FIDELITY LOCK: Reproduce all printed surface artwork, brand logos, typography, font styles, symbols, badges, illustrations, and packaging text EXACTLY as in the reference image. Maintain the exact text placement, letter alignment, font weight, line spacing, logo proportion, and colors. Copy it 100% pixel-faithfully; NEVER redraw with a different font, NEVER restyle, simplify, omit, alter, or replace any logo or text. For video frames, all printed text and logos must remain static and crisp on the product surface.";
@@ -245,6 +267,16 @@ const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or charact
 
 export function isKidsProduct(text = "") {
   return /(จักรยานเด็ก|รถเด็ก|ของใช้เด็ก|ของเล่นเด็ก|คาร์ซีท|รถเข็นเด็ก|กระเป๋านักเรียน|เสื้อผ้าเด็ก|ชุดเด็ก|ของเล่น|เด็ก|kids|kid|toddler|baby|children)/i.test(String(text || ""));
+}
+
+function getDefaultAutoPresenterProfile(text = "", presenter = "") {
+  const hasAgeTarget = /(เด็ก|ทารก|วัยรุ่น|นักเรียน|นักศึกษา|วัยกลางคน|ผู้สูงอายุ|สูงวัย|วัยเกษียณ|คนแก่|อายุ\s*\d+|baby|toddler|child|children|teen|student|middle.?aged|senior|elderly|retiree|age\s*\d+)/i.test(String(text || ""));
+  if (hasAgeTarget || !["woman", "man"].includes(presenter)) return "";
+
+  const appearance = presenter === "man"
+    ? "handsome, naturally attractive, well-groomed, and confident"
+    : "beautiful, naturally attractive, well-groomed, and confident";
+  return `AUTO PRESENTER PROFILE: Use a fictional Thai ${presenter} around 22-35 years old with a young working-age appearance: ${appearance}, realistic, approachable, and suitable for a modern commercial product review.`;
 }
 
 export function isFarmPoultryProduct(text = "") {
@@ -510,6 +542,10 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const autoPresenterProfile = isAuto(settings.presenter)
+    ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
+    : "";
+  const isClothing = isClothingProduct(productText);
   const isFootwear = isFootwearProduct(productInfo);
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const isHeavy = isHeavyProduct(productText);
@@ -518,9 +554,11 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
   const noPeople = !(auto.presenter && auto.presenter !== "none");
-  const referenceCompositingDirection = noPeople
-    ? REFERENCE_COMPOSITING_DIRECTION
-    : "BACKGROUND-ONLY EDIT WITH NATURAL PRESENTER COMPOSITING: Keep the reference product unchanged. Replace its source background and add the selected fictional presenter in a physically natural pose without altering the product.";
+  const referenceCompositingDirection = isClothing
+    ? APPAREL_REFERENCE_USE_DIRECTION
+    : noPeople
+      ? REFERENCE_COMPOSITING_DIRECTION
+      : "BACKGROUND-ONLY EDIT WITH NATURAL PRESENTER COMPOSITING: Keep the reference product unchanged. Replace its source background and add the selected fictional presenter in a physically natural pose without altering the product.";
 
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
   const explicitlySelectedAnimal = settings?.presenter === "dog" || settings?.presenter === "cat";
@@ -540,10 +578,12 @@ export function buildImagePrompt(productInfo, settings = {}) {
   } else if (isKids && auto.presenter !== "none") {
     peopleDirection = `${KIDS_WITH_PARENT_DIRECTION} ${MULTI_PERSON_HAND_ANATOMY_DIRECTION}`;
   } else if (auto.presenter && auto.presenter !== "none") {
-    const presenterInstruction = auto.presenter === "กรอกเอง"
-      ? (auto.customPresenter || "a fictional adult Thai presenter")
-      : (PRESENTERS[auto.presenter] || PRESENTERS.none);
-    peopleDirection = `Presenter: ${presenterInstruction}. ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.`;
+    const presenterInstruction = isClothing
+      ? `A fictional adult Thai ${auto.presenter === "man" ? "man" : "woman"} commercial fit model`
+      : auto.presenter === "กรอกเอง"
+        ? (auto.customPresenter || "a fictional adult Thai presenter")
+        : (PRESENTERS[auto.presenter] || PRESENTERS.none);
+    peopleDirection = `Presenter: ${presenterInstruction}. ${isClothing ? getApparelWearDirection(productText, auto.presenter) : ""} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.`;
   } else {
     peopleDirection = NO_PEOPLE_DIRECTION;
   }
@@ -597,7 +637,6 @@ export function buildImagePrompt(productInfo, settings = {}) {
       .replace(/\b(?:people|presenters?|reviewers?|characters?)\b/gi, "hands");
   }
 
-  const isClothing = isClothingProduct(productText);
   let shotDistribution = isSingleMode
     ? (isClothing
         ? "Single full-frame front shot: Depict ONLY the front-facing view of the clothing item in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side."
@@ -607,7 +646,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
         : "Multi-angle 4-panel grid collage layout: A 4-panel split layout showing the product from 4 distinct angles (Panel 1: Front view hero shot, Panel 2: Side/3-quarter angle view, Panel 3: Macro close-up of texture/logo, Panel 4: Realistic lifestyle context). Maintain 100% identical product appearance, packaging artwork, colors, and printed text across all 4 panels.");
 
   let scaleInstruction = "";
-  if (handsOnly) {
+  if (isClothing) {
+    scaleInstruction = APPAREL_SCALE_DIRECTION;
+  } else if (handsOnly) {
     scaleInstruction = isHeavy
       ? "Real scale."
       : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the hands in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to the hands; never make the product abnormally large).";
@@ -625,7 +666,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
   }
 
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
-  const imageBackgroundDirection = handsOnly
+  const imageBackgroundDirection = isClothing
+    ? `APPAREL BACKGROUND: Show the exact reference garment naturally in a brand new, realistic ${locationSetting} setting with clean everyday lighting. Keep the garment as the clear focal point.`
+    : handsOnly
     ? `${HANDS_ONLY_BACKGROUND_DIRECTION} Place the product in this category-appropriate setting: ${locationSetting}. Do not replace it with a generic cafe, desk, studio, or outdoor background unless that setting is appropriate for the exact product.`
     : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: After extracting ONLY the target product from the reference image, place it into a BRAND NEW, highly realistic ${locationSetting} background scene. NATURAL SMARTPHONE ATMOSPHERE: Enhance the background with clean, organic everyday lighting, realistic depth of field, authentic real-life textures, and a believable environment tailored specifically to this product category. FORBIDDEN: Do NOT use hyper-processed commercial studio gloss, fake HDR sheen, or artificial CGI lighting. The scene MUST look authentic, natural, and grounded in real life.`;
   const stillBackgroundDirection = isFootwear
@@ -637,20 +680,22 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const promptParts = [
     !textEnabled ? TEXT_FREE_DIRECTION : "",
     NO_WOW_DIRECTION,
-    REFERENCE_IMAGE_HIGHEST_PRIORITY,
+    isClothing ? "" : REFERENCE_IMAGE_HIGHEST_PRIORITY,
     referenceCompositingDirection,
     FICTIONAL_CAST_DIRECTION,
+    isClothing && ["woman", "man"].includes(auto.presenter) ? INDEPENDENT_FICTIONAL_CAST_DIRECTION : "",
     isClothing ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     NO_HALLUCINATED_BRAND_LOGOS_RULE,
     auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_CAST_DIRECTION : "",
+    autoPresenterProfile,
     intro,
     STILL_PRODUCT_FIDELITY_DIRECTION,
-    PRODUCT_ISOLATION_DIRECTION,
+    isClothing ? "" : PRODUCT_ISOLATION_DIRECTION,
     hasEngravedPattern ? ENGRAVED_EMBOSSED_FIDELITY_DIRECTION : "",
-    FULL_PRODUCT_VISIBILITY_DIRECTION,
+    isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION,
     scaleInstruction,
     shotDistribution,
     specificScale,
@@ -932,6 +977,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   ].filter(Boolean);
  
   const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const autoPresenterProfile = isAuto(settings.presenter)
+    ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
+    : "";
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const weightCategory = getProductWeightCategory(productText);
   const isHeavy = weightCategory !== "light";
@@ -980,7 +1028,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   let scaleInstruction = "";
-  if (handsOnly) {
+  if (isClothing) {
+    scaleInstruction = APPAREL_SCALE_DIRECTION;
+  } else if (handsOnly) {
     scaleInstruction = isHeavy
       ? "Real scale."
       : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the hands or surroundings.";
@@ -1009,6 +1059,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     NO_HALLUCINATED_BRAND_LOGOS_RULE,
     FICTIONAL_CAST_DIRECTION,
     auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_CAST_DIRECTION : "",
+    autoPresenterProfile,
     isClothing ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     SPEECH_DIRECTION,
@@ -1018,14 +1069,16 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
-    PRODUCT_ISOLATION_DIRECTION,
+    isClothing ? APPAREL_REFERENCE_USE_DIRECTION : PRODUCT_ISOLATION_DIRECTION,
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
-    FULL_PRODUCT_VISIBILITY_DIRECTION,
-    "Critical: Keep product shape, colors, materials, branding, and text 100% identical and static across all scenes; no redesign, warp, morph, or structural changes.",
-    REALISM_AND_PHYSICS_DIRECTION,
-    getNaturalProductInteractionDirection(productText),
-    OBJECT_REALISM_DIRECTION,
+    isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION,
+    isClothing
+      ? "Critical: Keep the garment's cut, proportions, colors, fabric, graphics, branding, and construction identical across all scenes."
+      : "Critical: Keep product shape, colors, materials, branding, and text 100% identical and static across all scenes; no redesign, warp, morph, or structural changes.",
+    isClothing ? APPAREL_FABRIC_PHYSICS_DIRECTION : REALISM_AND_PHYSICS_DIRECTION,
+    isClothing ? "" : getNaturalProductInteractionDirection(productText),
+    isClothing ? "" : OBJECT_REALISM_DIRECTION,
     isWearable ? NO_PUTTING_ON_OR_TAKING_OFF_MANDATE : "",
     scaleInstruction,
     specificScale,
@@ -1099,7 +1152,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     sceneBreakdown = sceneBreakdown
       .replace(/cuts\/transitions/gi, "instantaneous hard cuts")
       .replace(/360-degree rotation showing (.+?) from all angles/gi, "front-facing showcase showing the front view of $1")
-      .replace(/showing (.+?) from all angles/gi, "showing the front view of $1");
+      .replace(/showing (.+?) from all angles/gi, "showing the front view of $1")
+      .replace(/with a reviewer presenting (.+?) in its normal real-world position and talking to the camera/gi, "with a model already wearing $1 and showing its front design to the camera")
+      .replace(/the product used naturally as intended/gi, "the exact reference garment worn naturally by the model")
+      .replace(/with the reviewer smiling/gi, "with the model wearing the exact reference garment and smiling");
     sceneBreakdown += "\n(CLOTHING FRONT-ONLY RULE: The model/presenter must remain strictly front-facing in all scenes; do NOT turn around or show the back side of the clothing item, to prevent arm and hand distortion glitches.)";
   }
 
@@ -1172,6 +1228,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   if (auto.presenter === "กรอกเอง") {
     presenterInstruction = auto.customPresenter || "a fictional adult presenter";
   }
+  if (isClothing && ["woman", "man"].includes(auto.presenter)) {
+    presenterInstruction = `A fictional adult Thai ${auto.presenter} commercial fit model`;
+  }
 
   if (isImmobile) {
     handsDir = handsDir
@@ -1192,7 +1251,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace("holding and presenting", "holding with both hands and presenting")
       .replace("holding", "holding with both hands or interacting with")
       + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the presenter, never as a tiny packet or a giant sack.";
-  } else if (weightCategory === "light") {
+  } else if (weightCategory === "light" && !isClothing) {
     const isEyewear = /(แว่นตา|แว่นกันแดด|แว่นสายตา|แว่น|glasses|sunglasses|eyewear|spectacles)/i.test(productText);
     if (isEyewear) {
       handsDir = handsDir
@@ -1292,7 +1351,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     }
     promptParts.push(`${animalInstructions} ${speechDir}`);
   } else if (auto.presenter && auto.presenter !== "none") {
-    let personDir = THAI_PERSON_DIRECTION;
+    let personDir = isClothing
+      ? "Natural fictional adult Thai commercial fit model in a full-length front-facing shot."
+      : THAI_PERSON_DIRECTION;
     const presenterHandAnatomy = isChildPresenter || isKidsProduct(productText)
       ? MULTI_PERSON_HAND_ANATOMY_DIRECTION
       : SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION;
@@ -1302,7 +1363,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
       personDir = "Natural Thai child character. The product must remain rigid, static, and completely unchanged; the child stands next to it, plays with it, or holds it gently without deforming it. The child must NOT speak to the camera, must NOT speak any dialogue, and must NOT review the product directly; all spoken dialogue in this video is strictly an off-screen voiceover by a caring Thai mother.";
     }
-    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${presenterHandAnatomy} ${FULL_BODY_PRESENTER_DIRECTION} (Strictest rule: ${presenterContinuity})`;
+    const presenterFraming = isClothing ? getApparelWearDirection(productText, auto.presenter) : FULL_BODY_PRESENTER_DIRECTION;
+    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${presenterHandAnatomy} ${presenterFraming} (Strictest rule: ${presenterContinuity})`;
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;
       if (isHoldable) {

@@ -549,6 +549,11 @@ check("image prompt without modelRefImage instructs AI to focus on clean product
 
 const imgWithModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
 check("image prompt with modelRefImage avoids likeness matching", !/PUBLIC FIGURE|LIKENESS|celebrity|influencer|private individual|brand new presenter face|copy[^.]{0,80}(?:person|face)|clone|resemble/i.test(imgWithModelRef), imgWithModelRef);
+check("apparel image does not let the whole reference override fictional casting", !/REFERENCE PHOTO OVERRIDES TEXT/i.test(imgWithModelRef), imgWithModelRef);
+check("apparel image generates its fictional presenter independently", /INDEPENDENT FICTIONAL CAST:[^\n]*presenter independently[^\n]*reference only for garment design details/i.test(imgWithModelRef), imgWithModelRef);
+
+const genericReferenceImage = buildImagePrompt({ name: "แก้วเก็บความเย็น" }, { ...settings, presenter: "woman" });
+check("non-apparel image still gives the product reference highest priority", /REFERENCE PHOTO OVERRIDES TEXT/i.test(genericReferenceImage), genericReferenceImage);
 
 // Test 9: Video prompt fidelity directions
 const sampleVideoPrompt = buildVideoPrompt({ name: "กระเป๋าเป้ลายการ์ตูน" }, settings);
@@ -591,6 +596,29 @@ check("clothing video does not request talking-head framing", !/talking head/i.t
 const clothingImg = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาว", category: "แฟชั่น" }, settings);
 check("clothing image prompt enforces front-facing shot distribution", /front shot|front-facing/i.test(clothingImg), clothingImg);
 check("clothing image uses a generic fictional adult model", /HUMAN CAST:/i.test(clothingImg) && /APPAREL MODEL SAFETY/i.test(clothingImg), clothingImg);
+check("clothing prompts use the reference garment as the worn product", /APPAREL REFERENCE USE/i.test(clothingImg) && /APPAREL REFERENCE USE/i.test(clothingVid), clothingImg + clothingVid);
+check("clothing prompts do not treat garments as hand-sized objects", !/hand-sized|pocket-sized/i.test(clothingImg + clothingVid), clothingImg + clothingVid);
+check("clothing video does not apply rigid hard-edge object physics", !/rigid, solid|hard edges/i.test(clothingVid), clothingVid);
+check("clothing presenter wears rather than stands beside the garment", /already wearing the exact reference garment/i.test(clothingVid) && !/reviewer stands next to it/i.test(clothingVid), clothingVid);
+check("clothing scene directions show the garment worn instead of generically presented", /Scene 1[^\n]*model already wearing/i.test(clothingVid) && !/reviewer presenting[^\n]*normal real-world position/i.test(clothingVid), clothingVid);
+
+const mensWorkoutPants = { name: "กางเกงออกกำลังกายผู้ชาย", category: "เสื้อผ้า", autoOptions: { presenter: "woman" } };
+const mensWorkoutPantsImg = buildImagePrompt(mensWorkoutPants, settings);
+const mensWorkoutPantsVid = buildVideoPrompt(mensWorkoutPants, settings);
+check("men's workout pants override an incorrect woman recommendation", /Presenter: A fictional adult Thai man commercial fit model/i.test(mensWorkoutPantsImg) && /Presenter: A fictional adult Thai man commercial fit model/i.test(mensWorkoutPantsVid), mensWorkoutPantsImg + mensWorkoutPantsVid);
+check("workout pants are the sole visible bottom garment", /exactly one pair[\s\S]*sole visible bottom garment/i.test(mensWorkoutPantsImg) && /exactly one pair[\s\S]*sole visible bottom garment/i.test(mensWorkoutPantsVid), mensWorkoutPantsImg + mensWorkoutPantsVid);
+check("workout pants prompt does not request vague supporting clothes", !/supporting clothes/i.test(mensWorkoutPantsImg + mensWorkoutPantsVid), mensWorkoutPantsImg + mensWorkoutPantsVid);
+
+const womensWorkoutPantsVid = buildVideoPrompt({ name: "กางเกงออกกำลังกายผู้หญิง", category: "เสื้อผ้า" }, settings);
+check("women's workout pants select a woman model", /Presenter: A fictional adult Thai woman commercial fit model/i.test(womensWorkoutPantsVid), womensWorkoutPantsVid);
+check("Auto men's apparel uses a handsome young working-age presenter", /AUTO PRESENTER PROFILE:[^\n]*Thai man around 22-35 years old[^\n]*handsome/i.test(mensWorkoutPantsVid), mensWorkoutPantsVid);
+check("Auto women's apparel uses a beautiful young working-age presenter", /AUTO PRESENTER PROFILE:[^\n]*Thai woman around 22-35 years old[^\n]*beautiful/i.test(womensWorkoutPantsVid), womensWorkoutPantsVid);
+
+const manualWomanProfileVid = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, { ...settings, presenter: "woman" });
+check("manual presenter selection does not receive the Auto age profile", !/AUTO PRESENTER PROFILE/i.test(manualWomanProfileVid), manualWomanProfileVid);
+
+const seniorProductVid = buildVideoPrompt({ name: "ไม้เท้าสำหรับผู้สูงอายุ", targetGroup: "ผู้สูงอายุ" }, settings);
+check("age-specific products do not receive the default young Auto profile", !/AUTO PRESENTER PROFILE/i.test(seniorProductVid), seniorProductVid);
 
 // Test 13: Auto never selects dog/cat; animal presenters are explicit opt-in only
 const petFoodAutoVid = buildVideoPrompt({ name: "อาหารแมวพรีเมียม 1.2kg" }, { ...settings, presenter: "Auto" });
@@ -660,10 +688,10 @@ check("sunscreen prompt includes sun protection scene lock", /SUN PROTECTION & S
 const menSunHatVid = buildVideoPrompt({ name: "หมวกกันแดดปีกกว้าง สำหรับผู้ชาย" }, settings);
 check("men's sun hat prompt includes male presenter and sunny outdoor location", /man|male/i.test(menSunHatVid) && /SUN PROTECTION & SUN HAT SCENE LOCK/i.test(menSunHatVid), menSunHatVid);
 
-// Test 21: Modest Dress Code Lock (ห้ามชุดสุ่มเสี่ยง/วาบหวิว)
+// Test 21: Apparel supporting clothes must not replace or cover the product
 const modestFashionVid = buildVideoPrompt({ name: "เสื้อเชิ้ตลายดอก" }, { ...settings, presenter: "woman" });
-check("video prompt includes strict modest dress code lock forbidding risqué outfits", /STRICT MODEST & APPROPRIATE DRESS CODE LOCK|ห้ามชุดสุ่มเสี่ยง/i.test(modestFashionVid), modestFashionVid);
-check("video prompt forbids revealing cleavage/deep v-necks/micro-shorts", /No deep v-necks|no exposed cleavage|no micro-shorts/i.test(modestFashionVid), modestFashionVid);
+check("apparel video keeps the exact garment as the sole featured top", /APPAREL WEARING MODE[\s\S]*exact reference garment once as the sole visible featured top/i.test(modestFashionVid), modestFashionVid);
+check("apparel video lets the model choose a matching bottom naturally", /choose a simple matching bottom naturally/i.test(modestFashionVid), modestFashionVid);
 
 // Test 22: Balaclava / Headwear / Buff Presenter Gender & Never Remove Mandate (ห้ามถอดโม่ง/หมวก/ผ้าบัฟ)
 const balaclavaVid = buildVideoPrompt({ name: "โม่งคลุมหัวกันแดด ขี่มอเตอร์ไซค์" }, settings);
