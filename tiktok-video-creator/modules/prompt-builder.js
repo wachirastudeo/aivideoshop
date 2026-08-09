@@ -97,8 +97,8 @@ const PRESENTERS = {
   none: "No humans. Focus entirely on the product resting stably in a realistic setting with smooth camera movement.",
   hands_only: "Realistic first-person POV (Point of View) perspective. Show the product being used, worn, or presented naturally with realistic anatomical hands (strictly 5 fingers per hand, natural ergonomic grip, clean skin texture, realistic knuckles) or feet/legs depending on product category. No face or head shown in the frame.",
   unboxing_hands: "Realistic first-person POV hands-only unboxing presenter. Show only natural human hands opening the product box/package and revealing the product inside. No face, head, torso, or full body shown.",
-  woman: "A fictional adult Thai woman reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/blouse AND long pants/jeans/skirt). She stands near or holds it gently, smiling at the camera.",
-  man: "A fictional adult Thai man reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/polo AND long pants/jeans). He stands near or holds it gently, smiling at the camera.",
+  woman: "A fictional adult Thai woman reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/blouse AND long pants/jeans/skirt). She uses or stands near the product naturally for its category, smiling at the camera.",
+  man: "A fictional adult Thai man reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/polo AND long pants/jeans). He uses or stands near the product naturally for its category, smiling at the camera.",
   child: "A cute young Thai child (4-6 years old, kindergarten age, strictly no baby or toddler under 4 years old) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
   older_child: "A cute Thai older child (7-12 years old, kid) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
   cartoon3d: "A cute 3D stylized character (Pixar-like) showing the product",
@@ -128,6 +128,8 @@ const ANIMAL_PRESENTER_DIRECTION = "Show a friendly Thai reviewer standing toget
 const NO_UNREQUESTED_ANIMALS_DIRECTION = "No animals unless explicitly selected.";
 
 const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, patterns, print designs, graphical illustrations, logos, labels, and parts. The pattern, artwork, and visual print on the product (especially for phone cases, clothes, or printed goods) must be 100% identical, keeping the same graphics, colors, and layout without any modification or hallucination. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.";
+const STILL_PRODUCT_FIDELITY_DIRECTION = "STILL PRODUCT IDENTITY: Preserve its exact shape, proportions, support structure, materials, colors, patterns, visible logos, labels, and printed text from the reference image. Keep the product physically coherent and at realistic scale. Do not invent parts, remove parts, redesign it, or force a new geometry.";
+const STILL_TEXT_INTEGRITY_DIRECTION = "STILL TEXT INTEGRITY: Preserve any Thai, English, or other script physically printed on the reference product exactly as visible. Do not invent extra writing, fake letters, logos, labels, or gibberish anywhere else in the image.";
 const REFERENCE_IMAGE_HIGHEST_PRIORITY = "REFERENCE PHOTO OVERRIDES TEXT: Match the attached product exactly. If text conflicts, follow the photo. Never substitute or redesign it.";
 const REFERENCE_COMPOSITING_DIRECTION = "BACKGROUND-ONLY EDIT: Keep the reference product unchanged; replace only the background.";
 const IMAGE_AUTO_ANIMAL_EXCLUSION = "IMAGE AUTO MODE: No dog, cat, puppy, kitten, or other animal unless the user explicitly selected dog or cat presenter.";
@@ -214,6 +216,7 @@ const GENERAL_PACKAGING_FIDELITY_DIRECTION = "UNIVERSAL PRODUCT & PACKAGING LABE
 const HOME_LIVING_FIDELITY_DIRECTION = "For home goods, kitchenware, tumblers, mugs, and bedding: preserve the exact item shape, handle, lid, material texture (ceramic, stainless steel, fabric), print pattern, and proportions.";
 const TUMBLER_BOTTLE_FIDELITY_DIRECTION = "STRICT TUMBLER & WATER BOTTLE FIDELITY LOCK: You MUST reproduce the tumbler, mug, or water bottle EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: The exact cylindrical taper, height-to-width ratio, handle shape and placement (if any), lid type, straw (if present), spout, and bottom base MUST be rendered 100% pixel-faithfully without warping. EXACT MATERIAL & ARTWORK: Preserve the exact material finish (matte, glossy stainless steel, gradient colors, powder coating) and ALL printed surface artwork, brand logos, cartoon characters, and patterns 100% pixel-faithfully. ZERO DEFORMATION RULE: The cup must remain 100% rigid, perfectly cylindrical, and static without melting, denting, or shifting dimensions across video frames.";
 const FURNITURE_FIDELITY_DIRECTION = "FURNITURE STRUCTURE FIDELITY: Reproduce the furniture exactly as shown in the reference. Preserve its actual support system and geometry, whether it uses crossed folding legs, straight legs, a pedestal, a frame, fabric tension, or another construction. Keep the same proportions, armrests, seat/back shape, materials, stitching, joints, and hardware. Keep it grounded and physically stable without changing, bending, melting, or warping its structure.";
+const HAMMOCK_FIDELITY_DIRECTION = "HAMMOCK STRUCTURE FIDELITY: Preserve the exact fabric bed shape, width, weave, colors, end ropes, loops, straps, knots, and spreader bars only when visible in the reference. Install those existing attachment parts naturally between two suitable supports without adding handles, rigid furniture legs, packaging, or extra structural parts.";
 
 const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION, NATURAL UNHURRIED TEMPO & ZERO REPETITION LOCK: Each scene in the video MUST have its own UNIQUE, DIFFERENT spoken sentence in Thai that flows naturally at a relaxed, unhurried human pace (do NOT rush or speak too fast). ABSOLUTELY FORBIDDEN: NEVER repeat, loop, echo, or re-say the sentence spoken in the previous scene. Scene 2 MUST speak a NEW, DIFFERENT sentence from Scene 1; Scene 3 MUST speak a NEW, DIFFERENT sentence from Scene 2. Maintain a continuous, natural progressive voiceover across all scenes without repeating any phrase or sentence.";
 const VOICEOVER_DIRECTION = "Add a clear, natural Thai off-screen voiceover narration speaking at a comfortable, unhurried pace (no visible person). All spoken audio must be in Thai.";
@@ -512,14 +515,16 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
   const noPeople = !(auto.presenter && auto.presenter !== "none");
+  const referenceCompositingDirection = noPeople
+    ? REFERENCE_COMPOSITING_DIRECTION
+    : "BACKGROUND-ONLY EDIT WITH NATURAL PRESENTER COMPOSITING: Keep the reference product unchanged. Replace its source background and add the selected fictional presenter in a physically natural pose without altering the product.";
 
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
   const explicitlySelectedAnimal = settings?.presenter === "dog" || settings?.presenter === "cat";
 
   const isSingleMode = true; // FORCE SINGLE MODE ALWAYS: Prevents "4-panel grid" hallucination (ไม่ต้องตอนภาพ/แบ่งภาพ)
 
-  // Phase 1 STILL IMAGE: ALWAYS use a single full-frame high-resolution hero product photograph to ensure 100% exact product fidelity, sharp label text, and exact brand logo reproduction without multi-panel grid compression distortion.
-  const intro = `A high-fidelity single full-frame authentic smartphone camera photograph in a vertical 9:16 layout, showing ${productName} clearly in the center with 100% exact, crystal-clear, 1-to-1 pixel-faithful reference product replica, brand logo, and printed packaging text. Rendered with natural everyday mobile camera quality, completely avoiding artificial commercial studio lighting, hyper-processed gloss, or ad staging.`;
+  const intro = `Create one authentic full-frame smartphone photograph in a vertical 9:16 layout. Show ${productName} clearly at realistic scale with its visible geometry, materials, colors, markings, and construction matching the reference. Use natural everyday lighting without artificial studio gloss or CGI styling.`;
 
   const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
   const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
@@ -636,26 +641,20 @@ export function buildImagePrompt(productInfo, settings = {}) {
     !textEnabled ? TEXT_FREE_DIRECTION : "",
     NO_WOW_DIRECTION,
     REFERENCE_IMAGE_HIGHEST_PRIORITY,
-    REFERENCE_COMPOSITING_DIRECTION,
+    referenceCompositingDirection,
     PUBLIC_FIGURE_POLICY_SAFE_DIRECTION,
     isClothing ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
-    LABEL_EXACT_COPY_MANDATE,
-    COLOR_EXACT_LOCK,
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     NO_HALLUCINATED_BRAND_LOGOS_RULE,
     auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_IDENTITY_DIRECTION : "",
     intro,
-    PRODUCT_FIDELITY_DIRECTION,
-    STRICT_PRODUCT_IDENTITY_RULE,
+    STILL_PRODUCT_FIDELITY_DIRECTION,
     PRODUCT_ISOLATION_DIRECTION,
-    PRINTED_GRAPHIC_FIDELITY_DIRECTION,
-    COLOR_AND_PATTERN_FIDELITY_DIRECTION,
     hasEngravedPattern ? ENGRAVED_EMBOSSED_FIDELITY_DIRECTION : "",
     FULL_PRODUCT_VISIBILITY_DIRECTION,
     scaleInstruction,
-    "Critical: The generated image must maintain absolute fidelity to the product shape, colors, branding, and text (100% identical). Do not redesign, warp, or modify structure. Strictest rule: The product must look exactly like the reference photo, pixel-for-pixel.",
     shotDistribution,
     specificScale,
     PRODUCT_STRUCTURE_DIRECTION,
@@ -669,9 +668,10 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isFullFaceCoveringProduct(productText) ? FULL_FACE_COVERAGE_LOCK : "",
     stillBackgroundDirection,
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
+    getStillProductUseDirection(productText),
     peopleDirection,
     productTextFidelityDirection,
-    NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
+    STILL_TEXT_INTEGRITY_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
     textDirection
   ];
@@ -755,6 +755,16 @@ function getNaturalProductInteractionDirection(text = "") {
     return "NATURAL CAMPING CHAIR USE: Show the chair fully opened and resting securely on level campsite ground. The reviewer may sit in it normally or stand beside it. Do not hold or lift the opened chair during the review.";
   }
   return NATURAL_PRODUCT_INTERACTION_DIRECTION;
+}
+
+function getStillProductUseDirection(text = "") {
+  if (isHammockProduct(text)) {
+    return "Natural still composition: Install the hammock between two sturdy trees or on a proper hammock stand using its visible end ropes or straps. Show the reviewer sitting or reclining naturally; never show the loose hammock held or stretched by hand.";
+  }
+  if (isCampingChairProduct(text)) {
+    return "Natural still composition: Place the fully opened camping chair securely on level campsite ground. Show the reviewer seated normally or standing beside it; never show the opened chair held in the air.";
+  }
+  return "";
 }
 
 function isSmallTechAccessoryProduct(text = "") {
@@ -870,41 +880,43 @@ function resolveProductHook(productInfo = {}) {
   ];
 }
 
-/**
- * @description สร้าง prompt วิดีโอสำหรับ Phase 2
- * @param {object} productInfo - ข้อมูลสินค้า
- * @param {object} settings - settings ของวิดีโอ
- * @returns {string} prompt ภาษาอังกฤษ
- */
-function generateThaiDialogue(productInfo, settings, auto) {
-  let phrase = "";
-  if (settings?.clipText) {
-    phrase = settings.clipText;
-  } else if (productInfo?.highlights) {
-    const parts = productInfo.highlights.split(/[,\n;]/);
-    phrase = parts[0].trim();
-  } else {
-    const defaultPhrases = resolveProductHook(productInfo);
-    phrase = defaultPhrases[Math.floor(Math.random() * defaultPhrases.length)];
-  }
-  
-  // ลบอิโมจิและอักขระพิเศษ
-  phrase = phrase.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, '').trim();
-  
-  const isMan = auto?.presenter === "man";
-  const ending = isMan ? "ครับ" : "ค่ะ";
-  
-  if (!phrase.endsWith("ค่ะ") && !phrase.endsWith("ครับ") && !phrase.endsWith("เลย") && !phrase.endsWith("นะ")) {
-    const endingPhrases = [
-      ` น่าใช้สุดๆ ${ending}`,
-      ` ต้องลองเลย${ending}`,
-      ` ห้ามพลาดเด็ดขาด${ending}`,
-      ` ของมันต้องมีจริงๆ ${ending}`,
-      ` ตอบโจทย์มาก${ending}`
-    ];
-    phrase = phrase + endingPhrases[Math.floor(Math.random() * endingPhrases.length)];
-  }
-  return phrase;
+export function resolveSpokenOpeningHook(productInfo = {}, random = Math.random) {
+  const productNames = [
+    productInfo.name,
+    productInfo.originalName,
+    productInfo.productLinkTitle
+  ]
+    .map(value => sanitizeText(value).toLowerCase())
+    .filter(value => value.length >= 3);
+
+  const cleanHook = (value) => {
+    const phrase = stripForbiddenVideoWords(sanitizeText(value))
+      .replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, "")
+      .replace(/^[\s"'“”‘’.,!?-]+|[\s"'“”‘’]+$/g, "")
+      .trim();
+    if (!phrase || /(ของอันนี้|ชิ้นนี้แนะนำเลย|สวัสดี|หวัดดี|\bhello\b|\bhi\b)/i.test(phrase)) return "";
+    const lowerPhrase = phrase.toLowerCase();
+    if (productNames.some(name => lowerPhrase.includes(name))) return "";
+    return phrase;
+  };
+
+  const analyzedHooks = (Array.isArray(productInfo.hooks) ? productInfo.hooks : [])
+    .map(cleanHook)
+    .filter(Boolean);
+  const fallbackHooks = [
+    ...resolveProductHook(productInfo),
+    "ลองดูจุดนี้ก่อนตัดสินใจ",
+    "ใช้จริงแล้วสะดวกกว่าที่คิด",
+    "จุดนี้หลายคนมองข้าม",
+    "ใครกำลังเจอปัญหานี้อยู่บ้าง",
+    "เห็นเรียบๆ แต่ใช้งานดีมาก"
+  ].map(cleanHook).filter(Boolean);
+  const pool = [...new Set(analyzedHooks.length ? analyzedHooks : fallbackHooks)];
+  if (pool.length === 0) return "ลองดูจุดนี้ก่อนตัดสินใจ";
+
+  const randomValue = Number(typeof random === "function" ? random() : 0);
+  const boundedValue = Number.isFinite(randomValue) ? Math.max(0, Math.min(randomValue, 0.999999)) : 0;
+  return pool[Math.floor(boundedValue * pool.length)];
 }
 
 export function buildVideoPrompt(productInfo, settings = {}) {
@@ -912,6 +924,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const locationStr = resolvePromptLocation(auto);
   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
   const clipText = resolveClipText(productInfo, settings);
+  const spokenOpeningHook = resolveSpokenOpeningHook(productInfo);
   const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true");
   const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
   const analysisDirection = buildAnalysisDirection(productInfo);
@@ -1035,7 +1048,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60), productText)
     .replace(/\d+-second\s*/g, "");
   sceneBreakdown = sceneBreakdown
-    .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 1 in Thai - Opening hook phrase]')
+    .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, `$1 [AUDIO TRACK: Spoken line 1 in Thai - selected random opening hook: "${spokenOpeningHook}"]`)
     .replace(/^(\s*-\s*Scene 2\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 2 in Thai - MUST BE A NEW DIFFERENT SENTENCE FROM SCENE 1]')
     .replace(/^(\s*-\s*Scene 3\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 3 in Thai - MUST BE A NEW DIFFERENT SENTENCE FROM SCENE 2]')
     .replace(/^(\s*-\s*Scene 4\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 4 in Thai - MUST BE A NEW DIFFERENT SENTENCE FROM SCENE 3]');
@@ -1199,10 +1212,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   // รวมข้อมูลสินค้าทั้งหมดมาประกบรวมกันสำหรับส่งให้ AI วิเคราะห์ทำบทพูด
   // NOTE: ไม่ส่งราคาและ CTA เข้า speech context เพื่อป้องกัน AI พูดราคาหรือ CTA ออกมา
   const details = [];
-  if (productInfo.name) details.push(`Product Name: ${sanitizePolicySensitiveText(productInfo.name)}`);
   if (productInfo.highlights) details.push(`Highlights: ${sanitizePolicySensitiveText(productInfo.highlights)}`);
   if (settings?.clipText) details.push(`Main Message: ${sanitizePolicySensitiveText(settings.clipText)}`);
+  if (productInfo.name) details.push(`Product context only, never say aloud: ${sanitizePolicySensitiveText(productInfo.name)}`);
   const combinedProductDetails = details.join(", ");
+  const openingHookDirection = `RANDOMIZED OPENING HOOK FOR THIS CLIP: "${spokenOpeningHook}". Begin the spoken line with a concise, natural 5-8-word Thai adaptation of this selected hook. NEVER begin with or say the product name or brand name. Do not replace the hook with a product introduction.`;
 
   const toneDesc = VOICE_TONES[auto.voiceTone] || VOICE_TONES.Auto;
 
@@ -1248,11 +1262,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
   const presentInstruction = isChildPresenter
     ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
-    : "present the product's value proposition, features, or name naturally in Thai";
+    : "present the product's benefit or real use naturally in Thai without saying its product name or brand name";
 
   const speechDir = isFullFaceCoveringProduct(productText)
-    ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. STRICT SPEECH RULE: Speak naturally at an unhurried, relaxed pace (do NOT rush or speak too fast). Do NOT repeat any words, phrases, or sentences. Speak naturally ONCE. FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย", "ว้าว"). DO NOT speak brand/product names, prices, quantities, or CTAs. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
-    : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. STRICT SPEECH RULE: Speak naturally at an unhurried, relaxed pace (do NOT rush or speak too fast). DO NOT repeat any words, phrases, or sentences (NO loops, NO stuttering). FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย", "ว้าว"). DO NOT speak brand/product names, prices, quantities, or CTAs. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
+    ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. STRICT SPEECH RULE: Speak naturally at an unhurried, relaxed pace (do NOT rush or speak too fast). Do NOT repeat any words, phrases, or sentences. Speak naturally ONCE. FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย", "ว้าว"). DO NOT speak brand/product names, prices, quantities, or CTAs. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
+    : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. STRICT SPEECH RULE: Speak naturally at an unhurried, relaxed pace (do NOT rush or speak too fast). DO NOT repeat any words, phrases, or sentences (NO loops, NO stuttering). FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย", "ว้าว"). DO NOT speak brand/product names, prices, quantities, or CTAs. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
   const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands")
     ? "Voiceover: Add a clear, friendly off-screen Thai female voiceover narration speaking in Thai."
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
@@ -1420,6 +1434,9 @@ export function isFurnitureProduct(text = "") {
 export function buildCategoryFidelityDirection(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`.toLowerCase();
   const hasEngraving = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(text);
+  if (isHammockProduct(text)) {
+    return `${HAMMOCK_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
   if (/(สเปรย์|ฉีด|ละออง|สเปรย์อาบน้ำ|ดับกลิ่น|สเปรย์แมว|สเปรย์หมา|spray|aerosol|mist|atomizer|pump\s*bottle)/i.test(text)) {
     return `${SPRAY_BOTTLE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }

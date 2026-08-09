@@ -15,6 +15,7 @@ import {
   isClothingProduct,
   isFurnitureProduct,
   buildCategoryFidelityDirection,
+  resolveSpokenOpeningHook,
   stripForeignNonThaiScripts
 } from "../modules/prompt-builder.js";
 
@@ -170,8 +171,29 @@ const generalReviewA = buildVideoPrompt({ name: "เครื่องชงก�
 const generalReviewB = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
 check("default style is UGC testimonial", settings.videoStyle === "testimonial");
 check("default video uses UGC testimonial", /UGC testimonial/i.test(generalReviewA));
-check("Auto reviewer is stable per product", generalReviewA === generalReviewB);
+eq(
+  "Auto reviewer is stable per product",
+  generalReviewA.match(/Presenter: ([^\n.]+)/)?.[1],
+  generalReviewB.match(/Presenter: ([^\n.]+)/)?.[1]
+);
 check("Auto reviewer is male or female", /Presenter: (?:A fictional adult Thai woman reviewer|A fictional adult Thai man reviewer)/i.test(generalReviewA));
+
+const spokenHookProduct = {
+  name: "เก้าอี้แคมป์พับได้",
+  hooks: ["นั่งนานก็ยังสบาย", "สายแคมป์ต้องดูจุดนี้", "พับเก็บง่ายกว่าที่คิด"]
+};
+eq("spoken hook selector can choose the first analyzed hook", resolveSpokenOpeningHook(spokenHookProduct, () => 0), "นั่งนานก็ยังสบาย");
+eq("spoken hook selector can choose another analyzed hook", resolveSpokenOpeningHook(spokenHookProduct, () => 0.999), "พับเก็บง่ายกว่าที่คิด");
+eq(
+  "spoken hook selector rejects hooks containing the product name",
+  resolveSpokenOpeningHook({ ...spokenHookProduct, hooks: ["เก้าอี้แคมป์พับได้ ใช้ง่าย", "สายแคมป์ต้องดูจุดนี้"] }, () => 0),
+  "สายแคมป์ต้องดูจุดนี้"
+);
+const spokenHookVideo = buildVideoPrompt({ ...spokenHookProduct, hooks: ["สายแคมป์ต้องดูจุดนี้"] }, settings);
+check("video prompt uses a selected randomized spoken hook", /RANDOMIZED OPENING HOOK FOR THIS CLIP: "สายแคมป์ต้องดูจุดนี้"/i.test(spokenHookVideo), spokenHookVideo);
+check("video prompt marks product name as context-only", /Product context only, never say aloud: เก้าอี้แคมป์พับได้/i.test(spokenHookVideo), spokenHookVideo);
+check("video prompt forbids opening with product or brand name", /NEVER begin with or say the product name or brand name/i.test(spokenHookVideo), spokenHookVideo);
+check("video prompt no longer permits saying the product name naturally", !/features, or name naturally in Thai/i.test(spokenHookVideo), spokenHookVideo);
 check(
   "women product selects Thai woman reviewer",
   /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง", productId: "women-shoe" }, settings))
@@ -215,6 +237,8 @@ const campChairImage = buildImagePrompt(campChairProduct, settings);
 check("camping chair Auto overrides bad AI woman recommendation", /Presenter: A fictional adult Thai man reviewer/i.test(campChairVideo));
 check("camping chair image and video keep the same male reviewer", /Presenter: A fictional adult Thai man reviewer/i.test(campChairImage));
 check("camping chair uses natural seated or beside-chair interaction", /NATURAL CAMPING CHAIR USE[\s\S]*sit in it normally or stand beside it/i.test(campChairVideo), campChairVideo);
+check("camping chair still uses a natural grounded pose", /Natural still composition:[\s\S]*reviewer seated normally or standing beside it/i.test(campChairImage), campChairImage);
+check("camping chair still does not request generic holding", !/stands near or holds it gently/i.test(campChairImage), campChairImage);
 check("camping chair does not assume a straight four-leg frame", !/strictly straight, vertical, and sturdy 4-leg/i.test(campChairVideo), campChairVideo);
 check("camping chair is not described as large and heavy", !/product is large and heavy/i.test(campChairVideo), campChairVideo);
 check(
@@ -222,14 +246,19 @@ check(
   /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt(campChairProduct, { ...settings, presenter: "woman" }))
 );
 
-const hammockVideo = buildVideoPrompt({
+const hammockProduct = {
   name: "เปลญวนผ้าแคมป์ปิ้ง",
   productId: "camping-hammock",
   autoOptions: { presenter: "woman", location: "Studio Minimal" }
-}, settings);
+};
+const hammockVideo = buildVideoPrompt(hammockProduct, settings);
+const hammockImage = buildImagePrompt(hammockProduct, settings);
 check("camping hammock Auto selects a male reviewer", /Presenter: A fictional adult Thai man reviewer/i.test(hammockVideo));
 check("hammock is identified as a camping hammock, not clothing", /camping hammock/i.test(hammockVideo) && !/holding clothing garment/i.test(hammockVideo), hammockVideo);
 check("hammock is installed between natural supports", /already installed between two sturdy trees or on a proper hammock stand/i.test(hammockVideo), hammockVideo);
+check("hammock still uses hammock structure instead of packaging rules", /HAMMOCK STRUCTURE FIDELITY/i.test(hammockImage) && !/UNIVERSAL PRODUCT & PACKAGING LABEL FIDELITY LOCK/i.test(hammockImage), hammockImage);
+check("hammock still is attached and naturally occupied", /Install the hammock between two sturdy trees or on a proper hammock stand[\s\S]*reviewer sitting or reclining naturally/i.test(hammockImage), hammockImage);
+check("camping still prompts remove duplicated lock overload", campChairImage.length < 10000 && hammockImage.length < 10000, `chair=${campChairImage.length} hammock=${hammockImage.length}`);
 check("hammock is not forced into the wearable holding rule", !/WEARABLE PRODUCT CONTINUITY|STRICT ALWAYS-WORN RULE/i.test(hammockVideo), hammockVideo);
 check("hammock is not described as a small hand-sized item", !/small hand-sized|product is a small item/i.test(hammockVideo), hammockVideo);
 check("wearable products still keep continuity guidance", /WEARABLE PRODUCT CONTINUITY/i.test(buildVideoPrompt({ name: "เสื้อยืดผู้ชาย" }, settings)));
@@ -388,11 +417,11 @@ check("light product soap 100g not detected as heavy", !/Real scale./i.test(ligh
 // --- image prompt presenter tests ---
 const imgPresenterWoman = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "woman" });
 check("image prompt with woman presenter focuses on product hero presentation", /Product Hero Focus|Product Focus|Product photography/i.test(imgPresenterWoman), imgPresenterWoman);
-check("image prompt with woman presenter uses single full-frame product intro", /multi-angle 4-panel grid photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterWoman), imgPresenterWoman);
+check("image prompt with woman presenter uses single full-frame product intro", /one authentic full-frame smartphone photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterWoman), imgPresenterWoman);
 
 const imgPresenterNone = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("image prompt with no presenter forbids people", /No people, faces/i.test(imgPresenterNone), imgPresenterNone);
-check("image prompt with no presenter uses single full-frame product intro", /multi-angle 4-panel grid photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterNone), imgPresenterNone);
+check("image prompt with no presenter uses single full-frame product intro", /one authentic full-frame smartphone photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterNone), imgPresenterNone);
 check("image prompt with no presenter has no positive presenter references", !/relative to the presenter|with a presenter/i.test(imgPresenterNone), imgPresenterNone);
 
 const imgPresenterCustom = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "กรอกเอง", customPresenter: "ชายสูงวัยใจดีสวมแว่นตา" });
@@ -400,7 +429,7 @@ check("image prompt with custom presenter without modelRefImage maintains clean 
 
 const imgPresenterHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("image prompt with hands_only presenter shows hands", /realistic hands|first-person POV/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only presenter uses single full-frame product intro", /multi-angle 4-panel grid photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only presenter uses single full-frame product intro", /one authentic full-frame smartphone photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only uses scale relative to hands", /relative to the hands|relative to the surroundings/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only strictly forbids faces", /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(imgPresenterHands) && !/deformed|mutated/i.test(imgPresenterHands), imgPresenterHands);
@@ -447,7 +476,7 @@ check("mouse prompt uses desk-sized context instead of generic oversized scale",
 
 // --- image prompt single full-frame format test ---
 const imgLimit = buildImagePrompt({ name: "พัดลมไร้สาย" }, settings);
-check("image prompt specifies single full-frame product layout", /multi-angle 4-panel grid photograph|single full-frame authentic smartphone camera photograph/i.test(imgLimit), imgLimit);
+check("image prompt specifies single full-frame product layout", /one authentic full-frame smartphone photograph|single full-frame authentic smartphone camera photograph/i.test(imgLimit), imgLimit);
 
 // --- automatic text overlay & styling tests ---
 import { resolveClipText } from "../modules/prompt-builder.js";
