@@ -581,8 +581,15 @@ function normalizeAutoOptions(value, productInfo = {}) {
   const raw = value && typeof value === "object" ? value : {};
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
   const isPetProduct = /(สัตว์|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|แมว|สุนัข|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b|\banimal\b)/i.test(text);
+  const explicitGender = detectExplicitGender(text);
+  const campingProduct = isCampingOutdoorProduct(text);
 
   let presenter = pickAllowed(raw.presenter, ["none", "woman", "man", "cartoon3d", "living_product", "dog", "cat"], inferred.presenter);
+  if (explicitGender) {
+    presenter = explicitGender;
+  } else if (campingProduct) {
+    presenter = "man";
+  }
   if ((presenter === "dog" || presenter === "cat") && !isPetProduct) {
     presenter = (inferred.presenter === "dog" || inferred.presenter === "cat") ? "woman" : inferred.presenter;
   }
@@ -600,15 +607,43 @@ function normalizeAutoOptions(value, productInfo = {}) {
 }
 
 function detectGender(text = "") {
-  const isMen = /(ผู้ชาย|ชาย|บุรุษ|men|man|male|ขี่มอเตอร์ไซค์|มอไซค์|ไรเดอร์|นักบิด|โกนหนวด|มีดโกน|เนกไท|บ็อกเซอร์|กางเกงในชาย|เสื้อเชิ้ตชาย|รองเท้าผู้ชาย|น้ำหอมผู้ชาย|ครีมผู้ชาย|โฟมผู้ชาย)/i.test(text);
-  const isWomen = /(ผู้หญิง|หญิง|สตรี|women|woman|female|ชุดเดรส|บรา|ยกทรง|กระโปรง|ลิปสติก|กระเป๋าถือผู้หญิง|ผ้าอนามัย)/i.test(text);
-  if (isMen && !isWomen) return "man";
+  const explicitGender = detectExplicitGender(text);
+  if (explicitGender) return explicitGender;
+  if (/(ขี่มอเตอร์ไซค์|มอไซค์|ไรเดอร์|นักบิด|โกนหนวด|มีดโกน|เนกไท|บ็อกเซอร์|กางเกงในชาย|เสื้อเชิ้ตชาย|รองเท้าผู้ชาย|น้ำหอมผู้ชาย|ครีมผู้ชาย|โฟมผู้ชาย)/i.test(text)) return "man";
+  if (/(ชุดเดรส|บรา|ยกทรง|กระโปรง|ลิปสติก|กระเป๋าถือผู้หญิง|ผ้าอนามัย)/i.test(text)) return "woman";
+  return "woman";
+}
+
+function detectExplicitGender(text = "") {
+  const clean = String(text || "");
+  const isWomen = /(ผู้หญิง|หญิง|สตรี|สาว|คุณแม่|แม่และเด็ก)/i.test(clean)
+    || /\b(?:woman|women|female|lady|ladies|girl|girls|maternity|mom|mother|women'?s|ladies'?)\b/i.test(clean);
+  const isMen = /(ผู้ชาย|ชาย|บุรุษ|หนุ่ม)/i.test(clean)
+    || /\b(?:man|men|male|boy|boys|gentleman|men'?s)\b/i.test(clean);
   if (isWomen && !isMen) return "woman";
-  return isMen ? "man" : "woman";
+  if (isMen && !isWomen) return "man";
+  return "";
+}
+
+function isCampingOutdoorProduct(text = "") {
+  return /(แคมป์|แคมป์ปิ้ง|เดินป่า|เต็นท์|ถุงนอน|เปลญวน|เปลแขวน|เก้าอี้สนาม|\bcamping\b|\bhiking\b|\btent\b|\bhammock\b|camp(?:ing)?\s+chair|sleeping\s+bag)/i.test(String(text || "").toLowerCase());
 }
 
 function inferAutoOptionsFromProduct(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
+
+  if (isCampingOutdoorProduct(text)) {
+    return buildAutoOptions(
+      "testimonial",
+      "man",
+      "professional",
+      "Professional",
+      "Nature / Outdoor",
+      "Slow Zoom In",
+      "Cut ตรง",
+      "อุปกรณ์แคมป์และกลางแจ้งควรใช้ผู้ชายรีวิวในสถานที่ใช้งานจริง พร้อมแสดงการใช้งานตามธรรมชาติของสินค้า"
+    );
+  }
 
   if (/(โม่ง|โม่งกันแดด|โม่งคลุมหัว|โม่งขับรถ|หมวกโม่ง|ผ้าบัฟ|ผ้าบัฟฟ์|โม่งขี่มอไซค์|balaclava|buff|face mask|headwear|sun hood|riding hood|neck gaiter)/i.test(text)) {
     const isExplicitWomen = /(ผู้หญิง|หญิง|สตรี|women|woman|female)/i.test(text);

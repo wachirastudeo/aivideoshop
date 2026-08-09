@@ -177,6 +177,22 @@ check(
   /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง", productId: "women-shoe" }, settings))
 );
 check(
+  "women product overrides bad AI male reviewer recommendation",
+  /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({
+    name: "รองเท้าผู้หญิง สีขาว",
+    productId: "women-shoe-ai-man",
+    autoOptions: { presenter: "man" }
+  }, settings))
+);
+check(
+  "English women's product does not match men keyword",
+  /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({
+    name: "women's white sneakers",
+    productId: "english-womens-shoe",
+    autoOptions: { presenter: "man" }
+  }, settings))
+);
+check(
   "tools product selects Thai man reviewer",
   /Presenter: A fictional adult Thai man reviewer/i.test(buildVideoPrompt({ name: "สว่านไฟฟ้าสำหรับช่าง", productId: "power-drill" }, settings))
 );
@@ -188,6 +204,35 @@ check(
     autoOptions: { presenter: "man" }
   }, settings))
 );
+
+const campChairProduct = {
+  name: "เก้าอี้แคมป์พับได้",
+  productId: "camp-chair-ai-woman",
+  autoOptions: { presenter: "woman", location: "Modern Living Room" }
+};
+const campChairVideo = buildVideoPrompt(campChairProduct, settings);
+const campChairImage = buildImagePrompt(campChairProduct, settings);
+check("camping chair Auto overrides bad AI woman recommendation", /Presenter: A fictional adult Thai man reviewer/i.test(campChairVideo));
+check("camping chair image and video keep the same male reviewer", /Presenter: A fictional adult Thai man reviewer/i.test(campChairImage));
+check("camping chair uses natural seated or beside-chair interaction", /NATURAL CAMPING CHAIR USE[\s\S]*sit in it normally or stand beside it/i.test(campChairVideo), campChairVideo);
+check("camping chair does not assume a straight four-leg frame", !/strictly straight, vertical, and sturdy 4-leg/i.test(campChairVideo), campChairVideo);
+check("camping chair is not described as large and heavy", !/product is large and heavy/i.test(campChairVideo), campChairVideo);
+check(
+  "manual presenter selection still overrides camping Auto",
+  /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt(campChairProduct, { ...settings, presenter: "woman" }))
+);
+
+const hammockVideo = buildVideoPrompt({
+  name: "เปลญวนผ้าแคมป์ปิ้ง",
+  productId: "camping-hammock",
+  autoOptions: { presenter: "woman", location: "Studio Minimal" }
+}, settings);
+check("camping hammock Auto selects a male reviewer", /Presenter: A fictional adult Thai man reviewer/i.test(hammockVideo));
+check("hammock is identified as a camping hammock, not clothing", /camping hammock/i.test(hammockVideo) && !/holding clothing garment/i.test(hammockVideo), hammockVideo);
+check("hammock is installed between natural supports", /already installed between two sturdy trees or on a proper hammock stand/i.test(hammockVideo), hammockVideo);
+check("hammock is not forced into the wearable holding rule", !/WEARABLE PRODUCT CONTINUITY|STRICT ALWAYS-WORN RULE/i.test(hammockVideo), hammockVideo);
+check("hammock is not described as a small hand-sized item", !/small hand-sized|product is a small item/i.test(hammockVideo), hammockVideo);
+check("wearable products still keep continuity guidance", /WEARABLE PRODUCT CONTINUITY/i.test(buildVideoPrompt({ name: "เสื้อยืดผู้ชาย" }, settings)));
 
 // Child presenter age-group auto detection tests — Auto mode MUST pick parents (woman/man)
 check(
@@ -427,6 +472,16 @@ check("image prompt styling requests cute handwritten-style and doodles", /cute 
 const vidOverlay = buildVideoPrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสุดขั้ว" });
 check("video prompt styling requests cute handwritten-style and doodles", /cute Thai handwritten-style/i.test(vidOverlay) && /doodles/i.test(vidOverlay) && /white with a soft shadow/i.test(vidOverlay), vidOverlay);
 
+// Test 5b: forbidden spoken/overlay word is excluded from every video path
+const wowVideo = buildVideoPrompt({ name: "รองเท้าผู้หญิง" }, settings);
+check("video prompt globally forbids the word ว้าว", /STRICT WORD EXCLUSION[\s\S]*ว้าว[\s\S]*MUST NEVER appear/i.test(wowVideo), wowVideo);
+const wowOverlayVideo = buildVideoPrompt(
+  { name: "พัดลมไร้สาย" },
+  { ...settings, textEnabled: true, clipText: "ว้าวมาก" }
+);
+check("configured overlay removes the word ว้าว", !/MUST display this exact Thai text overlay[\s\S]*"ว้าวมาก"/i.test(wowOverlayVideo), wowOverlayVideo);
+check("resolveClipText removes the word ว้าว", resolveClipText({ name: "สินค้า" }, { textEnabled: true, clipText: "ว้าวมาก" }) === "มาก");
+
 // Test 6: resolveClipText truncates long overlayText to <= 20 chars
 const longOverlay = "พัดลมตั้งโต๊ะอเนกประสงค์ไร้สายพลังลมเย็นสุดๆพกพาสะดวก";
 const clipTextTruncated = resolveClipText({ name: "สินค้า", overlayText: longOverlay }, { textEnabled: true });
@@ -521,11 +576,11 @@ check("isFurnitureProduct detects table/chair/sofa/desk", isFurnitureProduct("�
 check("isFurnitureProduct detects English furniture terms", isFurnitureProduct("modern wooden coffee table desk chair sofa"));
 
 const furnitureVid = buildVideoPrompt({ name: "โต๊ะทำงานไม้แท้ 120cm", category: "เฟอร์นิเจอร์" }, settings);
-check("furniture video prompt includes structural fidelity lock", /STRICT FURNITURE & INTERIOR STRUCTURAL FIDELITY LOCK/i.test(furnitureVid), furnitureVid);
-check("furniture video prompt includes zero dynamic warping rule", /ZERO DYNAMIC WARPING RULE/i.test(furnitureVid), furnitureVid);
+check("furniture video prompt preserves its actual support geometry", /FURNITURE STRUCTURE FIDELITY[\s\S]*Preserve its actual support system and geometry/i.test(furnitureVid), furnitureVid);
+check("furniture video prompt keeps the structure stable", /grounded and physically stable without changing, bending, melting, or warping/i.test(furnitureVid), furnitureVid);
 
 const sofaImg = buildImagePrompt({ name: "โซฟาปรับนอน 2 ที่นั่ง ผ้าฮอลแลนด์" }, settings);
-check("sofa image prompt includes furniture fidelity lock", /STRICT FURNITURE & INTERIOR STRUCTURAL FIDELITY LOCK/i.test(sofaImg), sofaImg);
+check("sofa image prompt includes furniture fidelity guidance", /FURNITURE STRUCTURE FIDELITY/i.test(sofaImg), sofaImg);
 
 // Test 16: Phone case & Bags structural fidelity lock
 const phoneCaseVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูนหมี" }, settings);
@@ -586,7 +641,7 @@ check("car accessory image includes real car context", /shown inside, attached t
 
 // Test 23: No Donning & No Doffing Action Lock (ห้ามทำท่าถอดหรือสวมใส่)
 const videoPromptDonningCheck = buildVideoPrompt({ name: "หมวกกันแดด" }, settings);
-check("video prompt includes strict no-donning & no-doffing action lock", /STRICT NO-DONNING & NO-DOFFING ACTION LOCK|ห้ามทำท่าถอดหรือสวมใส่/i.test(videoPromptDonningCheck), videoPromptDonningCheck);
+check("video prompt applies continuity only to wearable products", /WEARABLE PRODUCT CONTINUITY/i.test(videoPromptDonningCheck), videoPromptDonningCheck);
 check("video prompt forbids motioning to put on or take off items", /Do NOT depict any action, motion, or gesture of putting on|taking off/i.test(videoPromptDonningCheck), videoPromptDonningCheck);
 
 // Test 24: Full Face Balaclava / Mask Fabric Mouth Coverage Lock (ปิดปากมิดชิดธรรมชาติ ห้ามเห็นปาก/ขยับปากใต้ผ้า)
