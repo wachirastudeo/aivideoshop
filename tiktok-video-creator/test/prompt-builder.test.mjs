@@ -537,18 +537,18 @@ const vidFirstSceneNoPeopleHeavy = buildVideoPrompt({ name: "กระสอบ�
 check("video prompt with firstSceneNoPeople (heavy) contains strict exception for no people/hands", /STRICT EXCEPTION FOR SCENE 1: Do not show the presenter, any other people, or hands/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
 check("video prompt with firstSceneNoPeople (heavy) shows only product resting in Scene 1", /Scene 1.*Product-only shot.*rest on a flat surface/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
 
-// Test 8: modelRefImage & presenter continuity enforcement
+// Test 8: modelRefImage must not request human likeness matching
 const vidNoModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
-check("video prompt without modelRefImage preserves presenter identity", /CRITICAL PRESENTER CONTINUITY LOCK/i.test(vidNoModelRef) && /Do NOT switch from male to female or female to male/i.test(vidNoModelRef), vidNoModelRef);
+check("video prompt without modelRefImage keeps one presenter", /Use exactly one single consistent presenter/i.test(vidNoModelRef), vidNoModelRef);
 
 const vidWithModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
-check("video prompt with modelRefImage preserves presenter identity", /CRITICAL PRESENTER CONTINUITY LOCK/i.test(vidWithModelRef) && /same fictional presenter identity/i.test(vidWithModelRef), vidWithModelRef);
+check("video prompt with modelRefImage avoids likeness matching", !/PUBLIC FIGURE|LIKENESS|celebrity|influencer|private individual|exact same presenter|same gender, face|copy[^.]{0,80}(?:person|face)|clone|resemble/i.test(vidWithModelRef), vidWithModelRef);
 
 const imgNoModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });
-check("image prompt without modelRefImage instructs AI to focus on clean product hero presentation", /Product Hero Focus|Product Focus|BRAND NEW PRESENTER FACE/i.test(imgNoModelRef), imgNoModelRef);
+check("image prompt without modelRefImage instructs AI to focus on clean product hero presentation", /Product Hero Focus|Product Focus/i.test(imgNoModelRef), imgNoModelRef);
 
 const imgWithModelRef = buildImagePrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman", modelRefImage: "data:image/png;base64,sample" });
-check("image prompt with modelRefImage enforces brand new presenter face generation", /CRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION/i.test(imgWithModelRef), imgWithModelRef);
+check("image prompt with modelRefImage avoids likeness matching", !/PUBLIC FIGURE|LIKENESS|celebrity|influencer|private individual|brand new presenter face|copy[^.]{0,80}(?:person|face)|clone|resemble/i.test(imgWithModelRef), imgWithModelRef);
 
 // Test 9: Video prompt fidelity directions
 const sampleVideoPrompt = buildVideoPrompt({ name: "กระเป๋าเป้ลายการ์ตูน" }, settings);
@@ -564,17 +564,17 @@ check("hands_only video prompt contains background setting or aesthetics", /Cafe
 
 // Test 11: Auto mode always uses a Thai presenter and keeps the inferred setting
 const caseAutoVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
-check("phone case product Auto uses a fictional Thai presenter", /Presenter: A fictional adult Thai (?:woman|man) reviewer/i.test(caseAutoVid) && /THAI HUMAN IDENTITY LOCK/i.test(caseAutoVid), caseAutoVid);
+check("phone case product Auto uses a fictional Thai presenter", /Presenter: A fictional adult Thai (?:woman|man) reviewer/i.test(caseAutoVid) && /THAI PRESENTER CAST/i.test(caseAutoVid), caseAutoVid);
 check("phone case product Auto location recommends Cafe \/ Coffee Shop setting", /Cafe \/ Coffee Shop/i.test(caseAutoVid), caseAutoVid);
 check("phone case product video prompt contains multi-angle multi-shot mandate", /MULTI-ANGLE PHONE CASE SHOT MANDATE/i.test(caseAutoVid), caseAutoVid);
 check("Auto presenter is attractive and age-appropriate", /naturally attractive|beautiful or handsome|age-appropriate/i.test(caseAutoVid), caseAutoVid);
 
 const caseAutoImg = buildImagePrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
-check("phone case image Auto uses a fictional Thai presenter", /Presenter: A fictional adult Thai (?:woman|man) reviewer/i.test(caseAutoImg) && /THAI HUMAN IDENTITY LOCK/i.test(caseAutoImg), caseAutoImg);
+check("phone case image Auto uses a fictional Thai presenter", /Presenter: A fictional adult Thai (?:woman|man) reviewer/i.test(caseAutoImg) && /THAI PRESENTER CAST/i.test(caseAutoImg), caseAutoImg);
 const caseImagePresenter = caseAutoImg.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 const caseVideoPresenter = caseAutoVid.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 check("Auto still and video use the same presenter gender", caseImagePresenter === caseVideoPresenter, `${caseImagePresenter} vs ${caseVideoPresenter}`);
-check("video preserves the still presenter identity", /CRITICAL PRESENTER CONTINUITY LOCK/i.test(caseAutoVid) && /Do NOT switch from male to female or female to male/i.test(caseAutoVid), caseAutoVid);
+check("video keeps a single consistent presenter", /Use exactly one single consistent presenter/i.test(caseAutoVid), caseAutoVid);
 
 const magneticCaseVid = buildVideoPrompt({ name: "เคสแม่เหล็กวงกลม ชาร์จไร้สาย ยึดขาตั้ง" }, settings);
 check("magnetic phone case prompt includes built-in magnetic ring feature lock", /BUILT-IN MAGNETIC RING \(MAGSAFE\) FEATURE LOCK/i.test(magneticCaseVid), magneticCaseVid);
@@ -584,11 +584,13 @@ check("magnetic phone case prompt forbids external stick-ons or separate plates"
 const clothingVid = buildVideoPrompt({ name: "เสื้อยืดคอกลมแฟชั่น", category: "เสื้อผ้า" }, settings);
 check("clothing video prompt enforces front-only view lock", /STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK/i.test(clothingVid), clothingVid);
 check("clothing video prompt forbids back view and turning around", /do NOT show the back view|CLOTHING FRONT-ONLY RULE/i.test(clothingVid), clothingVid);
-check("clothing video prompt blocks public figure likeness", /PUBLIC FIGURE \/ LIKENESS SAFETY LOCK/i.test(clothingVid) && /APPAREL MODEL SAFETY/i.test(clothingVid) && /fictional adult/i.test(clothingVid), clothingVid);
+check("clothing video uses a generic fictional adult model", /HUMAN CAST:/i.test(clothingVid) && /APPAREL MODEL SAFETY/i.test(clothingVid) && /fictional adult/i.test(clothingVid), clothingVid);
+check("clothing video keeps the presenter's complete head visible across cuts", /APPAREL PRESENTER FRAME CONTINUITY[\s\S]*head[^.]*fully inside the frame[\s\S]*hard cut/i.test(clothingVid), clothingVid);
+check("clothing video does not request talking-head framing", !/talking head/i.test(clothingVid), clothingVid);
 
 const clothingImg = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาว", category: "แฟชั่น" }, settings);
 check("clothing image prompt enforces front-facing shot distribution", /front shot|front-facing/i.test(clothingImg), clothingImg);
-check("clothing image prompt blocks public figure likeness", /PUBLIC FIGURE \/ LIKENESS SAFETY LOCK/i.test(clothingImg) && /APPAREL MODEL SAFETY/i.test(clothingImg), clothingImg);
+check("clothing image uses a generic fictional adult model", /HUMAN CAST:/i.test(clothingImg) && /APPAREL MODEL SAFETY/i.test(clothingImg), clothingImg);
 
 // Test 13: Auto never selects dog/cat; animal presenters are explicit opt-in only
 const petFoodAutoVid = buildVideoPrompt({ name: "อาหารแมวพรีเมียม 1.2kg" }, { ...settings, presenter: "Auto" });

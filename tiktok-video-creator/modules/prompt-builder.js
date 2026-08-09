@@ -108,7 +108,7 @@ const PRESENTERS = {
 };
 
 const THAI_PERSON_DIRECTION = "Natural fictional adult Thai reviewer standing in a full-length shot, modestly dressed in a complete outfit (proper top AND long pants/skirt). The product must remain rigid and static; reviewer stands next to it gently.";
-const THAI_HUMAN_IDENTITY_DIRECTION = "THAI HUMAN IDENTITY LOCK: Every human person, presenter, model, parent, body, face, hands, or voice shown must be Thai. In Auto mode, always include exactly one fictional adult Thai commercial presenter who is naturally attractive, beautiful or handsome as appropriate, well-groomed, realistic, and age-appropriate. Do not use any celebrity, influencer, public figure, or non-Thai person.";
+const THAI_HUMAN_CAST_DIRECTION = "THAI PRESENTER CAST: Use the selected fictional Thai commercial presenter. In Auto mode, include exactly one well-groomed, realistic, age-appropriate fictional adult Thai presenter.";
 
 const KIDS_WITH_PARENT_DIRECTION = "KIDS PRODUCT SCENE WITH CHILD & PARENT SUPERVISION: The scene MUST depict a happy young Thai kindergarten child (4-6 years old or older, strictly no babies or toddlers under kindergarten age) actively, safely, and naturally riding, playing with, wearing, or using the kids product (e.g. riding the kids bicycle, playing with the toy) in a bright, clean setting. The child is naturally enjoying and using the product naturally in the scene without hard-selling to the camera. Accompanying the child MUST BE a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby, supervising with love, warmth, and care. STRICTLY FORBIDDEN: Do NOT include dogs or unrelated pet animals. Do NOT show an isolated adult presenter without a child for kids products.";
 
@@ -147,17 +147,16 @@ const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Neve
 
 const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to reference: never stretch, squash, enlarge, or shrink it. The physical size of the product must be realistic and true-to-life compared to the environment, hands, or presenter. Do not make the product abnormally large or out-of-scale relative to the surroundings (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
 
-const MATCH_STILL_DIRECTION = "IMPORTANT: The attached reference image is a multi-angle/multi-scene collage grid. The video must follow this reference by depicting the product across different scenes and angles as shown in the collage. Maintain absolute consistency for the product: its shape, proportions, physical size, scale, colors, materials, printed logos, and text must be identical in every scene. The size, scale, dimensions, and proportions of the product in the video must match the reference image exactly relative to the background; do not enlarge, shrink, stretch, or warp it. STRICT BRAND NEW PRESENTER FACE LOCK: If a presenter is shown in the scene, the presenter in the video MUST feature an ENTIRELY BRAND NEW, UNIQUE face and appearance generated from scratch. ABSOLUTELY FORBIDDEN: NEVER copy, clone, mirror, or replicate the face, hair, or facial features of any person appearing in the reference photo. Always generate a completely new human face from scratch. Keep the newly generated presenter's appearance consistent across all scenes. STRICT RULE: Do NOT generate the video frame as a collage, grid, storyboard, split-screen, or multi-panel composition. Each scene in the video must be a single, full-frame shot showing only one angle/perspective at a time. Animate each small image/panel from the reference collage sequentially, presenting each one as an individual full-screen scene (1 small image = 1 full-frame scene/shot). Animate each scene with smooth camera movement and transition between them with clean cuts.";
 const BACKGROUND_COMPATIBILITY_LOCK = "BACKGROUND COMPATIBILITY LOCK: The environment, surface, props, colors, and lighting must make physical and commercial sense for the exact product. Use only category-relevant objects. Do not place unrelated food, pets, plants, sports gear, bathroom items, kitchen tools, vehicles, or decorative props in the scene. For vehicle accessories, the matching vehicle is a required relevant context object. Never let the background compete with, hide, recolor, or imply an incorrect use for the product.";
 const VEHICLE_ACCESSORY_CONTEXT_DIRECTION = "STRICT VEHICLE ACCESSORY CONTEXT LOCK: The matching real vehicle MUST be clearly visible and correctly matched to the product. Motorcycle accessories (helmet, motorcycle top box, rear case, rack, pannier, phone mount, or motorcycle part) MUST be shown on, attached to, or directly beside a real motorcycle or scooter; show enough of the motorcycle to make the use unmistakable. Car accessories MUST be shown inside, attached to, or directly beside a real car; show the relevant dashboard, seat, trunk, door, windshield, or exterior body. ABSOLUTELY FORBIDDEN: Do not show a motorcycle/car accessory alone on a generic desk, empty studio floor, unrelated room, cafe, or mismatched vehicle. Keep the product as the hero while the matching vehicle provides clear real-world context.";
 const FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK = "HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE: The entire still-image scene MUST be clearly outdoors in open air, such as an outdoor home driveway, front yard, quiet neighborhood street, or park path. Use outdoor pavement, concrete, grass, or natural daylight. The shoe must be grounded on the outdoor surface or naturally worn on a visible foot outside. ABSOLUTELY FORBIDDEN: indoor rooms, houses, bedrooms, entryways, closets, shoe shelves, retail interiors, cafes, studios, indoor floors, or studio backdrops. If any other instruction conflicts with this, keep the shoe outdoors.";
 
-function resolveMatchStillDirection(autoPresenter, hasModelRefImage = false) {
+function resolveMatchStillDirection(autoPresenter) {
   const baseFidelity = "STRICT REFERENCE PHOTO PRODUCT FIDELITY LOCK: Reproduce the product 100% pixel-faithfully from the reference image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without distortion, morphing, redesign, or alteration.";
   const collageRule = "STRICT RULE: Do NOT generate a collage or grid frame. Each scene must be a single full-frame shot. Animate each panel sequentially with smooth camera movement and clean cuts.";
   const singleSceneRule = "STRICT RULE: Do NOT generate a collage or grid frame. Each scene must be a single full-frame shot with smooth camera movement and clean cuts.";
   const newSceneEnv = "STRICT NEW REALISTIC BACKGROUND SCENE LOCK: Generate a BRAND NEW, realistic, aesthetically composed background environment tailored to this product category (living room for furniture, cafe for coffee/phone cases, bathroom for skincare, workspace for gadgets). DO NOT copy the reference photo background.";
-  const presenterContinuityRule = "CRITICAL PRESENTER CONTINUITY LOCK: If the attached reference frame contains the fictional presenter generated for this product, preserve that exact same presenter in the video. Keep the same gender, face, age, skin tone, hairstyle, outfit, and overall identity across the still image and every video scene. ABSOLUTELY FORBIDDEN: Do NOT switch from male to female or female to male, do not replace the presenter, and do not introduce another person. If the uploaded product photo contains an unrelated real person, do not copy that person's identity; use the selected fictional Thai presenter instead.";
+  const presenterContinuityRule = "PRESENTER CONTINUITY: Use one consistent fictional presenter with the selected gender, age range, hairstyle, and outfit throughout the generated video scenes. Keep the cast limited to that presenter unless the selected mode explicitly requires a child, parent, or pet.";
 
   if (autoPresenter === "none") {
     return `IMPORTANT: Depict the product across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${collageRule}`;
@@ -184,7 +183,8 @@ const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pa
 const SHOE_SCALE_DIRECTION = "STRICT FOOTWEAR SCALE & PLACEMENT LOCK: This is a real human shoe, not a giant prop or miniature toy. Preserve true foot-sized proportions and the exact single-shoe/pair count. Show it at realistic scale relative to a human foot, leg, hand, shoe box, floor, shelf, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge the shoe to furniture-scale, make it tiny, or place it in an unrelated oversized environment. Keep the shoe grounded on a realistic floor, shelf, or naturally worn on a foot.";
 
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: You MUST reproduce the clothing item EXACTLY as depicted in the reference image. Preserve its 100% exact garment cut, silhouette, neckline style (crewneck, V-neck, polo collar, hoodie, scoop neck), sleeve length (short sleeve, long sleeve, sleeveless), sleeve cut, fabric material texture (cotton, denim, knit, silk, linen, fleece), color shade, wash, buttons, zippers, pockets, and stitching. EXACT PRINTED GRAPHICS & PATTERNS: Any chest logo, printed artwork, typography, graphic illustrations, embroidery, brand crest, or pattern (stripes, plaid, floral, tie-dye) MUST be reproduced 100% pixel-faithfully in the exact same location, size, and colors. STRICTLY FORBIDDEN: Do NOT simplify, alter, redesign, recolor, or change the clothing item. Do NOT convert a printed shirt into a plain shirt, do NOT change sleeve length, and do NOT alter the collar or cut. The garment worn by the presenter must remain 100% identical and static across all video frames without any morphing or shifting. FRONT-ONLY VIEW LOCK: The presenter must face forward showing the front design of the garment. Do NOT show back-facing angles or 360-degree rotations.";
-const PUBLIC_FIGURE_POLICY_SAFE_DIRECTION = "PUBLIC FIGURE / LIKENESS SAFETY LOCK: All people, faces, bodies, hands, and voices must be fictional generic adults unless a child mode is explicitly selected. Do NOT copy or resemble any real person, celebrity, influencer, public figure, private individual, or person in a reference image.";
+const APPAREL_PRESENTER_FRAME_CONTINUITY = "APPAREL PRESENTER FRAME CONTINUITY: Keep the presenter's complete head, neck, torso, arms, legs, and feet anatomically connected and fully inside the frame throughout every shot. Preserve comfortable space above the head and below the feet. The complete head and body must remain visible in the final frame before each hard cut and the first frame after each hard cut. Use instantaneous hard cuts only; never crossfade, dissolve, wipe, morph, or interpolate the presenter between scenes. Never crop, hide, detach, or make the head or any body part disappear during a scene change.";
+const FICTIONAL_CAST_DIRECTION = "HUMAN CAST: Use a generic fictional commercial presenter according to the selected presenter mode.";
 const APPAREL_FICTIONAL_MODEL_DIRECTION = "APPAREL MODEL SAFETY: For clothing, fashion, bags, or accessories, use only a fictional adult commercial fit model or product-only mannequin-style presentation.";
 
 const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference image pixel-for-pixel. Do NOT shift, alter, tint, recolor, or replace original colors or graphics under any lighting or environment effect. Every color zone — background fill, text color, graphic element colors, border colors — must remain exactly as shown in the reference photo.";
@@ -529,9 +529,6 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const intro = `Create one authentic full-frame smartphone photograph in a vertical 9:16 layout. Show ${productName} clearly at realistic scale with its visible geometry, materials, colors, markings, and construction matching the reference. Use natural everyday lighting without artificial studio gloss or CGI styling.`;
 
-  const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
-  const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
-
   const isKids = isKidsProduct(productText) || ["child", "older_child", "baby", "toddler"].includes(auto.presenter);
 
   let peopleDirection = "";
@@ -546,11 +543,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     const presenterInstruction = auto.presenter === "กรอกเอง"
       ? (auto.customPresenter || "a fictional adult Thai presenter")
       : (PRESENTERS[auto.presenter] || PRESENTERS.none);
-    if (hasModelRefImage) {
-      peopleDirection = `Presenter: ${presenterInstruction} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION}\nCRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The presenter generated MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, hairstyle, and facial features from any person shown in the reference photo. ABSOLUTELY FORBIDDEN: Do NOT copy, clone, mirror, or resemble the face of any person appearing in the reference photo under any circumstances. Always generate a brand new presenter face from scratch.`;
-    } else {
-      peopleDirection = `Presenter: ${presenterInstruction}. ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.\nCRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The presenter MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, and hairstyle from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face of any person appearing in the product reference image under any circumstances.`;
-    }
+    peopleDirection = `Presenter: ${presenterInstruction}. ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.`;
   } else {
     peopleDirection = NO_PEOPLE_DIRECTION;
   }
@@ -646,13 +639,13 @@ export function buildImagePrompt(productInfo, settings = {}) {
     NO_WOW_DIRECTION,
     REFERENCE_IMAGE_HIGHEST_PRIORITY,
     referenceCompositingDirection,
-    PUBLIC_FIGURE_POLICY_SAFE_DIRECTION,
+    FICTIONAL_CAST_DIRECTION,
     isClothing ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     NO_HALLUCINATED_BRAND_LOGOS_RULE,
-    auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_IDENTITY_DIRECTION : "",
+    auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_CAST_DIRECTION : "",
     intro,
     STILL_PRODUCT_FIDELITY_DIRECTION,
     PRODUCT_ISOLATION_DIRECTION,
@@ -954,9 +947,6 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const explicitlySelectedAnimal = settings?.presenter === "dog" || settings?.presenter === "cat";
   const animalName = auto.presenter === "cat" ? "cute cat" : "cute dog";
   const firstSceneNoPeople = (settings?.firstSceneNoPeople === true || settings?.firstSceneNoPeople === "true");
-  const modelRefImage = productInfo?.modelRefImage || settings?.modelRefImage || "";
-  const hasModelRefImage = Boolean(modelRefImage && String(modelRefImage).trim());
-
   const sceneStyle = isUnboxingHands
     ? "unboxing"
     : (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
@@ -974,6 +964,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     styleFragment = styleFragment
       .replace(/\b(?:a|an)\s+(?:trendy|stylish|young|adult|Thai|natural|professional|friendly|casual|cute|3D|stylized|\s)*(?:woman|man|person|presenter|reviewer|character)\b[^.;]*[.;]?/gi, "hands ")
       .replace(/\b(?:people|presenters?|reviewers?|characters?)\b/gi, "hands");
+  }
+
+  if (isClothing && styleFragment) {
+    styleFragment = styleFragment.replace(/\btalking\s+head\b/gi, "stable full-body fashion review");
   }
 
   if (firstSceneNoPeople && styleFragment) {
@@ -1013,13 +1007,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     COLOR_EXACT_LOCK,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     NO_HALLUCINATED_BRAND_LOGOS_RULE,
-    PUBLIC_FIGURE_POLICY_SAFE_DIRECTION,
-    auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_IDENTITY_DIRECTION : "",
+    FICTIONAL_CAST_DIRECTION,
+    auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_CAST_DIRECTION : "",
     isClothing ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     SPEECH_DIRECTION,
     PROGRESSIVE_AUDIO_NARRATION_MANDATE,
-    resolveMatchStillDirection(auto.presenter, hasModelRefImage),
+    resolveMatchStillDirection(auto.presenter),
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     PRODUCT_FIDELITY_DIRECTION,
@@ -1103,6 +1097,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   if (isClothing) {
     sceneBreakdown = sceneBreakdown
+      .replace(/cuts\/transitions/gi, "instantaneous hard cuts")
       .replace(/360-degree rotation showing (.+?) from all angles/gi, "front-facing showcase showing the front view of $1")
       .replace(/showing (.+?) from all angles/gi, "showing the front view of $1");
     sceneBreakdown += "\n(CLOTHING FRONT-ONLY RULE: The model/presenter must remain strictly front-facing in all scenes; do NOT turn around or show the back side of the clothing item, to prevent arm and hand distortion glitches.)";
@@ -1153,6 +1148,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     `STRICT LIMIT: The video must contain AT MOST 3 to 4 sequential scenes/shots. Do not generate too many scenes, cuts, or edits. Keep the storytelling simple and clean.`,
     isUnboxingHands ? UNBOXING_REVEAL_SEQUENCE : "",
     sceneBreakdown,
+    isClothing && !noPeople && !handsOnly && !isAnimal ? APPAREL_PRESENTER_FRAME_CONTINUITY : "",
     `Subtle ${compactPromptText(auto.cameraMovement, 80)}; camera movement should feel like a real handheld/tripod shot while the product remains physically stable. Keep shots sharp and clearly visible. No morphing, duplication, floating, or impossible action.`
   );
 
@@ -1306,8 +1302,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
       personDir = "Natural Thai child character. The product must remain rigid, static, and completely unchanged; the child stands next to it, plays with it, or holds it gently without deforming it. The child must NOT speak to the camera, must NOT speak any dialogue, and must NOT review the product directly; all spoken dialogue in this video is strictly an off-screen voiceover by a caring Thai mother.";
     }
-    const faceMatchRule = "CRITICAL PRESENTER CONTINUITY LOCK: Use the exact same fictional presenter identity as the still image/reference frame throughout this video. Preserve the same gender, face, age, skin tone, hairstyle, outfit, and overall appearance. ABSOLUTELY FORBIDDEN: Do NOT switch from male to female or female to male, do not replace the presenter, and do not introduce another person. If the uploaded product photo contains an unrelated real person, do not copy that person's identity; use the selected fictional Thai presenter instead.";
-    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${presenterHandAnatomy} ${FULL_BODY_PRESENTER_DIRECTION} ${faceMatchRule} (Strictest rule: ${presenterContinuity})`;
+    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${presenterHandAnatomy} ${FULL_BODY_PRESENTER_DIRECTION} (Strictest rule: ${presenterContinuity})`;
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;
       if (isHoldable) {
