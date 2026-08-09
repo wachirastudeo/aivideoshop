@@ -120,6 +120,9 @@ const FULL_PRODUCT_VISIBILITY_DIRECTION = "STRICT FULL PRODUCT VISIBILITY & NO C
 
 const HANDS_DIRECTION = "NATURAL HUMAN HAND REALISM & AUTHENTIC REVIEW POSES: Realistic first-person POV (Point of View) perspective. Show authentic, natural human hands and forearms holding, supporting, or presenting the product in a realistic, comfortable review pose. NATURAL HAND POSES & GESTURES: Hands must use authentic, relaxed, ergonomic holding poses — such as gently supporting the product from the bottom or sides, holding it steadily with a natural grip, softly turning it to show texture, or gesturing naturally toward details. ALWAYS keep the main brand logo, product title, and printed front artwork 100% visible without hands blocking or covering them. STRICTLY FORBIDDEN POSES: awkward claw grips squeezing the product, fingers covering key printed logos or text, unnaturally contorted wrists, impossible arm angles, or hands floating detached in mid-air. The hands must look 100% realistic, organic, and human with natural skin texture, realistic knuckles, soft fingernails, and natural wrist alignment. STRICT MAXIMUM TWO-HAND COUNT LOCK: The frame must contain AT MOST 2 human hands in total (strictly 1 left hand and 1 right hand, or 1 single hand). ABSOLUTELY FORBIDDEN & CRITICAL RULE: NEVER render 3 hands, NEVER render a third hand, NEVER render floating extra hands, duplicated hands, extra arms, or more than 2 hands under any circumstances across all frames. Each hand must have strictly exactly 5 fingers with natural fingernails, clean skin texture, realistic knuckles, and wrist joints; no extra fingers, no distorted digits, no clipping into the product.";
 const HANDS_ONLY_GLOBAL_COUNT_LOCK = "GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO: Across every scene and frame, show only 1 or 2 human hands total. Use exactly one left hand and one right hand at most. Never add a third hand, extra arm, duplicated hand, floating hand, or hand belonging to another person. If a shot would create a third hand, remove that hand and keep only the primary pair.";
+const HANDS_ONLY_STILL_COUNT_LOCK = "STILL IMAGE TWO-HAND LOCK: Show at most 2 human hands total, one left and one right from the same person. Never render a third hand, extra arm, duplicated hand, detached hand, or more than 5 fingers on either hand.";
+const SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION = "SINGLE-PRESENTER HAND ANATOMY: The one presenter has exactly 2 arms and at most 2 hands total, one left and one right, naturally attached to the same body. Never render a third hand, duplicated hand, extra arm, detached hand, or more than 5 fingers on either hand. Hands may be naturally hidden behind the body or outside the crop, but no additional hands may appear.";
+const MULTI_PERSON_HAND_ANATOMY_DIRECTION = "MULTI-PERSON HAND ANATOMY: Each human has exactly 2 arms and no more than 2 anatomically attached hands, one left and one right. Never give any person a third hand, duplicate a hand or arm, add detached or anonymous hands, or render more than 5 fingers on either hand.";
 const UNBOXING_HANDS_DIRECTION = "STRICT HANDS-ONLY UNBOXING PRESENTER MODE: First-person POV tabletop unboxing video. Show ONLY realistic human hands and forearms opening a shipping box or product box, lifting the lid/flaps, removing tissue paper/bubble wrap/protective insert, and revealing the exact target product inside the box. The product must become clearly visible after the box opens and remain the hero focus. No face, head, torso, full body, or on-screen presenter may appear at any time. Keep the scene natural, satisfying, tactile, and realistic, like a TikTok unboxing review shot from the presenter's point of view.";
 const UNBOXING_REVEAL_SEQUENCE = "MANDATORY UNBOXING ACTION SEQUENCE: Scene 1 shows a closed box/package on a table with only hands entering frame. Scene 2 shows the hands opening the box flaps/lid and gently removing protective packaging. Scene 3 reveals the exact product inside the box, fully visible and sharp. Scene 4 shows the hands lifting or presenting the product near the open box without covering logos, labels, printed artwork, or key product details. STRICTLY FORBIDDEN: do not show a face or full person, do not replace the product with generic packaging, do not leave the product hidden inside the box.";
 const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE — FIRST-PERSON POV FACE EXCLUSION: Close-up or medium POV shot cropped below the neck or from a first-person angle. No full face, facial features, or head are visible in the frame.";
@@ -533,19 +536,20 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   let peopleDirection = "";
   if (handsOnly) {
-    peopleDirection = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}`;
+    const stillHandCount = isUnboxingHands ? `\n${HANDS_ONLY_STILL_COUNT_LOCK}` : "";
+    peopleDirection = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}`;
   } else if (isAnimal) {
-    peopleDirection = `Pet Animal: A cute, friendly pet animal (${auto.presenter === "cat" ? "cat" : "dog"}) sitting next to or interacting naturally with the product in a bright, clean indoor setting. ${ANIMAL_PRESENTER_DIRECTION}`;
+    peopleDirection = `Pet Animal: A cute, friendly pet animal (${auto.presenter === "cat" ? "cat" : "dog"}) sitting next to or interacting naturally with the product in a bright, clean indoor setting. ${ANIMAL_PRESENTER_DIRECTION} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION}`;
   } else if (isKids && auto.presenter !== "none") {
-    peopleDirection = `${KIDS_WITH_PARENT_DIRECTION}`;
+    peopleDirection = `${KIDS_WITH_PARENT_DIRECTION} ${MULTI_PERSON_HAND_ANATOMY_DIRECTION}`;
   } else if (auto.presenter && auto.presenter !== "none") {
     const presenterInstruction = auto.presenter === "กรอกเอง"
       ? (auto.customPresenter || "a fictional adult Thai presenter")
       : (PRESENTERS[auto.presenter] || PRESENTERS.none);
     if (hasModelRefImage) {
-      peopleDirection = `Presenter: ${presenterInstruction}\nCRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The presenter generated MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, hairstyle, and facial features from any person shown in the reference photo. ABSOLUTELY FORBIDDEN: Do NOT copy, clone, mirror, or resemble the face of any person appearing in the reference photo under any circumstances. Always generate a brand new presenter face from scratch.`;
+      peopleDirection = `Presenter: ${presenterInstruction} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION}\nCRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The presenter generated MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, hairstyle, and facial features from any person shown in the reference photo. ABSOLUTELY FORBIDDEN: Do NOT copy, clone, mirror, or resemble the face of any person appearing in the reference photo under any circumstances. Always generate a brand new presenter face from scratch.`;
     } else {
-      peopleDirection = `Presenter: ${presenterInstruction}. Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.\nCRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The presenter MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, and hairstyle from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face of any person appearing in the product reference image under any circumstances.`;
+      peopleDirection = `Presenter: ${presenterInstruction}. ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.\nCRITICAL RULE — BRAND NEW PRESENTER FACE GENERATION: The presenter MUST have an ENTIRELY BRAND NEW, COMPLETELY DIFFERENT face, facial structure, and hairstyle from any person shown in the product reference image. ABSOLUTELY FORBIDDEN: Do NOT copy, match, replicate, mirror, or resemble the face of any person appearing in the product reference image under any circumstances.`;
     }
   } else {
     peopleDirection = NO_PEOPLE_DIRECTION;
@@ -1281,7 +1285,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     }
     promptParts.push(`${handsInstructions}\n${voiceoverDir} ${speechDir}`);
   } else if (auto.presenter === "dog" || auto.presenter === "cat") {
-    let animalInstructions = `Presenter: ${presenterInstruction}. ${ANIMAL_PRESENTER_DIRECTION} (Strictest rule: Use exactly one single consistent animal and presenter throughout the entire video. Do not switch animals or presenters, and do not morph or change their appearance between scenes).`;
+    let animalInstructions = `Presenter: ${presenterInstruction}. ${ANIMAL_PRESENTER_DIRECTION} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} (Strictest rule: Use exactly one single consistent animal and presenter throughout the entire video. Do not switch animals or presenters, and do not morph or change their appearance between scenes).`;
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;
       if (isHoldable) {
@@ -1293,11 +1297,17 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     promptParts.push(`${animalInstructions} ${speechDir}`);
   } else if (auto.presenter && auto.presenter !== "none") {
     let personDir = THAI_PERSON_DIRECTION;
+    const presenterHandAnatomy = isChildPresenter || isKidsProduct(productText)
+      ? MULTI_PERSON_HAND_ANATOMY_DIRECTION
+      : SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION;
+    const presenterContinuity = isChildPresenter || isKidsProduct(productText)
+      ? "Use exactly two consistent people: one child and one parent/guardian. Do not introduce anyone else or merge, duplicate, switch, or morph either person between scenes."
+      : "Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, switch presenters, or morph the presenter between scenes.";
     if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
       personDir = "Natural Thai child character. The product must remain rigid, static, and completely unchanged; the child stands next to it, plays with it, or holds it gently without deforming it. The child must NOT speak to the camera, must NOT speak any dialogue, and must NOT review the product directly; all spoken dialogue in this video is strictly an off-screen voiceover by a caring Thai mother.";
     }
     const faceMatchRule = "CRITICAL PRESENTER CONTINUITY LOCK: Use the exact same fictional presenter identity as the still image/reference frame throughout this video. Preserve the same gender, face, age, skin tone, hairstyle, outfit, and overall appearance. ABSOLUTELY FORBIDDEN: Do NOT switch from male to female or female to male, do not replace the presenter, and do not introduce another person. If the uploaded product photo contains an unrelated real person, do not copy that person's identity; use the selected fictional Thai presenter instead.";
-    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${FULL_BODY_PRESENTER_DIRECTION} ${faceMatchRule} (Strictest rule: Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, do not switch presenters, and do not morph or change the presenter's appearance between scenes).`;
+    let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${presenterHandAnatomy} ${FULL_BODY_PRESENTER_DIRECTION} ${faceMatchRule} (Strictest rule: ${presenterContinuity})`;
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;
       if (isHoldable) {

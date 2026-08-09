@@ -418,6 +418,7 @@ check("light product soap 100g not detected as heavy", !/Real scale./i.test(ligh
 const imgPresenterWoman = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "woman" });
 check("image prompt with woman presenter focuses on product hero presentation", /Product Hero Focus|Product Focus|Product photography/i.test(imgPresenterWoman), imgPresenterWoman);
 check("image prompt with woman presenter uses single full-frame product intro", /one authentic full-frame smartphone photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterWoman), imgPresenterWoman);
+check("image prompt with one presenter forbids a third hand", /SINGLE-PRESENTER HAND ANATOMY[\s\S]*Never render a third hand/i.test(imgPresenterWoman), imgPresenterWoman);
 
 const imgPresenterNone = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("image prompt with no presenter forbids people", /No people, faces/i.test(imgPresenterNone), imgPresenterNone);
@@ -437,6 +438,9 @@ check("image prompt with hands_only strictly forbids faces", /FIRST-PERSON POV F
 const vidPresenterNone = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("video prompt with no presenter has no positive presenter/person references", !/relative to the presenter|on-screen presenter|presenter's character/i.test(vidPresenterNone), vidPresenterNone);
 
+const vidPresenterWoman = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "woman" });
+check("video prompt with one presenter forbids a third hand", /SINGLE-PRESENTER HAND ANATOMY[\s\S]*Never render a third hand/i.test(vidPresenterWoman), vidPresenterWoman);
+
 const vidPresenterHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("video prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(vidPresenterHands), vidPresenterHands);
@@ -444,10 +448,18 @@ check("video prompt with hands_only globally locks two hands across all scenes",
 check("video prompt with hands_only strictly forbids faces", /STRICTLY FORBIDDEN: Do not show any face|FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
 
 const vidPresenterUnboxingHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
+const imgPresenterUnboxingHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
+check("unboxing still globally locks two hands", /STILL IMAGE TWO-HAND LOCK[\s\S]*Never render a third hand/i.test(imgPresenterUnboxingHands), imgPresenterUnboxingHands);
 check("video prompt with unboxing_hands uses hands-only unboxing presenter mode", /STRICT HANDS-ONLY UNBOXING PRESENTER MODE/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("video prompt with unboxing_hands opens box and reveals product", /opening a shipping box|opening the product box/i.test(vidPresenterUnboxingHands) && /revealing the exact target product inside the box|reveals the exact product inside the box/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("video prompt with unboxing_hands strictly forbids face and full person", /No face, head, torso, full body/i.test(vidPresenterUnboxingHands) && /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("unboxing video globally locks two hands across all scenes", /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+
+const childHandsImage = buildImagePrompt({ name: "จักรยานเด็ก" }, settings);
+const childHandsVideo = buildVideoPrompt({ name: "จักรยานเด็ก" }, settings);
+check("child and parent still uses per-person hand anatomy", /MULTI-PERSON HAND ANATOMY[\s\S]*Never give any person a third hand/i.test(childHandsImage), childHandsImage);
+check("child and parent video uses per-person hand anatomy", /MULTI-PERSON HAND ANATOMY[\s\S]*Never give any person a third hand/i.test(childHandsVideo), childHandsVideo);
+check("child video keeps exactly one child and one parent", /exactly two consistent people: one child and one parent\/guardian/i.test(childHandsVideo), childHandsVideo);
 
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
 check("image prompt with text enabled shows only clipText phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled), imgTextEnabled);
