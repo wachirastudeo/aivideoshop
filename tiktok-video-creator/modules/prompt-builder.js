@@ -134,6 +134,7 @@ const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST repro
 const STILL_PRODUCT_FIDELITY_DIRECTION = "STILL PRODUCT IDENTITY: Preserve its exact shape, proportions, support structure, materials, colors, patterns, visible logos, labels, and printed text from the reference image. Keep the product physically coherent and at realistic scale. Do not invent parts, remove parts, redesign it, or force a new geometry.";
 const STILL_TEXT_INTEGRITY_DIRECTION = "STILL TEXT INTEGRITY: Preserve any Thai, English, or other script physically printed on the reference product exactly as visible. Do not invent extra writing, fake letters, logos, labels, or gibberish anywhere else in the image.";
 const REFERENCE_IMAGE_HIGHEST_PRIORITY = "REFERENCE PHOTO OVERRIDES TEXT: Match the attached product exactly. If text conflicts, follow the photo. Never substitute or redesign it.";
+const APPAREL_REFERENCE_PRIORITY = "APPAREL REFERENCE PRIORITY: The attached reference image is the single source of truth for the garment. Preserve the exact garment type, silhouette, cut, length, neckline, sleeves, fit, fabric, colors, print, and visible construction. Do not let a sales hook, generic fashion wording, or presenter styling replace or redesign the garment.";
 const REFERENCE_COMPOSITING_DIRECTION = "BACKGROUND-ONLY EDIT: Keep the reference product unchanged; replace only the background.";
 const IMAGE_AUTO_ANIMAL_EXCLUSION = "IMAGE AUTO MODE: No dog, cat, puppy, kitten, or other animal unless the user explicitly selected dog or cat presenter.";
 
@@ -571,7 +572,7 @@ function stripForbiddenVideoWords(value) {
 function buildProductIdentityLock(productInfo = {}) {
   const productName = compactPromptText(
     sanitizePolicySensitiveText(
-      productInfo.name || productInfo.originalName || productInfo.caption || ""
+      getVisualProductName(productInfo)
     ),
     180
   );
@@ -581,16 +582,27 @@ function buildProductIdentityLock(productInfo = {}) {
   return `PRODUCT NAME / CATEGORY LOCK: The requested product is "${stableProductName}". Use this explicit product name to determine what the item is. The attached product reference remains authoritative for its exact visual design. Never substitute a different product type; if the name says shirt/top, generate a shirt/top, never underwear, lingerie, panties, briefs, or another unrelated garment. This instruction is semantic context only and must not appear as visible text.`;
 }
 
+function getVisualProductName(productInfo = {}) {
+  return productInfo.originalName ||
+    productInfo.productLinkTitle ||
+    productInfo.rawProduct?.title ||
+    productInfo.rawProduct?.product_name ||
+    productInfo.rawProduct?.name ||
+    productInfo.name ||
+    productInfo.caption ||
+    "";
+}
 
 
 
 export function buildImagePrompt(productInfo, settings = {}) {
   const auto = resolveAutoSettings(productInfo, settings);
-  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
+  const visualProductName = getVisualProductName(productInfo);
+  const productName = generationProductName(visualProductName, productInfo.category) || "the attached product";
   const details = compactPromptText(sanitizePolicySensitiveText(productInfo.highlights || ""), 100).replace(/[^\x00-\x7F]/g, "").trim();
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
-  const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const productText = `${visualProductName} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const autoPresenterProfile = isAuto(settings.presenter)
     ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
     : "";
@@ -730,7 +742,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     !textEnabled ? TEXT_FREE_DIRECTION : "",
     buildProductIdentityLock(productInfo),
     NO_WOW_DIRECTION,
-    isClothing ? "" : REFERENCE_IMAGE_HIGHEST_PRIORITY,
+    isClothing ? APPAREL_REFERENCE_PRIORITY : REFERENCE_IMAGE_HIGHEST_PRIORITY,
     referenceCompositingDirection,
     FICTIONAL_CAST_DIRECTION,
     isClothing && ["woman", "man"].includes(auto.presenter) ? INDEPENDENT_FICTIONAL_CAST_DIRECTION : "",
@@ -899,76 +911,15 @@ function getProductSpecificScaleInstruction(text = "") {
  * @returns {string[]} อาเรย์ของประโยค Hook
  */
 function resolveProductHook(productInfo = {}) {
-  const text = [
-    productInfo.name || "",
-    productInfo.category || "",
-    productInfo.targetGroup || "",
-    productInfo.highlights || ""
-  ].join(" ").toLowerCase();
-
-  // Tumbler / Mug
-  if (/(แก้ว|กระบอกน้ำ|ชากาแฟ|tumbler|mug|cup|bottle)/i.test(text)) {
-    return [
-      "สายชากาแฟ ไม่มีใบนี้ไม่ได้แล้วจริงๆ",
-      "ใครเป็นมนุษย์ออฟฟิศที่ติดน้ำหวาน ต้องมีใบนี้ติดโต๊ะ",
-      "เบื่อไหม ซื้อกาแฟมายังไม่ทันหมดแก้ว น้ำแข็งละลายจนจืดซะแล้ว",
-      "ตั้งแต่มีแก้วใบนี้ ก็ลืมแก้วทุกใบที่เคยซื้อมาเลย",
-      "ลองพิสูจน์แล้ว แก้วใบนี้ใส่น้ำแข็งทิ้งไว้ข้ามคืน สรุปว่า"
-    ];
-  }
-
-  // Beauty / Skincare
-  if (/(ครีม|เซรั่ม|ลิป|แป้ง|มาสก์|สกินแคร์|เมคอัพ|beauty|skincare|cosmetic)/i.test(text)) {
-    return [
-      "กู้ผิวพังให้ปังได้ง่ายๆ ด้วยไอเทมนี้",
-      "เคล็ดลับผิวสวยที่บล็อกเกอร์ไม่ค่อยบอกคุณ",
-      "ใครที่มีปัญหาผิว รีบดูคลิปนี้ให้จบ",
-      "บอกลาหน้าโทรม แค่มีกระปุกนี้ติดโต๊ะเครื่องแป้ง",
-      "ของดีบอกต่อ ใช้จริงไม่จกตา"
-    ];
-  }
-  
-  // Fashion / Clothing
-  if (/(เสื้อ|กางเกง|กระโปรง|รองเท้า|กระเป๋า|แฟชั่น|เดรส|fashion|clothing|clothes)/i.test(text)) {
-    return [
-      "ชุดนี้ใส่แล้วพรางหุ่นสุดๆ ใครเห็นก็ต้องทัก",
-      "แมทช์ลุคได้ทุกลุค ไม่มีติดตู้ไม่ได้แล้ว",
-      "สายแฟชั่นห้ามพลาด ตัวนี้คือไอเทมกันตาย",
-      "หมดปัญหาคิดไม่ออกว่าจะใส่อะไรดี",
-      "เนื้อผ้าดีมาก ทรงสวยเป๊ะ ตรงปกไม่จกตา"
-    ];
-  }
-
-  // Tech / Gadgets
-  if (/(โทรศัพท์|มือถือ|แล็ป|คอม|ลำโพง|หูฟัง|ชาร์จ|กล้อง|tech|phone|gadget)/i.test(text)) {
-    return [
-      "ไอเทมสุดล้ำ ที่จะทำให้ชีวิตคุณง่ายขึ้น 10 เท่า",
-      "สายไอทีต้องจัด ตัวนี้สเปคคุ้มเกินราคามาก",
-      "ใครชอบความสะดวกสบาย ไม่มีตัวนี้ถือว่าพลาด",
-      "ฟีเจอร์จัดเต็มขนาดนี้ ไม่ซื้อไม่ได้แล้ว",
-      "แก้ปัญหาจุกจิกกวนใจ ด้วยแก็ดเจ็ตตัวนี้เลย"
-    ];
-  }
-
-  // Food / Snack
-  if (/(อาหาร|ขนม|กาแฟ|เครื่องดื่ม|น้ำ|food|snack|drink)/i.test(text)) {
-    return [
-      "อร่อยแสงออกปาก ใครสายกินต้องมามุง",
-      "หยุดกินไม่ได้เลย อร่อยจนต้องตุนไว้",
-      "ของอร่อยที่สายกินห้ามพลาดเด็ดขาด",
-      "ใครหิวตอนดึก สิ่งนี้คือคำตอบ",
-      "อร่อยแถมมีประโยชน์ ต้องลองเลย"
-    ];
-  }
-
+  // Keep fallback hooks category-neutral. The model has the reference and
+  // verified facts; generic guidance avoids inventing an unrelated use case.
   return [
-    "ไอเทมลับที่ใช้เองแล้วเวิร์คมาก",
-    "บอกลาปัญหาเดิมๆ ไปได้เลยเมื่อเจอสิ่งนี้",
-    "ของมันต้องมี พลาดไม่ได้แล้ว",
-    "เคล็ดลับที่ทำให้ชีวิตง่ายขึ้นเยอะ",
-    "ใครกำลังลังเล ดูคลิปนี้ให้จบก่อน",
-    "หยุดก่อน ถ้าคุณยังไม่รู้จักสิ่งนี้",
-    "ลองใช้มาสักพักแล้ว ประทับใจสุดๆ"
+    "เจอปัญหานี้อยู่ไหม",
+    "ลองดูตัวช่วยที่อาจทำให้เรื่องนี้ง่ายขึ้น",
+    "ใครกำลังมองหาวิธีที่สะดวกขึ้น ลองดูจุดนี้",
+    "จุดนี้อาจช่วยให้ใช้งานง่ายขึ้น",
+    "ลองดูรายละเอียดนี้ก่อนตัดสินใจ",
+    "มีวิธีที่เหมาะกับการใช้งานแบบนี้ไหม ลองดู"
   ];
 }
 
@@ -1013,11 +964,7 @@ export function resolveSpokenOpeningHook(productInfo = {}, random = Math.random)
 
 function buildSpeechProductContext(productInfo = {}, productName = "the attached product") {
   const sourceName = sanitizePolicySensitiveText(
-    productInfo.name ||
-    productInfo.originalName ||
-    productInfo.productLinkTitle ||
-    productInfo.caption ||
-    ""
+    getVisualProductName(productInfo)
   );
   const highlights = Array.isArray(productInfo.highlights)
     ? productInfo.highlights
@@ -1030,13 +977,13 @@ function buildSpeechProductContext(productInfo = {}, productName = "the attached
     ? verifiedFacts.join(" | ")
     : "only details visibly verified from the attached product reference";
 
-  return "PRODUCT-SPECIFIC SPEECH LOCK: Treat this as " +
+  return "PRODUCT-SPECIFIC SPEECH CONTEXT: Treat this as " +
     productName +
     ". Internal product title for factual grounding: \"" +
     (compactPromptText(sourceName, 180) || productName) +
     "\". Verified product facts: [" +
     factText +
-    "]. The spoken line MUST communicate at least one verified fact, benefit, material, feature, or realistic use of this exact product. Never output a generic hook by itself, never describe another product category, and never invent a feature not supported by the title, highlights, or reference image. Do not say the exact product name or brand aloud.";
+    "]. Use this as flexible context, not a fixed script. Choose a natural problem, use case, detail, or benefit only when it genuinely fits this product. Do not force every fact, invent claims, or describe another product category.";
 }
 
 export function buildVideoPrompt(productInfo, settings = {}) {
@@ -1046,7 +993,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const clipText = resolveClipText(productInfo, settings);
   const spokenOpeningHook = resolveSpokenOpeningHook(productInfo);
   const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true");
-  const productName = generationProductName(productInfo.name, productInfo.category) || "the attached product";
+  const visualProductName = getVisualProductName(productInfo);
+  const productName = generationProductName(visualProductName, productInfo.category) || "the attached product";
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const overlayText = [
@@ -1054,7 +1002,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     textEnabled ? compactPromptText(settings?.promotionText, 80) : ""
   ].filter(Boolean);
  
-  const productText = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const productText = `${visualProductName} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const autoPresenterProfile = isAuto(settings.presenter)
     ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
     : "";
@@ -1125,7 +1073,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the presenter or surroundings.";
   }
 
-  const PROGRESSIVE_AUDIO_NARRATION_MANDATE = "CRITICAL AUDIO NARRATION RULE — SINGLE RELEVANT LINE: Speak only once in Scene 1 using the product-specific speech lock below. Keep Scenes 2, 3, and 4 completely silent with zero spoken dialogue, repetition, looping, or audio carryover.";
+  const PROGRESSIVE_AUDIO_NARRATION_MANDATE = "AUDIO GUIDANCE: Keep Thai narration short, natural, and non-repetitive. Prefer a concise opening line, then let the model add only brief narration when it genuinely clarifies the product. Do not force a fixed script or a line in every scene.";
 
   const promptParts = [
     `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
@@ -1178,10 +1126,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60), productText)
     .replace(/\d+-second\s*/g, "");
   sceneBreakdown = sceneBreakdown
-    .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, `$1 [AUDIO TRACK: Spoken line 1 in Thai - selected random opening hook: "${spokenOpeningHook}"]`)
-    .replace(/^(\s*-\s*Scene 2\b[^\n]*)/m, '$1 [AUDIO TRACK: No spoken dialogue; remain completely silent]')
-    .replace(/^(\s*-\s*Scene 3\b[^\n]*)/m, '$1 [AUDIO TRACK: No spoken dialogue; remain completely silent]')
-    .replace(/^(\s*-\s*Scene 4\b[^\n]*)/m, '$1 [AUDIO TRACK: No spoken dialogue; remain completely silent]');
+    .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, '$1 [AUDIO GUIDANCE: Use a short, natural, product-relevant opening; wording is flexible]');
   if (noPeople) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown on its own")
@@ -1354,9 +1299,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   if (settings?.clipText) details.push(`Main Message: ${sanitizePolicySensitiveText(settings.clipText)}`);
   if (productInfo.name) details.push(`Product context only, never say aloud: ${sanitizePolicySensitiveText(productInfo.name)}`);
   const combinedProductDetails = [buildSpeechProductContext(productInfo, productName), ...details].filter(Boolean).join(", ");
-  const openingHookDirection = `RANDOMIZED OPENING HOOK FOR THIS CLIP: "${spokenOpeningHook}". Use this hook only as the opening tone, then immediately connect it to at least one verified product fact. Never output the generic hook by itself. NEVER begin with or say the product name or brand name.`;
-
-  const toneDesc = VOICE_TONES[auto.voiceTone] || VOICE_TONES.Auto;
+  const openingHookDirection = `OPENING HOOK GUIDANCE: Start naturally from a customer problem, use case, or curiosity that genuinely fits this product. Optional inspiration: "${spokenOpeningHook}". Adapt or ignore it as needed; do not repeat it verbatim and do not force an unrelated problem. Use the product reference and verified details to guide the wording. Never invent claims.`;
 
   // Derive a speaker identity from the presenter setting so the AI voice matches the character
   let speakerIdentity = "a clear, friendly adult Thai woman narrator";
@@ -1400,11 +1343,12 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
   const presentInstruction = isChildPresenter
     ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
-    : "present at least one verified product-specific benefit, feature, material, or realistic use naturally in Thai without saying its product name or brand name";
+    : "present the product naturally in Thai; mention a relevant benefit, feature, material, or realistic use only when it fits";
 
+  const speechCore = `Use [${combinedProductDetails}] as flexible context, not a script. Choose a natural Thai line that fits the actual product and its realistic use. Mention a relevant detail or benefit only when supported by the reference or product information. Avoid unrelated situations, exaggerated claims, filler, repetition, prices, or a forced CTA. The wording is up to the model.`;
   const speechDir = isFullFaceCoveringProduct(productText)
-    ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. STRICT SPEECH RULE: Speak naturally at an unhurried, relaxed pace (do NOT rush or speak too fast). Do NOT repeat any words, phrases, or sentences. Speak naturally ONCE. FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย", "ว้าว"). DO NOT speak brand/product names, prices, quantities, or CTAs. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
-    : `Spoken audio (Thai): Generate a short, natural Thai spoken dialogue (max 5-8 words, 2-3s) in Scene 1 ONLY with a ${toneDesc}. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. Speak ONCE cleanly in Scene 1; remaining scenes must be strictly silent with zero audio repetition. STRICT SPEECH RULE: Speak naturally at an unhurried, relaxed pace (do NOT rush or speak too fast). DO NOT repeat any words, phrases, or sentences (NO loops, NO stuttering). FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย", "ว้าว"). DO NOT speak brand/product names, prices, quantities, or CTAs. Based strictly on [${combinedProductDetails}], speak true product details. Speaker must ${presentInstruction}. Do not speak in English, no subtitles, and ${voiceMatchEnd}`;
+    ? `Spoken audio (Thai): Use a short, natural off-screen Thai voiceover when useful. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Keep the fabric over the mouth smooth, static, and fully covering the mouth while speaking. ${speechCore} Do not use subtitles, and ${voiceMatchEnd}`
+    : `Spoken audio (Thai): Generate concise, natural Thai narration where it helps the story. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. ${speechCore} Speaker should ${presentInstruction}. Do not use subtitles, and ${voiceMatchEnd}`;
   const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands")
     ? "Voiceover: Add a clear, friendly off-screen Thai female voiceover narration speaking in Thai."
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";

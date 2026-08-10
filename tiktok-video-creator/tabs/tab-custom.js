@@ -464,7 +464,10 @@ async function startPipeline() {
       const captionProductContext = caption
         ? `PRODUCT IDENTITY FROM POST CAPTION: The product being generated is described by this caption: "${caption}". Use the explicit product name in the caption as product-category context. The caption is instruction context only and must not be rendered as visible text. If it identifies a shirt or top, generate a shirt or top; never replace it with underwear, lingerie, panties, briefs, or another unrelated garment.`
         : "";
-      let finalPrompt = [prompt, captionProductContext].filter(Boolean).join("\n");
+      const uploadedProductReferenceLock = selectedImageBase64
+        ? "UPLOADED PRODUCT REFERENCE IS AUTHORITATIVE: The uploaded product image is the single source of truth for the exact item. Preserve its exact product type, silhouette, geometry, proportions, materials, colors, pattern, packaging, labels, and visible design. If the free-form prompt, caption, or visual style conflicts with the uploaded product image, follow the uploaded image and do not substitute, redesign, or replace the product. This lock is instruction context only and must not appear as visible text."
+        : "";
+      let finalPrompt = [uploadedProductReferenceLock, prompt, captionProductContext].filter(Boolean).join("\n");
       if (styleFragment) {
         finalPrompt = `${finalPrompt}\nVisual style: ${styleFragment}.`;
       }

@@ -108,6 +108,15 @@ check("image prompt sharp focus", /sharp and clearly visible|sharp focus/i.test(
 check("reference image keeps product text but forbids added text", /Keep the product's own printed text[\s\S]*do not add any new, extra, or unnecessary text/i.test(img), img);
 check("default image puts no-text rule before product instructions", img.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < img.indexOf("REFERENCE PHOTO OVERRIDES TEXT"), img);
 
+const hookDoesNotReplaceVisualIdentity = buildImagePrompt({
+  name: "แต่งตัวยากใช่ไหม ลุคนี้ช่วยให้แมทช์ง่ายขึ้น",
+  originalName: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว",
+  category: "แฟชั่น"
+}, settings);
+check("image identity uses the original product title instead of the edited hook", /PRODUCT NAME \/ CATEGORY LOCK:[^\n]*เสื้อเชิ้ตแขนยาวลายจุดสีขาว/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
+check("image identity does not use the edited hook as the requested product", !/PRODUCT NAME \/ CATEGORY LOCK:[^\n]*แต่งตัวยากใช่ไหม/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
+check("apparel still image gives the garment reference priority", /APPAREL REFERENCE PRIORITY/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
+
 const staleTextSettings = {
   ...settings,
   textEnabled: "false",
@@ -195,17 +204,20 @@ eq(
   "สายแคมป์ต้องดูจุดนี้"
 );
 const spokenHookVideo = buildVideoPrompt({ ...spokenHookProduct, hooks: ["สายแคมป์ต้องดูจุดนี้"] }, settings);
-check("video prompt uses a selected randomized spoken hook", /RANDOMIZED OPENING HOOK FOR THIS CLIP: "สายแคมป์ต้องดูจุดนี้"/i.test(spokenHookVideo), spokenHookVideo);
+check("video prompt keeps the selected hook as optional inspiration", /OPENING HOOK GUIDANCE[\s\S]*Optional inspiration: "สายแคมป์ต้องดูจุดนี้"[\s\S]*Adapt or ignore it as needed/i.test(spokenHookVideo), spokenHookVideo);
 check("video prompt marks product name as context-only", /Product context only, never say aloud: เก้าอี้แคมป์พับได้/i.test(spokenHookVideo), spokenHookVideo);
-check("video prompt forbids opening with product or brand name", /NEVER begin with or say the product name or brand name/i.test(spokenHookVideo), spokenHookVideo);
-check("video prompt no longer permits saying the product name naturally", !/features, or name naturally in Thai/i.test(spokenHookVideo), spokenHookVideo);
+check("video prompt lets the model choose natural wording", /The wording is up to the model/i.test(spokenHookVideo), spokenHookVideo);
 const groundedSpeechVideo = buildVideoPrompt(
   { name: "เสื้อเชิ้ตลายดอก", highlights: ["ผ้าชีฟอง", "แขนพอง", "ลายจุด"] },
   settings
 );
-check("spoken prompt includes a product-specific speech lock", /PRODUCT-SPECIFIC SPEECH LOCK[\s\S]*Treat this as shirt[\s\S]*ผ้าชีฟอง[\s\S]*แขนพอง[\s\S]*ลายจุด/i.test(groundedSpeechVideo), groundedSpeechVideo);
-check("spoken prompt requires a verified product fact", /spoken line MUST communicate at least one verified fact[\s\S]*Never output a generic hook by itself/i.test(groundedSpeechVideo), groundedSpeechVideo);
-check("later scenes are explicitly silent", /No spoken dialogue; remain completely silent/i.test(groundedSpeechVideo), groundedSpeechVideo);
+check("spoken prompt provides flexible product context", /PRODUCT-SPECIFIC SPEECH CONTEXT[\s\S]*ผ้าชีฟอง[\s\S]*แขนพอง[\s\S]*ลายจุด[\s\S]*flexible context, not a fixed script/i.test(groundedSpeechVideo), groundedSpeechVideo);
+check("spoken prompt avoids unrelated or invented claims", /Avoid unrelated situations[\s\S]*exaggerated claims/i.test(groundedSpeechVideo), groundedSpeechVideo);
+check("spoken prompt leaves wording to the model", /The wording is up to the model/i.test(groundedSpeechVideo), groundedSpeechVideo);
+const fallbackHookSamples = Array.from({ length: 100 }, (_, index) =>
+  resolveSpokenOpeningHook({ name: "สินค้าไม่มีหมวด", hooks: [] }, () => index / 100)
+);
+check("fallback random hooks include a problem-solution angle", fallbackHookSamples.some(hook => /ปัญหา/i.test(hook)), JSON.stringify(fallbackHookSamples));
 check(
   "women product selects Thai woman reviewer",
   /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง", productId: "women-shoe" }, settings))
