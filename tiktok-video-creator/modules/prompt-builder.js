@@ -218,9 +218,34 @@ function getApparelWearDirection(text = "", selectedPresenter = "") {
     return `APPAREL WEARING MODE: The ${model} naturally wears exactly one pair of the exact reference garment as the sole visible bottom garment. Let the model choose a simple matching top naturally. Do not add another pair of trousers, shorts, leggings, or a skirt over or under it.`;
   }
   if (/(เสื้อ|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|shirt|tshirt|tee|top|jacket|hoodie|sweater|blouse|coat)/i.test(clean)) {
-    return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once as the sole visible featured top. Let the model choose a simple matching bottom naturally and do not add another top over it.`;
+    return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once as the sole visible featured top. Use a simple opaque, full-coverage matching bottom such as jeans, trousers, or a modest skirt. Do NOT show underwear, lingerie, panties, briefs, thongs, bikini bottoms, or any transparent lower garment. Do not add another top over the reference garment.`;
   }
   return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once in the normal way for that garment type. Let the model choose a simple complementary outfit naturally without layering a duplicate garment of the same type.`;
+}
+
+function getPresenterOutfitDirection(text = "", selectedPresenter = "") {
+  const clean = String(text || "").toLowerCase();
+  const model = selectedPresenter === "man" ? "male presenter" : "female or male presenter";
+
+  if (isClothingProduct(clean)) {
+    return getApparelWearDirection(clean, selectedPresenter);
+  }
+  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(clean)) {
+    return `PRESENTER OUTFIT MATCH: The ${model} wears the exact reference footwear when intended. Use coordinated casual streetwear or athletic wear; never show a different shoe model or mismatched styling.`;
+  }
+  if (isCampingOutdoorProduct(clean) || isOutdoorRideProduct(clean) || /(วิ่ง|ออกกำลังกาย|ฟิตเนส|กีฬา|sport|running|workout|fitness|athletic)/i.test(clean)) {
+    return `PRESENTER OUTFIT MATCH: The ${model} wears modest outdoor clothing with sports shoes matched to the product and setting.`;
+  }
+  if (/(ครีม|เซรั่ม|สกินแคร์|เมคอัพ|เครื่องสำอาง|ลิป|น้ำหอม|beauty|skincare|makeup|cosmetic|lipstick|perfume|fragrance)/i.test(clean)) {
+    return `PRESENTER OUTFIT MATCH: The ${model} wears polished, elegant, modest beauty-review attire in calm colors that complement the product.`;
+  }
+  if (/(กระเป๋า|เป้|กระเป๋าถือ|กระเป๋าสะพาย|แว่น|นาฬิกา|เครื่องประดับ|bag|backpack|wallet|handbag|glasses|sunglasses|watch|jewelry|accessory)/i.test(clean)) {
+    return `PRESENTER OUTFIT MATCH: The ${model} wears a coordinated, modest modern fashion outfit that complements the accessory and keeps it clearly visible.`;
+  }
+  if (/(ครัว|เครื่องครัว|ทำอาหาร|เตา|หม้อ|กระทะ|เครื่องใช้ในบ้าน|ทำความสะอาด|organizer|storage|kitchen|cookware|home appliance|cleaning)/i.test(clean)) {
+    return `PRESENTER OUTFIT MATCH: The ${model} wears neat, modest smart-casual home attire appropriate to the product setting. Use an apron only for a cooking or kitchen product.`;
+  }
+  return `PRESENTER OUTFIT MATCH: The ${model} wears clean, modest clothing appropriate to the product category, use case, setting, and product colors. Avoid unrelated costumes or distracting patterns.`;
 }
 
 const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "STRICT LOGO & PRINTED TEXT FIDELITY LOCK: Reproduce all printed surface artwork, brand logos, typography, font styles, symbols, badges, illustrations, and packaging text EXACTLY as in the reference image. Maintain the exact text placement, letter alignment, font weight, line spacing, logo proportion, and colors. Copy it 100% pixel-faithfully; NEVER redraw with a different font, NEVER restyle, simplify, omit, alter, or replace any logo or text. For video frames, all printed text and logos must remain static and crisp on the product surface.";
@@ -232,6 +257,16 @@ const SPRAY_BOTTLE_FIDELITY_DIRECTION = "SPRAY BOTTLE & PACKAGING LABEL FIDELITY
 const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glasses must be perfectly proportioned to a human face, head, or hands. Do not make the glasses abnormally large, tiny, or out-of-scale relative to the presenter. Maintain the exact frame shape, lens color/transparency, bridge width, and temple length.";
 const BEAUTY_SKINCARE_FIDELITY_DIRECTION = "For cosmetics, skincare, and personal care (creams, serums, lipsticks, bottles, tubes, compacts): preserve the exact container bottle/jar/tube shape, dispenser cap/pump type, brand logo, printed text, label artwork, and formula texture. Do not alter container proportions, lid type, or packaging design.";
 const COFFEE_BAG_FIDELITY_DIRECTION = "STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK: The product is a printed coffee bag or coffee bean pouch. You MUST reproduce the EXACT printed front label artwork, brand logo, emblem, typography, font style, exact Thai/English brand text, weight markings (e.g. 200g/250g/500g), coffee bean illustrations, roasting badges, degassing valve, seal crimp edges, and pouch shape (e.g., gusseted pouch or flat-bottom bag) 100% pixel-faithfully as shown in the reference image. Maintain the exact label background color, logo placement, badge alignment, and printed text layout without redrawing, altering, replacing, simplifying, changing fonts, or writing gibberish on the label.";
+const COFFEE_POWDER_FORM_DIRECTION = "STRICT COFFEE POWDER FORM LOCK: The product is ground coffee powder/grounds, not whole coffee beans. Preserve the exact fine powder or ground-coffee form shown in the reference. If the package is opened or the contents are shown, reveal only loose ground coffee powder with a fine granular texture. ABSOLUTELY FORBIDDEN: Do not show whole roasted coffee beans, coffee cherries, unground beans, or a different coffee form.";
+const COFFEE_BEANS_FORM_DIRECTION = "STRICT WHOLE COFFEE BEANS FORM LOCK: The product is whole roasted coffee beans, not ground coffee powder. Preserve the exact whole-bean form shown in the reference. If the package is opened or the contents are shown, reveal only whole roasted coffee beans. ABSOLUTELY FORBIDDEN: Do not show ground coffee powder, loose coffee grounds, coffee dust, or a different coffee form.";
+
+function isCoffeePowderProduct(text = "") {
+  return /(กาแฟผง|ผงกาแฟ|กาแฟบด|กาแฟคั่วบด|coffee powder|ground coffee|ground beans)/i.test(String(text || "").toLowerCase());
+}
+
+function isCoffeeBeanProduct(text = "") {
+  return /(เมล็ดกาแฟ|กาแฟเมล็ด|เมล็ดคั่ว|coffee beans|whole coffee bean|whole bean)/i.test(String(text || "").toLowerCase());
+}
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
 const SMALL_TECH_ACCESSORY_SCALE_DIRECTION = "STRICT SMALL TECH ACCESSORY SCALE LOCK: This product is a real desk-sized tech accessory, not a large appliance or oversized prop. Preserve true physical scale: a mouse is about palm-sized (roughly 10-13cm long), a keyboard is desk-width and slim, earbuds fit in the ear or charging case, a charger/cable is small enough to hold in one hand, and a headset/headphones fit naturally on a human head or rest on a desk. Show it at realistic size relative to hands, a laptop, keyboard, desk surface, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge it into a giant object, appliance, bag-sized item, or furniture-scale prop; do not shrink it into a tiny toy.";
 const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, edge bevels, AND any built-in magnetic ring (MagSafe ring) MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, magnetic ring circle, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
@@ -533,6 +568,19 @@ function stripForbiddenVideoWords(value) {
   return String(value || "").replace(/ว้าว/gi, "").replace(/\s+/g, " ").trim();
 }
 
+function buildProductIdentityLock(productInfo = {}) {
+  const productName = compactPromptText(
+    sanitizePolicySensitiveText(
+      productInfo.name || productInfo.originalName || productInfo.caption || ""
+    ),
+    180
+  );
+  if (!productName) return "";
+  const stableProductName = stripStructuralVariantCounts(productName);
+
+  return `PRODUCT NAME / CATEGORY LOCK: The requested product is "${stableProductName}". Use this explicit product name to determine what the item is. The attached product reference remains authoritative for its exact visual design. Never substitute a different product type; if the name says shirt/top, generate a shirt/top, never underwear, lingerie, panties, briefs, or another unrelated garment. This instruction is semantic context only and must not appear as visible text.`;
+}
+
 
 
 
@@ -584,7 +632,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
       : auto.presenter === "กรอกเอง"
         ? (auto.customPresenter || "a fictional adult Thai presenter")
         : (PRESENTERS[auto.presenter] || PRESENTERS.none);
-    peopleDirection = `Presenter: ${presenterInstruction}. ${isClothing ? getApparelWearDirection(productText, auto.presenter) : ""} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.`;
+    peopleDirection = `Presenter: ${presenterInstruction}. ${getPresenterOutfitDirection(productText, auto.presenter)} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.`;
   } else {
     peopleDirection = NO_PEOPLE_DIRECTION;
   }
@@ -680,6 +728,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const promptParts = [
     !textEnabled ? TEXT_FREE_DIRECTION : "",
+    buildProductIdentityLock(productInfo),
     NO_WOW_DIRECTION,
     isClothing ? "" : REFERENCE_IMAGE_HIGHEST_PRIORITY,
     referenceCompositingDirection,
@@ -962,6 +1011,34 @@ export function resolveSpokenOpeningHook(productInfo = {}, random = Math.random)
   return pool[Math.floor(boundedValue * pool.length)];
 }
 
+function buildSpeechProductContext(productInfo = {}, productName = "the attached product") {
+  const sourceName = sanitizePolicySensitiveText(
+    productInfo.name ||
+    productInfo.originalName ||
+    productInfo.productLinkTitle ||
+    productInfo.caption ||
+    ""
+  );
+  const highlights = Array.isArray(productInfo.highlights)
+    ? productInfo.highlights
+    : String(productInfo.highlights || "").split(/[,;\n]/);
+  const verifiedFacts = highlights
+    .map(value => compactPromptText(sanitizePolicySensitiveText(value), 80))
+    .filter(Boolean)
+    .slice(0, 4);
+  const factText = verifiedFacts.length
+    ? verifiedFacts.join(" | ")
+    : "only details visibly verified from the attached product reference";
+
+  return "PRODUCT-SPECIFIC SPEECH LOCK: Treat this as " +
+    productName +
+    ". Internal product title for factual grounding: \"" +
+    (compactPromptText(sourceName, 180) || productName) +
+    "\". Verified product facts: [" +
+    factText +
+    "]. The spoken line MUST communicate at least one verified fact, benefit, material, feature, or realistic use of this exact product. Never output a generic hook by itself, never describe another product category, and never invent a feature not supported by the title, highlights, or reference image. Do not say the exact product name or brand aloud.";
+}
+
 export function buildVideoPrompt(productInfo, settings = {}) {
   const auto = resolveAutoSettings(productInfo, settings);
   const locationStr = resolvePromptLocation(auto);
@@ -1048,10 +1125,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the presenter or surroundings.";
   }
 
-  const PROGRESSIVE_AUDIO_NARRATION_MANDATE = "CRITICAL AUDIO NARRATION RULE — UNIQUE PER-SCENE SENTENCES & ZERO REPETITION: Every scene (Scene 1, Scene 2, Scene 3, Scene 4) must feature a NEW, UNIQUE, DIFFERENT spoken sentence in Thai that naturally advances the product review. Scene 2 MUST NOT repeat Scene 1's words; Scene 3 MUST NOT repeat Scene 2's words. ABSOLUTELY FORBIDDEN: Do NOT repeat, loop, or re-play the sentence from the previous scene under any circumstances.";
+  const PROGRESSIVE_AUDIO_NARRATION_MANDATE = "CRITICAL AUDIO NARRATION RULE — SINGLE RELEVANT LINE: Speak only once in Scene 1 using the product-specific speech lock below. Keep Scenes 2, 3, and 4 completely silent with zero spoken dialogue, repetition, looping, or audio carryover.";
 
   const promptParts = [
     `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
+    buildProductIdentityLock(productInfo),
     !textEnabled ? TEXT_FREE_DIRECTION : "",
     NO_WOW_DIRECTION,
     LABEL_EXACT_COPY_MANDATE,
@@ -1101,9 +1179,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     .replace(/\d+-second\s*/g, "");
   sceneBreakdown = sceneBreakdown
     .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, `$1 [AUDIO TRACK: Spoken line 1 in Thai - selected random opening hook: "${spokenOpeningHook}"]`)
-    .replace(/^(\s*-\s*Scene 2\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 2 in Thai - MUST BE A NEW DIFFERENT SENTENCE FROM SCENE 1]')
-    .replace(/^(\s*-\s*Scene 3\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 3 in Thai - MUST BE A NEW DIFFERENT SENTENCE FROM SCENE 2]')
-    .replace(/^(\s*-\s*Scene 4\b[^\n]*)/m, '$1 [AUDIO TRACK: Spoken line 4 in Thai - MUST BE A NEW DIFFERENT SENTENCE FROM SCENE 3]');
+    .replace(/^(\s*-\s*Scene 2\b[^\n]*)/m, '$1 [AUDIO TRACK: No spoken dialogue; remain completely silent]')
+    .replace(/^(\s*-\s*Scene 3\b[^\n]*)/m, '$1 [AUDIO TRACK: No spoken dialogue; remain completely silent]')
+    .replace(/^(\s*-\s*Scene 4\b[^\n]*)/m, '$1 [AUDIO TRACK: No spoken dialogue; remain completely silent]');
   if (noPeople) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown on its own")
@@ -1275,8 +1353,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   if (productInfo.highlights) details.push(`Highlights: ${sanitizePolicySensitiveText(productInfo.highlights)}`);
   if (settings?.clipText) details.push(`Main Message: ${sanitizePolicySensitiveText(settings.clipText)}`);
   if (productInfo.name) details.push(`Product context only, never say aloud: ${sanitizePolicySensitiveText(productInfo.name)}`);
-  const combinedProductDetails = details.join(", ");
-  const openingHookDirection = `RANDOMIZED OPENING HOOK FOR THIS CLIP: "${spokenOpeningHook}". Begin the spoken line with a concise, natural 5-8-word Thai adaptation of this selected hook. NEVER begin with or say the product name or brand name. Do not replace the hook with a product introduction.`;
+  const combinedProductDetails = [buildSpeechProductContext(productInfo, productName), ...details].filter(Boolean).join(", ");
+  const openingHookDirection = `RANDOMIZED OPENING HOOK FOR THIS CLIP: "${spokenOpeningHook}". Use this hook only as the opening tone, then immediately connect it to at least one verified product fact. Never output the generic hook by itself. NEVER begin with or say the product name or brand name.`;
 
   const toneDesc = VOICE_TONES[auto.voiceTone] || VOICE_TONES.Auto;
 
@@ -1322,7 +1400,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
   const presentInstruction = isChildPresenter
     ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
-    : "present the product's benefit or real use naturally in Thai without saying its product name or brand name";
+    : "present at least one verified product-specific benefit, feature, material, or realistic use naturally in Thai without saying its product name or brand name";
 
   const speechDir = isFullFaceCoveringProduct(productText)
     ? `Spoken audio (Thai): Spoken dialogue is delivered purely as an off-screen Thai voiceover narration. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Since the presenter is wearing a full face/mouth-covering balaclava/mask, the fabric over the mouth MUST remain 100% smooth, static, solid, and completely covering the mouth/lips without any visible lip movements, mouth opening, or fabric warping through the mouth area when speaking. Based strictly on [${combinedProductDetails}], speak true product details. STRICT SPEECH RULE: Speak naturally at an unhurried, relaxed pace (do NOT rush or speak too fast). Do NOT repeat any words, phrases, or sentences. Speak naturally ONCE. FORBIDDEN WORDS: NEVER say greetings (DO NOT say "สวัสดี", "หวัดดี", "hello", "hi"). NEVER say cliché phrases (DO NOT say "ของอันนี้", "ชิ้นนี้แนะนำเลย", "ว้าว"). DO NOT speak brand/product names, prices, quantities, or CTAs. Do not speak in English, no subtitles, and ${voiceMatchEnd}`
@@ -1364,7 +1442,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
       personDir = "Natural Thai child character. The product must remain rigid, static, and completely unchanged; the child stands next to it, plays with it, or holds it gently without deforming it. The child must NOT speak to the camera, must NOT speak any dialogue, and must NOT review the product directly; all spoken dialogue in this video is strictly an off-screen voiceover by a caring Thai mother.";
     }
-    const presenterFraming = isClothing ? getApparelWearDirection(productText, auto.presenter) : FULL_BODY_PRESENTER_DIRECTION;
+    const presenterFraming = isClothing
+      ? getApparelWearDirection(productText, auto.presenter)
+      : `${FULL_BODY_PRESENTER_DIRECTION} ${getPresenterOutfitDirection(productText, auto.presenter)}`;
     let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${presenterHandAnatomy} ${presenterFraming} (Strictest rule: ${presenterContinuity})`;
     if (firstSceneNoPeople) {
       const isHoldable = !isHeavy && !isImmobile;
@@ -1536,6 +1616,12 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
   if (/(กระเป๋า|เป้|กระเป๋าถือ|กระเป๋าสะพาย|กระเป๋าสตางค์|นาฬิกา|สร้อย|แหวน|ต่างหู|เครื่องประดับ|bag|backpack|wallet|purse|tote|handbag|crossbody|clutch|watch|jewelry|necklace|ring|bracelet|accessory)/i.test(text)) {
     return `${BAGS_ACCESSORIES_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
+  if (isCoffeePowderProduct(text)) {
+    return `${COFFEE_POWDER_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
+  }
+  if (isCoffeeBeanProduct(text)) {
+    return `${COFFEE_BEANS_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
+  }
   if (/(ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean bag|coffee beans pouch)/i.test(text)) {
     return `${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
@@ -1664,6 +1750,8 @@ function generationProductName(value, category = "") {
   if (/ผ้าห่ม|ผ้านวม|blanket|quilt/i.test(text)) return "blanket";
 
   // Food & Beverage & Supplements
+  if (isCoffeePowderProduct(text)) return "ground coffee powder";
+  if (isCoffeeBeanProduct(text)) return "whole roasted coffee beans";
   if (/ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean/i.test(text)) return "printed coffee pouch bag";
   if (/กาแฟ|coffee/i.test(text)) return "coffee pouch bag";
   if (/ชา|ชาไทย|ชาเขียว|tea/i.test(text)) return "tea product";

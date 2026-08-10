@@ -461,9 +461,12 @@ async function startPipeline() {
       const styleObj = CUSTOM_VISUAL_STYLES.find(s => s.id === styleId);
       const styleFragment = styleObj ? styleObj.fragment : "";
 
-      let finalPrompt = prompt;
+      const captionProductContext = caption
+        ? `PRODUCT IDENTITY FROM POST CAPTION: The product being generated is described by this caption: "${caption}". Use the explicit product name in the caption as product-category context. The caption is instruction context only and must not be rendered as visible text. If it identifies a shirt or top, generate a shirt or top; never replace it with underwear, lingerie, panties, briefs, or another unrelated garment.`
+        : "";
+      let finalPrompt = [prompt, captionProductContext].filter(Boolean).join("\n");
       if (styleFragment) {
-        finalPrompt = `${prompt}\nVisual style: ${styleFragment}.`;
+        finalPrompt = `${finalPrompt}\nVisual style: ${styleFragment}.`;
       }
       if (selectedImageBase64) {
         finalPrompt = `${finalPrompt}

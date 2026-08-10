@@ -166,6 +166,7 @@ check("shoe prompt rejects oversized placement", /do not enlarge the shoe to fur
 check("shoe prompt rejects indoor locations", /never inside a house|bedroom|entryway|closet|shoe shelf|showroom|cafe|studio/i.test(shoeImage));
 check("shoe still image has highest-priority outdoor background lock", /HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE/i.test(shoeImage) && /outdoor pavement|concrete|grass|natural daylight/i.test(shoeImage));
 check("shoe video Auto includes a reviewer", /Presenter: (?:A fictional adult Thai woman reviewer|A fictional adult Thai man reviewer)/i.test(shoeVideo));
+check("shoe presenter outfit matches the footwear", /PRESENTER OUTFIT MATCH[\s\S]*exact reference footwear[\s\S]*casual streetwear or athletic wear/i.test(shoeVideo), shoeVideo);
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
 check("shoe prompts remain concise", shoeImage.length < 15000 && shoeVideo.length < 21000, `image=${shoeImage.length} video=${shoeVideo.length}`);
@@ -198,6 +199,13 @@ check("video prompt uses a selected randomized spoken hook", /RANDOMIZED OPENING
 check("video prompt marks product name as context-only", /Product context only, never say aloud: เก้าอี้แคมป์พับได้/i.test(spokenHookVideo), spokenHookVideo);
 check("video prompt forbids opening with product or brand name", /NEVER begin with or say the product name or brand name/i.test(spokenHookVideo), spokenHookVideo);
 check("video prompt no longer permits saying the product name naturally", !/features, or name naturally in Thai/i.test(spokenHookVideo), spokenHookVideo);
+const groundedSpeechVideo = buildVideoPrompt(
+  { name: "เสื้อเชิ้ตลายดอก", highlights: ["ผ้าชีฟอง", "แขนพอง", "ลายจุด"] },
+  settings
+);
+check("spoken prompt includes a product-specific speech lock", /PRODUCT-SPECIFIC SPEECH LOCK[\s\S]*Treat this as shirt[\s\S]*ผ้าชีฟอง[\s\S]*แขนพอง[\s\S]*ลายจุด/i.test(groundedSpeechVideo), groundedSpeechVideo);
+check("spoken prompt requires a verified product fact", /spoken line MUST communicate at least one verified fact[\s\S]*Never output a generic hook by itself/i.test(groundedSpeechVideo), groundedSpeechVideo);
+check("later scenes are explicitly silent", /No spoken dialogue; remain completely silent/i.test(groundedSpeechVideo), groundedSpeechVideo);
 check(
   "women product selects Thai woman reviewer",
   /Presenter: A fictional adult Thai woman reviewer/i.test(buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง", productId: "women-shoe" }, settings))
@@ -355,6 +363,7 @@ check("custom presenter likeness request is neutralized", /a fictional adult com
 // --- auto presenter/location inference by category (beauty -> reviewer) ---
 const vidBeauty = buildVideoPrompt({ name: "เซรั่มหน้าใส วิตามินซี", highlights: "" }, settings);
 check("beauty auto-selects a presenter line", /Presenter:/i.test(vidBeauty));
+check("beauty presenter outfit matches the beauty category", /PRESENTER OUTFIT MATCH[\s\S]*polished, elegant, modest beauty-review attire/i.test(vidBeauty), vidBeauty);
 
 // --- formatPrice ---
 const fp = formatPrice({ price: 2990, currency: "THB" });
@@ -483,6 +492,13 @@ const coffeeImage = buildImagePrompt(coffeeProduct, settings);
 const coffeeVideo = buildVideoPrompt(coffeeProduct, settings);
 check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeImage), coffeeImage);
 check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeVideo), coffeeVideo);
+const groundCoffeeImage = buildImagePrompt({ name: "กาแฟผงคั่วบด 200 กรัม" }, settings);
+const groundCoffeeVideo = buildVideoPrompt({ name: "กาแฟผงคั่วบด 200 กรัม" }, settings);
+check("ground coffee name maps to coffee powder", /ground coffee powder/i.test(groundCoffeeImage) && /ground coffee powder/i.test(groundCoffeeVideo), groundCoffeeImage + groundCoffeeVideo);
+check("ground coffee prompt forbids whole beans", /STRICT COFFEE POWDER FORM LOCK[\s\S]*not whole coffee beans[\s\S]*Do not show whole roasted coffee beans/i.test(groundCoffeeImage + groundCoffeeVideo), groundCoffeeImage + groundCoffeeVideo);
+const wholeBeanVideo = buildVideoPrompt({ name: "เมล็ดกาแฟคั่ว 200 กรัม" }, settings);
+check("whole coffee bean name maps to whole roasted beans", /whole roasted coffee beans/i.test(wholeBeanVideo), wholeBeanVideo);
+check("whole coffee prompt forbids ground powder", /STRICT WHOLE COFFEE BEANS FORM LOCK[\s\S]*not ground coffee powder[\s\S]*Do not show ground coffee powder/i.test(wholeBeanVideo), wholeBeanVideo);
 
 // --- small tech accessory scale tests ---
 const mouseProduct = { name: "ไร้สาย Gaming Mouse RGB", category: "computer accessory" };
@@ -594,13 +610,16 @@ check("magnetic phone case prompt forbids external stick-ons or separate plates"
 // Test 12: Clothing front-only view lock
 const clothingVid = buildVideoPrompt({ name: "เสื้อยืดคอกลมแฟชั่น", category: "เสื้อผ้า" }, settings);
 check("clothing video prompt enforces front-only view lock", /STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK/i.test(clothingVid), clothingVid);
+check("clothing video uses the explicit product name as an identity lock", /PRODUCT NAME \/ CATEGORY LOCK[\s\S]*เสื้อยืดคอกลมแฟชั่น/i.test(clothingVid), clothingVid);
 check("clothing video prompt forbids back view and turning around", /do NOT show the back view|CLOTHING FRONT-ONLY RULE/i.test(clothingVid), clothingVid);
+check("shirt video forbids underwear as the lower garment", /shirt\/top[\s\S]*never underwear[\s\S]*APPAREL WEARING MODE[\s\S]*Do NOT show underwear/i.test(clothingVid), clothingVid);
 check("clothing video uses a generic fictional adult model", /HUMAN CAST:/i.test(clothingVid) && /APPAREL MODEL SAFETY/i.test(clothingVid) && /fictional adult/i.test(clothingVid), clothingVid);
 check("clothing video keeps the presenter's complete head visible across cuts", /APPAREL PRESENTER FRAME CONTINUITY[\s\S]*head[^.]*fully inside the frame[\s\S]*hard cut/i.test(clothingVid), clothingVid);
 check("clothing video does not request talking-head framing", !/talking head/i.test(clothingVid), clothingVid);
 
 const clothingImg = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาว", category: "แฟชั่น" }, settings);
 check("clothing image prompt enforces front-facing shot distribution", /front shot|front-facing/i.test(clothingImg), clothingImg);
+check("clothing image uses the explicit product name as an identity lock", /PRODUCT NAME \/ CATEGORY LOCK[\s\S]*เสื้อเชิ้ตแขนยาว/i.test(clothingImg), clothingImg);
 check("clothing image uses a generic fictional adult model", /HUMAN CAST:/i.test(clothingImg) && /APPAREL MODEL SAFETY/i.test(clothingImg), clothingImg);
 check("clothing prompts use the reference garment as the worn product", /APPAREL REFERENCE USE/i.test(clothingImg) && /APPAREL REFERENCE USE/i.test(clothingVid), clothingImg + clothingVid);
 check("clothing prompts do not treat garments as hand-sized objects", !/hand-sized|pocket-sized/i.test(clothingImg + clothingVid), clothingImg + clothingVid);
@@ -665,6 +684,7 @@ check("phone case video prompt includes phone case fidelity lock", /STRICT PHONE
 
 const bagVid = buildVideoPrompt({ name: "กระเป๋าสะพายข้างหนังแท้สำหรับผู้หญิง" }, settings);
 check("bag video prompt includes bags fidelity lock", /STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK/i.test(bagVid), bagVid);
+check("accessory presenter outfit matches the fashion category", /PRESENTER OUTFIT MATCH[\s\S]*coordinated, modest modern fashion outfit/i.test(bagVid), bagVid);
 
 // Test 17: Foreign character stripping & strict Thai language lock
 const strippedText = stripForeignNonThaiScripts("กระเป๋าถือแฟชั่น 现货 潮流包包 🔥เกรดพรีเมียม");
@@ -697,7 +717,7 @@ check("men's sun hat prompt includes male presenter and sunny outdoor location",
 // Test 21: Apparel supporting clothes must not replace or cover the product
 const modestFashionVid = buildVideoPrompt({ name: "เสื้อเชิ้ตลายดอก" }, { ...settings, presenter: "woman" });
 check("apparel video keeps the exact garment as the sole featured top", /APPAREL WEARING MODE[\s\S]*exact reference garment once as the sole visible featured top/i.test(modestFashionVid), modestFashionVid);
-check("apparel video lets the model choose a matching bottom naturally", /choose a simple matching bottom naturally/i.test(modestFashionVid), modestFashionVid);
+check("apparel video requires an opaque matching bottom naturally", /opaque, full-coverage matching bottom/i.test(modestFashionVid), modestFashionVid);
 
 // Test 22: Balaclava / Headwear / Buff Presenter Gender & Never Remove Mandate (ห้ามถอดโม่ง/หมวก/ผ้าบัฟ)
 const balaclavaVid = buildVideoPrompt({ name: "โม่งคลุมหัวกันแดด ขี่มอเตอร์ไซค์" }, settings);
