@@ -785,14 +785,23 @@ async function applyProductLink(productId, productUrl, productName, isCustomProd
   // STEP 8: แก้ชื่อ (clean) — ตั้งชื่อสินค้าใหม่ที่ตัดอักขระแปลกๆ ออก
   if (titleInput) {
     const existingTitle = titleInput.value;
-    const finalTitle = isCustomProductName
+    let finalTitle = isCustomProductName
       ? (truncateProductTitle(stripWeirdChars(cleanProductTitle(productName)), PRODUCT_TITLE_MAX) || "สินค้า")
       : await buildProductLinkTitle(selectedRowTitle || productName, existingTitle);
     titleInput.focus();
     try { titleInput.select(); } catch (_) {}
     await typeIntoInput(titleInput, finalTitle);
     log(`[Product Link] 🎯 STEP8 ตั้งชื่อสินค้าสำเร็จ: "${finalTitle}" (ชื่อเดิม: "${existingTitle}")`);
-    await sleep(500);
+    if (await waitForProductNameValidationError(titleInput)) {
+      log(`[Product Link] ⚠️ TikTok ปฏิเสธชื่อสินค้า "${finalTitle}" — ล้างแล้วกรอก "${PRODUCT_TITLE_SAFE_FALLBACK}"`);
+      finalTitle = PRODUCT_TITLE_SAFE_FALLBACK;
+      await typeIntoInput(titleInput, finalTitle);
+      if (await waitForProductNameValidationError(titleInput)) {
+        log(`[Product Link] ❌ ชื่อสำรอง "${PRODUCT_TITLE_SAFE_FALLBACK}" ยังถูก TikTok ปฏิเสธ`);
+        return false;
+      }
+      log(`[Product Link] ✅ ใช้ชื่อสำรอง: "${finalTitle}"`);
+    }
   } else {
     log(`[Product Link] ⚠️ STEP8 ไม่พบกล่องข้อความให้กรอกชื่อสินค้า (จะลองกดเพิ่มต่อโดยใช้ค่าเริ่มต้น):
     - ID สินค้า: ${productId || "ไม่พบ ID"}
@@ -843,6 +852,29 @@ function findProductNameInput() {
     return /product name|ชื่อสินค้า/.test(text);
   });
   return labeled || inputs[0];
+}
+
+const PRODUCT_TITLE_SAFE_FALLBACK = "พร้อมส่ง";
+const PRODUCT_NAME_PROHIBITED_ERROR_RE = /product\s+names?\s+can['’]?t\s+contain\s+prohibited\s+words|prohibited\s+words|ชื่อสินค้า.*คำต้องห้าม|คำต้องห้าม/i;
+
+function productNameValidationScope(input) {
+  return input?.closest('.TUXModal, [role="dialog"], .common-modal') || input?.parentElement || document;
+}
+
+function hasProductNameValidationError(input) {
+  if (!input) return false;
+  if (input.getAttribute("aria-invalid") === "true") return true;
+  const scope = productNameValidationScope(input);
+  return PRODUCT_NAME_PROHIBITED_ERROR_RE.test(normalizeText(scope.textContent));
+}
+
+async function waitForProductNameValidationError(input, timeoutMs = 1200) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (hasProductNameValidationError(input)) return true;
+    await sleep(100);
+  }
+  return hasProductNameValidationError(input);
 }
 
 // หาแถวสินค้าที่ "ตรงกับ key จริง" เท่านั้น (ไม่ fallback rows[0])
