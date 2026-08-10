@@ -1,4 +1,4 @@
-import { buildCaption, buildPostHashtags, normalizeHashtags, resolveProductUrl } from "./prompt-builder.js";
+import { appendTikTokCaptionSignature, buildCaption, buildPostHashtags, normalizeHashtags, resolveProductUrl } from "./prompt-builder.js";
 import { generatePostCopy } from "./image-analyzer.js";
 
 /**
@@ -148,11 +148,11 @@ export async function sendVideoToTikTokStudio(videoUrl, productInfo, mode = "pos
         hashtags: buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags })
       }
     : await generatePostCopy(productInfo, postDefaults);
-  const caption = sanitizeTikTokCaption(
+  const caption = appendTikTokCaptionSignature(sanitizeTikTokCaption(
     (postCopy.caption !== undefined && postCopy.caption !== null && String(postCopy.caption).trim() !== "")
       ? postCopy.caption
       : buildCaption(productInfo, postDefaults)
-  );
+  ));
   const hashtags = normalizeHashtags(postCopy.hashtags || buildPostHashtags(productInfo, { ...postDefaults, hashtags: productInfo.hashtags || postDefaults.hashtags }), 5);
   if (postMode === "post") {
     assertPostMetadata({ productInfo, caption, hashtags });

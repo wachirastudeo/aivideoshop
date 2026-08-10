@@ -193,6 +193,7 @@ const INDEPENDENT_FICTIONAL_CAST_DIRECTION = "INDEPENDENT FICTIONAL CAST: Genera
 const APPAREL_FICTIONAL_MODEL_DIRECTION = "APPAREL MODEL SAFETY: For clothing, fashion, bags, or accessories, use only a fictional adult commercial fit model or product-only mannequin-style presentation.";
 
 const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference image pixel-for-pixel. Do NOT shift, alter, tint, recolor, or replace original colors or graphics under any lighting or environment effect. Every color zone — background fill, text color, graphic element colors, border colors — must remain exactly as shown in the reference photo.";
+export const TIKTOK_CAPTION_SIGNATURE = "i love tiktok";
 
 export function isClothingProduct(text = "") {
   const clean = String(text || "").toLowerCase();
@@ -2032,6 +2033,13 @@ export function buildCaption(productInfo, defaults = {}) {
 
   // ขึ้นต้นด้วยชื่อสินค้า/hook เลย
   return rest ? `${hook}\n${rest}` : hook;
+}
+
+export function appendTikTokCaptionSignature(value) {
+  const caption = String(value || "").replace(/\s+/g, " ").trim();
+  if (!caption) return TIKTOK_CAPTION_SIGNATURE;
+  if (caption.toLowerCase().endsWith(TIKTOK_CAPTION_SIGNATURE)) return caption;
+  return `${caption} ${TIKTOK_CAPTION_SIGNATURE}`;
 }
 
 function removeEmojis(str) {

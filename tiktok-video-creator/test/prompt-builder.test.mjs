@@ -1,6 +1,7 @@
 // Unit tests for modules/prompt-builder.js — run: node test/prompt-builder.test.mjs
 import {
   buildCaption,
+  appendTikTokCaptionSignature,
   buildPostHashtags,
   buildProductNameHashtags,
   normalizeHashtags,
@@ -41,6 +42,9 @@ const prodA = {
 };
 const capA = buildCaption(prodA, { captionTemplate: "{product_name}" });
 check("caption contains product name", capA.includes("Arzopa"), `cap=${capA}`);
+eq("caption signature appends at the end", appendTikTokCaptionSignature("ขายดีมาก"), "ขายดีมาก i love tiktok");
+eq("caption signature is not duplicated", appendTikTokCaptionSignature("ขายดีมาก i love tiktok"), "ขายดีมาก i love tiktok");
+check("caption signature is not a hashtag", !normalizeHashtags(["#TikTokShop"]).includes("#ilovetiktok"));
 
 // --- hashtags: split product title into word-level tags ---
 const nameTags = buildProductNameHashtags({ name: "Arzopa A1, จอภาพแบบพกพา, monitor" });
@@ -360,6 +364,8 @@ check("formatPrice non-empty", typeof fp === "string" && fp.length > 0, `fp=${fp
 eq("normalizeHashtags dedup+cap", normalizeHashtags(["#a", "#a", "#b", "#c", "#d", "#e", "#f"], 3), ["#a", "#b", "#c"]);
 eq("normalizeHashtags removes repeated hash prefixes", normalizeHashtags(["##TikTokShop", "###ของดีบอกต่อ"]), ["#TikTokShop", "#ของดีบอกต่อ"]);
 eq("normalizeHashtags splits space-separated tags", normalizeHashtags("##TikTokShop #ของดีบอกต่อ"), ["#TikTokShop", "#ของดีบอกต่อ"]);
+eq("normalizeHashtags handles mixed comma and space input", normalizeHashtags("##Tiktok, ###ขายดี #ของดี"), ["#Tiktok", "#ขายดี", "#ของดี"]);
+check("normalizeHashtags never outputs repeated hash prefixes", normalizeHashtags(["##Tiktok", "###ขายดี"]).every((tag) => !/^##/.test(tag)));
 
 // --- omni-flash: multi-scene description ---
 const omniSettings = { ...settings, videoModel: "omni-flash", videoStyle: "sales" };

@@ -1,5 +1,6 @@
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
+import { normalizeHashtags } from "../modules/prompt-builder.js";
 
 const CUSTOM_VISUAL_STYLES = [
   {
@@ -467,12 +468,13 @@ async function startPipeline() {
       if (selectedImageBase64) {
         finalPrompt = `${finalPrompt}
 STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, logos, labels, and parts. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.
+APPAREL PERSON SAFETY: If the reference image shows clothing worn by a person, treat only the garment/outfit as the product. Preserve the garment design, fit, colors, pattern, and fabric details, but use a new generic fictional adult model if a person is needed.
 Reproduce the printed surface artwork, motifs, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace. For videos, this pattern must remain static on the product surface.
 EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference. Do NOT shift, alter, recolor, or replace original colors or graphics under any lighting or environment effect.
 STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. The product must remain completely rigid, solid, and static throughout the video: strictly NO morphing, warping, bending, melting, opening, closing, floating, stretching, or shifting of dimensions. Preserve 100% exact product identity across all video frames. Camera movement must be smooth and stable.`;
       }
       if (selectedModelRefImageBase64) {
-        finalPrompt = `${finalPrompt}\nSTRICT PRESENTER MATCH: A model reference image is provided. The presenter's face, hair, and overall appearance MUST look exactly identical to the model in the model reference image.`;
+        finalPrompt = `${finalPrompt}\nMODEL REFERENCE SAFETY: Use the model reference only for pose, framing, outfit silhouette, garment fit, colors, and pattern. Generate a new generic fictional adult model; match only the clothing and pose, not the person.`;
       }
 
       assertNotStopped();
@@ -497,7 +499,7 @@ STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. The product must remain
         name: (flowMode === "image" ? "custom_image_" : "custom_video_") + Date.now() + `_${i}`,
         originalName: flowMode === "image" ? "Custom Image" : "Custom Video",
         caption: caption,
-        hashtags: hashtagsRaw.split(",").map(t => t.trim()).filter(Boolean),
+        hashtags: normalizeHashtags(hashtagsRaw, 5),
         source: "custom",
         isImage: flowMode === "image"
       };
