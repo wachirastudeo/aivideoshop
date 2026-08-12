@@ -260,6 +260,8 @@ const BEAUTY_SKINCARE_FIDELITY_DIRECTION = "For cosmetics, skincare, and persona
 const COFFEE_BAG_FIDELITY_DIRECTION = "STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK: The product is a printed coffee bag or coffee bean pouch. You MUST reproduce the EXACT printed front label artwork, brand logo, emblem, typography, font style, exact Thai/English brand text, weight markings (e.g. 200g/250g/500g), coffee bean illustrations, roasting badges, degassing valve, seal crimp edges, and pouch shape (e.g., gusseted pouch or flat-bottom bag) 100% pixel-faithfully as shown in the reference image. Maintain the exact label background color, logo placement, badge alignment, and printed text layout without redrawing, altering, replacing, simplifying, changing fonts, or writing gibberish on the label.";
 const COFFEE_POWDER_FORM_DIRECTION = "STRICT COFFEE POWDER FORM LOCK: The product is ground coffee powder/grounds, not whole coffee beans. Preserve the exact fine powder or ground-coffee form shown in the reference. If the package is opened or the contents are shown, reveal only loose ground coffee powder with a fine granular texture. ABSOLUTELY FORBIDDEN: Do not show whole roasted coffee beans, coffee cherries, unground beans, or a different coffee form.";
 const COFFEE_BEANS_FORM_DIRECTION = "STRICT WHOLE COFFEE BEANS FORM LOCK: The product is whole roasted coffee beans, not ground coffee powder. Preserve the exact whole-bean form shown in the reference. If the package is opened or the contents are shown, reveal only whole roasted coffee beans. ABSOLUTELY FORBIDDEN: Do not show ground coffee powder, loose coffee grounds, coffee dust, or a different coffee form.";
+const COFFEE_SEALED_POWDER_POUCH_DIRECTION = "STRICT SEALED COFFEE POUCH IDENTITY LOCK: The reference product is a sealed printed coffee pouch containing ground coffee powder. The sealed pouch itself is the hero product and must remain fully closed, upright, intact, and unchanged; keep all ground coffee inside the pouch. Do not replace the pouch with loose powder, a bowl, a cup, beans, or a generic package. Preserve the exact pouch silhouette, front artwork, label, colors, typography, seams, zipper/valve, and weight marking from the reference.";
+const COFFEE_SEALED_BEANS_POUCH_DIRECTION = "STRICT SEALED COFFEE POUCH IDENTITY LOCK: The reference product is a sealed printed coffee pouch containing whole roasted coffee beans. The sealed pouch itself is the hero product and must remain fully closed, upright, intact, and unchanged; keep all coffee beans inside the pouch. Do not replace the pouch with loose beans, a bowl, a cup, powder, or a generic package. Preserve the exact pouch silhouette, front artwork, label, colors, typography, seams, zipper/valve, and weight marking from the reference.";
 
 function isCoffeePowderProduct(text = "") {
   return /(กาแฟผง|ผงกาแฟ|กาแฟบด|กาแฟคั่วบด|coffee powder|ground coffee|ground beans)/i.test(String(text || "").toLowerCase());
@@ -267,6 +269,11 @@ function isCoffeePowderProduct(text = "") {
 
 function isCoffeeBeanProduct(text = "") {
   return /(เมล็ดกาแฟ|กาแฟเมล็ด|เมล็ดคั่ว|coffee beans|whole coffee bean|whole bean)/i.test(String(text || "").toLowerCase());
+}
+
+function isPackagedCoffeeProduct(text = "") {
+  const clean = String(text || "").toLowerCase();
+  return /(ถุงกาแฟ|ซองกาแฟ|ถุง|ซอง|pouch|sachet|packet|coffee\s*(?:bag|pouch)|\b(?:200|250|500)\s*g\b|(?:200|250|500)\s*กรัม)/i.test(clean);
 }
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
 const SMALL_TECH_ACCESSORY_SCALE_DIRECTION = "STRICT SMALL TECH ACCESSORY SCALE LOCK: This product is a real desk-sized tech accessory, not a large appliance or oversized prop. Preserve true physical scale: a mouse is about palm-sized (roughly 10-13cm long), a keyboard is desk-width and slim, earbuds fit in the ear or charging case, a charger/cable is small enough to hold in one hand, and a headset/headphones fit naturally on a human head or rest on a desk. Show it at realistic size relative to hands, a laptop, keyboard, desk surface, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge it into a giant object, appliance, bag-sized item, or furniture-scale prop; do not shrink it into a tiny toy.";
@@ -1561,10 +1568,10 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
     return `${BAGS_ACCESSORIES_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (isCoffeePowderProduct(text)) {
-    return `${COFFEE_POWDER_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
+    return `${isPackagedCoffeeProduct(text) ? COFFEE_SEALED_POWDER_POUCH_DIRECTION + "\n" : ""}${COFFEE_POWDER_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   if (isCoffeeBeanProduct(text)) {
-    return `${COFFEE_BEANS_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
+    return `${isPackagedCoffeeProduct(text) ? COFFEE_SEALED_BEANS_POUCH_DIRECTION + "\n" : ""}${COFFEE_BEANS_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   if (/(ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean bag|coffee beans pouch)/i.test(text)) {
     return `${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
@@ -1694,8 +1701,8 @@ function generationProductName(value, category = "") {
   if (/ผ้าห่ม|ผ้านวม|blanket|quilt/i.test(text)) return "blanket";
 
   // Food & Beverage & Supplements
-  if (isCoffeePowderProduct(text)) return "ground coffee powder";
-  if (isCoffeeBeanProduct(text)) return "whole roasted coffee beans";
+  if (isCoffeePowderProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing ground coffee powder" : "ground coffee powder";
+  if (isCoffeeBeanProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing whole roasted coffee beans" : "whole roasted coffee beans";
   if (/ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean/i.test(text)) return "printed coffee pouch bag";
   if (/กาแฟ|coffee/i.test(text)) return "coffee pouch bag";
   if (/ชา|ชาไทย|ชาเขียว|tea/i.test(text)) return "tea product";

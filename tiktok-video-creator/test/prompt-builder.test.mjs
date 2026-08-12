@@ -508,6 +508,8 @@ const groundCoffeeImage = buildImagePrompt({ name: "กาแฟผงคั่�
 const groundCoffeeVideo = buildVideoPrompt({ name: "กาแฟผงคั่วบด 200 กรัม" }, settings);
 check("ground coffee name maps to coffee powder", /ground coffee powder/i.test(groundCoffeeImage) && /ground coffee powder/i.test(groundCoffeeVideo), groundCoffeeImage + groundCoffeeVideo);
 check("ground coffee prompt forbids whole beans", /STRICT COFFEE POWDER FORM LOCK[\s\S]*not whole coffee beans[\s\S]*Do not show whole roasted coffee beans/i.test(groundCoffeeImage + groundCoffeeVideo), groundCoffeeImage + groundCoffeeVideo);
+const packagedGroundCoffeeImage = buildImagePrompt({ name: "กาแฟคั่วบด Arabica 200 กรัม" }, settings);
+check("packaged ground coffee keeps the sealed pouch as the hero", /sealed printed coffee pouch bag containing ground coffee powder/i.test(packagedGroundCoffeeImage) && /STRICT SEALED COFFEE POUCH IDENTITY LOCK[\s\S]*must remain fully closed/i.test(packagedGroundCoffeeImage) && !/Show ground coffee powder clearly at realistic scale/i.test(packagedGroundCoffeeImage), packagedGroundCoffeeImage);
 const wholeBeanVideo = buildVideoPrompt({ name: "เมล็ดกาแฟคั่ว 200 กรัม" }, settings);
 check("whole coffee bean name maps to whole roasted beans", /whole roasted coffee beans/i.test(wholeBeanVideo), wholeBeanVideo);
 check("whole coffee prompt forbids ground powder", /STRICT WHOLE COFFEE BEANS FORM LOCK[\s\S]*not ground coffee powder[\s\S]*Do not show ground coffee powder/i.test(wholeBeanVideo), wholeBeanVideo);

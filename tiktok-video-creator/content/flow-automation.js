@@ -2468,9 +2468,14 @@ async function runPipeline(payload, runOptions = {}) {
             await sleep(2000);
 
             // 3. อัปโหลดรูป (รองรับหลายรูปจาก options.imageUrls สำหรับ Ingredients)
-            const rawList = (Array.isArray(options.imageUrls) && options.imageUrls.length)
-                ? options.imageUrls
-                : (imageUrl ? [imageUrl] : []);
+            // ภาพนิ่ง/Subject ต้องแนบ reference หลักเพียงรูปเดียว; แต่ combined ต้อง
+            // อัปโหลดรูปอื่นไว้เพื่อแนบเป็น Ingredients ตอนต่อวิดีโอภายหลัง
+            const isImageOnlyPhase = phase === "image";
+            const rawList = isImageOnlyPhase
+                ? (imageUrl ? [imageUrl] : (Array.isArray(options.imageUrls) ? options.imageUrls.slice(0, 1) : []))
+                : ((Array.isArray(options.imageUrls) && options.imageUrls.length)
+                    ? options.imageUrls
+                    : (imageUrl ? [imageUrl] : []));
             const dataUrls = rawList
                 .map(normalizeImageUrlForUpload)
                 .filter((u) => u && (u.startsWith("data:") || u.startsWith("http")));
@@ -2521,8 +2526,9 @@ async function runPipeline(payload, runOptions = {}) {
 
         // 5. แนบรูปเข้า prompt — ไม่กด filter, หาในวิวปัจจุบัน (รูปเพิ่งอัปโหลดอยู่ใน DOM แล้ว)
         if (uploadedTiles.length > 0) {
-            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
-            if (attached.length !== uploadedTiles.length) throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบ จึงไม่กด Generate");
+            const stillReferenceTiles = phase === "combined" ? uploadedTiles.slice(0, 1) : uploadedTiles;
+            const attached = await attachUploadsToPrompt(stillReferenceTiles, "drive_folder_upload", { skipTabSwitch: true });
+            if (attached.length !== stillReferenceTiles.length) throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบ จึงไม่กด Generate");
             await sleep(5000); // หน่วงเวลา 5 วินาที
         }
 
@@ -2542,8 +2548,9 @@ async function runPipeline(payload, runOptions = {}) {
                 await ensureConfig(resultPhase, options);
                 await sleep(5000);
             }
-            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
-            if (attached.length !== uploadedTiles.length) {
+            const stillReferenceTiles = phase === "combined" ? uploadedTiles.slice(0, 1) : uploadedTiles;
+            const attached = await attachUploadsToPrompt(stillReferenceTiles, "drive_folder_upload", { skipTabSwitch: true });
+            if (attached.length !== stillReferenceTiles.length) {
                 throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบระหว่าง Retry");
             }
             await sleep(5000);
