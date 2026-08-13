@@ -713,6 +713,11 @@ const furnitureVid = buildVideoPrompt({ name: "โต๊ะทำงานไม
 check("furniture video prompt preserves its actual support geometry", /FURNITURE STRUCTURE FIDELITY[\s\S]*Preserve its actual support system and geometry/i.test(furnitureVid), furnitureVid);
 check("furniture video prompt keeps the structure stable", /grounded and physically stable without changing, bending, melting, or warping/i.test(furnitureVid), furnitureVid);
 
+const chairImg = buildImagePrompt({ name: "เก้าอี้ทานอาหารไม้", category: "เฟอร์นิเจอร์" }, settings);
+const chairVid = buildVideoPrompt({ name: "เก้าอี้ทานอาหารไม้", category: "เฟอร์นิเจอร์" }, settings);
+check("chair prompt locks chair-specific geometry", /CHAIR-SPECIFIC FIDELITY LOCK[\s\S]*seat pan shape[\s\S]*backrest height[\s\S]*leg count/i.test(chairImg + chairVid), chairImg + chairVid);
+check("chair prompt forbids invented product text and logos", /FURNITURE SURFACE TEXT LOCK[\s\S]*Add NO new writing[\s\S]*fake logo[\s\S]*completely plain and blank/i.test(chairImg + chairVid), chairImg + chairVid);
+
 const sofaImg = buildImagePrompt({ name: "โซฟาปรับนอน 2 ที่นั่ง ผ้าฮอลแลนด์" }, settings);
 check("sofa image prompt includes furniture fidelity guidance", /FURNITURE STRUCTURE FIDELITY/i.test(sofaImg), sofaImg);
 
