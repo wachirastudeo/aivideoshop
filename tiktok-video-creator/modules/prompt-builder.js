@@ -308,9 +308,19 @@ const STRICT_SHOP_LOGO_EXCLUSION_RULE = "CRITICAL RULE — STRICTLY FORBIDDEN: D
 const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new design details, buttons, stripes, logos, or decorations not on the reference. Render any texture finish (matte, glossy, metallic, fabric) or gradient with 100% precision. Do not compromise product accuracy for style.";
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
+const EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION = "EXPLICIT ADULT PRESENTER LOCK: The selected presenter is an adult woman or adult man. Show exactly one adult presenter only. Do NOT include any child, minor, baby, toddler, or parent-and-child pair, even when the product is intended for children.";
 
 export function isKidsProduct(text = "") {
   return /(จักรยานเด็ก|รถเด็ก|ของใช้เด็ก|ของเล่นเด็ก|คาร์ซีท|รถเข็นเด็ก|กระเป๋านักเรียน|เสื้อผ้าเด็ก|ชุดเด็ก|ของเล่น|เด็ก|kids|kid|toddler|baby|children)/i.test(String(text || ""));
+}
+
+function isExplicitAdultPresenterSelection(settings = {}) {
+  return settings?.presenter === "woman" || settings?.presenter === "man";
+}
+
+function shouldUseKidsScene(productText, auto, settings = {}) {
+  if (isExplicitAdultPresenterSelection(settings)) return false;
+  return isKidsProduct(productText) || ["child", "older_child", "baby", "toddler"].includes(auto.presenter);
 }
 
 function getDefaultAutoPresenterProfile(text = "", presenter = "") {
@@ -635,7 +645,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const intro = `Create one authentic full-frame smartphone photograph in a vertical 9:16 layout. Show ${productName} clearly at realistic scale with its visible geometry, materials, colors, markings, and construction matching the reference. Use natural everyday lighting without artificial studio gloss or CGI styling.`;
 
-  const isKids = isKidsProduct(productText) || ["child", "older_child", "baby", "toddler"].includes(auto.presenter);
+  const isKids = shouldUseKidsScene(productText, auto, settings);
 
   let peopleDirection = "";
   if (handsOnly) {
@@ -749,6 +759,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     !textEnabled ? TEXT_FREE_DIRECTION : "",
     buildProductIdentityLock(productInfo),
     NO_WOW_DIRECTION,
+    isExplicitAdultPresenterSelection(settings) ? EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION : "",
     isClothing ? APPAREL_REFERENCE_PRIORITY : REFERENCE_IMAGE_HIGHEST_PRIORITY,
     referenceCompositingDirection,
     FICTIONAL_CAST_DIRECTION,
@@ -1024,6 +1035,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
   const noPeople = !(auto.presenter && auto.presenter !== "none");
+  const isKids = shouldUseKidsScene(productText, auto, settings);
+  const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
   const isAnimal = auto.presenter === "dog" || auto.presenter === "cat";
   const explicitlySelectedAnimal = settings?.presenter === "dog" || settings?.presenter === "cat";
   const animalName = auto.presenter === "cat" ? "cute cat" : "cute dog";
@@ -1087,6 +1100,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     buildProductIdentityLock(productInfo),
     !textEnabled ? TEXT_FREE_DIRECTION : "",
     NO_WOW_DIRECTION,
+    isExplicitAdultPresenterSelection(settings) ? EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION : "",
     LABEL_EXACT_COPY_MANDATE,
     COLOR_EXACT_LOCK,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
@@ -1152,7 +1166,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `a reviewer together with a ${animalName} sitting next to the product`)
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `a reviewer together with a ${animalName}`)
       .replace(/\bhands\b/gi, "hands");
-  } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter) || isKidsProduct(productText)) {
+  } else if (isKids) {
     let childDesc = "a happy young Thai kindergarten child (4-6 years old, strictly no baby or toddler)";
     let childAction = "actively riding, playing with, or using the kids product naturally in the scene";
     if (auto.presenter === "baby" || auto.presenter === "toddler") {
@@ -1347,7 +1361,6 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       ? "ensure the voice is a natural Thai speaker whose voice matches the off-screen mother narrator."
       : "ensure the voice is a natural Thai speaker whose voice perfectly matches the character identity of the presenter.";
 
-  const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
   const presentInstruction = isChildPresenter
     ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
     : "present the product naturally in Thai; mention a relevant benefit, feature, material, or realistic use only when it fits";
@@ -1384,10 +1397,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     let personDir = isClothing
       ? "Natural fictional adult Thai commercial fit model in a full-length front-facing shot."
       : THAI_PERSON_DIRECTION;
-    const presenterHandAnatomy = isChildPresenter || isKidsProduct(productText)
+    const presenterHandAnatomy = isKids
       ? MULTI_PERSON_HAND_ANATOMY_DIRECTION
       : SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION;
-    const presenterContinuity = isChildPresenter || isKidsProduct(productText)
+    const presenterContinuity = isKids
       ? "Use exactly two consistent people: one child and one parent/guardian. Do not introduce anyone else or merge, duplicate, switch, or morph either person between scenes."
       : "Use exactly one single consistent presenter throughout the entire video. Do not introduce other people, switch presenters, or morph the presenter between scenes.";
     if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {

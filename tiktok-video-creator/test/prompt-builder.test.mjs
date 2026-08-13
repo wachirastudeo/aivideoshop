@@ -349,6 +349,30 @@ check(
   /strictly no babies or toddlers under kindergarten age/i.test(buildImagePrompt({ name: "จักรยานเด็ก", productId: "kids-bike" }, { ...settings, presenter: "child" }))
 );
 
+for (const presenter of ["woman", "man"]) {
+  const selectedAdultKidsImage = buildImagePrompt(
+    { name: "ของเล่นเด็ก 4 ขวบ", productId: `manual-${presenter}-kids-product` },
+    { ...settings, presenter }
+  );
+  const selectedAdultKidsVideo = buildVideoPrompt(
+    { name: "ของเล่นเด็ก 4 ขวบ", productId: `manual-${presenter}-kids-product` },
+    { ...settings, presenter }
+  );
+  check(
+    `manual ${presenter} image presenter excludes child scene for kids product`,
+    /EXPLICIT ADULT PRESENTER LOCK/i.test(selectedAdultKidsImage)
+      && !/KIDS PRODUCT SCENE WITH CHILD|MULTI-PERSON HAND ANATOMY/i.test(selectedAdultKidsImage),
+    selectedAdultKidsImage
+  );
+  check(
+    `manual ${presenter} video presenter excludes child scene for kids product`,
+    /EXPLICIT ADULT PRESENTER LOCK/i.test(selectedAdultKidsVideo)
+      && !/KIDS PRODUCT SCENE WITH CHILD|MULTI-PERSON HAND ANATOMY|one child and one parent\/guardian/i.test(selectedAdultKidsVideo)
+      && /Use exactly one single consistent presenter throughout the entire video/i.test(selectedAdultKidsVideo),
+    selectedAdultKidsVideo
+  );
+}
+
 
 
 
