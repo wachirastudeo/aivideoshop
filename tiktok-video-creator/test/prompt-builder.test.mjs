@@ -298,6 +298,20 @@ check("hammock is not forced into the wearable holding rule", !/WEARABLE PRODUCT
 check("hammock is not described as a small hand-sized item", !/small hand-sized|product is a small item/i.test(hammockVideo), hammockVideo);
 check("wearable products still keep continuity guidance", /WEARABLE PRODUCT CONTINUITY/i.test(buildVideoPrompt({ name: "เสื้อยืดผู้ชาย" }, settings)));
 
+const wearablePantsVideo = buildVideoPrompt({ name: "กางเกงออกกำลังกายผู้ชาย" }, { ...settings, presenter: "wearable_crop" });
+check("wearable crop mode keeps pants in a lower-body frame", /WEARABLE CLOSE-UP MODE/i.test(wearablePantsVideo) && /waist-to-ankles lower-body crop/i.test(wearablePantsVideo), wearablePantsVideo);
+check("wearable crop mode hides the face and uses voiceover", /no face, head, full torso, or full-body presenter/i.test(wearablePantsVideo) && /off-screen Thai voiceover/i.test(wearablePantsVideo), wearablePantsVideo);
+check("wearable crop mode prevents a third hand", /at most two anatomically connected human hands total/i.test(wearablePantsVideo) && /never a third hand/i.test(wearablePantsVideo), wearablePantsVideo);
+
+const wearableShoeVideo = buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง" }, { ...settings, presenter: "wearable_crop" });
+check("wearable crop mode frames shoes on feet and lower legs", /feet-and-lower-legs crop/i.test(wearableShoeVideo), wearableShoeVideo);
+
+const wearableBraceletVideo = buildVideoPrompt({ name: "สร้อยข้อมือเงินแท้" }, { ...settings, presenter: "wearable_crop" });
+check("wearable crop mode frames bracelets on the wrist", /wrist-and-hand or forearm crop/i.test(wearableBraceletVideo), wearableBraceletVideo);
+
+const wearableGloveVideo = buildVideoPrompt({ name: "ถุงมือกันบาด" }, { ...settings, presenter: "wearable_crop" });
+check("wearable crop mode frames gloves on the hand", /wrist-and-hand or forearm crop/i.test(wearableGloveVideo), wearableGloveVideo);
+
 // Child presenter age-group auto detection tests — Auto mode MUST pick parents (woman/man)
 check(
   "baby product name in Auto presenter mode falls back to parent (woman) presenter",

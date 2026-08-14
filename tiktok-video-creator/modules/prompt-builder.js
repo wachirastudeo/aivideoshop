@@ -97,6 +97,7 @@ const PRESENTERS = {
   none: "No humans. Focus entirely on the product resting stably in a realistic setting with smooth camera movement.",
   hands_only: "Realistic first-person POV (Point of View) perspective. Show the product being used, worn, or presented naturally with realistic anatomical hands (strictly 5 fingers per hand, natural ergonomic grip, clean skin texture, realistic knuckles) or feet/legs depending on product category. No face or head shown in the frame.",
   unboxing_hands: "Realistic first-person POV hands-only unboxing presenter. Show only natural human hands opening the product box/package and revealing the product inside. No face, head, torso, or full body shown.",
+  wearable_crop: "Wearable close-up presenter mode. Show only the relevant body area wearing or using the exact product, cropped below the face with no face, head, or full body. Use a clear off-screen Thai voiceover instead of on-screen presenter speech.",
   woman: "A fictional adult Thai woman reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/blouse AND long pants/jeans/skirt). She uses or stands near the product naturally for its category, smiling at the camera.",
   man: "A fictional adult Thai man reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/polo AND long pants/jeans). He uses or stands near the product naturally for its category, smiling at the camera.",
   child: "A cute young Thai child (4-6 years old, kindergarten age, strictly no baby or toddler under 4 years old) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
@@ -169,6 +170,9 @@ function resolveMatchStillDirection(autoPresenter, firstSceneNoPeople = false) {
   if (autoPresenter === "unboxing_hands") {
     return `IMPORTANT: Depict the product in an authentic first-person POV unboxing sequence across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${collageRule} STRICTLY FORBIDDEN: Do not show any face, head, torso, full body, presenter, or reviewer in the frame; show only hands opening the box/package and revealing the exact product inside.`;
   }
+  if (autoPresenter === "wearable_crop") {
+    return `IMPORTANT: Depict the exact wearable product in relevant body-part close-up scenes across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${WEARABLE_CROP_SCENE_DIRECTION} Use off-screen Thai voiceover only; no on-screen presenter dialogue.`;
+  }
 
   const scenePresenterRule = firstSceneNoPeople
     ? "PRESENTER SCENE ORDER: Scene 1 must show the product only with no people, hands, faces, or presenter. The presenter may appear starting from Scene 2 only."
@@ -183,6 +187,9 @@ const NATURAL_PRODUCT_INTERACTION_DIRECTION = "REALISTIC PRODUCT USE: Show the p
 const OBJECT_REALISM_DIRECTION = "REAL-WORLD OBJECT PHYSICS: Product has real weight, volume, hard edges, and stable contact points. It must rest on a surface, in a hand, or against support with believable gravity, contact shadows, occlusion, reflections, and scale. Only camera/hands/packaging may move; product must not wiggle, resize, self-rotate, or act like a character.";
 
 const NO_PUTTING_ON_OR_TAKING_OFF_MANDATE = "WEARABLE PRODUCT CONTINUITY: The presenter is already wearing the item naturally from the first frame. Do not show putting on, taking off, or repeatedly adjusting clothing, headwear, face coverings, or footwear during the short review.";
+const WEARABLE_CROP_HAND_ANATOMY_LOCK = "WEARABLE CROP ANATOMY LOCK: Show at most two anatomically connected human hands total, never a third hand, extra arm, duplicated limb, floating hand, detached wrist, or extra fingers. Ignore any duplicate hands or limbs in the reference/generated source. For pants, shoes, and socks, keep hands out of frame unless naturally required; for bracelets, rings, and gloves, show only the one natural hand/wrist or one natural pair needed to wear the product.";
+const WEARABLE_CROP_MODE_DIRECTION = `WEARABLE CLOSE-UP MODE: Show only the relevant body area wearing or using the exact reference product. Crop below the face: no face, head, full torso, or full-body presenter. Keep the product as the hero, preserve its exact design and realistic scale, and use a clear natural off-screen Thai voiceover. Do not show putting on, taking off, or repeatedly adjusting the item. ${WEARABLE_CROP_HAND_ANATOMY_LOCK}`;
+const WEARABLE_CROP_SCENE_DIRECTION = `WEARABLE CLOSE-UP SCENES: Every scene uses a clean close-up or medium crop of the relevant body part only. Keep the face and head outside the frame. No full-body shot, talking head, or on-screen presenter dialogue. The exact wearable product remains visible, naturally worn, stable, and undistorted. ${WEARABLE_CROP_HAND_ANATOMY_LOCK}`;
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 const SHOE_SCALE_DIRECTION = "STRICT FOOTWEAR SCALE & PLACEMENT LOCK: This is a real human shoe, not a giant prop or miniature toy. Preserve true foot-sized proportions and the exact single-shoe/pair count. Show it at realistic scale relative to a human foot, leg, hand, shoe box, floor, shelf, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge the shoe to furniture-scale, make it tiny, or place it in an unrelated oversized environment. Keep the shoe grounded on a realistic floor, shelf, or naturally worn on a foot.";
@@ -650,6 +657,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
+  const wearableCrop = auto.presenter === "wearable_crop";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
   const referenceCompositingDirection = isClothing
     ? APPAREL_REFERENCE_USE_DIRECTION
@@ -672,6 +680,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
     peopleDirection = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}`;
   } else if (isAnimal) {
     peopleDirection = `Pet Animal: A cute, friendly pet animal (${auto.presenter === "cat" ? "cat" : "dog"}) sitting next to or interacting naturally with the product in a bright, clean indoor setting. ${ANIMAL_PRESENTER_DIRECTION} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION}`;
+  } else if (wearableCrop) {
+    peopleDirection = `${WEARABLE_CROP_MODE_DIRECTION} Frame: ${getWearableCropFrame(productText)}.`;
   } else if (isKids && auto.presenter !== "none") {
     peopleDirection = `${KIDS_WITH_PARENT_DIRECTION} ${MULTI_PERSON_HAND_ANATOMY_DIRECTION}`;
   } else if (auto.presenter && auto.presenter !== "none") {
@@ -731,6 +741,11 @@ export function buildImagePrompt(productInfo, settings = {}) {
     styleFragment = styleFragment
       .replace(/\b(?:a|an)\s+(?:trendy|stylish|young|adult|Thai|natural|professional|friendly|casual|cute|3D|stylized|\s)*(?:woman|man|person|presenter|reviewer|character)\b[^.;]*[.;]?/gi, "hands ")
       .replace(/\b(?:people|presenters?|reviewers?|characters?)\b/gi, "hands");
+  } else if (wearableCrop) {
+    styleFragment = styleFragment
+      .replace(/\btalking\s+head\b/gi, "wearable close-up")
+      .replace(/\bfull[- ]body\b/gi, "cropped body-part")
+      .replace(/\b(?:presenter|reviewer|model)\b/gi, "wearable close-up");
   }
 
   let shotDistribution = isSingleMode
@@ -742,7 +757,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
         : "Multi-angle 4-panel grid collage layout: A 4-panel split layout showing the product from 4 distinct angles (Panel 1: Front view hero shot, Panel 2: Side/3-quarter angle view, Panel 3: Macro close-up of texture/logo, Panel 4: Realistic lifestyle context). Maintain 100% identical product appearance, packaging artwork, colors, and printed text across all 4 panels.");
 
   let scaleInstruction = "";
-  if (isClothing) {
+  if (wearableCrop) {
+    scaleInstruction = `Realistic wearable scale: Keep the exact item naturally proportioned to the relevant body part. Frame ${getWearableCropFrame(productText)}. Do not enlarge, shrink, or distort the wearable product.`;
+  } else if (isClothing) {
     scaleInstruction = APPAREL_SCALE_DIRECTION;
   } else if (handsOnly) {
     scaleInstruction = isHeavy
@@ -785,7 +802,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isClothing ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
-    auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_CAST_DIRECTION : "",
+    auto.presenter && auto.presenter !== "none" && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
     autoPresenterProfile,
     intro,
     hasEngravedPattern ? ENGRAVED_EMBOSSED_FIDELITY_DIRECTION : "",
@@ -879,8 +896,29 @@ function isWearableProduct(text = "") {
   const clean = String(text || "").toLowerCase();
   return isClothingProduct(clean)
     || /(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(clean)
+    || /(ถุงมือ|กำไล|สร้อยข้อมือ|สร้อย|แหวน|ถุงเท้า|glove|bracelet|wrist|necklace|ring|jewelry|socks?)/i.test(clean)
     || isHeadwearProduct(clean)
     || isFullFaceCoveringProduct(clean);
+}
+
+function getWearableCropFrame(text = "") {
+  const clean = String(text || "").toLowerCase();
+  if (/(กางเกง|กระโปรง|เลกกิ้ง|ยีนส์|ขาสั้น|ขาสามส่วน|pants|trousers|shorts|leggings|jeans|skirt|bottoms?)/i.test(clean)) {
+    return "waist-to-ankles lower-body crop, showing the exact pants or skirt and natural leg movement";
+  }
+  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks?)/i.test(clean)) {
+    return "feet-and-lower-legs crop, showing the exact footwear or socks on natural feet";
+  }
+  if (/(สร้อยข้อมือ|กำไล|แหวน|ถุงมือ|bracelet|wrist|ring|glove)/i.test(clean)) {
+    return "wrist-and-hand or forearm crop, showing the exact accessory naturally worn";
+  }
+  if (/(สร้อยคอ|สร้อย|necklace)/i.test(clean)) {
+    return "neck-and-upper-chest crop, showing the exact necklace naturally worn";
+  }
+  if (isHeadwearProduct(clean) || isFullFaceCoveringProduct(clean)) {
+    return "head-and-shoulders crop from below the eyes or below the face, showing the exact worn item without showing the full face";
+  }
+  return "relevant body-part close-up showing the exact wearable product naturally worn";
 }
 
 function getNaturalProductInteractionDirection(text = "") {
@@ -1048,6 +1086,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
+  const wearableCrop = auto.presenter === "wearable_crop";
   const noPeople = !(auto.presenter && auto.presenter !== "none");
   const isKids = shouldUseKidsScene(productText, auto, settings);
   const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
@@ -1057,7 +1096,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const firstSceneNoPeople = (settings?.firstSceneNoPeople === true || settings?.firstSceneNoPeople === "true");
   const sceneStyle = isUnboxingHands
     ? "unboxing"
-    : (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
+    : (noPeople || handsOnly || wearableCrop) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
     ? "review"
     : auto.videoStyle;
 
@@ -1088,7 +1127,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   let scaleInstruction = "";
-  if (isClothing) {
+  if (wearableCrop) {
+    scaleInstruction = `Realistic wearable scale: Keep the exact item naturally proportioned to the relevant body part. Frame ${getWearableCropFrame(productText)}. Do not enlarge, shrink, or distort the wearable product.`;
+  } else if (isClothing) {
     scaleInstruction = APPAREL_SCALE_DIRECTION;
   } else if (handsOnly) {
     scaleInstruction = isHeavy
@@ -1120,9 +1161,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     NO_HALLUCINATED_BRAND_LOGOS_RULE,
     FICTIONAL_CAST_DIRECTION,
-    auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_CAST_DIRECTION : "",
+    auto.presenter && auto.presenter !== "none" && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
     autoPresenterProfile,
-    isClothing ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
+    isClothing && !wearableCrop ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     SPEECH_DIRECTION,
     PROGRESSIVE_AUDIO_NARRATION_MANDATE,
@@ -1134,8 +1175,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     isClothing ? APPAREL_REFERENCE_USE_DIRECTION : PRODUCT_ISOLATION_DIRECTION,
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
-    isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION,
-    isClothing
+    wearableCrop ? WEARABLE_CROP_SCENE_DIRECTION : (isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION),
+    wearableCrop
+      ? "Critical: Keep the exact wearable product unchanged and clearly visible in the relevant body-part crop. Do not change its fit, color, shape, material, logo, or printed details."
+      : isClothing
       ? "Critical: Keep the garment's cut, proportions, colors, fabric, graphics, branding, and construction identical across all scenes."
       : "Critical: Keep product shape, colors, materials, branding, and text 100% identical and static across all scenes; no redesign, warp, morph, or structural changes.",
     isClothing ? APPAREL_FABRIC_PHYSICS_DIRECTION : REALISM_AND_PHYSICS_DIRECTION,
@@ -1174,6 +1217,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       sceneBreakdown = sceneBreakdown
         .replace(/\bhands\s+starting\s+to\s+open\b/gi, "hands gesturing towards");
     }
+  } else if (wearableCrop) {
+    const wearableFrame = getWearableCropFrame(productText);
+    sceneBreakdown = sceneBreakdown
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, wearableFrame)
+      .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, wearableFrame)
+      .replace(/\btalking\s+to\s+the\s+camera\b/gi, "with off-screen Thai voiceover");
+    sceneBreakdown += `\n(${WEARABLE_CROP_SCENE_DIRECTION} Frame: ${wearableFrame}.)`;
   } else if (isAnimal) {
     sceneBreakdown = sceneBreakdown
       .replace(/- Scene 1 \(([^)]+)\): ([^\n]+)/i, `- Scene 1 ($1 - Pet Opening): A 3-second opening scene featuring a ${animalName} sitting next to or interacting naturally with ${productName} right from the start.`)
@@ -1242,7 +1292,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     `STRICT LIMIT: The video must contain AT MOST 3 to 4 sequential scenes/shots. Do not generate too many scenes, cuts, or edits. Keep the storytelling simple and clean.`,
     isUnboxingHands ? UNBOXING_REVEAL_SEQUENCE : "",
     sceneBreakdown,
-    isClothing && !noPeople && !handsOnly && !isAnimal ? APPAREL_PRESENTER_FRAME_CONTINUITY : "",
+    isClothing && !wearableCrop && !noPeople && !handsOnly && !isAnimal ? APPAREL_PRESENTER_FRAME_CONTINUITY : "",
     `Subtle ${compactPromptText(auto.cameraMovement, 80)}; camera movement should feel like a real handheld/tripod shot while the product remains physically stable. Keep shots sharp and clearly visible. No morphing, duplication, floating, or impossible action.`
   );
 
@@ -1321,7 +1371,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     speakerIdentity = "an adult Thai woman";
   } else if (auto.presenter === "man") {
     speakerIdentity = "an adult Thai man";
-  } else if (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands") {
+  } else if (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands" || auto.presenter === "wearable_crop") {
     speakerIdentity = "a clear, warm, friendly off-screen adult Thai woman narrator";
   } else if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
     if (auto.presenter === "older_child") {
@@ -1342,13 +1392,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   
   const matchVoiceRule = (auto.presenter === "dog" || auto.presenter === "cat")
     ? "the voice age, gender, and speech style must match the on-screen Thai presenter presenting the product with their pet"
-    : (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands")
+    : (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands" || auto.presenter === "wearable_crop")
       ? "the voice must sound like a clear, warm, friendly off-screen adult Thai female narrator presenting the product. Since no presenter's face or body is shown on screen, ensure the voice is explicitly a female voiceover narration."
       : (["baby", "toddler", "child", "older_child"].includes(auto.presenter))
         ? "the voice must sound like a caring Thai mother narrating warm and loving thoughts about her child on screen. The voice must be an adult mother's voice, and the narration must NEVER use baby-talk, baby words, or sound like a young child"
         : "the voice age, gender, and speech style must match the on-screen presenter exactly (Strictest rule: voice must match the presenter's character — if the presenter is an elderly woman, use an elderly woman's voice; if a young man, use a young man's voice; never use a mismatched voice for the presenter)";
 
-  const voiceMatchEnd = (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands")
+  const voiceMatchEnd = (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands" || auto.presenter === "wearable_crop")
     ? "ensure the voice is a natural adult Thai female speaker delivering a clear off-screen voiceover narration."
     : (["baby", "toddler", "child", "older_child"].includes(auto.presenter))
       ? "ensure the voice is a natural Thai speaker whose voice matches the off-screen mother narrator."
@@ -1362,7 +1412,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const speechDir = isFullFaceCoveringProduct(productText)
     ? `Spoken audio (Thai): Use a short, natural off-screen Thai voiceover when useful. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Keep the fabric over the mouth smooth, static, and fully covering the mouth while speaking. ${speechCore} Do not use subtitles, and ${voiceMatchEnd}`
     : `Spoken audio (Thai): Generate concise, natural Thai narration where it helps the story. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. ${speechCore} Speaker should ${presentInstruction}. Do not use subtitles, and ${voiceMatchEnd}`;
-  const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands")
+  const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands" || auto.presenter === "wearable_crop")
     ? "Voiceover: Add a clear, friendly off-screen Thai female voiceover narration speaking in Thai."
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
@@ -1372,6 +1422,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       handsInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show hands or any human features in Scene 1. Hands are only allowed starting from Scene 2 onwards.\n${handsInstructions}`;
     }
     promptParts.push(`${handsInstructions}\n${voiceoverDir} ${speechDir}`);
+  } else if (wearableCrop) {
+    promptParts.push(`${WEARABLE_CROP_MODE_DIRECTION} Frame: ${getWearableCropFrame(productText)}. ${voiceoverDir} ${speechDir}`);
   } else if (auto.presenter === "dog" || auto.presenter === "cat") {
     let animalInstructions = `Presenter: ${presenterInstruction}. ${ANIMAL_PRESENTER_DIRECTION} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} (Strictest rule: Use exactly one single consistent animal and presenter throughout the entire video. Do not switch animals or presenters, and do not morph or change their appearance between scenes).`;
     if (firstSceneNoPeople) {
