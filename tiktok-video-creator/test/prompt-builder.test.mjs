@@ -108,6 +108,17 @@ check("image prompt sharp focus", /sharp and clearly visible|sharp focus/i.test(
 check("reference image keeps product text but forbids added text", /Keep the product's own printed text[\s\S]*do not add any new, extra, or unnecessary text/i.test(img), img);
 check("default image puts no-text rule before product instructions", img.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < img.indexOf("REFERENCE PHOTO OVERRIDES TEXT"), img);
 
+const coffeePouch = buildImagePrompt({
+  name: "กาแฟคั่วบด Angry Bears Coffee",
+  originalName: "กาแฟคั่วบด Angry Bears Coffee",
+  category: "ซองกาแฟ",
+  highlights: "ซองกาแฟสีดำ ฉลากสีน้ำตาล มีโลโก้หมี Angry Bears"
+}, settings);
+check("coffee prompt disambiguates comparison or alternate pouch references", /REFERENCE VARIANT DISAMBIGUATION[\s\S]*use only the original product/i.test(coffeePouch), coffeePouch);
+check("coffee prompt rejects alternate blue/yellow pouch artwork", /COFFEE REFERENCE VARIANT LOCK[\s\S]*blue\/yellow artwork/i.test(coffeePouch), coffeePouch);
+check("coffee prompt keeps the canonical pouch as one consistent design", /one consistent design/i.test(coffeePouch), coffeePouch);
+check("coffee prompt remains within the image prompt size guard", coffeePouch.length < 14000, `length=${coffeePouch.length}`);
+
 const hookDoesNotReplaceVisualIdentity = buildImagePrompt({
   name: "แต่งตัวยากใช่ไหม ลุคนี้ช่วยให้แมทช์ง่ายขึ้น",
   originalName: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว",
@@ -537,6 +548,10 @@ check("packaged ground coffee keeps the sealed pouch as the hero", /sealed print
 const wholeBeanVideo = buildVideoPrompt({ name: "เมล็ดกาแฟคั่ว 200 กรัม" }, settings);
 check("whole coffee bean name maps to whole roasted beans", /whole roasted coffee beans/i.test(wholeBeanVideo), wholeBeanVideo);
 check("whole coffee prompt forbids ground powder", /STRICT WHOLE COFFEE BEANS FORM LOCK[\s\S]*not ground coffee powder[\s\S]*Do not show ground coffee powder/i.test(wholeBeanVideo), wholeBeanVideo);
+const angryBearsCoffeeImage = buildImagePrompt({ name: "ANGRY BEARS COFFEE 100% ARABICA GRADE B DOI CHANG" }, settings);
+check("angry bears coffee image prompt includes coffee pouch fidelity", /STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
+check("angry bears coffee image prompt includes label exact copy mandate", /ABSOLUTE LABEL & COLOR FIDELITY MANDATE/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
+check("angry bears coffee image prompt includes exact color lock", /STRICT COLOR REPRODUCTION LOCK/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
 
 // --- small tech accessory scale tests ---
 const mouseProduct = { name: "ไร้สาย Gaming Mouse RGB", category: "computer accessory" };
@@ -588,14 +603,14 @@ const longOverlay = "พัดลมตั้งโต๊ะอเนกปร�
 const clipTextTruncated = resolveClipText({ name: "สินค้า", overlayText: longOverlay }, { textEnabled: true });
 check("resolveClipText truncates long overlayText to 20 chars ending with ..", clipTextTruncated.length <= 20 && clipTextTruncated.endsWith(".."), clipTextTruncated);
 
-// Test 7: firstSceneNoPeople option modifies Scene 1 and presenter instructions conditionally
+// Test 7: firstSceneNoPeople option makes Scene 1 product-only regardless of product size
 const vidFirstSceneNoPeopleHoldable = buildVideoPrompt({ name: "เซรั่มหน้าใส" }, { ...settings, presenter: "woman", firstSceneNoPeople: true });
-check("video prompt with firstSceneNoPeople (holdable) contains hands exception", /STRICT EXCEPTION FOR SCENE 1: Do not show the presenter's face/i.test(vidFirstSceneNoPeopleHoldable), vidFirstSceneNoPeopleHoldable);
-check("video prompt with firstSceneNoPeople (holdable) shows only hands holding in Scene 1", /Scene 1.*Show only hands holding the product.*STRICTLY FORBIDDEN: Do not show any human faces/i.test(vidFirstSceneNoPeopleHoldable), vidFirstSceneNoPeopleHoldable);
+check("video prompt with firstSceneNoPeople (holdable) contains product-only override", /PRODUCT-ONLY SCENE 1: Do not show the presenter/i.test(vidFirstSceneNoPeopleHoldable) && /FINAL SCENE 1 OVERRIDE: Scene 1 is product-only/i.test(vidFirstSceneNoPeopleHoldable), vidFirstSceneNoPeopleHoldable);
+check("video prompt with firstSceneNoPeople (holdable) forbids hands in Scene 1", /Scene 1.*STRICTLY FORBIDDEN: Do not show any people, faces, presenters, reviewers, characters, or hands/i.test(vidFirstSceneNoPeopleHoldable), vidFirstSceneNoPeopleHoldable);
 
 const vidFirstSceneNoPeopleHeavy = buildVideoPrompt({ name: "กระสอบปูน 50 กิโลกรัม" }, { ...settings, presenter: "woman", firstSceneNoPeople: true });
-check("video prompt with firstSceneNoPeople (heavy) contains strict exception for no people/hands", /STRICT EXCEPTION FOR SCENE 1: Do not show the presenter, any other people, or hands/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
-check("video prompt with firstSceneNoPeople (heavy) shows only product resting in Scene 1", /Scene 1.*Product-only shot.*rest on a flat surface/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
+check("video prompt with firstSceneNoPeople (heavy) contains strict product-only exception", /PRODUCT-ONLY SCENE 1: Do not show the presenter, any other people, hands, faces/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
+check("video prompt with firstSceneNoPeople (heavy) shows only product resting in Scene 1", /Scene 1.*product shown resting on its own.*PRODUCT-ONLY SCENE 1/i.test(vidFirstSceneNoPeopleHeavy), vidFirstSceneNoPeopleHeavy);
 
 // Test 8: modelRefImage must not request human likeness matching
 const vidNoModelRef = buildVideoPrompt({ name: "เสื้อยืดแฟชั่น" }, { ...settings, presenter: "woman" });

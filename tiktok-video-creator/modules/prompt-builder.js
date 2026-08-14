@@ -133,7 +133,8 @@ const NO_UNREQUESTED_ANIMALS_DIRECTION = "No animals unless explicitly selected.
 const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, patterns, print designs, graphical illustrations, logos, labels, and parts. The pattern, artwork, and visual print on the product (especially for phone cases, clothes, or printed goods) must be 100% identical, keeping the same graphics, colors, and layout without any modification or hallucination. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.";
 const STILL_PRODUCT_FIDELITY_DIRECTION = "STILL PRODUCT IDENTITY: Preserve its exact shape, proportions, support structure, materials, colors, patterns, visible logos, labels, and printed text from the reference image. Keep the product physically coherent and at realistic scale. Do not invent parts, remove parts, redesign it, or force a new geometry.";
 const STILL_TEXT_INTEGRITY_DIRECTION = "STILL TEXT INTEGRITY: Preserve any Thai, English, or other script physically printed on the reference product exactly as visible. Do not invent extra writing, fake letters, logos, labels, or gibberish anywhere else in the image.";
-const REFERENCE_IMAGE_HIGHEST_PRIORITY = "REFERENCE PHOTO OVERRIDES TEXT: Match the attached product exactly. If text conflicts, follow the photo. Never substitute or redesign it.";
+const REFERENCE_IMAGE_HIGHEST_PRIORITY = "REFERENCE PHOTO OVERRIDES TEXT: Match the attached product exactly. BACKGROUND-ONLY EDIT: Keep the uploaded image as the source of truth: ISOLATE AND EXTRACT ONLY THE PRODUCT, then place that unchanged product in a 100% NEW SCENE & BACKGROUND. Preserve its exact shape, proportions, materials, colors, markings, printed text, parts, visible count, and realistic physical size relative to hands, presenter, or surroundings. Keep it fully visible, sharp and clearly visible. One product, one image; no collage or split screen. Never substitute, redesign, duplicate, combine, enlarge, shrink, or invent product details.";
+const REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION = "REFERENCE VARIANT DISAMBIGUATION: If the reference is a screenshot, collage, comparison, or has multiple product appearances, use only the original product. Ignore alternate/generated versions and never combine their design details. Generate one product, not the comparison layout.";
 const APPAREL_REFERENCE_PRIORITY = "APPAREL REFERENCE PRIORITY: The attached reference image is the single source of truth for the garment. Preserve the exact garment type, silhouette, cut, length, neckline, sleeves, fit, fabric, colors, print, and visible construction. Do not let a sales hook, generic fashion wording, or presenter styling replace or redesign the garment.";
 const REFERENCE_COMPOSITING_DIRECTION = "BACKGROUND-ONLY EDIT: Keep the reference product unchanged; replace only the background.";
 const IMAGE_AUTO_ANIMAL_EXCLUSION = "IMAGE AUTO MODE: No dog, cat, puppy, kitten, or other animal unless the user explicitly selected dog or cat presenter.";
@@ -152,7 +153,7 @@ const BACKGROUND_COMPATIBILITY_LOCK = "BACKGROUND COMPATIBILITY LOCK: The enviro
 const VEHICLE_ACCESSORY_CONTEXT_DIRECTION = "STRICT VEHICLE ACCESSORY CONTEXT LOCK: The matching real vehicle MUST be clearly visible and correctly matched to the product. Motorcycle accessories (helmet, motorcycle top box, rear case, rack, pannier, phone mount, or motorcycle part) MUST be shown on, attached to, or directly beside a real motorcycle or scooter; show enough of the motorcycle to make the use unmistakable. Car accessories MUST be shown inside, attached to, or directly beside a real car; show the relevant dashboard, seat, trunk, door, windshield, or exterior body. ABSOLUTELY FORBIDDEN: Do not show a motorcycle/car accessory alone on a generic desk, empty studio floor, unrelated room, cafe, or mismatched vehicle. Keep the product as the hero while the matching vehicle provides clear real-world context.";
 const FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK = "HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE: The entire still-image scene MUST be clearly outdoors in open air, such as an outdoor home driveway, front yard, quiet neighborhood street, or park path. Use outdoor pavement, concrete, grass, or natural daylight. The shoe must be grounded on the outdoor surface or naturally worn on a visible foot outside. ABSOLUTELY FORBIDDEN: indoor rooms, houses, bedrooms, entryways, closets, shoe shelves, retail interiors, cafes, studios, indoor floors, or studio backdrops. If any other instruction conflicts with this, keep the shoe outdoors.";
 
-function resolveMatchStillDirection(autoPresenter) {
+function resolveMatchStillDirection(autoPresenter, firstSceneNoPeople = false) {
   const baseFidelity = "STRICT REFERENCE PHOTO PRODUCT FIDELITY LOCK: Reproduce the product 100% pixel-faithfully from the reference image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without distortion, morphing, redesign, or alteration.";
   const collageRule = "STRICT RULE: Do NOT generate a collage or grid frame. Each scene must be a single full-frame shot. Animate each panel sequentially with smooth camera movement and clean cuts.";
   const singleSceneRule = "STRICT RULE: Do NOT generate a collage or grid frame. Each scene must be a single full-frame shot with smooth camera movement and clean cuts.";
@@ -169,7 +170,10 @@ function resolveMatchStillDirection(autoPresenter) {
     return `IMPORTANT: Depict the product in an authentic first-person POV unboxing sequence across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${collageRule} STRICTLY FORBIDDEN: Do not show any face, head, torso, full body, presenter, or reviewer in the frame; show only hands opening the box/package and revealing the exact product inside.`;
   }
 
-    return `IMPORTANT: Depict the product and presenter across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${presenterContinuityRule} ${singleSceneRule}`;
+  const scenePresenterRule = firstSceneNoPeople
+    ? "PRESENTER SCENE ORDER: Scene 1 must show the product only with no people, hands, faces, or presenter. The presenter may appear starting from Scene 2 only."
+    : presenterContinuityRule;
+  return `IMPORTANT: Depict the product and presenter across different scenes. ${baseFidelity} ${newSceneEnv} ${BACKGROUND_COMPATIBILITY_LOCK} ${scenePresenterRule} ${singleSceneRule}`;
 }
 
 
@@ -257,11 +261,15 @@ const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "STRICT LOGO & PRINTED TEXT FIDELITY 
 const SPRAY_BOTTLE_FIDELITY_DIRECTION = "SPRAY BOTTLE & PACKAGING LABEL FIDELITY LOCK: The product is a spray bottle, pump spray, aerosol canister, or liquid grooming bottle. You MUST reproduce the EXACT bottle shape, trigger/spray pump nozzle type, cap style, liquid container color, and printed front label artwork 100% pixel-faithfully as shown in the reference image. Preserve the exact brand logo, product name typography, printed graphics, patterns, illustrations, animal mascot graphics, and label colors. Do NOT draw a plain generic bottle, do NOT omit or change the brand logo/pattern, and do NOT alter the spray nozzle shape or label design.";
 const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glasses must be perfectly proportioned to a human face, head, or hands. Do not make the glasses abnormally large, tiny, or out-of-scale relative to the presenter. Maintain the exact frame shape, lens color/transparency, bridge width, and temple length.";
 const BEAUTY_SKINCARE_FIDELITY_DIRECTION = "For cosmetics, skincare, and personal care (creams, serums, lipsticks, bottles, tubes, compacts): preserve the exact container bottle/jar/tube shape, dispenser cap/pump type, brand logo, printed text, label artwork, and formula texture. Do not alter container proportions, lid type, or packaging design.";
-const COFFEE_BAG_FIDELITY_DIRECTION = "STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK: The product is a printed coffee bag or coffee bean pouch. You MUST reproduce the EXACT printed front label artwork, brand logo, emblem, typography, font style, exact Thai/English brand text, weight markings (e.g. 200g/250g/500g), coffee bean illustrations, roasting badges, degassing valve, seal crimp edges, and pouch shape (e.g., gusseted pouch or flat-bottom bag) 100% pixel-faithfully as shown in the reference image. Maintain the exact label background color, logo placement, badge alignment, and printed text layout without redrawing, altering, replacing, simplifying, changing fonts, or writing gibberish on the label.";
+const COFFEE_BAG_FIDELITY_DIRECTION = "STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK: The product is a printed coffee bag or coffee bean pouch (such as a black matte side-gusset flat-bottom pouch with top zipper seal crimp line and round one-way degassing valve). You MUST reproduce the EXACT printed front label artwork, brand logo/mascot emblem (such as roaring bear, animal icon, or roastery logo), typography, font style, exact Thai/English brand text, grade markings (e.g. Grade A/B, 100% Arabica, Doi Chang), weight markings (e.g. 200g/250g/500g/1Kg), roasting badges, degassing valve, seal crimp edges, pouch color, and pouch shape 100% pixel-faithfully as shown in the reference image. Maintain the exact label background color, logo placement, badge alignment, and printed text layout without redrawing, altering, replacing, simplifying, changing fonts, or writing gibberish on the label.";
 const COFFEE_POWDER_FORM_DIRECTION = "STRICT COFFEE POWDER FORM LOCK: The product is ground coffee powder/grounds, not whole coffee beans. Preserve the exact fine powder or ground-coffee form shown in the reference. If the package is opened or the contents are shown, reveal only loose ground coffee powder with a fine granular texture. ABSOLUTELY FORBIDDEN: Do not show whole roasted coffee beans, coffee cherries, unground beans, or a different coffee form.";
 const COFFEE_BEANS_FORM_DIRECTION = "STRICT WHOLE COFFEE BEANS FORM LOCK: The product is whole roasted coffee beans, not ground coffee powder. Preserve the exact whole-bean form shown in the reference. If the package is opened or the contents are shown, reveal only whole roasted coffee beans. ABSOLUTELY FORBIDDEN: Do not show ground coffee powder, loose coffee grounds, coffee dust, or a different coffee form.";
 const COFFEE_SEALED_POWDER_POUCH_DIRECTION = "STRICT SEALED COFFEE POUCH IDENTITY LOCK: The reference product is a sealed printed coffee pouch containing ground coffee powder. The sealed pouch itself is the hero product and must remain fully closed, upright, intact, and unchanged; keep all ground coffee inside the pouch. Do not replace the pouch with loose powder, a bowl, a cup, beans, or a generic package. Preserve the exact pouch silhouette, front artwork, label, colors, typography, seams, zipper/valve, and weight marking from the reference.";
 const COFFEE_SEALED_BEANS_POUCH_DIRECTION = "STRICT SEALED COFFEE POUCH IDENTITY LOCK: The reference product is a sealed printed coffee pouch containing whole roasted coffee beans. The sealed pouch itself is the hero product and must remain fully closed, upright, intact, and unchanged; keep all coffee beans inside the pouch. Do not replace the pouch with loose beans, a bowl, a cup, powder, or a generic package. Preserve the exact pouch silhouette, front artwork, label, colors, typography, seams, zipper/valve, and weight marking from the reference.";
+const COFFEE_REFERENCE_VARIANT_LOCK = "COFFEE REFERENCE VARIANT LOCK: Use only the canonical pouch in the reference; ignore alternate/generated pouches, promotional panels, blue/yellow artwork, oversized mascots, and headlines. Preserve one consistent design: silhouette, color, logo, typography, and label layout.";
+const COFFEE_SINGLE_VARIANT_AD_LOCK = "COFFEE SINGLE-VARIANT AD LOCK: Roast words in the title are metadata; show only the exact reference pouch, not multiple roast variants, bags, colors, or a lineup.";
+const COFFEE_COMPACT_TEXT_LOCK = "NO TEXT OVERLAY: No added captions, slogans, CTA, watermark, logo, banner, or graphic text; only printed label/scene text already in the reference may remain.";
+const COFFEE_PROFESSIONAL_AD_DIRECTION = "PROFESSIONAL COFFEE PRODUCT AD: Minimal clean premium ad; exact pouch hero, fully visible on a clean surface, medium angle, soft daylight through a curtain, relevant context only. Respect the existing product scale rules: preserve the real physical size of a coffee pouch or hand-held item, with natural proportion relative to hands and surroundings; do not enlarge or shrink it. One product, one image; no collage, split screen, duplicate, alternate package, or unrelated props.";
 
 function isCoffeePowderProduct(text = "") {
   return /(กาแฟผง|ผงกาแฟ|กาแฟบด|กาแฟคั่วบด|coffee powder|ground coffee|ground beans)/i.test(String(text || "").toLowerCase());
@@ -273,7 +281,15 @@ function isCoffeeBeanProduct(text = "") {
 
 function isPackagedCoffeeProduct(text = "") {
   const clean = String(text || "").toLowerCase();
-  return /(ถุงกาแฟ|ซองกาแฟ|ถุง|ซอง|pouch|sachet|packet|coffee\s*(?:bag|pouch)|\b(?:200|250|500)\s*g\b|(?:200|250|500)\s*กรัม)/i.test(clean);
+  return /(ถุงกาแฟ|ซองกาแฟ|ถุง|ซอง|pouch|sachet|packet|coffee\s*(?:bag|pouch)|\b(?:200|250|500|1000|1\s*kg)\s*g?\b|(?:200|250|500|1000|1\s*กิโล|1\s*กก)\s*กรัม?)/i.test(clean);
+}
+
+function isCoffeeProduct(text = "") {
+  const clean = String(text || "").toLowerCase();
+  if (/(แก้วกาแฟ|กาแฟกระป๋อง|กาแฟพร้อมดื่ม|iced coffee|coffee cup|canned coffee|ready to drink coffee)/i.test(clean)) {
+    return false;
+  }
+  return /(กาแฟ|coffee|arabica|robusta|doi chang|ดอยช้าง|roasters|roastery|espresso)/i.test(clean);
 }
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
 const SMALL_TECH_ACCESSORY_SCALE_DIRECTION = "STRICT SMALL TECH ACCESSORY SCALE LOCK: This product is a real desk-sized tech accessory, not a large appliance or oversized prop. Preserve true physical scale: a mouse is about palm-sized (roughly 10-13cm long), a keyboard is desk-width and slim, earbuds fit in the ear or charging case, a charger/cable is small enough to hold in one hand, and a headset/headphones fit naturally on a human head or rest on a desk. Show it at realistic size relative to hands, a laptop, keyboard, desk surface, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge it into a giant object, appliance, bag-sized item, or furniture-scale prop; do not shrink it into a tiny toy.";
@@ -622,6 +638,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${visualProductName} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  const isCoffeeImageAd = isCoffeeProduct(productText) || isPackagedCoffeeProduct(productText) || isCoffeePowderProduct(productText) || isCoffeeBeanProduct(productText);
   const autoPresenterProfile = isAuto(settings.presenter)
     ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
     : "";
@@ -645,7 +662,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const isSingleMode = true; // FORCE SINGLE MODE ALWAYS: Prevents "4-panel grid" hallucination (ไม่ต้องตอนภาพ/แบ่งภาพ)
 
-  const intro = `Create one authentic full-frame smartphone photograph in a vertical 9:16 layout. Show ${productName} clearly at realistic scale with its visible geometry, materials, colors, markings, and construction matching the reference. Use natural everyday lighting without artificial studio gloss or CGI styling.`;
+  const intro = `Create one authentic full-frame smartphone photograph in a vertical 9:16 layout. Show ${productName} clearly at realistic scale, matching the reference. Use natural everyday lighting without artificial studio gloss or CGI styling.`;
 
   const isKids = shouldUseKidsScene(productText, auto, settings);
 
@@ -687,8 +704,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     ? userPhrase
       ? `Visible text overlay is enabled. Place ONLY this single short Thai phrase neatly onto the image: "${userPhrase}". Render the Thai script with perfect spelling, ensuring every consonant, vowel, and tone mark (such as ไม้เอก, ไม้โท, etc.) is in the correct vertical stack and perfectly placed. Style it as ${textStyleStr}. Include 1–2 small doodles nearby (${doodles}). Do NOT add any other text, product name, price, CTA, or promotion text. Do not block important parts of the product. Position overlay at ${settings?.textPosition || "Middle"}. STRICTLY FORBIDDEN: no English text, romanized Thai, or gibberish.`
       : `Visible text overlay is enabled. Creatively add ONE short cute Thai phrase (1–5 words, naturally matching this product) as a ${textStyleStr} overlay. The chosen Thai phrase must have flawless Thai spelling and grammar, with correct vowels and tone marks properly stacked. Include 1–2 small doodles nearby (${doodles}). Do NOT add product name, price, CTA, or promotion text. Do not block important parts of the product. Position overlay at ${settings?.textPosition || "Middle"}. Text must be natural Thai — no English, no gibberish.`
-    : `${TEXT_FREE_DIRECTION}\nFinal check: ensure no added text or numbers exist in the output.`;
-
+    : `${isCoffeeImageAd ? COFFEE_COMPACT_TEXT_LOCK : TEXT_FREE_DIRECTION}\nFinal check: ensure no added text or numbers exist in the output.`;
 
   const sceneStyle = (noPeople || handsOnly) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle) && !isUnboxingHands
     ? "review"
@@ -750,7 +766,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     ? `APPAREL BACKGROUND: Show the exact reference garment naturally in a brand new, realistic ${locationSetting} setting with clean everyday lighting. Keep the garment as the clear focal point.`
     : handsOnly
     ? `${HANDS_ONLY_BACKGROUND_DIRECTION} Place the product in this category-appropriate setting: ${locationSetting}. Do not replace it with a generic cafe, desk, studio, or outdoor background unless that setting is appropriate for the exact product.`
-    : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: After extracting ONLY the target product from the reference image, place it into a BRAND NEW, highly realistic ${locationSetting} background scene. NATURAL SMARTPHONE ATMOSPHERE: Enhance the background with clean, organic everyday lighting, realistic depth of field, authentic real-life textures, and a believable environment tailored specifically to this product category. FORBIDDEN: Do NOT use hyper-processed commercial studio gloss, fake HDR sheen, or artificial CGI lighting. The scene MUST look authentic, natural, and grounded in real life.`;
+    : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: Place the unchanged product in a brand new, realistic ${locationSetting} scene suited to this product category. Use natural smartphone lighting, believable depth of field, and authentic textures; avoid CGI gloss and fake HDR.`;
   const stillBackgroundDirection = isFootwear
     ? `${FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK}\n${imageBackgroundDirection}`
     : imageBackgroundDirection;
@@ -758,31 +774,27 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const hasEngravedPattern = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(productText);
 
   const promptParts = [
-    !textEnabled ? TEXT_FREE_DIRECTION : "",
+    !textEnabled ? (isCoffeeImageAd ? COFFEE_COMPACT_TEXT_LOCK : TEXT_FREE_DIRECTION) : "",
     buildProductIdentityLock(productInfo),
-    NO_WOW_DIRECTION,
     isExplicitAdultPresenterSelection(settings) ? EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION : "",
     isClothing ? APPAREL_REFERENCE_PRIORITY : REFERENCE_IMAGE_HIGHEST_PRIORITY,
-    referenceCompositingDirection,
+    isPackagedCoffeeProduct(productText) ? REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION : "",
+    isClothing ? referenceCompositingDirection : "",
     FICTIONAL_CAST_DIRECTION,
     isClothing && ["woman", "man"].includes(auto.presenter) ? INDEPENDENT_FICTIONAL_CAST_DIRECTION : "",
     isClothing ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
-    NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
-    NO_HALLUCINATED_BRAND_LOGOS_RULE,
     auto.presenter && auto.presenter !== "none" ? THAI_HUMAN_CAST_DIRECTION : "",
     autoPresenterProfile,
     intro,
-    STILL_PRODUCT_FIDELITY_DIRECTION,
-    isClothing ? "" : PRODUCT_ISOLATION_DIRECTION,
     hasEngravedPattern ? ENGRAVED_EMBOSSED_FIDELITY_DIRECTION : "",
     isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION,
     scaleInstruction,
     shotDistribution,
     specificScale,
-    PRODUCT_STRUCTURE_DIRECTION,
     categoryDirection,
+    isCoffeeImageAd ? COFFEE_REFERENCE_VARIANT_LOCK : "",
     analysisDirection,
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
     explicitlySelectedAnimal ? "" : NO_UNREQUESTED_ANIMALS_DIRECTION,
@@ -1114,7 +1126,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     SPEECH_DIRECTION,
     PROGRESSIVE_AUDIO_NARRATION_MANDATE,
-    resolveMatchStillDirection(auto.presenter),
+    resolveMatchStillDirection(auto.presenter, firstSceneNoPeople),
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     PRODUCT_FIDELITY_DIRECTION,
@@ -1207,39 +1219,18 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   if (firstSceneNoPeople && !noPeople) {
-    const isHoldable = !isHeavy && !isImmobile;
     const lines = sceneBreakdown.split("\n");
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].trim().startsWith("- Scene 1")) {
-        let scene1 = lines[i];
-        if (isHoldable) {
-          scene1 = scene1
-            // ดักจับ "with a reviewer holding ... and talking to the camera" (greedy ข้าม spaces และ product name ได้)
-            .replace(/\bwith a reviewer holding .+?(?:\s+and talking to the camera(?:[^.]*)?)?/gi, "with hands holding the product")
-            // ดักจับ reviewer/presenter/person ที่ทำกิจกรรมต่างๆ
-            .replace(/\b(a |an )?(presenter|reviewer|model|person)\b.*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "hands holding and presenting the product")
-            // ดักจับ "talking to the camera" โดยตรงที่อาจหลุดจาก pattern แรก
-            .replace(/\btalking\s+(?:directly\s+)?to\s+the\s+camera\b[^.]*/gi, "presenting the product")
-            // ดักจับ reviewer/presenter ที่เหลืออยู่
-            .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, "hands holding the product");
+        const scene1 = lines[i]
+          .replace(/\bwith a reviewer holding .+?(?:\s+and talking to the camera(?:[^.]*)?)?/gi, `showcasing ${productName} resting on a flat surface`)
+          .replace(/\bshow of hands starting to open the packaging of\b/gi, `shot of the unopened packaging of`)
+          .replace(/\bhands starting to open the packaging of\b/gi, `the unopened packaging of`)
+          .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b.*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown resting on its own")
+          .replace(/\btalking\s+(?:directly\s+)?to\s+the\s+camera\b[^.]*/gi, "showcasing the product")
+          .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b/gi, "the product shown resting on its own");
 
-          lines[i] = scene1 + " (SCENE 1 MUST SHOW NO HUMAN FACE OR BODY: Show only hands holding the product. STRICTLY FORBIDDEN: Do not show any human faces, presenters, reviewers, or people in Scene 1; show only the product and the hands holding it. The presenter/person must NOT appear until Scene 2.)";
-        } else {
-          scene1 = scene1
-            // ดักจับ "with a reviewer holding ... and talking to the camera" (greedy ข้าม spaces และ product name ได้)
-            .replace(/\bwith a reviewer holding .+?(?:\s+and talking to the camera(?:[^.]*)?)?/gi, `showcasing ${productName} resting on a flat surface`)
-            // ดักจับ hands opening packaging
-            .replace(/\bshow of hands starting to open the packaging of\b/gi, `shot of the unopened packaging of`)
-            .replace(/\bhands starting to open the packaging of\b/gi, `the unopened packaging of`)
-            // ดักจับ presenter/reviewer/person ที่ทำกิจกรรมต่างๆ
-            .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b.*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown resting on its own")
-            // ดักจับ talking to camera โดยตรง
-            .replace(/\btalking\s+(?:directly\s+)?to\s+the\s+camera\b[^.]*/gi, "showcasing the product")
-            // ดักจับ presenter/reviewer/person ที่เหลืออยู่
-            .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b/gi, "the product shown resting on its own");
-
-          lines[i] = scene1 + " (Product-only shot. The product must rest on a flat surface or floor. STRICTLY FORBIDDEN: Do not show any people, faces, presenters, reviewers, characters, or hands in Scene 1; show only the product on its own. SCENE 1 MUST BE PRODUCT-ONLY: The presenter must NOT appear until Scene 2.)";
-        }
+        lines[i] = scene1 + " (PRODUCT-ONLY SCENE 1: The product must rest on a flat surface or floor. STRICTLY FORBIDDEN: Do not show any people, faces, presenters, reviewers, characters, or hands in Scene 1. The presenter may appear starting from Scene 2 only.)";
         break;
       }
     }
@@ -1378,21 +1369,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   if (handsOnly) {
     let handsInstructions = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : handsDir}\n${HANDS_ONLY_FACE_EXCLUSION}\n${HANDS_ONLY_GLOBAL_COUNT_LOCK}`;
     if (firstSceneNoPeople) {
-      const isHoldable = !isHeavy && !isImmobile;
-      if (!isHoldable) {
-        handsInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show hands or any human features in Scene 1. Hands are only allowed starting from Scene 2 onwards.\n${handsInstructions}`;
-      }
+      handsInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show hands or any human features in Scene 1. Hands are only allowed starting from Scene 2 onwards.\n${handsInstructions}`;
     }
     promptParts.push(`${handsInstructions}\n${voiceoverDir} ${speechDir}`);
   } else if (auto.presenter === "dog" || auto.presenter === "cat") {
     let animalInstructions = `Presenter: ${presenterInstruction}. ${ANIMAL_PRESENTER_DIRECTION} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} (Strictest rule: Use exactly one single consistent animal and presenter throughout the entire video. Do not switch animals or presenters, and do not morph or change their appearance between scenes).`;
     if (firstSceneNoPeople) {
-      const isHoldable = !isHeavy && !isImmobile;
-      if (isHoldable) {
-        animalInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the animal or any pets/people in Scene 1. Only hands holding the product are allowed in Scene 1. The animal/pet character should only appear starting from Scene 2 onwards.\n${animalInstructions}`;
-      } else {
-        animalInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the animal, any pets, people, or hands in Scene 1. The animal/pet character should only appear starting from Scene 2 onwards.\n${animalInstructions}`;
-      }
+      animalInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the animal, any pets, people, or hands in Scene 1. The animal/pet character should only appear starting from Scene 2 onwards.\n${animalInstructions}`;
     }
     promptParts.push(`${animalInstructions} ${speechDir}`);
   } else if (auto.presenter && auto.presenter !== "none") {
@@ -1413,16 +1396,15 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       : `${FULL_BODY_PRESENTER_DIRECTION} ${getPresenterOutfitDirection(productText, auto.presenter)}`;
     let presenterInstructions = `Presenter: ${presenterInstruction}. ${personDir} ${presenterHandAnatomy} ${presenterFraming} (Strictest rule: ${presenterContinuity})`;
     if (firstSceneNoPeople) {
-      const isHoldable = !isHeavy && !isImmobile;
-      if (isHoldable) {
-        presenterInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the presenter's face, body, or any person in Scene 1. Only hands holding the product are allowed in Scene 1. The presenter should only appear starting from Scene 2 onwards. ⚠️ CRITICAL RULE FOR SCENE 1 — NO HUMAN FACE OR BODY IN SCENE 1: Scene 1 must show ONLY hands holding the product with NO face, NO body, NO presenter visible at all. The presenter's face and body must be completely absent from Scene 1. The presenter character should ONLY appear starting from Scene 2. STRICTLY FORBIDDEN in Scene 1: no face, no head, no torso, no person — only hands and product.\n${presenterInstructions}`;
-      } else {
-        presenterInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show the presenter, any other people, or hands in Scene 1. The presenter should only appear starting from Scene 2 onwards. ⚠️ CRITICAL RULE FOR SCENE 1 — PRODUCT ONLY IN SCENE 1: Scene 1 must show ONLY the product resting on its own with NO people, NO hands, NO presenter, NO faces visible at all. The presenter must be completely absent from Scene 1. The presenter character should ONLY appear starting from Scene 2. STRICTLY FORBIDDEN in Scene 1: no person, no hands, no face — only the product alone.\n${presenterInstructions}`;
-      }
+      presenterInstructions = `PRODUCT-ONLY SCENE 1: Do not show the presenter, any other people, hands, faces, or human features in Scene 1. Show only the product resting on its own. The presenter may appear starting from Scene 2 only.\n${presenterInstructions}`;
     }
     promptParts.push(`${presenterInstructions} ${speechDir}`);
   } else {
     promptParts.push(`${NO_PEOPLE_DIRECTION} ${voiceoverDir} ${speechDir}`);
+  }
+
+  if (firstSceneNoPeople) {
+    promptParts.push("FINAL SCENE 1 OVERRIDE: Scene 1 is product-only. Do not show any person, presenter, face, body, hands, arms, animal, or human feature in Scene 1. Show only the unchanged product resting naturally on its own. All presenter or human activity starts from Scene 2.");
   }
 
   promptParts.push("STRICT ACTION RULE: Do NOT perform a thumbs up gesture (ห้ามยกนิ้วโป้ง/ยกนิ้วเยี่ยม) as it looks unnatural. Keep all poses and hand gestures completely natural and relaxed.");
@@ -1584,15 +1566,15 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
     return `${BAGS_ACCESSORIES_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (isCoffeePowderProduct(text)) {
-    return `${isPackagedCoffeeProduct(text) ? COFFEE_SEALED_POWDER_POUCH_DIRECTION + "\n" : ""}${COFFEE_POWDER_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
+    return `${isPackagedCoffeeProduct(text) ? COFFEE_SEALED_POWDER_POUCH_DIRECTION + "\n" : ""}${COFFEE_POWDER_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
   }
   if (isCoffeeBeanProduct(text)) {
-    return `${isPackagedCoffeeProduct(text) ? COFFEE_SEALED_BEANS_POUCH_DIRECTION + "\n" : ""}${COFFEE_BEANS_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
+    return `${isPackagedCoffeeProduct(text) ? COFFEE_SEALED_BEANS_POUCH_DIRECTION + "\n" : ""}${COFFEE_BEANS_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
   }
-  if (/(ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean bag|coffee beans pouch)/i.test(text)) {
-    return `${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
+  if (isCoffeeProduct(text) || /(ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean bag|coffee beans pouch)/i.test(text)) {
+    return `${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
   }
-  if (/(กาแฟ|ชา|โกโก้|ขนม|อาหาร|อาหารเสริม|วิตามิน|คอลลาเจน|อาหารหมา|อาหารแมว|coffee|tea|snack|food|supplement|vitamin|collagen|pet food)/i.test(text)) {
+  if (/(ชา|โกโก้|ขนม|อาหาร|อาหารเสริม|วิตามิน|คอลลาเจน|อาหารหมา|อาหารแมว|tea|snack|food|supplement|vitamin|collagen|pet food)/i.test(text)) {
     return `${FOOD_BEVERAGE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   if (/(แก้ว|กระบอกน้ำ|ชากาแฟ|กระติก|แก้วเก็บความเย็น|tumbler|mug|cup|bottle|flask)/i.test(text)) {

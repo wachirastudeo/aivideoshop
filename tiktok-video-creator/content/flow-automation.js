@@ -1042,7 +1042,23 @@ async function prepareFreshProject() {
     if (location.hostname.includes("accounts.google")) {
         throw new Error("Google Flow ต้อง login Google ก่อน");
     }
-    if (isProjectUrl(location.href)) return true;
+    if (isProjectUrl(location.href)) {
+        const back = findAction(["Go Back", "arrow_back"]);
+        if (back) {
+            log("กลับไปหน้า Flow เพื่อสร้าง New Project ใหม่...");
+            back.scrollIntoView({ block: "center", inline: "center" });
+            pointerClick(back);
+            await sleep(2200);
+        } else {
+            log("ไม่พบปุ่มย้อนกลับของ project เดิม → เปิดหน้า Flow ใหม่...");
+            location.href = FLOW_HOME;
+            const deadline = Date.now() + 30000;
+            while (!isHomeUrl(location.href) && Date.now() < deadline) {
+                await sleep(POLL);
+            }
+            if (!isHomeUrl(location.href)) throw new Error("กลับไปหน้า Flow เพื่อสร้าง New Project ใหม่ไม่สำเร็จ");
+        }
+    }
 
     for (let i = 0; i < 40; i++) {
         const action = findNewProjectButton();
@@ -1481,7 +1497,9 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload", opt
             phase: tabIcon === "image" ? "image" : "",
             timeoutMs: tabIcon === "image" ? 15000 : 20000,
             excludedKeys: usedResolvedKeys,
-            allowFallback: options.allowFallback !== false
+            // Source references must resolve to the exact uploaded tile.
+            // Falling back to the newest card can silently reuse another item's media.
+            allowFallback: options.allowFallback === true
         });
         const el = result.el;
         if (!el) throw new Error(`ไม่เจอรูป media ${tileLabel} ใน Google Flow`);
