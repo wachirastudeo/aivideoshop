@@ -639,9 +639,25 @@ function mediaCardStatus(cardInfo) {
         text.includes("queued") || text.includes("pending") || text.includes("waiting") ||
         text.includes("กำลังสร้าง") || text.includes("กำลังเรนเดอร์") || text.includes("รอคิว") || text.includes("กำลังรอ");
 
-    // การ์ดที่โชว์ % (1–99) = กำลังเจนจริงเสมอ; การ์ดที่ fail จริงจะแทน % ด้วยคำว่า
-    // Failed ไม่ใช่โชว์ % คู่กัน → ไม่ต้องพึ่ง loading indicator (บางที DOM ไม่ match)
-    const percentProgress = /(?:^|\W)(?:\d{1,2})\s*%/.test(text);
+    // Flow บางเวอร์ชันใส่เปอร์เซ็นต์ไว้ใน aria/data attribute แทน textContent
+    // ต้องอ่านทุกแหล่ง เพราะ Failed + % ยังเป็นงานที่กำลังสร้าง ไม่ใช่ failure ปลายทาง
+    const progressNodes = [...el.querySelectorAll(
+        "[role='progressbar'],[aria-valuenow],[aria-valuetext],[data-progress],[data-percent]"
+    )];
+    const progressMeta = progressNodes.map(node => [
+        elementText(node),
+        node.getAttribute("aria-valuenow"),
+        node.getAttribute("aria-valuetext"),
+        node.getAttribute("data-progress"),
+        node.getAttribute("data-percent")
+    ].filter(Boolean).join(" ")).join(" ");
+    const progressSource = `${text} ${progressMeta}`;
+    const percentProgress = /(?:^|\D)\d{1,3}\s*%/.test(progressSource) ||
+        progressNodes.some(node => {
+            const raw = node.getAttribute("aria-valuenow") || node.getAttribute("data-progress") || node.getAttribute("data-percent");
+            const value = Number(raw);
+            return Number.isFinite(value) && value >= 0 && value < 100;
+        });
     const video = el.matches?.("video") ? el : el.querySelector?.("video");
     const hasPlayableVideo = Boolean(
         video && (video.currentSrc || video.src || video.querySelector("source")?.src)
@@ -660,8 +676,10 @@ function mediaCardStatus(cardInfo) {
     const actionIcons = [...el.querySelectorAll(".google-symbols,.material-icons,.material-symbols-outlined,i")]
         .map(n => (n.textContent || "").trim().toLowerCase());
     const hasDeleteIcon = actionIcons.includes("delete") || actionIcons.includes("delete_forever");
-    const failed = !progress && !rendered && hasDeleteIcon;
-    return { ready: rendered && !progress, failed, progress, rendered, text };
+    const failureReason = extractFlowFailureReason(el);
+    const failed = !progress && !rendered && hasDeleteIcon && Boolean(failureReason);
+    const ambiguousFailure = !progress && !rendered && hasDeleteIcon && !failureReason;
+    return { ready: rendered && !progress, failed, ambiguousFailure, progress, rendered, text };
 }
 function mediaCardFailureMessage(cardInfo, status) {
     const el = findMediaCard(cardInfo);
@@ -2209,11 +2227,13 @@ async function waitGenerationStarted(button, timeoutMs = 7000) {
 // ── 8. waitForResult ─────────────────────────────────────────
 async function waitForResult(phase, options = {}) {
     const maxRetryAttempts = 1;
-    const maxMs = phase === "image" ? 180000 : 400000;
+    // Image generation can legitimately take several minutes even while Flow
+    // shows a temporary Failed/percentage state. Give it enough time to settle.
+    const maxMs = phase === "image" ? 300000 : 400000;
     const progressGraceMs = 25000;
     // Flow can briefly mark queued Veo jobs as Failed, then replace the same
     // cards with playable videos. Keep waiting long enough for that late result.
-    const failureGraceMs = phase === "video" ? 90000 : 30000;
+    const failureGraceMs = phase === "video" ? 90000 : 120000;
     let retryAttempts = 0;
     let startedAt = Date.now();
     let end = Date.now() + maxMs;
@@ -2252,9 +2272,11 @@ async function waitForResult(phase, options = {}) {
         let failedResult = null;
         let failedCard = null;
         let hasActiveGeneration = false;
+        let hasAmbiguousFailure = false;
 
         for (const { card, status } of newCards) {
             if (status.progress) hasActiveGeneration = true;
+            if (status.ambiguousFailure) hasAmbiguousFailure = true;
             if (status.failed && !failedResult) {
                 failedResult = mediaCardFailureMessage(card, status);
                 failedCard = card;
@@ -2263,6 +2285,13 @@ async function waitForResult(phase, options = {}) {
         if (failedResult) {
             pendingFailure = failedResult;
             pendingFailedCard = failedCard;
+        }
+        if (hasAmbiguousFailure) {
+            // Flow อาจแสดง Failed ชั่วคราวระหว่างที่ backend ยังประมวลผลอยู่
+            // โดยเฉพาะตอนการ์ดยังมี % แต่รายละเอียด error ยังไม่ถูกสร้างใน DOM
+            hasActiveGeneration = true;
+            failureSeenAt = 0;
+            log("⏳ Flow แสดง Failed แต่ยังไม่มีสาเหตุ/ผลลัพธ์ — ยังไม่ถือว่าล้มเหลว รอต่อ...");
         }
         if (hasActiveGeneration) {
             // A failed sibling tile can appear while another requested video

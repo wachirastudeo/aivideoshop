@@ -153,6 +153,7 @@ const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to refere
 const BACKGROUND_COMPATIBILITY_LOCK = "BACKGROUND COMPATIBILITY LOCK: The environment, surface, props, colors, and lighting must make physical and commercial sense for the exact product. Use only category-relevant objects. Do not place unrelated food, pets, plants, sports gear, bathroom items, kitchen tools, vehicles, or decorative props in the scene. For vehicle accessories, the matching vehicle is a required relevant context object. Never let the background compete with, hide, recolor, or imply an incorrect use for the product.";
 const VEHICLE_ACCESSORY_CONTEXT_DIRECTION = "STRICT VEHICLE ACCESSORY CONTEXT LOCK: The matching real vehicle MUST be clearly visible and correctly matched to the product. Motorcycle accessories (helmet, motorcycle top box, rear case, rack, pannier, phone mount, or motorcycle part) MUST be shown on, attached to, or directly beside a real motorcycle or scooter; show enough of the motorcycle to make the use unmistakable. Car accessories MUST be shown inside, attached to, or directly beside a real car; show the relevant dashboard, seat, trunk, door, windshield, or exterior body. ABSOLUTELY FORBIDDEN: Do not show a motorcycle/car accessory alone on a generic desk, empty studio floor, unrelated room, cafe, or mismatched vehicle. Keep the product as the hero while the matching vehicle provides clear real-world context.";
 const FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK = "HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE: The entire still-image scene MUST be clearly outdoors in open air, such as an outdoor home driveway, front yard, quiet neighborhood street, or park path. Use outdoor pavement, concrete, grass, or natural daylight. The shoe must be grounded on the outdoor surface or naturally worn on a visible foot outside. ABSOLUTELY FORBIDDEN: indoor rooms, houses, bedrooms, entryways, closets, shoe shelves, retail interiors, cafes, studios, indoor floors, or studio backdrops. If any other instruction conflicts with this, keep the shoe outdoors.";
+const STILL_VIDEO_SOURCE_HERO_LOCK = "VIDEO SOURCE STILL HERO LOCK: This still may become the visual source for the product video. Make the exact product the only hero subject: centered, large but fully visible, sharp, unobstructed, and in focus. For small products, let them occupy roughly 55–75% of the frame while preserving realistic scale. No people, hands, animals, extra products, alternate variants, motion blur, cropping, or invented branding. The video must preserve this exact product identity.";
 
 function resolveMatchStillDirection(autoPresenter, firstSceneNoPeople = false) {
   const baseFidelity = "STRICT REFERENCE PHOTO PRODUCT FIDELITY LOCK: Reproduce the product 100% pixel-faithfully from the reference image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without distortion, morphing, redesign, or alteration.";
@@ -203,6 +204,7 @@ const APPAREL_PRESENTER_FRAME_CONTINUITY = "APPAREL PRESENTER FRAME CONTINUITY: 
 const FICTIONAL_CAST_DIRECTION = "HUMAN CAST: Use a generic fictional commercial presenter according to the selected presenter mode.";
 const INDEPENDENT_FICTIONAL_CAST_DIRECTION = "INDEPENDENT FICTIONAL CAST: Generate the selected fictional presenter independently. Use the product reference only for garment design details; choose the presenter and setting from the selected options.";
 const APPAREL_FICTIONAL_MODEL_DIRECTION = "APPAREL MODEL SAFETY: For clothing, fashion, bags, or accessories, use only a fictional adult commercial fit model or product-only mannequin-style presentation.";
+const NECK_SCARF_USAGE_LOCK = "STRICT SILK NECK SCARF USAGE LOCK: Treat this as the exact small silk neck scarf/neckerchief shown in the reference. Follow the reference image's real wearing position, fold, knot, and drape. For a scarf shown for the neck, keep it around the neck, collar, or collarbone only. Never wrap it around the hair, cover the head, make a turban/headwrap/headband, tie it as a hair accessory, or use it as a face covering. The reference usage overrides the generic word 'scarf'; only use headwear placement if the reference clearly shows head use.";
 
 const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference image pixel-for-pixel. Do NOT shift, alter, tint, recolor, or replace original colors or graphics under any lighting or environment effect. Every color zone — background fill, text color, graphic element colors, border colors — must remain exactly as shown in the reference photo.";
 export const TIKTOK_CAPTION_SIGNATURE = "i love tiktok";
@@ -218,10 +220,20 @@ export function isClothingProduct(text = "") {
   return /(เสื้อ|กางเกง|กระโปรง|ชุด|เดรส|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|เสื้อผ้า|แฟชั่น|เข็มขัด|หมวก|ถุงเท้า|กางเกงยีนส์|ชุดเดรส|ชุดเซ็ท|ชุดกระโปรง|ผ้าพันคอ|ผ้าคลุม|clothing|clothes|apparel|dress|shirt|tshirt|tee|pants|trousers|jacket|hoodie|skirt|outfit|garment|fashion|\bwear\b|suit|coat|\btop\b|\bbottom\b)/i.test(clean);
 }
 
+function isNeckScarfProduct(text = "") {
+  const clean = String(text || "").toLowerCase();
+  return /(?:ผ้าพันคอ|ผ้าพันคอไหม|silk\s*scarf|neck\s*scarf|neckerchief)/i.test(clean) &&
+    !/(ผ้าคลุมหัว|โพกหัว|คลุมผม|ผ้าโพก|head\s*scarf|headwrap|hair\s*scarf|turban)/i.test(clean);
+}
+
 function getApparelWearDirection(text = "", selectedPresenter = "") {
   const clean = String(text || "").toLowerCase();
   const gender = detectExplicitProductGender(clean) || (["woman", "man"].includes(selectedPresenter) ? selectedPresenter : "");
   const model = gender === "man" ? "adult male model" : gender === "woman" ? "adult female model" : "selected adult model";
+
+  if (isNeckScarfProduct(clean)) {
+    return `${NECK_SCARF_USAGE_LOCK} The ${model} wears the exact scarf naturally around the neck as shown in the reference, with the hair and head uncovered.`;
+  }
 
   if (/(เดรส|จั๊มสูท|ชุดหมี|dress|jumpsuit|romper|one.?piece)/i.test(clean)) {
     return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference one-piece garment once as intended. Let the model choose simple shoes and accessories naturally.`;
@@ -320,6 +332,7 @@ const TEXT_FREE_DIRECTION = "HIGHEST PRIORITY — STRICT NO-TEXT RULE: Do not ad
 
 const NO_ADDED_PATTERNS_OR_GRAPHICS_RULE = "⚠️ STRICT PLAIN PRODUCT LOCK: If the reference product is plain, blank, solid-colored, or lacks printed graphics/patterns, you MUST keep the generated product 100% PLAIN, BLANK, and CLEAN. Strictly FORBIDDEN: Do NOT invent, add, or draw any extra patterns, stripes, graphics, logos, prints, or decorations whatsoever.";
 const NO_HALLUCINATED_BRAND_LOGOS_RULE = "⚠️ ZERO HALLUCINATION MANDATE: Strictly FORBIDDEN to generate, invent, or place any brand names, text, typography, letters, emblems, or logos on the product surface if they do NOT exist in the original reference image. If the product is blank in the reference, it MUST remain completely blank. Do NOT add random brands, gibberish text, or fake logos.";
+const REFERENCE_BRAND_ONLY_LOCK = "STRICT REFERENCE BRAND-ONLY LOCK: Use only the brand name, logo, mascot, emblem, and printed marks visibly present on the uploaded product reference, with exact spelling, shape, position, and colors. Never guess, autocomplete, translate, replace, or invent branding from the title or category. Never add another manufacturer, retailer, marketplace, sponsor, competitor, or background logo. If the brand is unclear or not visible, leave the product unbranded. Exclude shop watermarks.";
 
 const ENGRAVED_EMBOSSED_FIDELITY_DIRECTION = "STRICT ENGRAVED, EMBOSSED & SURFACE-CARVED PATTERN FIDELITY LOCK: If the product has engraved, embossed, debossed, etched, laser-carved, or relief-carved surface patterns, textures, or artwork (ลวดลายฉลัก/สลัก/นูน), you MUST reproduce every line, groove, motif, and depth relief 100% pixel-faithfully as shown in the reference image. STRICTLY FORBIDDEN: Do NOT redraw the pattern with simplified lines, do NOT round off sharp edges, do NOT add extra ornamental details, and do NOT change the spacing, proportions, or depth of any carved element. The engraved pattern must match the reference exactly in layout, shape, thickness of lines, and overall design without any artistic interpretation or hallucination. Preserve the exact metallic, ceramic, wood, or material surface finish that carries these carvings.";
 
@@ -646,7 +659,10 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${visualProductName} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const isCoffeeImageAd = isCoffeeProduct(productText) || isPackagedCoffeeProduct(productText) || isCoffeePowderProduct(productText) || isCoffeeBeanProduct(productText);
-  const autoPresenterProfile = isAuto(settings.presenter)
+  // In Combined mode this still becomes the source frame for video. Keep
+  // standalone image/presenter modes backward-compatible.
+  const productOnlyStill = settings?.flowGenMode === "combined";
+  const autoPresenterProfile = !productOnlyStill && isAuto(settings.presenter)
     ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
     : "";
   const isClothing = isClothingProduct(productText);
@@ -656,11 +672,11 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const specificScale = getProductSpecificScaleInstruction(productText);
 
   const isUnboxingHands = auto.presenter === "unboxing_hands";
-  const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
-  const wearableCrop = auto.presenter === "wearable_crop";
-  const noPeople = !(auto.presenter && auto.presenter !== "none");
+  const handsOnly = !productOnlyStill && (auto.presenter === "hands_only" || isUnboxingHands);
+  const wearableCrop = !productOnlyStill && auto.presenter === "wearable_crop";
+  const noPeople = productOnlyStill || !(auto.presenter && auto.presenter !== "none");
   const referenceCompositingDirection = isClothing
-    ? APPAREL_REFERENCE_USE_DIRECTION
+    ? (productOnlyStill ? REFERENCE_COMPOSITING_DIRECTION : APPAREL_REFERENCE_USE_DIRECTION)
     : noPeople
       ? REFERENCE_COMPOSITING_DIRECTION
       : "BACKGROUND-ONLY EDIT WITH NATURAL PRESENTER COMPOSITING: Keep the reference product unchanged. Replace its source background and add the selected fictional presenter in a physically natural pose without altering the product.";
@@ -675,7 +691,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const isKids = shouldUseKidsScene(productText, auto, settings);
 
   let peopleDirection = "";
-  if (handsOnly) {
+  if (productOnlyStill) {
+    peopleDirection = NO_PEOPLE_DIRECTION;
+  } else if (handsOnly) {
     const stillHandCount = isUnboxingHands ? `\n${HANDS_ONLY_STILL_COUNT_LOCK}` : "";
     peopleDirection = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}`;
   } else if (isAnimal) {
@@ -795,11 +813,15 @@ export function buildImagePrompt(productInfo, settings = {}) {
     buildProductIdentityLock(productInfo),
     isExplicitAdultPresenterSelection(settings) ? EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION : "",
     isClothing ? APPAREL_REFERENCE_PRIORITY : REFERENCE_IMAGE_HIGHEST_PRIORITY,
+    // Keep the uploaded product's own colors unchanged; only the background may change.
+    COLOR_EXACT_LOCK,
+    REFERENCE_BRAND_ONLY_LOCK,
+    isNeckScarfProduct(productText) ? NECK_SCARF_USAGE_LOCK : "",
     isPackagedCoffeeProduct(productText) ? REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION : "",
     isClothing ? referenceCompositingDirection : "",
     FICTIONAL_CAST_DIRECTION,
-    isClothing && ["woman", "man"].includes(auto.presenter) ? INDEPENDENT_FICTIONAL_CAST_DIRECTION : "",
-    isClothing ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
+    isClothing && !productOnlyStill && ["woman", "man"].includes(auto.presenter) ? INDEPENDENT_FICTIONAL_CAST_DIRECTION : "",
+    isClothing && !productOnlyStill ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     auto.presenter && auto.presenter !== "none" && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
@@ -820,6 +842,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isHeadwearProduct(productText) ? HEADWEAR_NEVER_REMOVE_MANDATE : "",
     isFullFaceCoveringProduct(productText) ? FULL_FACE_COVERAGE_LOCK : "",
     stillBackgroundDirection,
+    STILL_VIDEO_SOURCE_HERO_LOCK,
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     getStillProductUseDirection(productText),
     peopleDirection,
@@ -1160,6 +1183,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     COLOR_EXACT_LOCK,
     NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
     NO_HALLUCINATED_BRAND_LOGOS_RULE,
+    REFERENCE_BRAND_ONLY_LOCK,
     FICTIONAL_CAST_DIRECTION,
     auto.presenter && auto.presenter !== "none" && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
     autoPresenterProfile,
@@ -1173,6 +1197,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
     isClothing ? APPAREL_REFERENCE_USE_DIRECTION : PRODUCT_ISOLATION_DIRECTION,
+    isNeckScarfProduct(productText) ? NECK_SCARF_USAGE_LOCK : "",
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
     wearableCrop ? WEARABLE_CROP_SCENE_DIRECTION : (isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION),
@@ -1592,7 +1617,7 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
     return `${SHOE_FIDELITY_DIRECTION}\n${SHOE_SCALE_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (isClothingProduct(text)) {
-    return `${CLOTHING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+    return `${isNeckScarfProduct(text) ? NECK_SCARF_USAGE_LOCK + "\n" : ""}${CLOTHING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (isFurnitureProduct(text)) {
     const isChair = /(เก้าอี้|อาร์มแชร์|ม้านั่ง|chair|armchair|stool|bench)/i.test(text);
