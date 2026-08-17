@@ -643,11 +643,14 @@ check("apparel image generates its fictional presenter independently", /INDEPEND
 
 const genericReferenceImage = buildImagePrompt({ name: "แก้วเก็บความเย็น" }, { ...settings, presenter: "woman" });
 check("non-apparel image still gives the product reference highest priority", /REFERENCE PHOTO OVERRIDES TEXT/i.test(genericReferenceImage), genericReferenceImage);
+check("image prompt locks realistic product scale to the scene", /REALISTIC SCENE SCALE LOCK[\s\S]*real-world anchors[\s\S]*natural perspective/i.test(genericReferenceImage), genericReferenceImage);
+check("image prompt scales from scene anchors instead of frame coverage", /Use real-world anchors, natural perspective, and background depth/i.test(genericReferenceImage), genericReferenceImage);
 
 // Test 9: Video prompt fidelity directions
 const sampleVideoPrompt = buildVideoPrompt({ name: "กระเป๋าเป้ลายการ์ตูน" }, settings);
 check("video prompt includes printed graphic fidelity instruction", /Reproduce all printed surface artwork|Reproduce the printed surface artwork/i.test(sampleVideoPrompt), sampleVideoPrompt);
 check("video prompt includes color and pattern accuracy instruction", /EXACT COLOR & PATTERN ACCURACY/i.test(sampleVideoPrompt), sampleVideoPrompt);
+check("video prompt locks realistic product scale to the scene", /REALISTIC SCENE SCALE LOCK[\s\S]*natural perspective[\s\S]*never oversized, floating/i.test(sampleVideoPrompt), sampleVideoPrompt);
 const musicOnlyPrompt = buildVideoPrompt({ name: "เคสมือถือ" }, { ...settings, audioMode: "music_only" });
 check("music-only mode requests instrumental music", /AUDIO MODE — INSTRUMENTAL MUSIC ONLY/i.test(musicOnlyPrompt), musicOnlyPrompt);
 check("music-only mode forbids spoken audio", /Do not generate any spoken narration, voiceover, dialogue/i.test(musicOnlyPrompt), musicOnlyPrompt);
@@ -760,6 +763,8 @@ check("sofa image prompt includes furniture fidelity guidance", /FURNITURE STRUC
 const phoneCaseVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูนหมี" }, settings);
 check("phone case video prompt includes phone case fidelity lock", /STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case video prevents pattern rotation and drift", /CASE ARTWORK COORDINATE LOCK[\s\S]*mirror it, rotate it, stretch it, reflow it, center-shift it[\s\S]*drift onto the phone/i.test(phoneCaseVid), phoneCaseVid);
+check("phone case keeps true size against full-size scene anchors", /REAL-WORLD PHONE SCALE LOCK[\s\S]*true smartphone size relative to a full-size hand, table, room, and furniture[\s\S]*fill half a table/i.test(phoneCaseVid), phoneCaseVid);
+check("complex phone case patterns copy from the clear reference", /COMPLEX PHONE CASE PATTERN REFERENCE LOCK[\s\S]*entire visible case-back artwork as one exact graphic layer[\s\S]*reference image overrides the product title/i.test(phoneCaseVid), phoneCaseVid);
 
 const bagVid = buildVideoPrompt({ name: "กระเป๋าสะพายข้างหนังแท้สำหรับผู้หญิง" }, settings);
 check("bag video prompt includes bags fidelity lock", /STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK/i.test(bagVid), bagVid);
