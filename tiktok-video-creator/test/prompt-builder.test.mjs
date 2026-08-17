@@ -648,6 +648,11 @@ check("non-apparel image still gives the product reference highest priority", /R
 const sampleVideoPrompt = buildVideoPrompt({ name: "กระเป๋าเป้ลายการ์ตูน" }, settings);
 check("video prompt includes printed graphic fidelity instruction", /Reproduce all printed surface artwork|Reproduce the printed surface artwork/i.test(sampleVideoPrompt), sampleVideoPrompt);
 check("video prompt includes color and pattern accuracy instruction", /EXACT COLOR & PATTERN ACCURACY/i.test(sampleVideoPrompt), sampleVideoPrompt);
+const musicOnlyPrompt = buildVideoPrompt({ name: "เคสมือถือ" }, { ...settings, audioMode: "music_only" });
+check("music-only mode requests instrumental music", /AUDIO MODE — INSTRUMENTAL MUSIC ONLY/i.test(musicOnlyPrompt), musicOnlyPrompt);
+check("music-only mode forbids spoken audio", /Do not generate any spoken narration, voiceover, dialogue/i.test(musicOnlyPrompt), musicOnlyPrompt);
+const voiceoverPrompt = buildVideoPrompt({ name: "เคสมือถือ" }, { ...settings, audioMode: "voiceover" });
+check("voiceover mode remains enabled by default", /Spoken audio \(Thai\):|Voiceover: Add/i.test(voiceoverPrompt) && !/AUDIO MODE — INSTRUMENTAL MUSIC ONLY/i.test(voiceoverPrompt), voiceoverPrompt);
 // Test 10: Hands-only background aesthetics
 const handsOnlyImg = buildImagePrompt({ name: "เคสมือถือ" }, { ...settings, presenter: "hands_only" });
 check("hands_only image prompt contains background aesthetics", /BACKGROUND AESTHETICS/i.test(handsOnlyImg), handsOnlyImg);
@@ -665,6 +670,7 @@ check("Auto presenter is attractive and age-appropriate", /naturally attractive|
 
 const caseAutoImg = buildImagePrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
 check("phone case image Auto uses a fictional Thai presenter", /Presenter: A fictional adult Thai (?:woman|man) reviewer/i.test(caseAutoImg) && /THAI PRESENTER CAST/i.test(caseAutoImg), caseAutoImg);
+check("phone case image locks printed artwork to the case coordinates", /CASE ARTWORK COORDINATE LOCK[\s\S]*relative to the case's top, bottom, left, right edges[\s\S]*camera cutout/i.test(caseAutoImg), caseAutoImg);
 const caseImagePresenter = caseAutoImg.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 const caseVideoPresenter = caseAutoVid.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 check("Auto still and video use the same presenter gender", caseImagePresenter === caseVideoPresenter, `${caseImagePresenter} vs ${caseVideoPresenter}`);
@@ -753,6 +759,7 @@ check("sofa image prompt includes furniture fidelity guidance", /FURNITURE STRUC
 // Test 16: Phone case & Bags structural fidelity lock
 const phoneCaseVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูนหมี" }, settings);
 check("phone case video prompt includes phone case fidelity lock", /STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK/i.test(phoneCaseVid), phoneCaseVid);
+check("phone case video prevents pattern rotation and drift", /CASE ARTWORK COORDINATE LOCK[\s\S]*mirror it, rotate it, stretch it, reflow it, center-shift it[\s\S]*drift onto the phone/i.test(phoneCaseVid), phoneCaseVid);
 
 const bagVid = buildVideoPrompt({ name: "กระเป๋าสะพายข้างหนังแท้สำหรับผู้หญิง" }, settings);
 check("bag video prompt includes bags fidelity lock", /STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK/i.test(bagVid), bagVid);

@@ -48,6 +48,7 @@ async function loadOptions() {
   setSelectValue("default-video-style", settings.defaultVideoStyle || "testimonial");
   setSelectValue("default-language", settings.defaultLanguage || "ไทย");
   setSelectValue("default-presenter", settings.defaultPresenter || "Auto");
+  setSelectValue("default-audio-mode", settings.defaultAudioMode || "voiceover");
   setSelectValue("default-voice-tone", settings.defaultVoiceTone || "Auto");
 
   // Post defaults
@@ -124,6 +125,7 @@ async function saveSettings() {
     defaultVideoStyle: getSelectValue("default-video-style"),
     defaultLanguage: getSelectValue("default-language"),
     defaultPresenter: getSelectValue("default-presenter"),
+    defaultAudioMode: getSelectValue("default-audio-mode") || "voiceover",
     defaultVoiceTone: getSelectValue("default-voice-tone"),
 
     postDefaults: {

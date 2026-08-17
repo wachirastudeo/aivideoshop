@@ -312,7 +312,7 @@ function isCoffeeProduct(text = "") {
 }
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
 const SMALL_TECH_ACCESSORY_SCALE_DIRECTION = "STRICT SMALL TECH ACCESSORY SCALE LOCK: This product is a real desk-sized tech accessory, not a large appliance or oversized prop. Preserve true physical scale: a mouse is about palm-sized (roughly 10-13cm long), a keyboard is desk-width and slim, earbuds fit in the ear or charging case, a charger/cable is small enough to hold in one hand, and a headset/headphones fit naturally on a human head or rest on a desk. Show it at realistic size relative to hands, a laptop, keyboard, desk surface, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge it into a giant object, appliance, bag-sized item, or furniture-scale prop; do not shrink it into a tiny toy.";
-const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, edge bevels, AND any built-in magnetic ring (MagSafe ring) MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, magnetic ring circle, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
+const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, edge bevels, AND any built-in magnetic ring (MagSafe ring) MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, magnetic ring circle, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. CASE ARTWORK COORDINATE LOCK: Treat the reference artwork as an exact texture map on the case surface. Preserve every motif's orientation and position relative to the case's top, bottom, left, right edges, corners, camera cutout, MagSafe ring, and side boundaries. Do NOT invent a similar pattern, mirror it, rotate it, stretch it, reflow it, center-shift it, crop it, or let it drift onto the phone, camera bump, bezel, or background. If perspective or curvature is visible, follow the reference perspective while keeping the artwork aligned to the physical case surface. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
 const JEWELRY_FIDELITY_DIRECTION = "For jewelry/watches, preserve exact gemstone cuts, metal luster/shade, chain link style, clasp, watch face indices, and sub-dials. Do not alter craftsmanship details.";
 const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK: You MUST reproduce the bag (handbag, backpack, tote bag, shoulder bag, cross-body bag, wallet, or pouch) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: All bag silhouettes, strap/handle drop lengths, zipper pulls, metal clasps, buckles, stitching lines, and pocket placements MUST be rendered 100% pixel-faithfully without structural warping. MATERIAL TEXTURE & PRINTED ARTWORK: Preserve exact leather grain, canvas weave, nylon sheen, quilted pattern, brand monogram, logo plaque, or printed artwork. ZERO DEFORMATION RULE: The bag must maintain its true 3D structure and form naturally without melting, twisting, stretching, or morphing across video frames.";
 const FOOD_BEVERAGE_FIDELITY_DIRECTION = "For food, beverages, coffee, and supplements: preserve the exact pouch/bottle/jar packaging shape, printed artwork, label text, and food presentation. Do not warp packaging dimensions or branding.";
@@ -473,6 +473,7 @@ const VOICE_TONES = {
   professional: "Professional, authoritative, and expert tone",
   hype: "Super excited, fast-talking, and high-hype tone"
 };
+const MUSIC_ONLY_AUDIO_DIRECTION = "AUDIO MODE — INSTRUMENTAL MUSIC ONLY: Use only clean instrumental background music matched to the product mood and pacing. Do not generate any spoken narration, voiceover, dialogue, presenter speech, singing, lip-sync, or other vocal audio. The soundtrack must contain music only.";
 
 /**
  * @description คืนค่า default settings สำหรับการสร้าง prompt
@@ -483,6 +484,7 @@ export function getDefaultSettings() {
     videoStyle: "testimonial",
     presenter: "Auto",
     customPresenter: "",
+    audioMode: "voiceover",
     voiceTone: "Auto",
     mood: "Auto",
     location: "Auto",
@@ -1190,7 +1192,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     isClothing && !wearableCrop ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     SPEECH_DIRECTION,
-    PROGRESSIVE_AUDIO_NARRATION_MANDATE,
+    auto.audioMode === "music_only" ? MUSIC_ONLY_AUDIO_DIRECTION : PROGRESSIVE_AUDIO_NARRATION_MANDATE,
     resolveMatchStillDirection(auto.presenter, firstSceneNoPeople),
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
@@ -1434,10 +1436,14 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     : "present the product naturally in Thai; mention a relevant benefit, feature, material, or realistic use only when it fits";
 
   const speechCore = `Use [${combinedProductDetails}] as flexible context, not a script. Choose a natural Thai line that fits the actual product and its realistic use. Mention a relevant detail or benefit only when supported by the reference or product information. Avoid unrelated situations, exaggerated claims, filler, repetition, prices, or a forced CTA. The wording is up to the model.`;
-  const speechDir = isFullFaceCoveringProduct(productText)
+  const speechDir = auto.audioMode === "music_only"
+    ? MUSIC_ONLY_AUDIO_DIRECTION
+    : isFullFaceCoveringProduct(productText)
     ? `Spoken audio (Thai): Use a short, natural off-screen Thai voiceover when useful. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Keep the fabric over the mouth smooth, static, and fully covering the mouth while speaking. ${speechCore} Do not use subtitles, and ${voiceMatchEnd}`
     : `Spoken audio (Thai): Generate concise, natural Thai narration where it helps the story. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. ${speechCore} Speaker should ${presentInstruction}. Do not use subtitles, and ${voiceMatchEnd}`;
-  const voiceoverDir = (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands" || auto.presenter === "wearable_crop")
+  const voiceoverDir = auto.audioMode === "music_only"
+    ? MUSIC_ONLY_AUDIO_DIRECTION
+    : (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands" || auto.presenter === "wearable_crop")
     ? "Voiceover: Add a clear, friendly off-screen Thai female voiceover narration speaking in Thai."
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
@@ -1834,6 +1840,7 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
     // when the user explicitly selects the "none" presenter option.
     presenter: isAuto(settings.presenter) ? safeAutoPresenter : settings.presenter,
     customPresenter: sanitizePolicySensitiveText(settings.customPresenter),
+    audioMode: settings.audioMode === "music_only" ? "music_only" : "voiceover",
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
     location: contextLockedProduct ? requiredLocation : (isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location),

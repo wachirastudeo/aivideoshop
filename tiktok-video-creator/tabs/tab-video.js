@@ -36,6 +36,7 @@ export async function initVideoTab(injectedHelpers) {
   const optionDefaults = {
     videoStyle: savedOptions.defaultVideoStyle || "testimonial",
     presenter: savedOptions.defaultPresenter || "Auto",
+    audioMode: savedOptions.defaultAudioMode || "voiceover",
     voiceTone: savedOptions.defaultVoiceTone || "Auto",
     language: savedOptions.defaultLanguage || "ไทย",
     imageModel: savedOptions.flow?.imageModel || "nano-banana-pro",
@@ -86,7 +87,7 @@ export async function syncSelectedProductToVideoTab() {
 
 function bindGlobalEvents() {
   [
-    "video-style", "presenter", "custom-presenter", "voice-tone", "location", "custom-location",
+    "video-style", "presenter", "custom-presenter", "audio-mode", "voice-tone", "location", "custom-location",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action", "post-no-link",
     "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
@@ -114,6 +115,7 @@ function fillGlobalFormFromState() {
   setValue("presenter", settings.presenter);
   setValue("first-scene-no-people", settings.firstSceneNoPeople);
   setValue("custom-presenter", settings.customPresenter);
+  setValue("audio-mode", settings.audioMode);
   setValue("voice-tone", settings.voiceTone);
   setValue("location", settings.location);
   setValue("custom-location", settings.customLocation);
@@ -173,6 +175,7 @@ function syncSettingsForm() {
     presenter: getValue("presenter"),
     firstSceneNoPeople: getValue("first-scene-no-people"),
     customPresenter: getValue("custom-presenter"),
+    audioMode: getValue("audio-mode") || "voiceover",
     voiceTone: getValue("voice-tone"),
     location: getValue("location"),
     customLocation: getValue("custom-location"),
