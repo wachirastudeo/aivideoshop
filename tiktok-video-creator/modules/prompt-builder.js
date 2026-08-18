@@ -64,6 +64,14 @@ export const VIDEO_STYLES = [
     fragment: "cinematic product advertisement, slow motion, luxury feel, dark moody or bright airy lighting, macro close-ups, smooth camera movements, premium brand aesthetic, no text clutter"
   },
   {
+    id: "still-motion",
+    emoji: "📷",
+    name: "ภาพนิ่งขยับกล้อง",
+    description: "สินค้านิ่ง กล้องมือถือขยับซ้าย-ขวาเบาๆ ไม่รีวิว ไม่พูด",
+    shotPattern: "[ภาพสินค้าเดิม] → [แพนซ้าย-ขวาเบาๆ] → [เปลี่ยนมุมเล็กน้อย]",
+    fragment: "single still product image with subtle smartphone camera movement, natural handheld micro-motion, no presenter, no product handling, no review"
+  },
+  {
     id: "trending-hook",
     emoji: "🎵",
     name: "Trending Sound / Hook",
@@ -678,14 +686,15 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${visualProductName} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const isCoffeeImageAd = isCoffeeProduct(productText) || isPackagedCoffeeProduct(productText) || isCoffeePowderProduct(productText) || isCoffeeBeanProduct(productText);
+  const isClothing = isClothingProduct(productText);
   // In Combined mode this still becomes the source frame for video. Keep
-  // standalone image/presenter modes backward-compatible.
+  // clothing reference designs untouched before the video presenter is added.
   const explicitChildPresenter = ["child", "older_child"].includes(settings?.presenter);
-  const productOnlyStill = settings?.flowGenMode === "combined" && !explicitChildPresenter;
+  const stillMotionMode = settings?.videoStyle === "still-motion";
+  const productOnlyStill = stillMotionMode || (settings?.flowGenMode === "combined" && (!explicitChildPresenter || isClothing));
   const autoPresenterProfile = !productOnlyStill && isAuto(settings.presenter)
     ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
     : "";
-  const isClothing = isClothingProduct(productText);
   const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
   const isFootwear = isFootwearProduct(productInfo);
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
@@ -821,6 +830,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
   }
 
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
+  if (isCoffeeImageAd && productOnlyStill) {
+    return buildCoffeeReferenceFirstStillPrompt(productText, productName, locationSetting, textEnabled);
+  }
   const imageBackgroundDirection = isClothing
     ? `APPAREL BACKGROUND: Show the exact reference garment naturally in a brand new, realistic ${locationSetting} setting with clean everyday lighting. Keep the garment as the clear focal point.`
     : handsOnly
@@ -991,6 +1003,32 @@ function getStillProductUseDirection(text = "") {
   return "";
 }
 
+function buildCoffeeReferenceFirstStillPrompt(productText, productName, locationSetting, textEnabled = false) {
+  const formDirection = isCoffeePowderProduct(productText)
+    ? "Keep the exact sealed pouch form shown in the reference; if contents are visible, they are ground coffee powder only, never whole beans."
+    : isCoffeeBeanProduct(productText)
+      ? "Keep the exact sealed pouch form shown in the reference; if contents are visible, they are whole roasted beans only, never powder."
+      : "Keep the exact sealed pouch form shown in the reference.";
+  const textRule = textEnabled
+    ? "If an overlay is enabled, place it only in empty background space; never cover or rewrite the pouch label."
+    : "No added captions, slogans, logos, watermarks, or text overlays.";
+  const sizeDirection = getProductSpecificScaleInstruction(productText)
+    || "STRICT PRODUCT SCALE: This is a small hand-sized coffee pouch, about 15-20cm tall. Keep the table and surrounding background visibly larger than the pouch; never let the pouch fill the table or frame.";
+
+  return [
+    `Create one vertical 9:16 product still for ${productName}.`,
+    "REFERENCE-FIRST MODE: The uploaded image is the only visual source of truth. Keep the actual coffee pouch from that image unchanged; do not redraw or reconstruct it from the product name, category, memory, or generic coffee knowledge.",
+    "Preserve the exact pouch silhouette, seams, zipper, material, label artwork, Thai/English lettering, logo, illustrations, colors, layout, and printed details. If any detail is unclear, keep the visible reference detail rather than guessing.",
+    "Do not replace the pouch with a similar package, alternate design, clean generic label, new wording, or another brand. Show exactly one pouch, fully closed, upright, and physically realistic.",
+    formDirection,
+    sizeDirection,
+    "HERO COMPOSITION DOES NOT MEAN OVERSIZED: Make the pouch visually important through sharp focus, clean contrast, and placement—not by enlarging it. Preserve true physical scale with visible table space and background around it.",
+    `Change only the surrounding background to a clean ${locationSetting} setting. Use a natural eye-level product photograph with a medium-close composition: show only a small amount of the supporting table surface, keep the floor mostly out of frame, and use soft background blur with realistic depth of field. Keep the pouch sharp, front-facing, centered, and clearly readable at true scale; do not use a macro close-up, wide empty floor, or oversized empty tabletop, and do not make the pouch fill the table or frame. Do not add unrelated props or people.`,
+    textRule,
+    "Single full-frame image only; no collage, split screen, duplicate product, redesign, color shift, or label modification."
+  ].join("\n");
+}
+
 function isSmallTechAccessoryProduct(text = "") {
   return /(เมาส์|เม้าส์|คีย์บอร์ด|แป้นพิมพ์|หูฟัง|เอียร์บัด|สายชาร์จ|หัวชาร์จ|แท่นชาร์จ|พาวเวอร์แบงค์|แผ่นรองเมาส์|อุปกรณ์ไอที|อุปกรณ์คอม|mouse|keyboard|keycap|headset|headphone|earphone|earbud|earbuds|charger|charging\s*(?:cable|brick|adapter|dock|stand)|cable|powerbank|power\s*bank|mousepad|mouse\s*pad|computer\s*accessory|desk\s*accessory|tech\s*accessory)/i.test(String(text || "").toLowerCase());
 }
@@ -1106,6 +1144,27 @@ function buildSpeechProductContext(productInfo = {}, productName = "the attached
     "]. Use this as flexible context, not a fixed script. Choose a natural problem, use case, detail, or benefit only when it genuinely fits this product. Do not force every fact, invent claims, or describe another product category.";
 }
 
+function buildStillMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale) {
+  const overlayDirection = textEnabled && overlayText.length
+    ? `Optional single Thai text overlay only: "${overlayText[0]}". Keep it in empty background space and never place it on the product label or surface.`
+    : TEXT_FREE_DIRECTION;
+  const scaleDirection = specificScale || "REALISTIC PRODUCT SCALE: Keep the product at its true physical size relative to the table, floor, hands, and surrounding environment. Do not enlarge it just because it is the hero.";
+
+  return [
+    `สร้างวิดีโอแนวตั้ง 9:16 ความยาว ${durationSeconds} วินาทีจากภาพสินค้า ${productName}`,
+    "STILL-IMAGE MOTION MODE: Use the attached/generated still image as the source frame. The product stays completely still, rigid, and unchanged throughout the entire video. This is a simple product-shot animation, not a review or sales presentation.",
+    buildProductIdentityLock(productInfo),
+    REFERENCE_PIXEL_ARTWORK_LOCK,
+    PRODUCT_FIDELITY_DIRECTION,
+    scaleDirection,
+    `Place the product naturally in a realistic ${locationStr || "category-appropriate"} setting. Keep natural photography composition, true scale, visible but limited context, and realistic contact shadows. Do not make the product oversized or let it fill the table or frame.`,
+    "CAMERA MOTION ONLY: Simulate a real handheld smartphone camera moving gently a few centimeters from left to right, then slightly back or to a small three-quarter angle. Use subtle micro-jitter, natural parallax, and a small exposure shift only. Keep the movement slow, smooth, restrained, and realistic.",
+    "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product. Do not add a presenter, hands, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, or busy scene action.",
+    overlayDirection,
+    "Use one continuous shot or very gentle angle transition only. No fast cuts, no zoom punch, no 360-degree orbit, no dramatic effects, no collage, and no scene change that alters the product. Use quiet natural instrumental ambience or no audio."
+  ].filter(Boolean).join("\n");
+}
+
 export function buildVideoPrompt(productInfo, settings = {}) {
   const auto = resolveAutoSettings(productInfo, settings);
   const locationStr = resolvePromptLocation(auto);
@@ -1133,6 +1192,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isClothing = isClothingProduct(productText);
   const isWearable = isWearableProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(productText);
+
+  if (auto.videoStyle === "still-motion") {
+    return buildStillMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale);
+  }
 
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
@@ -1208,10 +1271,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     NO_WOW_DIRECTION,
     isExplicitAdultPresenterSelection(settings) ? EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION : "",
     isChildPresenter ? EXPLICIT_CHILD_PRESENTER_DIRECTION : "",
+    isClothing ? REFERENCE_PIXEL_ARTWORK_LOCK : "",
     childApparelPrompt ? "" : LABEL_EXACT_COPY_MANDATE,
     COLOR_EXACT_LOCK,
-    NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
-    NO_HALLUCINATED_BRAND_LOGOS_RULE,
+    childApparelPrompt ? "" : NO_ADDED_PATTERNS_OR_GRAPHICS_RULE,
+    childApparelPrompt ? "" : NO_HALLUCINATED_BRAND_LOGOS_RULE,
     REFERENCE_BRAND_ONLY_LOCK,
     FICTIONAL_CAST_DIRECTION,
     auto.presenter && auto.presenter !== "none" && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
@@ -1766,6 +1830,13 @@ function generationProductName(value, category = "") {
   if (isHammockProduct(text)) return "camping hammock";
   if (isCampingChairProduct(text)) return "folding camping chair";
 
+  // Coffee products must be identified before clothing keywords. Thai words
+  // such as "โบราณ" contain the substring "บรา", which must not map coffee
+  // to underwear.
+  if (isCoffeePowderProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing ground coffee powder" : "ground coffee powder";
+  if (isCoffeeBeanProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing whole roasted coffee beans" : "whole roasted coffee beans";
+  if (isCoffeeProduct(text) || isPackagedCoffeeProduct(text)) return "coffee pouch bag";
+
   // Clothing & Fashion
   if (/เดรส|ชุดกระโปรง|แซก|dress/i.test(text)) return "fashion dress";
   if (/เสื้อยืด|คอกลม|คอวี|t-shirt|tshirt|tee/i.test(text)) return "t-shirt";
@@ -1961,25 +2032,52 @@ function inferRequiredProductLocation(productInfo = {}) {
 
   // 0. Sun Protection & Sun Hats -> Sunny Outdoor Setting
   if (isSunProtectionProduct(text)) {
-    return "Sunny Outdoor Setting (Park, Garden, Promenade, or Beach)";
+    return pickProductLocationVariant(productInfo, [
+      "Sunny park promenade with natural daylight",
+      "Bright garden path with soft morning sunlight",
+      "Open beachside walkway with sunny daylight"
+    ], "sun-protection");
   }
 
   if (isRainwearProduct(text)) {
-    return "Safe outdoor rainy setting such as a wet park path, covered walkway, campsite edge, or quiet residential street; never indoors";
+    return pickProductLocationVariant(productInfo, [
+      "Safe outdoor rainy setting: wet park path during light rain; never indoors",
+      "Safe outdoor rainy setting: covered outdoor walkway with wet ground after rain; never indoors",
+      "Safe outdoor rainy setting: quiet residential street immediately after rain; never indoors",
+      "Safe outdoor rainy setting: campsite edge with light rain and wet natural ground; never indoors"
+    ], "rainwear");
   }
 
   // Product-specific environments must win over broad lifestyle defaults.
   if (/(water bottle|thermos|tumbler|flask|กระบอกน้ำ|แก้วน้ำ|ขวดน้ำ|แก้วเก็บความเย็น)/i.test(text)) {
-    return "Bright realistic outdoor park or fitness setting with a clean bench or gym surface";
+    return pickProductLocationVariant(productInfo, [
+      "Bright realistic outdoor park or fitness setting: park bench with a clean fitness path",
+      "Bright realistic outdoor park or fitness setting: quiet morning jogging path with a simple outdoor bench",
+      "Bright realistic outdoor park or fitness setting: clean gym corner with a realistic rubber floor and bench",
+      "Bright realistic outdoor park or fitness setting: sunny garden rest area with a natural stone table"
+    ], "drinkware");
   }
   if (/(pet|animal|cat|kitten|dog|puppy|อาหารแมว|อาหารหมา|ปลอกคอ|สัตว์เลี้ยง)/i.test(text)) {
-    return "Clean pet-friendly home interior with a neutral floor and simple pet-care context";
+    return pickProductLocationVariant(productInfo, [
+      "Clean pet-friendly home interior: neutral-floor pet-care corner",
+      "Clean pet-friendly home interior: bright feeding-area corner",
+      "Clean pet-friendly home interior: sunny covered pet-care patio"
+    ], "pet");
   }
   if (isOutdoorRideProduct(text)) {
-    return "Realistic outdoor home driveway, front yard, quiet neighborhood street, or park path with safe open space; never an indoor room, nursery, bedroom, cafe, or studio";
+    return pickProductLocationVariant(productInfo, [
+      "Realistic outdoor home driveway with safe open space; never indoors",
+      "Quiet neighborhood street with safe open space; never indoors",
+      "Open park path with natural daylight and safe clearance; never indoors",
+      "Residential front yard with a clear outdoor riding area; never indoors"
+    ], "outdoor-ride");
   }
   if (isHammockProduct(text)) {
-    return "Natural outdoor campsite with two sturdy trees or a proper hammock stand positioned at a realistic distance for installing and using the hammock";
+    return pickProductLocationVariant(productInfo, [
+      "Natural outdoor campsite with two sturdy trees",
+      "Shaded garden with a proper hammock stand",
+      "Quiet lakeside campsite with safe hammock supports"
+    ], "hammock");
   }
   if (vehicleAccessoryContext === "motorcycle") {
     return "Outdoor motorcycle driveway, roadside, parking area, or garage entrance with a real motorcycle or scooter clearly visible; show the accessory on, attached to, or directly beside the matching motorcycle; never a generic desk, empty studio, unrelated room, cafe, or car-only setting";
@@ -1988,16 +2086,32 @@ function inferRequiredProductLocation(productInfo = {}) {
     return "Realistic clean car interior, driveway, parking area, or open garage entrance with the actual car clearly visible; show the accessory inside, attached to, or directly beside the matching car; never a generic desk, empty studio, unrelated room, cafe, or motorcycle-only setting";
   }
   if (/(baby|infant|newborn|toddler|kid|kids|child|toy|เด็ก|ทารก|ของเล่น)/i.test(text)) {
-    return "Bright safe children's playroom or nursery with clean age-appropriate surroundings";
+    return pickProductLocationVariant(productInfo, [
+      "Bright safe children's playroom: clean age-appropriate surroundings",
+      "Bright safe children's playroom: neat corner with soft natural daylight",
+      "Bright safe children's playroom: shaded family play area with safe clean surroundings"
+    ], "kids");
   }
   if (/(snack|food|drink|beverage|ขนม|อาหาร|เครื่องดื่ม|น้ำผลไม้)/i.test(text)) {
-    return "Clean natural kitchen countertop or dining table with food-safe presentation";
+    return pickProductLocationVariant(productInfo, [
+      "Clean natural kitchen countertop with food-safe presentation",
+      "Bright dining table with simple food-safe surroundings",
+      "Minimal breakfast corner with natural window light"
+    ], "food");
   }
   if (/(laptop|computer|keyboard|mouse|headphone|charger|cable|อุปกรณ์ไอที|คอมพิวเตอร์|หูฟัง|สายชาร์จ)/i.test(text)) {
-    return "Neat modern desk workspace with realistic office lighting and no unrelated props";
+    return pickProductLocationVariant(productInfo, [
+      "Neat modern desk workspace: realistic office lighting",
+      "Neat modern desk workspace: minimal home office desk beside a window",
+      "Neat modern desk workspace: clean creative desk with restrained background detail"
+    ], "tech");
   }
   if (/(garden|plant|flower|outdoor|camping|hiking|ต้นไม้|ดอกไม้|สวน|แคมป์|เดินป่า)/i.test(text)) {
-    return "Natural outdoor garden or clean campsite setting suited to the product's actual use";
+    return pickProductLocationVariant(productInfo, [
+      "Natural outdoor garden path suited to the product's actual use",
+      "Clean campsite setting with natural daylight",
+      "Quiet forest-edge trail with realistic outdoor ground"
+    ], "outdoor");
   }
 
   // 1. Kitchen & Cooking -> Modern Kitchen
@@ -2017,27 +2131,49 @@ function inferRequiredProductLocation(productInfo = {}) {
 
   // 4. Coffee, Tea, Beverages & Phone Cases -> Cafe / Coffee Shop
   if (/(เคส|ไอโฟน|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|กาแฟ|เมล็ดกาแฟ|ผงกาแฟ|ชา|โกโก้|แก้วกาแฟ|เครื่องดื่ม|ถุงกาแฟ|phone case|phone cover|mobile case|mobile cover|coffee|tea|cafe|coffee shop|beverage)/i.test(text)) {
-    return "Cafe / Coffee Shop";
+    return pickProductLocationVariant(productInfo, [
+      "Cafe / Coffee Shop: quiet wooden table beside a window",
+      "Cafe / Coffee Shop: clean coffee bar counter with soft natural light",
+      "Cafe / Coffee Shop: minimal corner with a softly blurred background",
+      "Cafe / Coffee Shop: small terrace table with calm daylight"
+    ], "cafe-food");
   }
 
   // 5. Living Room Furniture -> Modern Living Room
   if (/(โซฟา|ชั้นวางทีวี|ทีวี|โทรทัศน์|โต๊ะกลาง|ห้องนั่งเล่น|ตู้|ลิ้นชัก|ชั้นวาง|เตียง|เฟอร์นิเจอร์|sofa|couch|tv cabinet|living room|table|chair|furniture|shelf|cabinet)/i.test(text)) {
-    return "Modern Living Room";
+    return pickProductLocationVariant(productInfo, [
+      "Modern living room with natural window light",
+      "Calm home interior with a clean neutral wall",
+      "Minimal apartment living area with realistic furniture scale"
+    ], "furniture");
   }
 
   // 6. Office & Tech Gadgets -> Stylish Office
   if (/(โต๊ะทำงาน|เก้าอี้ทำงาน|คอมพิวเตอร์|โน๊ตบุ๊ค|คีย์บอร์ด|เมาส์|หูฟัง|สำนักงาน|แกดเจ็ต|อิเล็กทรอนิกส์|office|desk|computer|laptop|workspace|gadget|headphone)/i.test(text)) {
-    return "Stylish Office";
+    return pickProductLocationVariant(productInfo, [
+      "Stylish office desk with clean natural lighting",
+      "Modern home workspace with a softly blurred background",
+      "Quiet office corner with realistic desk-scale context"
+    ], "office");
   }
 
   // 7. Bags, Fashion Accessories & Eyewear -> Cafe / Coffee Shop
   if (/(กระเป๋า|เป้|กระเป๋าถือ|กระเป๋าสะพาย|กระเป๋าสตางค์|แว่นตา|แว่นกันแดด|นาฬิกา|เครื่องประดับ|bag|backpack|wallet|purse|tote|handbag|crossbody|glasses|sunglasses|jewelry|watch|accessory)/i.test(text)) {
-    return "Cafe / Coffee Shop";
+    return pickProductLocationVariant(productInfo, [
+      "Quiet café table with soft natural window light",
+      "Clean park bench with a softly blurred outdoor background",
+      "Minimal travel lounge with realistic accessory context"
+    ], "accessory");
   }
 
   // 8. Footwear -> Minimalist Studio / Urban Street
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
-    return "Outdoor home driveway, front yard, quiet neighborhood street, or park path with safe open space; shoes clearly visible at true human-foot scale; never inside a house, bedroom, entryway, closet, shoe shelf, showroom, cafe, or studio";
+    return pickProductLocationVariant(productInfo, [
+      "Outdoor home driveway, front yard, quiet neighborhood street, or park path with safe open space: natural daylight",
+      "Outdoor home driveway, front yard, quiet neighborhood street, or park path with safe open space: realistic pavement",
+      "Outdoor home driveway, front yard, quiet neighborhood street, or park path with safe open space: natural ground and soft morning light",
+      "Outdoor home driveway, front yard, quiet neighborhood street, or park path with safe open space: clear outdoor walkway"
+    ], "footwear") + "; shoes remain at true human-foot scale and never indoors";
   }
 
   // 9. Clothing -> Minimalist Studio
@@ -2128,6 +2264,22 @@ function detectExplicitProductGender(text = "") {
 
 function promptAutoOptions(videoStyle, presenter, voiceTone, mood, location, cameraMovement, transition, reason) {
   return { videoStyle, presenter, voiceTone, mood, location, cameraMovement, transition, reason };
+}
+
+function pickProductLocationVariant(productInfo = {}, locations = [], salt = "") {
+  if (!locations.length) return "Clean Modern Studio";
+  const seed = [
+    salt,
+    productInfo.sceneSeed,
+    productInfo.productId || productInfo.product_id || productInfo.id,
+    productInfo.originalName || productInfo.name,
+    productInfo.category
+  ].filter(Boolean).join("|");
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  }
+  return locations[Math.abs(hash) % locations.length];
 }
 
 /**

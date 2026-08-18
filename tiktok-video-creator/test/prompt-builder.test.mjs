@@ -118,6 +118,38 @@ check("coffee prompt disambiguates comparison or alternate pouch references", /R
 check("coffee prompt rejects alternate blue/yellow pouch artwork", /COFFEE REFERENCE VARIANT LOCK[\s\S]*blue\/yellow artwork/i.test(coffeePouch), coffeePouch);
 check("coffee prompt keeps the canonical pouch as one consistent design", /one consistent design/i.test(coffeePouch), coffeePouch);
 check("coffee prompt remains within the image prompt size guard", coffeePouch.length < 14000, `length=${coffeePouch.length}`);
+const compactCoffeeStill = buildImagePrompt(
+  { name: "กาแฟโบราณ สูตรพิเศษ", category: "ซองกาแฟ" },
+  { ...settings, flowGenMode: "combined", presenter: "Auto" }
+);
+check(
+  "combined coffee still uses reference-first mode",
+  /Create one vertical 9:16 product still for coffee pouch bag/i.test(compactCoffeeStill)
+    && /REFERENCE-FIRST MODE:[\s\S]*uploaded image is the only visual source of truth/i.test(compactCoffeeStill)
+    && !/underwear/i.test(compactCoffeeStill),
+  compactCoffeeStill
+);
+check(
+  "combined coffee still keeps the prompt compact",
+  compactCoffeeStill.length < 4000,
+  `length=${compactCoffeeStill.length}`
+);
+check(
+  "combined coffee still enforces real pouch scale",
+  /STRICT PRODUCT-SPECIFIC SIZE RULE:[\s\S]*200-500g pouch[\s\S]*15-20cm/i.test(compactCoffeeStill)
+    && /visible table space and background around it|small amount of the supporting table surface|never let the pouch fill the table/i.test(compactCoffeeStill),
+  compactCoffeeStill
+);
+check(
+  "coffee hero composition does not imply oversized product",
+  /HERO COMPOSITION DOES NOT MEAN OVERSIZED:[\s\S]*sharp focus[\s\S]*not by enlarging it/i.test(compactCoffeeStill),
+  compactCoffeeStill
+);
+check(
+  "coffee still keeps floor and empty table mostly out of frame",
+  /natural eye-level product photograph[\s\S]*floor mostly out of frame[\s\S]*soft background blur/i.test(compactCoffeeStill),
+  compactCoffeeStill
+);
 
 const hookDoesNotReplaceVisualIdentity = buildImagePrompt({
   name: "แต่งตัวยากใช่ไหม ลุคนี้ช่วยให้แมทช์ง่ายขึ้น",
@@ -203,6 +235,27 @@ eq(
   generalReviewB.match(/Presenter: ([^\n.]+)/)?.[1]
 );
 check("Auto reviewer is male or female", /Presenter: (?:A fictional adult Thai woman reviewer|A fictional adult Thai man reviewer)/i.test(generalReviewA));
+
+const stillMotionSettings = {
+  ...settings,
+  videoStyle: "still-motion",
+  flowGenMode: "combined",
+  presenter: "woman",
+  cameraMovement: "Auto"
+};
+const stillMotionVideo = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
+const stillMotionImage = buildImagePrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
+check("still-motion mode uses a dedicated camera-only prompt", /STILL-IMAGE MOTION MODE/i.test(stillMotionVideo) && /CAMERA MOTION ONLY/i.test(stillMotionVideo), stillMotionVideo);
+check("still-motion mode keeps the product stationary", /product stays completely still, rigid, and unchanged/i.test(stillMotionVideo) && /Do not rotate, slide, bounce, float, bend, resize, morph/i.test(stillMotionVideo), stillMotionVideo);
+check("still-motion mode has no review scene structure", !/- Scene 1|Scene 2|Scene 3|Presenter:/i.test(stillMotionVideo), stillMotionVideo);
+check("still-motion combined still image is product-only", /No people, faces, presenters, reviewers, or characters\./i.test(stillMotionImage), stillMotionImage);
+
+const coffeeSceneA = buildVideoPrompt({ name: "กาแฟคั่วบด", category: "ซองกาแฟ", productId: "coffee-a" }, settings);
+const coffeeSceneB = buildVideoPrompt({ name: "กาแฟคั่วบด", category: "ซองกาแฟ", productId: "coffee-b" }, settings);
+const coffeeLocationA = coffeeSceneA.match(/Location setting:[^\n]*/i)?.[0] || "";
+const coffeeLocationB = coffeeSceneB.match(/Location setting:[^\n]*/i)?.[0] || "";
+check("Auto scene varies by product while staying coffee-compatible", coffeeLocationA !== coffeeLocationB && /café|coffee/i.test(coffeeLocationA) && /café|coffee/i.test(coffeeLocationB), `${coffeeLocationA} || ${coffeeLocationB}`);
+check("Auto scene selection is stable for the same product", coffeeLocationA === (buildVideoPrompt({ name: "กาแฟคั่วบด", category: "ซองกาแฟ", productId: "coffee-a" }, settings).match(/Location setting:[^\n]*/i)?.[0] || ""));
 
 const spokenHookProduct = {
   name: "เก้าอี้แคมป์พับได้",
@@ -420,6 +473,11 @@ check(
 check(
   "still image locks patterns to the uploaded reference",
   /REFERENCE PIXEL ARTWORK LOCK:[\s\S]*copy only what is visibly present[\s\S]*Do not infer, redraw, beautify, simplify, mirror, recolor, or invent/i.test(childRaincoatImage),
+  childRaincoatImage
+);
+check(
+  "combined child clothing still stays product-only for design fidelity",
+  /No people, faces, presenters, reviewers, or characters\./i.test(childRaincoatImage),
   childRaincoatImage
 );
 check(
