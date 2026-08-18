@@ -191,11 +191,12 @@ check("shoe video Auto overrides no-person recommendation", !/No people, faces, 
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
 check("shoe prompts remain concise", shoeImage.length < 15000 && shoeVideo.length < 21000, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
-// --- default behavior: UGC style + stable Auto reviewer ---
+// --- default behavior: sales style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
 const generalReviewB = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
-check("default style is UGC testimonial", settings.videoStyle === "testimonial");
-check("default video uses UGC testimonial", /UGC testimonial/i.test(generalReviewA));
+check("default style is sales", settings.videoStyle === "sales");
+check("default video uses reusable four-beat sales structure", /reusable four-beat TikTok sales structure/i.test(generalReviewA));
+check("sales structure includes a category-fit lifestyle scene", /Scene 3 \(Lifestyle Fit\)/i.test(generalReviewA));
 eq(
   "Auto reviewer is stable per product",
   generalReviewA.match(/Presenter: ([^\n.]+)/)?.[1],

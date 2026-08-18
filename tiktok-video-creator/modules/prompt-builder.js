@@ -5,7 +5,7 @@ export const VIDEO_STYLES = [
     name: "ขายสินค้า",
     description: "เน้นปิดการขาย โชว์สินค้า จุดขาย และ CTA ชัด",
     shotPattern: "[Hook สินค้า] → [โชว์จุดขายหลัก] → [สาธิต/ซูมรายละเอียด] → [CTA สั่งซื้อ]",
-    fragment: "conversion-focused TikTok shop product video, clear product hero shots, strong benefit demonstration, fast product reveal, persuasive shopping CTA moment, clean commercial lighting, purchase-intent pacing"
+    fragment: "photorealistic 4K cinematic ad, category-fit lighting, hero shot, benefit, fast reveal, CTA"
   },
   {
     id: "review",
@@ -483,7 +483,7 @@ const MUSIC_ONLY_AUDIO_DIRECTION = "AUDIO MODE — INSTRUMENTAL MUSIC ONLY: Use 
  */
 export function getDefaultSettings() {
   return {
-    videoStyle: "testimonial",
+    videoStyle: "sales",
     presenter: "Auto",
     customPresenter: "",
     audioMode: "voiceover",
@@ -1234,8 +1234,6 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   ];
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60), productText)
     .replace(/\d+-second\s*/g, "");
-  sceneBreakdown = sceneBreakdown
-    .replace(/^(\s*-\s*Scene 1\b[^\n]*)/m, '$1 [AUDIO GUIDANCE: Use a short, natural, product-relevant opening; wording is flexible]');
   if (noPeople) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown on its own")
@@ -1290,6 +1288,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   if (isClothing) {
     sceneBreakdown = sceneBreakdown
+      .replace(/(- Scene 1\b[^\n]*?(?:Open immediately with|Reveal) )/i, "$1a model already wearing the exact reference garment: ")
       .replace(/cuts\/transitions/gi, "instantaneous hard cuts")
       .replace(/360-degree rotation showing (.+?) from all angles/gi, "front-facing showcase showing the front view of $1")
       .replace(/showing (.+?) from all angles/gi, "showing the front view of $1")
@@ -1311,7 +1310,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
           .replace(/\btalking\s+(?:directly\s+)?to\s+the\s+camera\b[^.]*/gi, "showcasing the product")
           .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b/gi, "the product shown resting on its own");
 
-        lines[i] = scene1 + " (PRODUCT-ONLY SCENE 1: The product must rest on a flat surface or floor. STRICTLY FORBIDDEN: Do not show any people, faces, presenters, reviewers, characters, or hands in Scene 1. The presenter may appear starting from Scene 2 only.)";
+        lines[i] = (scene1.includes("product shown resting on its own")
+          ? scene1
+          : "- Scene 1 (Hook): The product shown resting on its own on a suitable flat surface or floor.")
+          + " (PRODUCT-ONLY SCENE 1: The product must rest on a flat surface or floor. STRICTLY FORBIDDEN: Do not show any people, faces, presenters, reviewers, characters, or hands in Scene 1. The presenter may appear starting from Scene 2 only.)";
         break;
       }
     }
@@ -1505,21 +1507,22 @@ function getMultiSceneDescription(videoStyle, productName, locationStr, mood, pr
 
   if (isPhoneCaseProduct(productText || productName) || isMagneticPhoneCaseProduct(productText || productName)) {
     return [
-      "This video must consist of multiple sequential scenes with clear cuts/transitions showing the phone case from multiple distinct close-up angles:",
-      `- Scene 1 (Full Back Artwork & Built-in Magnetic Ring Hook): A clear 3-second opening shot showcasing the full back cover design, pattern, and built-in magnetic ring (MagSafe ring) of ${productName}${loc}${moodStyle}.`,
-      `- Scene 2 (Camera Cutout & Edge Details): A 3-second macro close-up zoom on the camera lens cutout border, side button covers, and edge bevels.`,
-      `- Scene 3 (Fitted View & Port Cutouts): A 2-second final scene showing the phone case fitted snugly on a smartphone, highlighting the built-in magnetic ring (for wireless charging and magnetic stand alignment) and bottom charging port cutout.`
+      "This video uses four sequential phone-case showcase beats with clear cuts, preserving the exact artwork and built-in features:",
+      `- Scene 1 (Hook, 0-2s): Reveal the full back artwork, pattern, and built-in magnetic ring of ${productName}${loc}${moodStyle}.`,
+      "- Scene 2 (Detail, 2-4s): Macro close-up of the camera cutout border, side button covers, edge bevels, and material.",
+      "- Scene 3 (Real Use, 4-6s): Show the exact case fitted naturally on a compatible smartphone during believable daily use.",
+      "- Scene 4 (Hero + CTA, 6-8s): Finish with a premium fitted hero shot highlighting the magnetic ring and bottom charging-port cutout."
     ].join("\n");
   }
 
   switch (videoStyle) {
     case "sales":
       return [
-        "This video must consist of multiple sequential scenes with clear cuts/transitions to drive sales:",
-        `- Scene 1 (Product Hook): A dynamic, eye-catching 2-second opening shot showcasing ${productName}${loc}${moodStyle}.`,
-        `- Scene 2 (Benefit Showcase): A 3-second scene demonstrating the main benefits and features of the product in action.`,
-        `- Scene 3 (Detail Close-up): A 3-second macro close-up of ${productName}'s quality and texture.`,
-        `- Scene 4 (CTA Moment): A final 2-second persuasive shopping CTA shot, presenting the product beautifully.`
+        "Reusable four-beat TikTok sales structure. For 8s: 0-2s, 2-4s, 4-6s, 6-8s. Adapt to category; no forced outdoors or invented features:",
+        `- Scene 1 (Hook): Reveal ${productName} immediately in a relevant setting${loc}${moodStyle}; use a scroll-stopping action.`,
+        `- Scene 2 (Use + Detail): Show ${productName} in real use, then sharp close-ups of details/material/construction/interface.`,
+        `- Scene 3 (Lifestyle Fit): Show one category-fit use: coffee, shoes, phone, office, camping, bags, or fitness.`,
+        `- Scene 4 (Hero + CTA): End with ${productName} in a premium hero shot; if text is enabled, add one short Thai CTA, otherwise no text.`
       ].join("\n");
 
     case "review":

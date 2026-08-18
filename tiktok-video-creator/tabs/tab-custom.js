@@ -67,6 +67,8 @@ const CUSTOM_VISUAL_STYLES = [
     fragment: "glowing neon wireframe style, bright electric outlines, dark background, high contrast synthwave theme"
   }
 ];
+const CUSTOM_SCENE_SCALE_LOCK = "REALISTIC SCENE SCALE LOCK: Use real-world anchors, natural perspective, and background depth. Match every subject's true size to the setting, camera distance, furniture, hands, and surrounding objects; never make a product giant, floating, pasted on, or detached from the scene.";
+const CUSTOM_COMPLEX_PATTERN_REFERENCE_LOCK = "COMPLEX PATTERN REFERENCE LOCK: When the uploaded reference is clear, copy the entire visible printed surface as one exact graphic layer. The reference image overrides the free-form prompt for motif count, linework, spacing, orientation, borders, colors, asymmetry, and partial edge motifs. Do not reinterpret, complete, simplify, symmetrize, or redraw difficult artwork; never replace it with a similar-looking design.";
 
 let helpers = {};
 let selectedImageBase64 = "";
@@ -139,6 +141,7 @@ export async function initCustomTab(injectedHelpers) {
     "customCreatorScheduleDate",
     "customCreatorScheduleTime",
     "customCreatorStyle",
+    "customCreatorImageReference",
     "customCreatorModelRefImage",
     "activeFlowTabId",
     "activeTikTokTabId"
@@ -152,6 +155,11 @@ export async function initCustomTab(injectedHelpers) {
   }
   if (stored.customCreatorStyle) {
     setValue("custom-video-style", stored.customCreatorStyle);
+  }
+  if (stored.customCreatorImageReference) {
+    selectedImageBase64 = stored.customCreatorImageReference;
+    const fileInfo = document.querySelector("#custom-image-file-info");
+    if (fileInfo) fileInfo.textContent = "กู้คืนภาพอ้างอิงที่บันทึกไว้แล้ว (เลือกไฟล์ใหม่เพื่อเปลี่ยน)";
   }
   if (stored.customCreatorCaption) {
     const captionInput = document.querySelector("#custom-caption");
@@ -188,6 +196,7 @@ export async function initCustomTab(injectedHelpers) {
   if (stored.customCreatorSettings) {
     const settings = stored.customCreatorSettings;
     if (settings.flowMode) setValue("custom-flow-mode", settings.flowMode);
+    if (settings.audioMode) setValue("custom-audio-mode", settings.audioMode);
     if (settings.videoModel) setValue("custom-video-model", settings.videoModel);
     if (settings.duration) setValue("custom-video-duration", settings.duration);
     if (settings.aspectRatio) setValue("custom-aspect-ratio", settings.aspectRatio);
@@ -205,6 +214,7 @@ export async function initCustomTab(injectedHelpers) {
   // Bind events
   document.querySelector("#custom-prompt")?.addEventListener("input", saveState);
   document.querySelector("#custom-video-style")?.addEventListener("change", saveState);
+  document.querySelector("#custom-audio-mode")?.addEventListener("change", saveState);
   document.querySelector("#custom-caption")?.addEventListener("input", saveState);
   document.querySelector("#custom-hashtags")?.addEventListener("input", saveState);
   document.querySelector("#custom-flow-mode")?.addEventListener("change", saveState);
@@ -230,6 +240,7 @@ export async function initCustomTab(injectedHelpers) {
       fileInfo.textContent = `เลือกรูปภาพแล้ว: ${file.name}`;
       try {
         selectedImageBase64 = await readFileAsDataUrl(file);
+        await persistSelectedImageReference();
       } catch (err) {
         helpers.showStatus(err.message, "error");
         selectedImageBase64 = "";
@@ -237,6 +248,7 @@ export async function initCustomTab(injectedHelpers) {
     } else {
       fileInfo.textContent = "ยังไม่ได้เลือกรูปภาพ (เว้นว่างไว้เพื่อเจนจากข้อความล้วน)";
       selectedImageBase64 = "";
+      await persistSelectedImageReference();
     }
   });
 
@@ -277,6 +289,7 @@ export async function initCustomTab(injectedHelpers) {
     if (fileInput) fileInput.value = "";
     if (fileInfo) fileInfo.textContent = "ยังไม่ได้เลือกรูปภาพ (เว้นว่างไว้เพื่อเจนจากข้อความล้วน)";
     selectedImageBase64 = "";
+    persistSelectedImageReference().catch(() => {});
     selectedModelRefImageBase64 = "";
     if (modelRefInput) modelRefInput.value = "";
     renderCustomModelRefPreview();
@@ -362,6 +375,7 @@ async function saveState() {
   const hashtags = document.querySelector("#custom-hashtags")?.value || "";
   const settings = {
     flowMode: getValue("custom-flow-mode"),
+    audioMode: getValue("custom-audio-mode") || "voiceover",
     videoModel: getValue("custom-video-model"),
     duration: getValue("custom-video-duration"),
     aspectRatio: getValue("custom-aspect-ratio"),
@@ -379,6 +393,14 @@ async function saveState() {
     customCreatorSettings: settings,
     customCreatorModelRefImage: selectedModelRefImageBase64
   });
+}
+
+async function persistSelectedImageReference() {
+  try {
+    await chrome.storage.local.set({ customCreatorImageReference: selectedImageBase64 });
+  } catch (error) {
+    helpers.showStatus?.("บันทึกภาพอ้างอิงไม่สำเร็จ: " + error.message, "error");
+  }
 }
 
 function readFileAsDataUrl(file) {
@@ -417,6 +439,7 @@ async function startPipeline() {
     if (clearBtn) clearBtn.disabled = true;
 
     const flowMode = getValue("custom-flow-mode");
+    const audioMode = getValue("custom-audio-mode") || "voiceover";
     const videoModel = getValue("custom-video-model");
     const duration = parseInt(getValue("custom-video-duration"), 10) || 8;
     const aspectRatio = getValue("custom-aspect-ratio") || "9:16";
@@ -460,6 +483,11 @@ async function startPipeline() {
       const styleId = getValue("custom-video-style");
       const styleObj = CUSTOM_VISUAL_STYLES.find(s => s.id === styleId);
       const styleFragment = styleObj ? styleObj.fragment : "";
+      const audioDirection = flowMode === "image"
+        ? ""
+        : audioMode === "music_only"
+          ? "AUDIO MODE — INSTRUMENTAL MUSIC ONLY: Use only clean instrumental background music. No spoken narration, voiceover, dialogue, presenter speech, singing, lip-sync, or other vocal audio."
+          : "AUDIO MODE — NATURAL VOICEOVER: Use concise, natural spoken narration when it fits the prompt. Keep the voice clear, relevant, and non-repetitive; do not add subtitles unless requested.";
 
       const captionProductContext = caption
         ? `PRODUCT IDENTITY FROM POST CAPTION: The product being generated is described by this caption: "${caption}". Use the explicit product name in the caption as product-category context. The caption is instruction context only and must not be rendered as visible text. If it identifies a shirt or top, generate a shirt or top; never replace it with underwear, lingerie, panties, briefs, or another unrelated garment.`
@@ -467,7 +495,7 @@ async function startPipeline() {
       const uploadedProductReferenceLock = selectedImageBase64
         ? "UPLOADED PRODUCT REFERENCE IS AUTHORITATIVE: The uploaded product image is the single source of truth for the exact item. Preserve its exact product type, silhouette, geometry, proportions, materials, colors, pattern, packaging, labels, and visible design. If the free-form prompt, caption, or visual style conflicts with the uploaded product image, follow the uploaded image and do not substitute, redesign, or replace the product. This lock is instruction context only and must not appear as visible text."
         : "";
-      let finalPrompt = [uploadedProductReferenceLock, prompt, captionProductContext].filter(Boolean).join("\n");
+      let finalPrompt = [CUSTOM_SCENE_SCALE_LOCK, audioDirection, uploadedProductReferenceLock, prompt, captionProductContext].filter(Boolean).join("\n");
       if (styleFragment) {
         finalPrompt = `${finalPrompt}\nVisual style: ${styleFragment}.`;
       }
@@ -477,6 +505,7 @@ STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the r
 APPAREL PERSON SAFETY: If the reference image shows clothing worn by a person, treat only the garment/outfit as the product. Preserve the garment design, fit, colors, pattern, and fabric details, but use a new generic fictional adult model if a person is needed.
 Reproduce the printed surface artwork, motifs, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace. For videos, this pattern must remain static on the product surface.
 EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference. Do NOT shift, alter, recolor, or replace original colors or graphics under any lighting or environment effect.
+${CUSTOM_COMPLEX_PATTERN_REFERENCE_LOCK}
 STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. The product must remain completely rigid, solid, and static throughout the video: strictly NO morphing, warping, bending, melting, opening, closing, floating, stretching, or shifting of dimensions. Preserve 100% exact product identity across all video frames. Camera movement must be smooth and stable.`;
       }
       if (selectedModelRefImageBase64) {
