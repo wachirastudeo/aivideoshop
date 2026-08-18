@@ -246,9 +246,44 @@ const stillMotionSettings = {
 const stillMotionVideo = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
 const stillMotionImage = buildImagePrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
 check("still-motion mode uses a dedicated camera-only prompt", /STILL-IMAGE MOTION MODE/i.test(stillMotionVideo) && /CAMERA MOTION ONLY/i.test(stillMotionVideo), stillMotionVideo);
+check("still-motion mode has visibly stronger camera movement", /MODERATE VISIBLE MOVEMENT/i.test(stillMotionVideo) && /20–30 cm/i.test(stillMotionVideo) && /15–20° three-quarter angle/i.test(stillMotionVideo), stillMotionVideo);
 check("still-motion mode keeps the product stationary", /product stays completely still, rigid, and unchanged/i.test(stillMotionVideo) && /Do not rotate, slide, bounce, float, bend, resize, morph/i.test(stillMotionVideo), stillMotionVideo);
 check("still-motion mode has no review scene structure", !/- Scene 1|Scene 2|Scene 3|Presenter:/i.test(stillMotionVideo), stillMotionVideo);
 check("still-motion combined still image is product-only", /No people, faces, presenters, reviewers, or characters\./i.test(stillMotionImage), stillMotionImage);
+
+const boxedMotionSettings = {
+  ...settings,
+  videoStyle: "boxed-motion",
+  flowGenMode: "combined",
+  presenter: "woman",
+  cameraMovement: "Auto"
+};
+const boxedMotionVideo = buildVideoPrompt({ name: "กาแฟคั่วบด", category: "ซองกาแฟ" }, boxedMotionSettings);
+const boxedMotionImage = buildImagePrompt({ name: "กาแฟคั่วบด", category: "ซองกาแฟ" }, boxedMotionSettings);
+check("boxed-motion mode requests an open presentation box", /BOXED PRODUCT MOTION MODE/i.test(boxedMotionVideo) && /open presentation box/i.test(boxedMotionVideo), boxedMotionVideo);
+check("boxed-motion mode keeps the product and box stationary", /keep both the product and box stable/i.test(boxedMotionVideo) && /CAMERA MOTION ONLY/i.test(boxedMotionVideo), boxedMotionVideo);
+check("boxed-motion mode has visibly stronger camera movement", /MODERATE VISIBLE MOVEMENT/i.test(boxedMotionVideo) && /20–30 cm/i.test(boxedMotionVideo) && /15–20° three-quarter angle/i.test(boxedMotionVideo), boxedMotionVideo);
+check("boxed-motion mode adds only a fitted open box to the still", /BOXED PRODUCT REFERENCE MODE/i.test(boxedMotionImage) && /open presentation box/i.test(boxedMotionImage) && /only newly added object/i.test(boxedMotionImage), boxedMotionImage);
+check("boxed-motion mode has no presenter or review structure", !/- Scene 1|Scene 2|Scene 3|Presenter:/i.test(boxedMotionVideo), boxedMotionVideo);
+
+const autoLocationProducts = [
+  { id: "camping", name: "เต็นท์แคมปิ้ง", category: "อุปกรณ์แคมปิ้ง", forbidden: /cafe|coffee shop/i, expected: /campsite|camping|forest|outdoor/i },
+  { id: "fitness", name: "ยางยืดออกกำลังกาย", category: "อุปกรณ์ออกกำลังกาย", forbidden: /cafe|coffee shop/i, expected: /fitness|workout|gym|exercise/i },
+  { id: "office", name: "เก้าอี้สำนักงาน", category: "เฟอร์นิเจอร์สำนักงาน", forbidden: /cafe|coffee shop|living room/i, expected: /office|workspace/i },
+  { id: "bag", name: "กระเป๋าสะพาย", category: "กระเป๋าแฟชั่น", forbidden: /cafe|coffee shop/i, expected: /travel|entryway|park|bedroom/i }
+];
+for (const product of autoLocationProducts) {
+  const autoLocationPrompt = buildVideoPrompt(product, { ...settings, videoStyle: "boxed-motion", presenter: "none", location: "Auto" });
+  const locationLine = autoLocationPrompt.split("\n").find(line => /Keep the fitted open box and product/i.test(line)) || autoLocationPrompt;
+  check(`Auto location fits ${product.id}`, product.expected.test(locationLine) && !product.forbidden.test(locationLine), locationLine);
+}
+
+const originalNameLocationPrompt = buildVideoPrompt(
+  { name: "สินค้าทั่วไป", originalName: "อุปกรณ์แคมปิ้ง เต็นท์", category: "สินค้า", autoOptions: { location: "Cafe / Coffee Shop" } },
+  { ...settings, videoStyle: "boxed-motion", presenter: "none", location: "Auto" }
+);
+const originalNameLocationLine = originalNameLocationPrompt.split("\n").find(line => /Keep the fitted open box and product/i.test(line)) || originalNameLocationPrompt;
+check("Auto location uses original product name keywords", /campsite|camping|forest|outdoor/i.test(originalNameLocationLine) && !/cafe|coffee shop/i.test(originalNameLocationLine), originalNameLocationLine);
 
 const coffeeSceneA = buildVideoPrompt({ name: "กาแฟคั่วบด", category: "ซองกาแฟ", productId: "coffee-a" }, settings);
 const coffeeSceneB = buildVideoPrompt({ name: "กาแฟคั่วบด", category: "ซองกาแฟ", productId: "coffee-b" }, settings);

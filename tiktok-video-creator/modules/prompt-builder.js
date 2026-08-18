@@ -72,6 +72,14 @@ export const VIDEO_STYLES = [
     fragment: "single still product image with subtle smartphone camera movement, natural handheld micro-motion, no presenter, no product handling, no review"
   },
   {
+    id: "boxed-motion",
+    emoji: "📦",
+    name: "สินค้าในกล่อง + ขยับกล้อง",
+    description: "วางสินค้าในกล่องเปิด สินค้านิ่ง กล้องมือถือเคลื่อนเบาๆ",
+    shotPattern: "[สินค้าในกล่องเปิด] → [แพนซ้าย-ขวาเบาๆ] → [เปลี่ยนมุมกล่องเล็กน้อย]",
+    fragment: "exact product displayed inside an open presentation box, subtle smartphone camera movement, product remains still, no presenter, no product handling, no review"
+  },
+  {
     id: "trending-hook",
     emoji: "🎵",
     name: "Trending Sound / Hook",
@@ -691,7 +699,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
   // clothing reference designs untouched before the video presenter is added.
   const explicitChildPresenter = ["child", "older_child"].includes(settings?.presenter);
   const stillMotionMode = settings?.videoStyle === "still-motion";
-  const productOnlyStill = stillMotionMode || (settings?.flowGenMode === "combined" && (!explicitChildPresenter || isClothing));
+  const boxedMotionMode = settings?.videoStyle === "boxed-motion";
+  const productOnlyStill = stillMotionMode || boxedMotionMode || (settings?.flowGenMode === "combined" && (!explicitChildPresenter || isClothing));
   const autoPresenterProfile = !productOnlyStill && isAuto(settings.presenter)
     ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
     : "";
@@ -830,6 +839,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
   }
 
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
+  if (boxedMotionMode) {
+    return buildBoxedReferenceStillPrompt(productInfo, productText, productName, locationSetting, textEnabled);
+  }
   if (isCoffeeImageAd && productOnlyStill) {
     return buildCoffeeReferenceFirstStillPrompt(productText, productName, locationSetting, textEnabled);
   }
@@ -951,7 +963,7 @@ function isCampingOutdoorProduct(text = "") {
   const clean = String(text || "").toLowerCase();
   return isHammockProduct(clean)
     || isCampingChairProduct(clean)
-    || /(แคมป์|แคมป์ปิ้ง|เดินป่า|เต็นท์|ถุงนอน|\bcamping\b|\bhiking\b|\btent\b|sleeping\s+bag)/i.test(clean);
+    || /(แคมป์|แคมปิ้ง|อุปกรณ์แคมป์|อุปกรณ์แคมปิ้ง|เดินป่า|เต็นท์|ถุงนอน|\bcamping\b|\bhiking\b|\btent\b|sleeping\s+bag)/i.test(clean);
 }
 
 function isWearableProduct(text = "") {
@@ -1027,6 +1039,29 @@ function buildCoffeeReferenceFirstStillPrompt(productText, productName, location
     textRule,
     "Single full-frame image only; no collage, split screen, duplicate product, redesign, color shift, or label modification."
   ].join("\n");
+}
+
+function buildBoxedReferenceStillPrompt(productInfo, productText, productName, locationSetting, textEnabled = false) {
+  const sizeDirection = getProductSpecificScaleInstruction(productText)
+    || "REALISTIC PRODUCT SCALE: Keep the exact product at its true physical size. Use a fitted open presentation box; never shrink or enlarge the product to fit the box.";
+  const overlayDirection = textEnabled
+    ? "Optional single Thai text overlay only in empty background space; never cover the product, its printed details, or the box interior."
+    : TEXT_FREE_DIRECTION;
+
+  return [
+    `Create one vertical 9:16 product still for ${productName}.`,
+    "BOXED PRODUCT REFERENCE MODE: Use the uploaded product image as the sole source of truth for the product. Place that exact product inside a clean, open presentation box that fits its real physical size.",
+    buildProductIdentityLock(productInfo),
+    REFERENCE_PIXEL_ARTWORK_LOCK,
+    PRODUCT_FIDELITY_DIRECTION,
+    "Preserve the product's exact shape, materials, colors, pattern, logo, printed artwork, label, text, seams, and every visible detail. Do not redesign, redraw, recolor, simplify, mirror, or invent anything on the product.",
+    "The box is the only newly added object: an open lid or open presentation box with a clean neutral interior and a realistic fitted insert/support if needed. Add no branding or text to the box. Keep the product fully visible and never let the box cover important details.",
+    sizeDirection,
+    `Use a realistic ${locationSetting || "category-appropriate"} setting. Natural eye-level product photography, soft depth of field, limited table context, floor mostly out of frame, true scale, no oversized product and no giant box.`,
+    "No presenter, hands, people, extra products, duplicate objects, busy props, collage, split screen, or product handling.",
+    overlayDirection,
+    "Single full-frame still image only. The product and box must be physically coherent, stable, and naturally placed.",
+  ].filter(Boolean).join("\n");
 }
 
 function isSmallTechAccessoryProduct(text = "") {
@@ -1158,10 +1193,31 @@ function buildStillMotionVideoPrompt(productInfo, productName, locationStr, dura
     PRODUCT_FIDELITY_DIRECTION,
     scaleDirection,
     `Place the product naturally in a realistic ${locationStr || "category-appropriate"} setting. Keep natural photography composition, true scale, visible but limited context, and realistic contact shadows. Do not make the product oversized or let it fill the table or frame.`,
-    "CAMERA MOTION ONLY: Simulate a real handheld smartphone camera moving gently a few centimeters from left to right, then slightly back or to a small three-quarter angle. Use subtle micro-jitter, natural parallax, and a small exposure shift only. Keep the movement slow, smooth, restrained, and realistic.",
+    "CAMERA MOTION ONLY — MODERATE VISIBLE MOVEMENT: Keep the product completely static while the handheld smartphone camera makes a clearly noticeable but realistic move. Over the clip, pan laterally from left to right by about 20–30 cm, gently push in or pull back by about 5–10%, then arc to a modest 15–20° three-quarter angle. Use natural parallax and light handheld sway; the camera must not feel locked off or static. Keep the movement smooth, continuous, controlled, and physically plausible.",
     "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product. Do not add a presenter, hands, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, or busy scene action.",
     overlayDirection,
     "Use one continuous shot or very gentle angle transition only. No fast cuts, no zoom punch, no 360-degree orbit, no dramatic effects, no collage, and no scene change that alters the product. Use quiet natural instrumental ambience or no audio."
+  ].filter(Boolean).join("\n");
+}
+
+function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale) {
+  const overlayDirection = textEnabled && overlayText.length
+    ? `Optional single Thai text overlay only: "${overlayText[0]}". Keep it in empty background space and never place it on the product, printed label, or box. `
+    : TEXT_FREE_DIRECTION;
+  const scaleDirection = specificScale || "REALISTIC PRODUCT SCALE: Keep the exact product and fitted box at true physical size relative to the table and surrounding environment. Do not enlarge the product or box just because it is the hero.";
+
+  return [
+    `สร้างวิดีโอแนวตั้ง 9:16 ความยาว ${durationSeconds} วินาทีจากภาพสินค้า ${productName}`,
+    "BOXED PRODUCT MOTION MODE: The exact product is already placed inside an open presentation box in the source still. Keep both the product and box stable and unchanged throughout the entire video. This is a simple product-shot animation, not an unboxing, review, or sales presentation.",
+    buildProductIdentityLock(productInfo),
+    REFERENCE_PIXEL_ARTWORK_LOCK,
+    PRODUCT_FIDELITY_DIRECTION,
+    scaleDirection,
+    `Keep the fitted open box and product at true scale in a realistic ${locationStr || "category-appropriate"} setting. Keep only limited table context and almost no floor visible.`,
+    "CAMERA MOTION ONLY — MODERATE VISIBLE MOVEMENT: Keep the product and box completely static while the handheld smartphone camera makes a clearly noticeable but realistic move. Over the clip, pan laterally from left to right by about 20–30 cm, gently push in or pull back by about 5–10%, then arc to a modest 15–20° three-quarter angle. Use natural parallax and light handheld sway; the camera must not feel locked off or static. Keep the movement smooth, continuous, controlled, and physically plausible.",
+    "STRICTLY FORBIDDEN: Do not move, rotate, slide, bounce, float, resize, morph, open, close, deform, or otherwise animate the product or box. Do not add a presenter, hands, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, busy props, fast cuts, macro zoom, 360-degree orbit, or scene changes.",
+    overlayDirection,
+    "Use one continuous shot or one very gentle angle transition only. Use quiet natural instrumental ambience or no audio."
   ].filter(Boolean).join("\n");
 }
 
@@ -1193,6 +1249,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isWearable = isWearableProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(productText);
 
+  if (auto.videoStyle === "boxed-motion") {
+    return buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale);
+  }
   if (auto.videoStyle === "still-motion") {
     return buildStillMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale);
   }
@@ -2027,7 +2086,14 @@ function inferPromptAutoOptions(productInfo = {}) {
 }
 
 function inferRequiredProductLocation(productInfo = {}) {
-  const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
+  const text = [
+    productInfo.name,
+    productInfo.originalName,
+    productInfo.productLinkTitle,
+    productInfo.productName,
+    productInfo.highlights,
+    productInfo.category
+  ].filter(Boolean).join(" ").toLowerCase();
   const vehicleAccessoryContext = getVehicleAccessoryContext(text);
 
   // 0. Sun Protection & Sun Hats -> Sunny Outdoor Setting
@@ -2057,6 +2123,14 @@ function inferRequiredProductLocation(productInfo = {}) {
       "Bright realistic outdoor park or fitness setting: sunny garden rest area with a natural stone table"
     ], "drinkware");
   }
+  if (/(ออกกำลังกาย|ฟิตเนส|กีฬา|ยางยืด|ดัมเบล|เสื่อโยคะ|โยคะ|ลู่วิ่ง|เวท|exercise|fitness|workout|gym|sport|resistance\s*band|dumbbell|yoga|treadmill)/i.test(text)) {
+    return pickProductLocationVariant(productInfo, [
+      "Bright home workout corner with a clean exercise mat and natural window light",
+      "Outdoor park fitness area with a clear path and soft morning daylight",
+      "Clean modern gym corner with realistic rubber flooring and restrained background detail",
+      "Quiet home fitness space with neutral walls and safe open floor"
+    ], "fitness");
+  }
   if (/(pet|animal|cat|kitten|dog|puppy|อาหารแมว|อาหารหมา|ปลอกคอ|สัตว์เลี้ยง)/i.test(text)) {
     return pickProductLocationVariant(productInfo, [
       "Clean pet-friendly home interior: neutral-floor pet-care corner",
@@ -2071,6 +2145,14 @@ function inferRequiredProductLocation(productInfo = {}) {
       "Open park path with natural daylight and safe clearance; never indoors",
       "Residential front yard with a clear outdoor riding area; never indoors"
     ], "outdoor-ride");
+  }
+  if (isCampingOutdoorProduct(text)) {
+    return pickProductLocationVariant(productInfo, [
+      "Realistic campsite with natural ground, trees, and soft daylight",
+      "Outdoor camping area beside a tent with safe open space",
+      "Forest-edge trailhead with natural outdoor ground and daylight",
+      "Quiet lakeside campsite with practical outdoor gear context"
+    ], "camping");
   }
   if (isHammockProduct(text)) {
     return pickProductLocationVariant(productInfo, [
@@ -2139,6 +2221,15 @@ function inferRequiredProductLocation(productInfo = {}) {
     ], "cafe-food");
   }
 
+  // Office furniture must stay in an office context, not a generic living room.
+  if (/(เก้าอี้สำนักงาน|เก้าอี้ทำงาน|โต๊ะทำงาน|สำนักงาน|office\s*chair|desk\s*chair|ergonomic\s*chair|office\s*desk|workspace)/i.test(text)) {
+    return pickProductLocationVariant(productInfo, [
+      "Modern office workspace with realistic desk and floor scale",
+      "Bright home office beside a window with a clean working desk",
+      "Quiet professional office corner with natural daylight"
+    ], "office-furniture");
+  }
+
   // 5. Living Room Furniture -> Modern Living Room
   if (/(โซฟา|ชั้นวางทีวี|ทีวี|โทรทัศน์|โต๊ะกลาง|ห้องนั่งเล่น|ตู้|ลิ้นชัก|ชั้นวาง|เตียง|เฟอร์นิเจอร์|sofa|couch|tv cabinet|living room|table|chair|furniture|shelf|cabinet)/i.test(text)) {
     return pickProductLocationVariant(productInfo, [
@@ -2157,12 +2248,13 @@ function inferRequiredProductLocation(productInfo = {}) {
     ], "office");
   }
 
-  // 7. Bags, Fashion Accessories & Eyewear -> Cafe / Coffee Shop
+  // 7. Bags, Fashion Accessories & Eyewear -> category-fit non-cafe contexts
   if (/(กระเป๋า|เป้|กระเป๋าถือ|กระเป๋าสะพาย|กระเป๋าสตางค์|แว่นตา|แว่นกันแดด|นาฬิกา|เครื่องประดับ|bag|backpack|wallet|purse|tote|handbag|crossbody|glasses|sunglasses|jewelry|watch|accessory)/i.test(text)) {
     return pickProductLocationVariant(productInfo, [
-      "Quiet café table with soft natural window light",
-      "Clean park bench with a softly blurred outdoor background",
-      "Minimal travel lounge with realistic accessory context"
+      "Minimal travel lounge with realistic accessory context",
+      "Clean entryway bench with a softly blurred home background",
+      "Bright park bench with natural daylight and restrained outdoor context",
+      "Simple bedroom dressing area with realistic accessory scale"
     ], "accessory");
   }
 
