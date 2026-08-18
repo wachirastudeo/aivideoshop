@@ -45,7 +45,7 @@ async function loadOptions() {
   setChecked("default-first-scene-no-people", media.firstSceneNoPeople === true);
 
   // Video defaults
-  setSelectValue("default-video-style", settings.defaultVideoStyle || "testimonial");
+  setSelectValue("default-video-style", settings.defaultVideoStyle || "sales");
   setSelectValue("default-language", settings.defaultLanguage || "ไทย");
   setSelectValue("default-presenter", settings.defaultPresenter || "Auto");
   setSelectValue("default-audio-mode", settings.defaultAudioMode || "voiceover");

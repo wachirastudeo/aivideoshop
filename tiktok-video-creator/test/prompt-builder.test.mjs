@@ -338,6 +338,29 @@ check(
   "explicit child mode selects child presenter",
   /Presenter: A cute young Thai child \(4-6 years old, kindergarten age/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "child-toy" }, { ...settings, presenter: "child" }))
 );
+const combinedChildImage = buildImagePrompt(
+  { name: "ของเล่นเด็ก 4 ขวบ", productId: "combined-child-toy" },
+  { ...settings, flowGenMode: "combined", presenter: "child" }
+);
+check(
+  "combined mode keeps explicit child presenter in the reference image",
+  /KIDS PRODUCT SCENE WITH CHILD & PARENT SUPERVISION/i.test(combinedChildImage) && !/No people, faces, presenters/i.test(combinedChildImage),
+  combinedChildImage
+);
+const combinedOlderChildImage = buildImagePrompt(
+  { name: "กระเป๋านักเรียนเด็กโต", productId: "combined-older-child" },
+  { ...settings, flowGenMode: "combined", presenter: "older_child" }
+);
+check(
+  "combined mode keeps explicit older child presenter in the reference image",
+  /KIDS PRODUCT SCENE WITH CHILD & PARENT SUPERVISION/i.test(combinedOlderChildImage) && !/No people, faces, presenters/i.test(combinedOlderChildImage),
+  combinedOlderChildImage
+);
+check(
+  "video prompt explicitly locks the selected child mode",
+  /EXPLICIT CHILD PRESENTER MODE:[\s\S]*Do NOT replace the child with an adult-only presenter/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "explicit-child-lock" }, { ...settings, presenter: "child" })),
+  buildVideoPrompt({ name: "ของเล่นเด็ก 4 ขวบ", productId: "explicit-child-lock" }, { ...settings, presenter: "child" })
+);
 check(
   "explicit child presenter narrator is mother voice",
   /voice must sound like a caring Thai mother narrating/i.test(buildVideoPrompt({ name: "ของเล่นเด็ก", productId: "child-narration" }, { ...settings, presenter: "child" }))
@@ -373,6 +396,51 @@ check(
 check(
   "kids product scene direction enforces kindergarten minimum age",
   /strictly no babies or toddlers under kindergarten age/i.test(buildImagePrompt({ name: "จักรยานเด็ก", productId: "kids-bike" }, { ...settings, presenter: "child" }))
+);
+
+const childRaincoatVideo = buildVideoPrompt(
+  { name: "【Oucefi】เสื้อกันฝน สำหรับเด็กลายการ์ตูนหลากหลายสีสันสดใส", category: "เสื้อผ้า", productId: "child-raincoat" },
+  { ...settings, presenter: "child", flowGenMode: "combined", videoStyle: "testimonial" }
+);
+const childRaincoatImage = buildImagePrompt(
+  { name: "【Oucefi】เสื้อกันฝน สำหรับเด็กลายการ์ตูนหลากหลายสีสันสดใส", category: "เสื้อผ้า", productId: "child-raincoat-image" },
+  { ...settings, presenter: "child", flowGenMode: "combined" }
+);
+check(
+  "raincoat video uses an outdoor rainy location",
+  /Location setting:[^\n]*Safe outdoor rainy setting[^\n]*never indoors/i.test(childRaincoatVideo)
+    && !/Location setting:[^\n]*(?:studio|room|bedroom|nursery|cafe)/i.test(childRaincoatVideo),
+  childRaincoatVideo
+);
+check(
+  "raincoat image uses an outdoor rainy location",
+  /RAINWEAR OUTDOOR USE LOCK:[\s\S]*outdoors[\s\S]*Never place rainwear in an indoor room/i.test(childRaincoatImage),
+  childRaincoatImage
+);
+check(
+  "still image locks patterns to the uploaded reference",
+  /REFERENCE PIXEL ARTWORK LOCK:[\s\S]*copy only what is visibly present[\s\S]*Do not infer, redraw, beautify, simplify, mirror, recolor, or invent/i.test(childRaincoatImage),
+  childRaincoatImage
+);
+check(
+  "raincoat auto location is not an indoor studio",
+  !/Location setting:[^\n]*(?:studio|room|bedroom|nursery|cafe)/i.test(childRaincoatVideo),
+  childRaincoatVideo
+);
+check(
+  "child clothing prompt uses supervised child garment direction",
+  /CHILD GARMENT USE:[\s\S]*parent stays nearby/i.test(childRaincoatVideo),
+  childRaincoatVideo
+);
+check(
+  "child clothing prompt removes adult-model contradiction",
+  !/APPAREL MODEL SAFETY|APPAREL WEARING MODE: The .*adult model|adult commercial fit model/i.test(childRaincoatVideo),
+  childRaincoatVideo
+);
+check(
+  "child clothing prompt stays below the compact video limit",
+  childRaincoatVideo.length < 20000,
+  `length=${childRaincoatVideo.length}`
 );
 
 for (const presenter of ["woman", "man"]) {

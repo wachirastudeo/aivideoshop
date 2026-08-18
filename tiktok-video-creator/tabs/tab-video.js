@@ -34,7 +34,7 @@ export async function initVideoTab(injectedHelpers) {
   const { settings: savedOptions = {} } = await chrome.storage.sync.get("settings");
 
   const optionDefaults = {
-    videoStyle: savedOptions.defaultVideoStyle || "testimonial",
+    videoStyle: savedOptions.defaultVideoStyle || "sales",
     presenter: savedOptions.defaultPresenter || "Auto",
     audioMode: savedOptions.defaultAudioMode || "voiceover",
     voiceTone: savedOptions.defaultVoiceTone || "Auto",
@@ -51,10 +51,17 @@ export async function initVideoTab(injectedHelpers) {
   // โหลด creatorState (เก็บ UI state เช่น videoStyle, mood) แต่ค่า media settings
   // จาก Options page ต้องชนะเสมอ เพื่อให้ตั้งค่าใหม่ใน Options มีผลทันที
   const savedMediaSettings = savedOptions.mediaSettings || {};
+  const creatorStateSettings = stored.creatorState?.settings || {};
+  const creatorPresenter = creatorStateSettings.presenter;
+  const initialPresenter = creatorPresenter && creatorPresenter !== "Auto"
+    ? creatorPresenter
+    : optionDefaults.presenter;
+
   settings = normalizeSettings({
     ...getDefaultSettings(),
     ...optionDefaults,
-    ...(stored.creatorState?.settings || {}),
+    ...creatorStateSettings,
+    presenter: initialPresenter,
     // ค่าเหล่านี้มาจาก Options page — override creatorState เสมอ
     imageCount: savedMediaSettings.imageCount || optionDefaults.imageCount || 1,
     videoCount: savedMediaSettings.videoCount || optionDefaults.videoCount || 1,
