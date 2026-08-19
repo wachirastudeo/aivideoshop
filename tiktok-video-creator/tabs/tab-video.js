@@ -254,6 +254,7 @@ function normalizeProductQueue(value) {
         details: item.details || "",
         structureAdvice: item.structureAdvice || "",
         promptAdvice: item.promptAdvice || "",
+        imageGender: ["man", "woman", "unknown"].includes(item.imageGender) ? item.imageGender : "",
         autoOptions: item.autoOptions && typeof item.autoOptions === "object" ? item.autoOptions : null,
         isCollapsed: item.isCollapsed !== undefined ? item.isCollapsed : true
       };
@@ -735,6 +736,7 @@ async function handleAnalyze(product) {
     product.name = analysis.name || product.name;
     product.hooks = analysis.hooks || [];
     product.targetGroup = analysis.targetGroup || product.targetGroup;
+    product.imageGender = analysis.imageGender || product.imageGender || "unknown";
     product.structureAdvice = analysis.structureAdvice || product.structureAdvice || "";
     product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
     product.autoOptions = analysis.autoOptions || product.autoOptions || null;
@@ -844,7 +846,7 @@ async function processQueue() {
 
     try {
       assertNotStopped();
-      if (product.status === "idle" || !product.autoOptions || !product.structureAdvice) {
+      if (product.status === "idle" || !product.autoOptions || !product.structureAdvice || !product.imageGender) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังวิเคราะห์ออปชันวิดีโอด้วย AI...`, "info");
         try {
           const analysis = await runInterruptibly(() => analyzeProductImages(getAnalysisProductImages(product), product));
@@ -853,6 +855,7 @@ async function processQueue() {
           product.name = analysis.name || product.name;
           product.hooks = analysis.hooks || [];
           product.targetGroup = analysis.targetGroup || product.targetGroup;
+          product.imageGender = analysis.imageGender || product.imageGender || "unknown";
           product.structureAdvice = analysis.structureAdvice || product.structureAdvice || "";
           product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
           product.autoOptions = analysis.autoOptions || product.autoOptions || null;

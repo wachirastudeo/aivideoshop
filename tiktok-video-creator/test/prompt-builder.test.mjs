@@ -187,6 +187,30 @@ check("fashion selfie image includes configured text overlays", fashionSelfieTex
 check("fashion selfie video includes configured text overlays", fashionSelfieTextVideo.includes("ลุคนี้ต้องมี") && fashionSelfieTextVideo.includes("ส่งฟรี"), fashionSelfieTextVideo);
 check("fashion selfie text stays away from garment details", /away from the model's phone, face area, and garment details/i.test(fashionSelfieTextVideo), fashionSelfieTextVideo);
 
+const mensFashionSelfieProduct = { name: "เสื้อเชิ้ตผู้ชายแขนยาว", category: "เสื้อผ้าผู้ชาย" };
+const mensFashionSelfieImage = buildImagePrompt(mensFashionSelfieProduct, fashionSelfieSettings);
+const mensFashionSelfieVideo = buildVideoPrompt(mensFashionSelfieProduct, fashionSelfieSettings);
+check("fashion selfie auto-selects a male model for menswear image", /fictional adult Thai male fashion model/i.test(mensFashionSelfieImage) && !/fictional adult Thai female fashion model/i.test(mensFashionSelfieImage), mensFashionSelfieImage);
+check("fashion selfie auto-selects a male model for menswear video", /fictional adult Thai male fashion model/i.test(mensFashionSelfieVideo) && !/fictional adult Thai female fashion model/i.test(mensFashionSelfieVideo), mensFashionSelfieVideo);
+
+const explicitMaleFashionSelfie = buildVideoPrompt(
+  { name: "เสื้อผ้าแฟชั่น", category: "แฟชั่น" },
+  { ...fashionSelfieSettings, presenter: "man" }
+);
+check("fashion selfie respects explicit male presenter", /fictional adult Thai male fashion model/i.test(explicitMaleFashionSelfie), explicitMaleFashionSelfie);
+
+const staleFemaleForMenswear = buildVideoPrompt(
+  { name: "เสื้อผ้าสุภาพบุรุษ", category: "แฟชั่น" },
+  { ...fashionSelfieSettings, presenter: "woman" }
+);
+check("menswear product gender overrides stale female presenter state", /fictional adult Thai male fashion model/i.test(staleFemaleForMenswear) && !/fictional adult Thai female fashion model/i.test(staleFemaleForMenswear), staleFemaleForMenswear);
+
+const imageDetectedMenswear = buildVideoPrompt(
+  { name: "เสื้อแฟชั่น", category: "เสื้อผ้า", imageGender: "man" },
+  { ...fashionSelfieSettings, presenter: "Auto" }
+);
+check("fashion selfie uses image-analysis gender when title is ambiguous", /fictional adult Thai male fashion model/i.test(imageDetectedMenswear), imageDetectedMenswear);
+
 const staleTextSettings = {
   ...settings,
   textEnabled: "false",

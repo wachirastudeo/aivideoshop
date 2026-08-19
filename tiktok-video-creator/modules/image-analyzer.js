@@ -284,6 +284,7 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
     "Identify only the product's exact visible silhouette, width/height/depth proportions, dominant colors, color placement, material/texture, hardware, label layout, brand marks, numbers, icons, and readable printed text.",
     "Count every clearly visible repeated structural part belonging to the product: drawers, shelves, tiers, doors, compartments, panels, handles, legs, wheels, openings, and included pieces. Record their exact arrangement and orientation. Use unknown for anything obscured; never count surrounding objects or infer a count from the title.",
     "For footwear, verify whether the reference shows one shoe or a pair and preserve the exact toe shape, sole thickness/tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, color blocking, side, and viewing angle.",
+    "For clothing and fashion products, inspect the garment's visible design, cut, styling, and intended apparel section to infer product gender: include imageGender as man, woman, or unknown. Analyze the garment/product only, not the identity, age, or gender of any person appearing in the reference. Use unknown when the garment is unisex or ambiguous.",
     "For name, do not include a structural count unless it is clearly and completely visible in the image.",
     "For structureAdvice, write one concise English instruction containing only visually verified structure, counts, arrangement, and proportions. Explicitly say not to add or remove parts.",
     "For promptAdvice, write concise English guidance that preserves only the named product. Explicitly instruct generation to discard the original background and unrelated objects, choose a new setting suitable for the product category, preserve the exact color palette, design details, patterns, and style from the reference image, and ensure all printed text, packaging details, and brand logos on the product are rendered extremely sharp, clear, legible, and spelt correctly in both Thai and English.",
@@ -336,6 +337,7 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
 
     return {
       name: sanitizeText(parsed.name || productName),
+      imageGender: normalizeImageGender(parsed.imageGender || parsed.visualGender || parsed.autoOptions?.presenter || detectExplicitGender(productName)),
       hooks: Array.isArray(parsed.hooks) ? parsed.hooks.map(h => sanitizeText(h)) : [],
       highlights: normalizeHighlights(parsed.highlights),
       targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
@@ -363,6 +365,7 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
     "Identify only the product's exact visible silhouette, width/height/depth proportions, dominant colors, color placement, material/texture, hardware, label layout, brand marks, numbers, icons, and readable printed text.",
     "Count every clearly visible repeated structural part belonging to the product: drawers, shelves, tiers, doors, compartments, panels, handles, legs, wheels, openings, and included pieces. Record their exact arrangement and orientation. Use unknown for anything obscured; never count surrounding objects or infer a count from the title.",
     "For footwear, verify whether the reference shows one shoe or a pair and preserve the exact toe shape, sole thickness/tread, heel, tongue, collar, panels, seams, lace pattern/eyelets, logo placement, color blocking, side, and viewing angle.",
+    "For clothing and fashion products, inspect the garment's visible design, cut, styling, and intended apparel section to infer product gender: include imageGender as man, woman, or unknown. Analyze the garment/product only, not the identity, age, or gender of any person appearing in the reference. Use unknown when the garment is unisex or ambiguous.",
     "For name, do not include a structural count unless it is clearly and completely visible in the image.",
     "For structureAdvice, write one concise English instruction containing only visually verified structure, counts, arrangement, and proportions. Explicitly say not to add or remove parts.",
     "For promptAdvice, write concise English guidance that preserves only the named product. Explicitly instruct generation to discard the original background and unrelated objects, choose a new setting suitable for the product category, preserve the exact color palette, design details, patterns, and style from the reference image, and ensure all printed text, packaging details, and brand logos on the product are rendered extremely sharp, clear, legible, and spelt correctly in both Thai and English.",
@@ -418,6 +421,7 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
 
     return {
       name: sanitizeText(parsed.name || productName),
+      imageGender: normalizeImageGender(parsed.imageGender || parsed.visualGender || parsed.autoOptions?.presenter || detectExplicitGender(productName)),
       hooks: Array.isArray(parsed.hooks) ? parsed.hooks.map(h => sanitizeText(h)) : [],
       highlights: normalizeHighlights(parsed.highlights),
       targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
@@ -557,6 +561,7 @@ function buildTitleBasedFallback(productInfo) {
 
   return {
     name,
+    imageGender: normalizeImageGender(detectExplicitGender(name)),
     hooks: [
       name,
       `ชี้เป้าสุดคุ้ม: ${name}`,
@@ -604,6 +609,13 @@ function normalizeAutoOptions(value, productInfo = {}) {
     transition: pickAllowed(raw.transition, ["Cut ตรง", "Zoom Transition", "Swipe", "Fade", "Whip Pan"], inferred.transition),
     reason: sanitizeText(raw.reason || inferred.reason)
   };
+}
+
+function normalizeImageGender(value) {
+  const clean = String(value || "").trim().toLowerCase();
+  if (["man", "male", "men", "ผู้ชาย", "ชาย", "บุรุษ"].includes(clean)) return "man";
+  if (["woman", "female", "women", "ผู้หญิง", "หญิง", "สตรี"].includes(clean)) return "woman";
+  return "unknown";
 }
 
 function detectGender(text = "") {
