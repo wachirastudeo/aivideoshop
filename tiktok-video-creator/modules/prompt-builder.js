@@ -80,6 +80,14 @@ export const VIDEO_STYLES = [
     fragment: "exact product displayed inside an open presentation box, subtle smartphone camera movement, product remains still, no presenter, no product handling, no review"
   },
   {
+    id: "fashion-selfie",
+    emoji: "👗",
+    name: "Fashion Selfie เต็มตัว",
+    description: "นางแบบถือมือถือบังหน้า เห็นชุดเต็มตัว กล้องแพนเบาๆ",
+    shotPattern: "[ยืนถือมือถือบังหน้า] → [แพนซ้าย-ขวาเบาๆ] → [โชว์ชุดเต็มตัว]",
+    fragment: "full-body fashion selfie, fictional adult model holding a smartphone in front of her face, face fully hidden, exact outfit clearly visible, minimal natural movement, subtle smartphone camera pan"
+  },
+  {
     id: "trending-hook",
     emoji: "🎵",
     name: "Trending Sound / Hook",
@@ -132,6 +140,8 @@ const KIDS_WITH_PARENT_DIRECTION = "KIDS PRODUCT SCENE WITH CHILD & PARENT SUPER
 const STRICT_MODEST_DRESS_CODE_MANDATE = "STRICT MODEST & APPROPRIATE DRESS CODE LOCK (ห้ามชุดสุ่มเสี่ยง/วาบหวิว): Presenters and models MUST wear clean, elegant, modest, everyday commercial attire (such as casual shirts, blouses, t-shirts, jackets, jeans, trousers, or modest knee-length skirts/dresses). STRICTLY FORBIDDEN: Do NOT generate revealing, immodest, risqué, suggestive, or provocative outfits. No deep v-necks, no exposed cleavage, no strapless tops, no crop tops showing stomach, no micro-shorts, no see-through/sheer clothing, no underwear/lingerie, and no tight/revealing swimwear. Always keep clothing respectable, professional, and 100% appropriate for commercial advertising.";
 
 const FULL_BODY_PRESENTER_DIRECTION = "STRICT FULL-BODY SHOT & DECENT MODEST DRESS CODE: Presenter MUST be shown in a full-length head-to-toe standing view with head, torso, full legs, feet, and footwear fully visible on the floor. STRICT FULL OUTFIT REQUIREMENT: Presenter MUST wear a complete, modest FULL OUTFIT with BOTH a proper top (shirt/blouse/jacket) AND proper long bottoms (trousers/jeans/long pants/knee-length skirt). FORBIDDEN (ห้ามชุดสุ่มเสี่ยง/วาบหวิว): Absolutely NO revealing, immodest, risqué, suggestive, or provocative attire. No deep v-necks, no cleavage, no strapless tops, no stomach/crop tops, no micro-shorts, no sheer/see-through clothes, no lingerie, and no tight/revealing swimwear.";
+const FASHION_SELFIE_IMAGE_DIRECTION = "FASHION SELFIE MODE: Create one realistic vertical 9:16 full-body fashion photograph of a fictional adult Thai female model standing naturally and holding a real smartphone vertically in front of her face. The smartphone must fully cover and obscure the face and facial features; do not show eyes, nose, mouth, or identifiable facial details. Show the exact reference garment worn by the model from head to toe, including the complete outfit, full legs, feet, and footwear with generous space around the body. Keep the model modestly dressed and front-facing so the garment is easy to inspect. This is a privacy-preserving outfit showcase: no face reveal, no extra people, no text, no logos added to the phone, and no mirror selfie distortion.";
+const FASHION_SELFIE_VIDEO_DIRECTION = "FASHION SELFIE MODE — PRIVACY-PRESERVING FULL-BODY OUTFIT SHOWCASE: Use one consistent fictional adult Thai female model standing still in a full-length head-to-toe shot. She holds a real smartphone vertically at face height throughout the entire clip, and the phone must fully cover the face in every frame; never reveal eyes, nose, mouth, facial features, or an identifiable face. The exact reference garment is the hero: preserve its silhouette, fit, length, fabric, colors, pattern, seams, and printed artwork exactly. Keep the model front-facing, modestly dressed, and physically stable. No talking, lip-sync, waving, walking, turning around, outfit changes, extra people, mirror distortion, or added text. Use only minimal natural posture movement and a slow, subtle left-to-right smartphone-camera pan with a very small handheld micro-sway so the full outfit remains visible and sharp.";
 
 const FULL_PRODUCT_VISIBILITY_DIRECTION = "STRICT FULL PRODUCT VISIBILITY & NO CROPPING RULE: The ENTIRE product (including all top, bottom, left, right, side edges, legs, handles, doors, shelves, and structural frame) MUST be 100% fully visible inside the frame. ABSOLUTELY NO CROPPING or cutting off any edge or portion of the product. For large or bulky items (such as cabinets, wardrobes, kitchen sinks, dishwashers, refrigerators, sofas, desks, or shelves), use a wide-angle framing (wide camera shot) with ample breathing space around all four edges of the product so that the ENTIRE full cabinet/sink/furniture piece is completely captured in the frame without any part chopped off.";
 
@@ -693,6 +703,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${visualProductName} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  if (auto.videoStyle === "fashion-selfie") {
+    return buildFashionSelfieImagePrompt(productInfo, productName, settings);
+  }
   const isCoffeeImageAd = isCoffeeProduct(productText) || isPackagedCoffeeProduct(productText) || isCoffeePowderProduct(productText) || isCoffeeBeanProduct(productText);
   const isClothing = isClothingProduct(productText);
   // In Combined mode this still becomes the source frame for video. Keep
@@ -1249,6 +1262,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isWearable = isWearableProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(productText);
 
+  if (auto.videoStyle === "fashion-selfie") {
+    return buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings);
+  }
+
   if (auto.videoStyle === "boxed-motion") {
     return buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale);
   }
@@ -1652,6 +1669,67 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   promptParts.push("STRICT ACTION RULE: Do NOT perform a thumbs up gesture (ห้ามยกนิ้วโป้ง/ยกนิ้วเยี่ยม) as it looks unnatural. Keep all poses and hand gestures completely natural and relaxed.");
 
   return promptParts.filter(Boolean).join("\n");
+}
+
+function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}) {
+  const garmentName = productName === "the attached product" ? "the exact attached garment" : productName;
+  const apparelPriority = APPAREL_REFERENCE_PRIORITY;
+  const fidelity = PRODUCT_FIDELITY_DIRECTION;
+  const location = resolvePromptLocation(resolveAutoSettings(productInfo, settings));
+  const textRule = buildFashionSelfieTextDirection(productInfo, settings, false);
+  return [
+    `Create one photorealistic vertical 9:16 full-body fashion selfie image featuring ${garmentName}.`,
+    FASHION_SELFIE_IMAGE_DIRECTION,
+    apparelPriority,
+    fidelity,
+    `Use a clean, realistic fashion setting${location ? ` such as ${compactPromptText(location, 80)}` : ""}; keep the background simple and never let it hide the garment.`,
+    textRule,
+    "The reference image is the only source of truth for the garment. Do not redesign, crop, duplicate, or replace it."
+  ].join("\n");
+}
+
+function buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings = {}) {
+  const garmentName = productName === "the attached product" ? "the exact attached garment" : productName;
+  const location = locationStr ? ` in a clean, realistic ${compactPromptText(locationStr, 80)} setting` : " in a clean, realistic fashion setting";
+  const textRule = buildFashionSelfieTextDirection(productInfo, settings, true);
+  return [
+    `Create a ${durationSeconds}-second photorealistic vertical 9:16 fashion outfit video featuring ${garmentName}${location}.`,
+    FASHION_SELFIE_VIDEO_DIRECTION,
+    APPAREL_REFERENCE_PRIORITY,
+    PRODUCT_FIDELITY_DIRECTION,
+    `MANDATORY SIMPLE SHOT PLAN: Scene 1 is a stable full-body front view with the model already holding the phone over her face. Scene 2 is a very slow, small left-to-right pan that keeps the complete outfit, feet, and phone visible. Scene 3 returns to a stable full-body hero view for garment inspection. Keep every shot single-frame, uncluttered, and easy to compare with the reference garment.`,
+    `The model must remain standing in place; only subtle breathing, natural phone steadiness, and minimal camera motion are allowed. Do not zoom into the face or crop out the lower body.`,
+    textRule,
+    autoAudioDirection(settings)
+  ].filter(Boolean).join("\n");
+}
+
+function buildFashionSelfieTextDirection(productInfo, settings = {}, isVideo = false) {
+  const textEnabled = settings?.textEnabled === true || settings?.textEnabled === "true";
+  if (!textEnabled) return TEXT_FREE_DIRECTION;
+
+  const configuredTexts = [settings?.clipText, settings?.promotionText]
+    .map((value) => stripForbiddenVideoWords(sanitizeText(String(value || "").trim())))
+    .filter(Boolean)
+    .slice(0, 2);
+  const textStyle = TEXT_FONT_STYLES[settings?.textStyleFont] || TEXT_FONT_STYLES.handwriting;
+  const position = compactPromptText(settings?.textPosition, 40) || "Auto";
+  const doodles = resolveDoodleStyle(productInfo);
+  const placement = isVideo
+    ? "starting from the first frame and remaining clearly legible in every scene"
+    : "clearly legible in the final image";
+
+  if (configuredTexts.length > 0) {
+    return `TEXT OVERLAY ENABLED: Display ONLY these exact Thai text overlays ${JSON.stringify(configuredTexts)} ${placement} at ${position}. Render every Thai character perfectly, style the text as ${textStyle}, and include 1–2 small doodles nearby (${doodles}). Keep the overlays in empty background space, away from the model's phone, face area, and garment details. Do not add any other text, price, CTA, logo, watermark, subtitle, English, romanized Thai, or gibberish.${isVideo ? " The text must sit over active video footage, not a frozen title card." : ""}`;
+  }
+
+  return `TEXT OVERLAY ENABLED: Create ONE short natural Thai phrase of 1–5 words ${placement} at ${position}. Render the Thai spelling perfectly, style the text as ${textStyle}, and include 1–2 small doodles nearby (${doodles}). Keep it in empty background space, away from the model's phone, face area, and garment details. Do not add product name, price, CTA, logo, watermark, English, romanized Thai, or gibberish.${isVideo ? " The text must sit over active video footage, not a frozen title card." : ""}`;
+}
+
+function autoAudioDirection(settings = {}) {
+  return settings?.audioMode === "music_only"
+    ? MUSIC_ONLY_AUDIO_DIRECTION
+    : "Use only a calm off-screen Thai voiceover if narration is needed; the on-screen model must never speak or move her mouth behind the phone.";
 }
 
 function getMultiSceneDescription(videoStyle, productName, locationStr, mood, productText = "") {

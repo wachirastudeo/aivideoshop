@@ -160,6 +160,33 @@ check("image identity uses the original product title instead of the edited hook
 check("image identity does not use the edited hook as the requested product", !/PRODUCT NAME \/ CATEGORY LOCK:[^\n]*แต่งตัวยากใช่ไหม/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
 check("apparel still image gives the garment reference priority", /APPAREL REFERENCE PRIORITY/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
 
+const fashionSelfieSettings = { ...settings, videoStyle: "fashion-selfie", presenter: "Auto", cameraMovement: "Auto" };
+const fashionSelfieImage = buildImagePrompt({
+  name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว",
+  category: "แฟชั่น"
+}, fashionSelfieSettings);
+const fashionSelfieVideo = buildVideoPrompt({
+  name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว",
+  category: "แฟชั่น"
+}, fashionSelfieSettings);
+check("fashion selfie image hides the model face with a phone", /FASHION SELFIE MODE[\s\S]*smartphone[\s\S]*fully cover and obscure the face/i.test(fashionSelfieImage), fashionSelfieImage);
+check("fashion selfie image keeps the garment full body", /head-to-toe|full-body/i.test(fashionSelfieImage) && /exact reference garment/i.test(fashionSelfieImage), fashionSelfieImage);
+check("fashion selfie video keeps the phone over the face", /FASHION SELFIE MODE[\s\S]*phone must fully cover the face/i.test(fashionSelfieVideo), fashionSelfieVideo);
+check("fashion selfie video uses minimal pan movement", /slow, subtle left-to-right smartphone-camera pan/i.test(fashionSelfieVideo), fashionSelfieVideo);
+check("fashion selfie video forbids face reveal and walking", /never reveal eyes, nose, mouth[\s\S]*walking, turning around/i.test(fashionSelfieVideo), fashionSelfieVideo);
+
+const fashionSelfieTextSettings = {
+  ...fashionSelfieSettings,
+  textEnabled: "true",
+  clipText: "ลุคนี้ต้องมี",
+  promotionText: "ส่งฟรี"
+};
+const fashionSelfieTextImage = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว", category: "แฟชั่น" }, fashionSelfieTextSettings);
+const fashionSelfieTextVideo = buildVideoPrompt({ name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว", category: "แฟชั่น" }, fashionSelfieTextSettings);
+check("fashion selfie image includes configured text overlays", fashionSelfieTextImage.includes("ลุคนี้ต้องมี") && fashionSelfieTextImage.includes("ส่งฟรี"), fashionSelfieTextImage);
+check("fashion selfie video includes configured text overlays", fashionSelfieTextVideo.includes("ลุคนี้ต้องมี") && fashionSelfieTextVideo.includes("ส่งฟรี"), fashionSelfieTextVideo);
+check("fashion selfie text stays away from garment details", /away from the model's phone, face area, and garment details/i.test(fashionSelfieTextVideo), fashionSelfieTextVideo);
+
 const staleTextSettings = {
   ...settings,
   textEnabled: "false",
