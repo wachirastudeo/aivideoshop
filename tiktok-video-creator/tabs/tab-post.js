@@ -6,7 +6,7 @@ const DEFAULT_POST_SETTINGS = {
   hashtags: ["#TikTokShop", "#ของดีบอกต่อ"],
   autoAddProductLink: true,
   afterCreateAction: "post",
-  defaultMode: "now",
+  defaultMode: "post",
   privacy: "",
   scheduleTime: "",
   scheduleInterval: 10,
@@ -14,6 +14,9 @@ const DEFAULT_POST_SETTINGS = {
   aiGenerated: true,
   allowComment: true,
   allowReuse: true,
+  postNoLink: false,
+  postRandomCaptionHook: true,
+  postCustomProductName: "",
   shopeeCsvFolder: "shopee_exports",
   shopeeCsvFilename: "shopee_products.csv"
 };
@@ -30,8 +33,11 @@ export async function initPostTab(injectedHelpers) {
 }
 
 async function loadPostSettings() {
-  const { settings = {} } = await chrome.storage.sync.get("settings");
-  return normalizePostSettings(settings.postDefaults);
+  const [{ settings = {} }, { creatorState = {} }] = await Promise.all([
+    chrome.storage.sync.get("settings"),
+    chrome.storage.local.get("creatorState")
+  ]);
+  return resolveMainPostSettings(normalizePostSettings(settings.postDefaults), creatorState.settings);
 }
 
 function bindEvents() {
@@ -46,16 +52,18 @@ function bindEvents() {
   });
 
   document.querySelector("#post-default-mode")?.addEventListener("change", () => {
+    syncPostModeFields("post-default-mode");
     syncScheduleState();
     scheduleAutoSave();
   });
   document.querySelector("#post-after-create-action")?.addEventListener("change", () => {
+    syncPostModeFields("post-after-create-action");
     syncPublishModeState();
     scheduleAutoSave();
   });
 
   document.querySelectorAll(
-    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-privacy, #post-schedule-time, #post-schedule-interval, #post-location, #post-allow-comment, #post-allow-reuse, #post-shopee-csv-folder, #post-shopee-csv-filename"
+    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-no-link, #post-random-caption-hook, #post-custom-product-name, #post-privacy, #post-schedule-time, #post-schedule-interval, #post-location, #post-allow-comment, #post-allow-reuse, #post-shopee-csv-folder, #post-shopee-csv-filename"
   ).forEach((input) => {
     input.addEventListener("input", scheduleAutoSave);
     input.addEventListener("change", scheduleAutoSave);
@@ -71,12 +79,16 @@ async function openTikTokUpload() {
 }
 
 function onTestFileChange(event) {
-  const file = event.target.files?.[0];
+  const files = Array.from(event.target.files || []);
   const info = document.querySelector("#post-test-file-info");
   if (!info) return;
-  info.textContent = file
-    ? `${file.name} — ${(file.size / 1024 / 1024).toFixed(2)} MB`
-    : "ยังไม่ได้เลือกไฟล์";
+  if (!files.length) {
+    info.textContent = "ยังไม่ได้เลือกไฟล์";
+    return;
+  }
+  const totalMb = files.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024;
+  const names = files.slice(0, 3).map((file) => file.name).join(", ");
+  info.textContent = `${files.length} คลิป — รวม ${totalMb.toFixed(2)} MB${names ? ` (${names}${files.length > 3 ? ", ..." : ""})` : ""}`;
 }
 
 function setTestStatus(message, kind = "") {
@@ -100,9 +112,9 @@ function fileToDataUrl(file) {
 
 async function runTestUpload() {
   const button = document.querySelector("#post-test-run");
-  const file = document.querySelector("#post-test-file")?.files?.[0];
-  if (!file) {
-    setTestStatus("กรุณาเลือกไฟล์วิดีโอก่อน", "error");
+  const files = Array.from(document.querySelector("#post-test-file")?.files || []);
+  if (!files.length) {
+    setTestStatus("กรุณาเลือกไฟล์วิดีโออย่างน้อย 1 คลิปก่อน", "error");
     return;
   }
 
@@ -111,9 +123,17 @@ async function runTestUpload() {
   const manualHashtags = getValue("post-test-hashtags").trim();
   const productId = getValue("post-test-product-id").trim();
   const productUrl = getValue("post-test-product-url").trim();
-  const { settings = {} } = await chrome.storage.sync.get("settings");
-  const postSettings = readForm(settings.postDefaults);
-  const postType = postSettings.defaultMode || "draft";
+  const [{ settings = {} }, { creatorState = {} }] = await Promise.all([
+    chrome.storage.sync.get("settings"),
+    chrome.storage.local.get("creatorState")
+  ]);
+  const postSettings = resolveMainPostSettings(readForm(settings.postDefaults), creatorState.settings);
+  const action = postSettings.defaultMode || "draft";
+  if (action === "download") {
+    setTestStatus("โหมดหลักตั้งเป็นดาวน์โหลดอย่างเดียว จึงไม่ส่งเข้า TikTok Studio", "info");
+    return;
+  }
+  const postType = action === "schedule" ? "schedule" : action === "draft" ? "draft" : "now";
   const uploadMode = postType === "now" || postType === "schedule" ? "post" : "draft";
 
   const defaultHashtags = normalizeHashtags(postSettings.hashtags, 5);
@@ -122,8 +142,8 @@ async function runTestUpload() {
     : defaultHashtags;
 
   const productInfo = {
-    productId,
-    productUrl,
+    productId: postSettings.autoAddProductLink ? productId : "",
+    productUrl: postSettings.autoAddProductLink ? productUrl : "",
     name: productName,
     originalName: productName,
     cta: "สั่งได้เลย"
@@ -141,51 +161,62 @@ async function runTestUpload() {
     setTestStatus("กรุณาเลือกเวลาโพสต์ก่อนตั้งเวลา", "error");
     return;
   }
+  if (postType === "schedule") {
+    const requestedDate = new Date(postSettings.scheduleTime);
+    if (Number.isNaN(requestedDate.getTime())) {
+      setTestStatus(`เวลาตั้งโพสต์ไม่ถูกต้อง: ${postSettings.scheduleTime}`, "error");
+      return;
+    }
+    if (requestedDate.getTime() <= Date.now()) {
+      setTestStatus("เวลาตั้งโพสต์ต้องเป็นเวลาในอนาคต", "error");
+      return;
+    }
+  }
 
   try {
     if (button) button.disabled = true;
-    setTestStatus("กำลังอ่านไฟล์...", "info");
-    const dataUrl = await fileToDataUrl(file);
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index];
+      const jobId = createTestJobId();
+      const scheduleTime = postType === "schedule"
+        ? offsetScheduleTime(postSettings.scheduleTime, index * (parseInt(postSettings.scheduleInterval, 10) || 10))
+        : "";
 
-    setTestStatus("ส่งเข้า TikTok Studio...", "info");
-    const payload = {
-      videoUrl: dataUrl,
-      filename: file.name,
-      caption: caption || "โพสต์คลิปเอง",
-      hashtags: finalHashtags,
-      productId,
-      productUrl,
-      productName,
-      mode: uploadMode,
-      postType,
-      scheduleTime: postSettings.scheduleTime || "",
-      location: postSettings.location || "",
-      privacy: postSettings.privacy || "",
-      allowComment: postSettings.allowComment !== false,
-      allowReuse: postSettings.allowReuse !== false
-    };
+      setTestStatus(`กำลังอ่านคลิป ${index + 1}/${files.length}: ${file.name}`, "info");
+      const dataUrl = await fileToDataUrl(file);
+      const payload = {
+        jobId,
+        videoUrl: dataUrl,
+        filename: file.name,
+        caption: caption || "โพสต์คลิปเอง",
+        hashtags: finalHashtags,
+        productId: postSettings.autoAddProductLink ? productId : "",
+        productUrl: postSettings.autoAddProductLink ? productUrl : "",
+        productName: postSettings.postCustomProductName || productName,
+        isCustomProductName: Boolean(postSettings.postCustomProductName),
+        mode: uploadMode,
+        postType,
+        scheduleTime,
+        location: postSettings.location || "",
+        privacy: postSettings.privacy || "",
+        allowComment: postSettings.allowComment !== false,
+        allowReuse: postSettings.allowReuse !== false
+      };
 
-    // pipeline ใช้เวลานาน (อัพโหลด+รอประมวลผล) channel อาจปิดก่อนได้ response
-    // → ไม่ block รอจนจบ ถือว่าเริ่มแล้ว แล้วติดตามจาก log แทน
-    chrome.runtime.sendMessage({ type: "TIKTOK_SEND_DRAFT", payload })
-      .then((response) => {
-        if (response?.ok) {
-          setTestStatus("เริ่มทำงานบนหน้า TikTok แล้ว — ดูผลที่ Notification / แท็บ TikTok Studio", "info");
-        } else if (response) {
-          setTestStatus("ล้มเหลว: " + (response.error || "ไม่ทราบสาเหตุ"), "error");
-        }
-      })
-      .catch((error) => {
-        const msg = error?.message || String(error);
-        if (msg.includes("message channel closed")) {
-          setTestStatus("กำลังอัพโหลดเบื้องหลัง — ดูผลที่แท็บ TikTok Studio / Notification", "info");
-        } else {
-          setTestStatus("error: " + msg, "error");
-        }
-      });
+      setTestStatus(`กำลังส่งคลิป ${index + 1}/${files.length} เข้า TikTok Studio...`, "info");
+      const response = await chrome.runtime.sendMessage({ type: "TIKTOK_SEND_DRAFT", payload });
+      if (!response?.ok) {
+        throw new Error(response?.error || `ส่งคลิปที่ ${index + 1} ไม่สำเร็จ`);
+      }
 
-    await sleep(800);
-    setTestStatus("เริ่มอัพโหลดแล้ว — ดูความคืบหน้าที่แท็บ TikTok Studio", "info");
+      setTestStatus(`กำลังรอผลคลิป ${index + 1}/${files.length} ก่อนส่งคลิปถัดไป...`, "info");
+      const result = await waitForTestJob(jobId);
+      if (result?.success === false) {
+        throw new Error(result.error || `TikTok ทำงานกับคลิปที่ ${index + 1} ไม่สำเร็จ`);
+      }
+    }
+
+    setTestStatus(`ส่งครบทั้ง ${files.length} คลิปแล้ว — ใช้สินค้าชิ้นเดิมตามที่ตั้งไว้`, "success");
   } catch (error) {
     setTestStatus("error: " + (error?.message || error), "error");
   } finally {
@@ -193,14 +224,68 @@ async function runTestUpload() {
   }
 }
 
+function createTestJobId() {
+  if (globalThis.crypto?.randomUUID) return `manual-${globalThis.crypto.randomUUID()}`;
+  return `manual-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function waitForTestJob(jobId, timeoutMs = 8 * 60 * 1000) {
+  const storageKey = `tiktokJob:${jobId}`;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const stored = await chrome.storage.local.get(storageKey);
+    const result = stored?.[storageKey];
+    if (result) {
+      await chrome.storage.local.remove(storageKey);
+      return result;
+    }
+    await sleep(1000);
+  }
+  throw new Error("รอผลจาก TikTok นานเกินไป กรุณาตรวจสอบแท็บ TikTok Studio");
+}
+
+function offsetScheduleTime(value, minutesOffset) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  date.setMinutes(date.getMinutes() + minutesOffset);
+  const roundedMinutes = Math.round(date.getMinutes() / 5) * 5;
+  date.setMinutes(roundedMinutes, 0, 0);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 async function savePostSettings() {
   if (isHydrating) return;
   const { settings = {} } = await chrome.storage.sync.get("settings");
   const postDefaults = readForm(settings.postDefaults);
+  const { creatorState = {} } = await chrome.storage.local.get("creatorState");
+  const action = postDefaults.defaultMode;
   await chrome.storage.sync.set({
     settings: {
       ...settings,
-      postDefaults
+      postDefaults: {
+        ...postDefaults,
+        defaultMode: action,
+        afterCreateAction: action
+      }
+    }
+  });
+  await chrome.storage.local.set({
+    creatorState: {
+      ...creatorState,
+      settings: {
+        ...(creatorState.settings || {}),
+        postAction: action,
+        postNoLink: !postDefaults.autoAddProductLink,
+        postRandomCaptionHook: postDefaults.postRandomCaptionHook,
+        postCustomProductName: postDefaults.postCustomProductName,
+        postScheduleTime: postDefaults.scheduleTime,
+        postScheduleInterval: postDefaults.scheduleInterval
+      }
     }
   });
 
@@ -214,8 +299,12 @@ function fillForm(value) {
   setValue("post-caption-template", post.captionTemplate);
   setValue("post-hashtags", post.hashtags.join(", "));
   setChecked("post-auto-product-link", post.autoAddProductLink);
+  setChecked("post-no-link", post.postNoLink || !post.autoAddProductLink);
+  setChecked("post-random-caption-hook", post.postRandomCaptionHook);
+  setValue("post-custom-product-name", post.postCustomProductName);
   setValue("post-after-create-action", post.afterCreateAction);
   setValue("post-default-mode", post.defaultMode);
+  setValue("post-after-create-action", post.defaultMode);
   setValue("post-privacy", post.privacy);
   setValue("post-schedule-time", post.scheduleTime);
   setValue("post-schedule-interval", post.scheduleInterval ?? 10);
@@ -249,9 +338,9 @@ function readForm(existingPostDefaults = {}) {
         .map((tag) => tag.trim())
         .filter(Boolean)
       : existing.hashtags,
-    autoAddProductLink: hasField("post-auto-product-link") ? getChecked("post-auto-product-link") : existing.autoAddProductLink,
-    afterCreateAction: getValue("post-after-create-action"),
-    defaultMode: getValue("post-default-mode"),
+    autoAddProductLink: hasField("post-no-link") ? !getChecked("post-no-link") : (hasField("post-auto-product-link") ? getChecked("post-auto-product-link") : existing.autoAddProductLink),
+    afterCreateAction: normalizePostingAction(getValue("post-after-create-action") || getValue("post-default-mode") || existing.afterCreateAction),
+    defaultMode: normalizePostingAction(getValue("post-default-mode") || getValue("post-after-create-action") || existing.defaultMode),
     privacy: getValue("post-privacy"),
     scheduleTime: getValue("post-schedule-time"),
     scheduleInterval: hasField("post-schedule-interval") ? (parseInt(getValue("post-schedule-interval"), 10) || 10) : existing.scheduleInterval,
@@ -259,6 +348,9 @@ function readForm(existingPostDefaults = {}) {
     aiGenerated: true,
     allowComment: getChecked("post-allow-comment"),
     allowReuse: getChecked("post-allow-reuse"),
+    postNoLink: hasField("post-no-link") ? getChecked("post-no-link") : existing.postNoLink,
+    postRandomCaptionHook: hasField("post-random-caption-hook") ? getChecked("post-random-caption-hook") : existing.postRandomCaptionHook,
+    postCustomProductName: hasField("post-custom-product-name") ? getValue("post-custom-product-name").trim() : existing.postCustomProductName,
     shopeeCsvFolder: hasField("post-shopee-csv-folder") ? getValue("post-shopee-csv-folder") : existing.shopeeCsvFolder,
     shopeeCsvFilename: hasField("post-shopee-csv-filename") ? getValue("post-shopee-csv-filename") : existing.shopeeCsvFilename
   });
@@ -274,22 +366,55 @@ function normalizePostSettings(value = {}) {
     ? post.hashtags
     : String(post.hashtags || "").split(",");
 
+  const defaultMode = normalizePostingAction(post.defaultMode || post.afterCreateAction);
   return {
     ...post,
     captionTemplate: post.captionTemplate || DEFAULT_POST_SETTINGS.captionTemplate,
     hashtags: normalizeHashtags(hashtags, 4),
-    afterCreateAction: post.afterCreateAction === "both"
-      ? "draft"
-      : (["download", "draft", "post"].includes(post.afterCreateAction) ? post.afterCreateAction : "post"),
-    defaultMode: ["draft", "now", "schedule"].includes(post.defaultMode) ? post.defaultMode : "now",
+    afterCreateAction: defaultMode,
+    defaultMode,
     autoAddProductLink: post.autoAddProductLink !== false,
     scheduleInterval: parseInt(post.scheduleInterval, 10) || 10,
     aiGenerated: true,
     allowComment: post.allowComment !== false,
     allowReuse: post.allowReuse !== false,
+    postNoLink: Boolean(post.postNoLink),
+    postRandomCaptionHook: post.postRandomCaptionHook !== undefined ? Boolean(post.postRandomCaptionHook) : true,
+    postCustomProductName: String(post.postCustomProductName || "").trim(),
     shopeeCsvFolder: post.shopeeCsvFolder || DEFAULT_POST_SETTINGS.shopeeCsvFolder,
     shopeeCsvFilename: post.shopeeCsvFilename || DEFAULT_POST_SETTINGS.shopeeCsvFilename
   };
+}
+
+function normalizePostingAction(value) {
+  if (value === "now") return "post";
+  return ["download", "draft", "post", "schedule"].includes(value) ? value : "post";
+}
+
+function resolveMainPostSettings(postDefaults = {}, mainSettings = {}) {
+  const normalizedDefaults = normalizePostSettings(postDefaults);
+  const hasMainNoLink = typeof mainSettings?.postNoLink === "boolean";
+  const mainAction = mainSettings && ["download", "draft", "post", "schedule"].includes(mainSettings.postAction)
+    ? mainSettings.postAction
+    : normalizedDefaults.defaultMode;
+  return normalizePostSettings({
+    ...normalizedDefaults,
+    defaultMode: mainAction,
+    afterCreateAction: mainAction,
+    scheduleTime: mainSettings?.postScheduleTime || normalizedDefaults.scheduleTime,
+    scheduleInterval: mainSettings?.postScheduleInterval || normalizedDefaults.scheduleInterval,
+    autoAddProductLink: hasMainNoLink ? !mainSettings.postNoLink : normalizedDefaults.autoAddProductLink,
+    postNoLink: hasMainNoLink ? mainSettings.postNoLink : normalizedDefaults.postNoLink,
+    postRandomCaptionHook: mainSettings?.postRandomCaptionHook !== undefined ? mainSettings.postRandomCaptionHook : normalizedDefaults.postRandomCaptionHook,
+    postCustomProductName: mainSettings?.postCustomProductName || normalizedDefaults.postCustomProductName
+  });
+}
+
+function syncPostModeFields(sourceId) {
+  const action = normalizePostingAction(getValue(sourceId));
+  setValue("post-default-mode", action);
+  setValue("post-after-create-action", action);
+  syncScheduleState();
 }
 
 function syncScheduleState() {
@@ -353,8 +478,11 @@ async function generateAndFillCaptionAndHashtags(product = null) {
   if (generateBtn) generateBtn.disabled = true;
 
   try {
-    const { settings = {} } = await chrome.storage.sync.get("settings");
-    const postSettings = normalizePostSettings(settings.postDefaults);
+    const [{ settings = {} }, { creatorState = {} }] = await Promise.all([
+      chrome.storage.sync.get("settings"),
+      chrome.storage.local.get("creatorState")
+    ]);
+    const postSettings = resolveMainPostSettings(normalizePostSettings(settings.postDefaults), creatorState.settings);
     const defaultsHashtags = normalizeHashtags(postSettings.hashtags, 5);
 
     const productInfo = {

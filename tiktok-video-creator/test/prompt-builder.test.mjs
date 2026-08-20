@@ -297,8 +297,9 @@ const stillMotionSettings = {
 const stillMotionVideo = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
 const stillMotionImage = buildImagePrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
 check("still-motion mode uses a dedicated camera-only prompt", /STILL-IMAGE MOTION MODE/i.test(stillMotionVideo) && /CAMERA MOTION ONLY/i.test(stillMotionVideo), stillMotionVideo);
-check("still-motion mode has visibly stronger camera movement", /MODERATE VISIBLE MOVEMENT/i.test(stillMotionVideo) && /20–30 cm/i.test(stillMotionVideo) && /15–20° three-quarter angle/i.test(stillMotionVideo), stillMotionVideo);
+check("still-motion mode uses multiple left-right and in-out camera angles", /MULTI-ANGLE/i.test(stillMotionVideo) && /front hero angle[\s\S]*left three-quarter angle[\s\S]*right three-quarter angle/i.test(stillMotionVideo) && /left-to-right/i.test(stillMotionVideo) && /push in and pull back/i.test(stillMotionVideo) && !/15–20° three-quarter angle/i.test(stillMotionVideo), stillMotionVideo);
 check("still-motion mode keeps the product stationary", /product stays completely still, rigid, and unchanged/i.test(stillMotionVideo) && /Do not rotate, slide, bounce, float, bend, resize, morph/i.test(stillMotionVideo), stillMotionVideo);
+check("still-motion mode forbids hands in video and still image", /CAMERA-ONLY \/ NO-HANDS LOCK/i.test(stillMotionVideo) && /CAMERA-ONLY \/ NO-HANDS LOCK/i.test(stillMotionImage) && /zero hands/i.test(stillMotionImage), `${stillMotionVideo}\n${stillMotionImage}`);
 check("still-motion mode has no review scene structure", !/- Scene 1|Scene 2|Scene 3|Presenter:/i.test(stillMotionVideo), stillMotionVideo);
 check("still-motion combined still image is product-only", /No people, faces, presenters, reviewers, or characters\./i.test(stillMotionImage), stillMotionImage);
 
@@ -313,8 +314,9 @@ const boxedMotionVideo = buildVideoPrompt({ name: "กาแฟคั่วบ�
 const boxedMotionImage = buildImagePrompt({ name: "กาแฟคั่วบด", category: "ซองกาแฟ" }, boxedMotionSettings);
 check("boxed-motion mode requests an open presentation box", /BOXED PRODUCT MOTION MODE/i.test(boxedMotionVideo) && /open presentation box/i.test(boxedMotionVideo), boxedMotionVideo);
 check("boxed-motion mode keeps the product and box stationary", /keep both the product and box stable/i.test(boxedMotionVideo) && /CAMERA MOTION ONLY/i.test(boxedMotionVideo), boxedMotionVideo);
-check("boxed-motion mode has visibly stronger camera movement", /MODERATE VISIBLE MOVEMENT/i.test(boxedMotionVideo) && /20–30 cm/i.test(boxedMotionVideo) && /15–20° three-quarter angle/i.test(boxedMotionVideo), boxedMotionVideo);
+check("boxed-motion mode uses multiple left-right and in-out camera angles", /MULTI-ANGLE/i.test(boxedMotionVideo) && /front hero angle[\s\S]*left three-quarter angle[\s\S]*right three-quarter angle/i.test(boxedMotionVideo) && /left-to-right/i.test(boxedMotionVideo) && /push in and pull back/i.test(boxedMotionVideo) && !/15–20° three-quarter angle/i.test(boxedMotionVideo), boxedMotionVideo);
 check("boxed-motion mode adds only a fitted open box to the still", /BOXED PRODUCT REFERENCE MODE/i.test(boxedMotionImage) && /open presentation box/i.test(boxedMotionImage) && /only newly added object/i.test(boxedMotionImage), boxedMotionImage);
+check("boxed-motion mode forbids hands in video and still image", /CAMERA-ONLY \/ NO-HANDS LOCK/i.test(boxedMotionVideo) && /CAMERA-ONLY \/ NO-HANDS LOCK/i.test(boxedMotionImage) && /zero hands/i.test(boxedMotionImage), `${boxedMotionVideo}\n${boxedMotionImage}`);
 check("boxed-motion mode has no presenter or review structure", !/- Scene 1|Scene 2|Scene 3|Presenter:/i.test(boxedMotionVideo), boxedMotionVideo);
 
 const boxedCarFragranceProduct = {
@@ -689,7 +691,8 @@ check("formatPrice non-empty", typeof fp === "string" && fp.length > 0, `fp=${fp
 // --- normalizeHashtags dedup + cap ---
 eq("normalizeHashtags dedup+cap", normalizeHashtags(["#a", "#a", "#b", "#c", "#d", "#e", "#f"], 3), ["#a", "#b", "#c"]);
 eq("normalizeHashtags removes repeated hash prefixes", normalizeHashtags(["##TikTokShop", "###ของดีบอกต่อ"]), ["#TikTokShop", "#ของดีบอกต่อ"]);
-eq("normalizeHashtags canonicalizes the TikTokShop typo", normalizeHashtags(["##TikTokShp", "#tiktokshop"]), ["#TikTokShop"]);
+eq("normalizeHashtags removes the malformed TikTokShop tag", normalizeHashtags(["##TikTokShp", "#ของดีบอกต่อ"]), ["#ของดีบอกต่อ"]);
+eq("normalizeHashtags canonicalizes the valid TikTokShop tag", normalizeHashtags(["#tiktokshop"]), ["#TikTokShop"]);
 eq("normalizeHashtags splits space-separated tags", normalizeHashtags("##TikTokShop #ของดีบอกต่อ"), ["#TikTokShop", "#ของดีบอกต่อ"]);
 eq("normalizeHashtags handles mixed comma and space input", normalizeHashtags("##Tiktok, ###ขายดี #ของดี"), ["#Tiktok", "#ขายดี", "#ของดี"]);
 check("normalizeHashtags never outputs repeated hash prefixes", normalizeHashtags(["##Tiktok", "###ขายดี"]).every((tag) => !/^##/.test(tag)));

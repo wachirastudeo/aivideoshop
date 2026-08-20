@@ -57,8 +57,10 @@ function normalizeHashtags(value) {
     .filter(Boolean)
     .map((tag) => {
       const cleaned = tag.replace(/^#+/, "");
-      return `#${/^tiktokshp$/i.test(cleaned) || /^tiktokshop$/i.test(cleaned) ? "TikTokShop" : cleaned}`;
+      if (/^tiktokshp$/i.test(cleaned)) return "";
+      return `#${/^tiktokshop$/i.test(cleaned) ? "TikTokShop" : cleaned}`;
     })
+    .filter(Boolean)
     .join(" ");
 }
 

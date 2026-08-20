@@ -409,6 +409,7 @@ const STRICT_SHOP_LOGO_EXCLUSION_RULE = "CRITICAL RULE — STRICTLY FORBIDDEN: D
 const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new design details, buttons, stripes, logos, or decorations not on the reference. Render any texture finish (matte, glossy, metallic, fabric) or gradient with 100% precision. Do not compromise product accuracy for style.";
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
+const CAMERA_ONLY_NO_HANDS_DIRECTION = "CAMERA-ONLY / NO-HANDS LOCK: The entire frame must contain zero hands, fingers, arms, people, presenters, reviewers, or human body parts. No hand may enter to hold, touch, adjust, lift, or present the product. The product is already placed and untouched; only the camera moves.";
 const EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION = "EXPLICIT ADULT PRESENTER LOCK: The selected presenter is an adult woman or adult man. Show exactly one adult presenter only. Do NOT include any child, minor, baby, toddler, or parent-and-child pair, even when the product is intended for children.";
 const EXPLICIT_CHILD_PRESENTER_DIRECTION = "EXPLICIT CHILD PRESENTER MODE: The user explicitly selected the cute child presenter. MUST show a happy fictional Thai child on camera, age 4-6 years old for child mode or 7-12 years old for older_child mode, actively and safely using or interacting with the product, together with exactly one friendly Thai parent/guardian supervising nearby. Do NOT replace the child with an adult-only presenter, Auto mode, hands-only, product-only, or voiceover-only presentation. Keep the same child and parent consistent across all scenes.";
 
@@ -900,6 +901,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     // Keep the uploaded product's own colors unchanged; only the background may change.
     COLOR_EXACT_LOCK,
     REFERENCE_BRAND_ONLY_LOCK,
+    (stillMotionMode || boxedMotionMode) ? CAMERA_ONLY_NO_HANDS_DIRECTION : "",
     isNeckScarfProduct(productText) ? NECK_SCARF_USAGE_LOCK : "",
     isPackagedCoffeeProduct(productText) ? REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION : "",
     isClothing ? referenceCompositingDirection : "",
@@ -1091,6 +1093,7 @@ function buildBoxedReferenceStillPrompt(productInfo, productText, productName, l
     buildProductIdentityLock(productInfo),
     REFERENCE_PIXEL_ARTWORK_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
+    CAMERA_ONLY_NO_HANDS_DIRECTION,
     "Preserve the product's exact shape, materials, colors, pattern, logo, printed artwork, label, text, seams, and every visible detail. Do not redesign, redraw, recolor, simplify, mirror, or invent anything on the product.",
     BOXED_PRESENTATION_COMPOSITION_LOCK,
     "The box is the only newly added object: an open lid or open presentation box with a clean neutral interior and a realistic fitted insert/support if needed. Add no branding or text to the box. Keep the product fully visible and never let the box cover important details.",
@@ -1231,10 +1234,11 @@ function buildStillMotionVideoPrompt(productInfo, productName, locationStr, dura
     PRODUCT_FIDELITY_DIRECTION,
     scaleDirection,
     `Place the product naturally in a realistic ${locationStr || "category-appropriate"} setting. Keep natural photography composition, true scale, visible but limited context, and realistic contact shadows. Do not make the product oversized or let it fill the table or frame.`,
-    "CAMERA MOTION ONLY — MODERATE VISIBLE MOVEMENT: Keep the product completely static while the handheld smartphone camera makes a clearly noticeable but realistic move. Over the clip, pan laterally from left to right by about 20–30 cm, gently push in or pull back by about 5–10%, then arc to a modest 15–20° three-quarter angle. Use natural parallax and light handheld sway; the camera must not feel locked off or static. Keep the movement smooth, continuous, controlled, and physically plausible.",
-    "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product. Do not add a presenter, hands, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, or busy scene action.",
+    CAMERA_ONLY_NO_HANDS_DIRECTION,
+    "CAMERA MOTION ONLY — MULTI-ANGLE / LEFT-RIGHT / IN-OUT: Keep the product completely static while the smartphone camera makes a clearly noticeable but realistic move. Use three clean camera angles in sequence: front hero angle, left three-quarter angle, then right three-quarter angle. Between angles, use a smooth lateral left-to-right slide of about 20–30 cm, then gently push in and pull back by about 5–10%. The object itself never rotates; only the camera changes angle. No arc, orbit, roll, or object rotation.",
+    "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, or busy scene action.",
     overlayDirection,
-    "Use one continuous shot or very gentle angle transition only. No fast cuts, no zoom punch, no 360-degree orbit, no dramatic effects, no collage, and no scene change that alters the product. Use quiet natural instrumental ambience or no audio."
+    "Use only three gentle angle transitions: front hero → left three-quarter → right three-quarter. No fast cuts, zoom punch, 360-degree orbit, dramatic effects, collage, or scene change that alters the product. Use quiet natural instrumental ambience or no audio."
   ].filter(Boolean).join("\n");
 }
 
@@ -1253,10 +1257,11 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
     BOXED_PRESENTATION_COMPOSITION_LOCK,
     scaleDirection,
     `Keep the fitted open box and product at true scale in a realistic ${locationStr || "category-appropriate"} setting. Keep only limited table context and almost no floor visible.`,
-    "CAMERA MOTION ONLY — MODERATE VISIBLE MOVEMENT: Keep the product and box completely static while the handheld smartphone camera makes a clearly noticeable but realistic move. Over the clip, pan laterally from left to right by about 20–30 cm, gently push in or pull back by about 5–10%, then arc to a modest 15–20° three-quarter angle. Use natural parallax and light handheld sway; the camera must not feel locked off or static. Keep the movement smooth, continuous, controlled, and physically plausible.",
-    "STRICTLY FORBIDDEN: Do not move, rotate, slide, bounce, float, resize, morph, open, close, deform, or otherwise animate the product or box. Do not add a presenter, hands, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, busy props, fast cuts, macro zoom, 360-degree orbit, or scene changes.",
+    CAMERA_ONLY_NO_HANDS_DIRECTION,
+    "CAMERA MOTION ONLY — MULTI-ANGLE / LEFT-RIGHT / IN-OUT: Keep the product and box completely static while the smartphone camera makes a clearly noticeable but realistic move. Use three clean camera angles in sequence: front hero angle, left three-quarter angle, then right three-quarter angle. Between angles, use a smooth lateral left-to-right slide of about 20–30 cm, then gently push in and pull back by about 5–10%. The product and box never rotate; only the camera changes angle. No arc, orbit, roll, or object rotation.",
+    "STRICTLY FORBIDDEN: Do not move, rotate, slide, bounce, float, resize, morph, open, close, deform, or otherwise animate the product or box. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, busy props, fast cuts, macro zoom, 360-degree orbit, or scene changes.",
     overlayDirection,
-    "Use one continuous shot or one very gentle angle transition only. Use quiet natural instrumental ambience or no audio."
+    "Use only three gentle angle transitions: front hero → left three-quarter → right three-quarter. Use quiet natural instrumental ambience or no audio."
   ].filter(Boolean).join("\n");
 }
 
@@ -2715,8 +2720,8 @@ export function normalizeHashtags(value, maxTags = 5) {
       .replace(/^#+/, "");
     if (!cleaned) continue;
 
-    const canonicalTag = /^tiktokshp$/i.test(cleaned) || /^tiktokshop$/i.test(cleaned) ? "TikTokShop" : cleaned;
-    const tag = `#${canonicalTag}`;
+    if (/^tiktokshp$/i.test(cleaned)) continue;
+    const tag = `#${/^tiktokshop$/i.test(cleaned) ? "TikTokShop" : cleaned}`;
     const key = tag.toLowerCase();
     if (seen.has(key)) continue;
 
