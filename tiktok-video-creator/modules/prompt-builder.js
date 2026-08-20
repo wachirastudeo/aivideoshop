@@ -241,6 +241,9 @@ const NO_PUTTING_ON_OR_TAKING_OFF_MANDATE = "WEARABLE PRODUCT CONTINUITY: The pr
 const WEARABLE_CROP_HAND_ANATOMY_LOCK = "WEARABLE CROP ANATOMY LOCK: Show at most two anatomically connected human hands total, never a third hand, extra arm, duplicated limb, floating hand, detached wrist, or extra fingers. Ignore any duplicate hands or limbs in the reference/generated source. For pants, shoes, and socks, keep hands out of frame unless naturally required; for bracelets, rings, and gloves, show only the one natural hand/wrist or one natural pair needed to wear the product.";
 const WEARABLE_CROP_MODE_DIRECTION = `WEARABLE CLOSE-UP MODE: Show only the relevant body area wearing or using the exact reference product. Crop below the face: no face, head, full torso, or full-body presenter. Keep the product as the hero, preserve its exact design and realistic scale, and use a clear natural off-screen Thai voiceover. Do not show putting on, taking off, or repeatedly adjusting the item. ${WEARABLE_CROP_HAND_ANATOMY_LOCK}`;
 const WEARABLE_CROP_SCENE_DIRECTION = `WEARABLE CLOSE-UP SCENES: Every scene uses a clean close-up or medium crop of the relevant body part only. Keep the face and head outside the frame. No full-body shot, talking head, or on-screen presenter dialogue. The exact wearable product remains visible, naturally worn, stable, and undistorted. ${WEARABLE_CROP_HAND_ANATOMY_LOCK}`;
+const SHOE_WEARABLE_CROP_IMAGE_DIRECTION = "SHOE WORN-ON-FEET CLOSE-UP MODE: Match a tasteful vertical smartphone product photo with the exact reference footwear worn on natural feet. The model is seated on a chair, sofa edge, or bed; frame only the feet and lower legs from below mid-calf with the camera angled gently downward. Both lower legs hang naturally and both feet stay planted flat on the floor, side by side or lightly crossed at the ankles; one foot may rotate slightly but must not lift. No raised leg, floating foot, dangling foot, pointed-toe fashion pose, or leg lifted toward the camera. No identifiable person, face, head, torso, arms, hands, or full body. Keep both shoes fully visible, sharp, realistic, and unchanged. Follow the user's selected background location exactly; never replace it with a category-default location. Take the uploaded composition as framing inspiration only, not its social-media interface, watermark, stickers, or text.";
+const SHOE_WEARABLE_CROP_VIDEO_DIRECTION = "SHOE WORN-ON-FEET VIDEO MODE: Keep the camera tightly framed on the exact footwear worn on natural feet and lower legs below mid-calf. The model remains seated on a chair, sofa edge, or bed for the entire clip, with both lower legs relaxed and both feet planted flat on the floor. Use close-up product-review angles inspired by a tasteful vertical smartphone shoe photo: seated top-down 3/4 hero, low side detail, and seated opposite 3/4 detail. No raised leg, floating foot, dangling foot, pointed-toe fashion pose, or leg lifted toward the camera. No identifiable person, face, head, torso, arms, hands, or full body. The shoes stay continuously worn, correctly fitted, and fully visible; never show putting them on, taking them off, walking away, or changing shoes. Use only subtle natural movement while the feet remain on the floor: a tiny ankle rotation, gentle weight shift, or relaxed toe movement. No exaggerated stepping, kicking, jumping, or dancing. Use off-screen Thai voiceover only.";
+const SHOE_WEARABLE_CROP_BACKGROUND_DIRECTION = "SHOE WORN-ON-FEET INDOOR BACKGROUND LOCK: Use a clean, aesthetically pleasing indoor floor in a cozy bedroom or living-room corner, with soft natural daylight, pale neutral/pastel tones, and shallow background blur. A restrained curtain, bed edge, or soft fabric detail may appear in the background, but never let props cover the footwear. ABSOLUTELY FORBIDDEN: outdoor street, driveway, grass, park, retail shoe store, shoe shelf, studio cyclorama, social-media UI, watermark, stickers, or added screenshot text.";
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 const SHOE_SCALE_DIRECTION = "STRICT FOOTWEAR SCALE & PLACEMENT LOCK: This is a real human shoe, not a giant prop or miniature toy. Preserve true foot-sized proportions and the exact single-shoe/pair count. Show it at realistic scale relative to a human foot, leg, hand, shoe box, floor, shelf, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge the shoe to furniture-scale, make it tiny, or place it in an unrelated oversized environment. Keep the shoe grounded on a realistic floor, shelf, or naturally worn on a foot.";
@@ -740,6 +743,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const autoPresenterProfile = !productOnlyStill && isAuto(settings.presenter)
     ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
     : "";
+  const explicitLocationSelected = !isAuto(settings.location);
   const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
   const isFootwear = isFootwearProduct(productInfo);
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
@@ -749,6 +753,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = !productOnlyStill && (auto.presenter === "hands_only" || isUnboxingHands);
   const wearableCrop = !productOnlyStill && auto.presenter === "wearable_crop";
+  const shoeWearableCrop = wearableCrop && isFootwear;
   const noPeople = productOnlyStill || !(auto.presenter && auto.presenter !== "none");
   const referenceCompositingDirection = isClothing
     ? (productOnlyStill ? REFERENCE_COMPOSITING_DIRECTION : APPAREL_REFERENCE_USE_DIRECTION)
@@ -774,7 +779,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
   } else if (isAnimal) {
     peopleDirection = `Pet Animal: A cute, friendly pet animal (${auto.presenter === "cat" ? "cat" : "dog"}) sitting next to or interacting naturally with the product in a bright, clean indoor setting. ${ANIMAL_PRESENTER_DIRECTION} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION}`;
   } else if (wearableCrop) {
-    peopleDirection = `${WEARABLE_CROP_MODE_DIRECTION} Frame: ${getWearableCropFrame(productText)}.`;
+    peopleDirection = shoeWearableCrop
+      ? SHOE_WEARABLE_CROP_IMAGE_DIRECTION
+      : `${WEARABLE_CROP_MODE_DIRECTION} Frame: ${getWearableCropFrame(productText)}.`;
   } else if (isKids && auto.presenter !== "none") {
     peopleDirection = `${KIDS_WITH_PARENT_DIRECTION} ${MULTI_PERSON_HAND_ANATOMY_DIRECTION}`;
   } else if (auto.presenter && auto.presenter !== "none") {
@@ -845,7 +852,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
   }
 
   let shotDistribution = isSingleMode
-    ? (isClothing
+    ? (shoeWearableCrop
+        ? "Single full-frame vertical footwear-on-feet close-up: show both exact shoes worn naturally on feet and lower legs, with a relaxed pose and flattering 3/4 angle. No face, head, torso, arms, hands, or full body; no collage, split screen, or social-media screenshot UI."
+        : isClothing
         ? "Single full-frame front shot: Depict ONLY the front-facing view of the clothing item in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side."
         : "Single full-frame hero shot: Depict the product in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity, printed text, brand logo, and packaging artwork.")
     : (isClothing
@@ -886,8 +895,14 @@ export function buildImagePrompt(productInfo, settings = {}) {
     : handsOnly
     ? `${HANDS_ONLY_BACKGROUND_DIRECTION} Place the product in this category-appropriate setting: ${locationSetting}. Do not replace it with a generic cafe, desk, studio, or outdoor background unless that setting is appropriate for the exact product.`
     : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: Place the unchanged product in a brand new, realistic ${locationSetting} scene suited to this product category. Use natural smartphone lighting, believable depth of field, and authentic textures; avoid CGI gloss and fake HDR.`;
-  const stillBackgroundDirection = isFootwear
+  const stillBackgroundDirection = shoeWearableCrop
+    ? (explicitLocationSelected
+      ? `SHOE WORN-ON-FEET SELECTED LOCATION LOCK: Use exactly the user's selected ${locationSetting} background. Do not replace, reinterpret, or override this location.`
+      : SHOE_WEARABLE_CROP_BACKGROUND_DIRECTION)
+    : isFootwear && !explicitLocationSelected
     ? `${FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK}\n${imageBackgroundDirection}`
+    : explicitLocationSelected
+    ? `SELECTED BACKGROUND LOCATION LOCK: Use exactly the user's selected ${locationSetting} background. Do not replace, reinterpret, or override this location.\n${imageBackgroundDirection}`
     : imageBackgroundDirection;
 
   const hasEngravedPattern = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(productText);
@@ -906,7 +921,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isPackagedCoffeeProduct(productText) ? REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION : "",
     isClothing ? referenceCompositingDirection : "",
     isRainwearProduct(productText) ? RAINWEAR_OUTDOOR_LOCATION_LOCK : "",
-    FICTIONAL_CAST_DIRECTION,
+    shoeWearableCrop ? "" : FICTIONAL_CAST_DIRECTION,
     isClothing && !productOnlyStill && ["woman", "man"].includes(auto.presenter) ? INDEPENDENT_FICTIONAL_CAST_DIRECTION : "",
     isClothing && !productOnlyStill && !isChildPresenter ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     BACKGROUND_COMPATIBILITY_LOCK,
@@ -1308,6 +1323,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
   const wearableCrop = auto.presenter === "wearable_crop";
+  const shoeWearableCrop = wearableCrop && isFootwearProduct(productInfo);
+  const explicitLocationSelected = !isAuto(settings.location);
   const noPeople = !(auto.presenter && auto.presenter !== "none");
   const isKids = shouldUseKidsScene(productText, auto, settings);
   const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
@@ -1404,7 +1421,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     isNeckScarfProduct(productText) ? NECK_SCARF_USAGE_LOCK : "",
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
-    wearableCrop ? WEARABLE_CROP_SCENE_DIRECTION : (isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION),
+    shoeWearableCrop ? SHOE_WEARABLE_CROP_VIDEO_DIRECTION : (wearableCrop ? WEARABLE_CROP_SCENE_DIRECTION : (isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION)),
     wearableCrop
       ? "Critical: Keep the exact wearable product unchanged and clearly visible in the relevant body-part crop. Do not change its fit, color, shape, material, logo, or printed details."
       : isClothing
@@ -1429,10 +1446,24 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
     locationStr ? `Location setting: Place the product in a brand new, realistic ${locationStr} background location. DO NOT use or match the original reference image background.` : (handsOnly ? HANDS_ONLY_BACKGROUND_DIRECTION : "Choose a clean, realistic, commercially appealing background that fits this product category. ALWAYS generate a new, non-matching background location."),
+    shoeWearableCrop
+      ? (explicitLocationSelected
+        ? `SHOE WORN-ON-FEET SELECTED LOCATION LOCK: Use exactly the user's selected ${locationStr || "background location"}. Do not replace, reinterpret, or override this location.`
+        : SHOE_WEARABLE_CROP_BACKGROUND_DIRECTION)
+      : "",
+    shoeWearableCrop ? "SUBTLE FOOT MOVEMENT ONLY: Keep the feet mostly still with one small natural ankle, toe, or weight shift; camera movement remains gentle and controlled. Do not turn this into walking, dancing, kicking, or a full-body fashion scene." : "",
   ];
   let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60), productText)
     .replace(/\d+-second\s*/g, "");
-  if (noPeople) {
+  if (shoeWearableCrop) {
+    sceneBreakdown = [
+      "SHOE CLOSE-UP SEQUENCE: Three clean single-frame footwear shots, never a collage or split screen:",
+      "- Shot 1 (Hero): seated top-down 3/4 close-up of both exact shoes worn on natural feet, with both feet flat on the floor and one foot rotated slightly.",
+      "- Shot 2 (Detail): seated low side close-up showing the toe shape, straps/laces, stitching, sole, and material while both feet remain grounded and the ankle shifts subtly.",
+      "- Shot 3 (Finish): seated opposite 3/4 close-up with a tiny relaxed toe or weight shift, keeping both shoes sharp, fully visible, and planted on the floor.",
+      "No raised leg, floating foot, dangling foot, pointed-toe fashion pose, leg lifted toward the camera, identifiable person, face, head, torso, arms, hands, full body, walking, or shoe change."
+    ].join("\n");
+  } else if (noPeople) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown on its own")
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b/gi, "the product shown on its own");
@@ -2122,7 +2153,9 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
     audioMode: settings.audioMode === "music_only" ? "music_only" : "voiceover",
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
-    location: contextLockedProduct ? requiredLocation : (isAuto(settings.location) ? (requiredLocation || recommended.location || inferred.location) : settings.location),
+    location: isAuto(settings.location)
+      ? (contextLockedProduct ? requiredLocation : (requiredLocation || recommended.location || inferred.location))
+      : settings.location,
     customLocation: sanitizeText(settings.customLocation),
     cameraMovement: isAuto(settings.cameraMovement) ? (footwear ? "Slow Zoom In" : (recommended.cameraMovement || inferred.cameraMovement)) : settings.cameraMovement,
     transition: isAuto(settings.transition) ? (recommended.transition || inferred.transition) : settings.transition,
@@ -2343,7 +2376,7 @@ function inferRequiredProductLocation(productInfo = {}) {
   }
 
   // 2. Bathroom & Skincare & Cosmetics -> Modern Bathroom / Luxury Spa
-  if (/(สบู่|แชมพู|ยาสระผม|ฝักบัว|ก๊อกน้ำ|สุขภัณฑ์|ห้องน้ำ|ชักโครก|กระดาษชำระ|ผ้าเช็ดตัว|ครีม|เซรั่ม|สกินแคร์|บำรุง|น้ำหอม|รองพื้น|ลิป|เครื่องสำอาง|bathroom|shower|faucet|toilet|towel|skincare|serum|cream|cosmetics|lipstick|perfume)/i.test(text)) {
+  if (/(สบู่|แชมพู|ยาสระผม|ฝักบัว|ก๊อกน้ำ|สุขภัณฑ์|ห้องน้ำ|ชักโครก|กระดาษชำระ|ผ้าเช็ดตัว|(?<!สี)ครีม|เซรั่ม|สกินแคร์|บำรุง|น้ำหอม|รองพื้น|ลิป|เครื่องสำอาง|bathroom|shower|faucet|toilet|towel|skincare|serum|cream|cosmetics|lipstick|perfume)/i.test(text)) {
     return "Modern Bathroom";
   }
 

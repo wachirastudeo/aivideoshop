@@ -490,6 +490,16 @@ check("wearable crop mode prevents a third hand", /at most two anatomically conn
 
 const wearableShoeVideo = buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง" }, { ...settings, presenter: "wearable_crop" });
 check("wearable crop mode frames shoes on feet and lower legs", /feet-and-lower-legs crop/i.test(wearableShoeVideo), wearableShoeVideo);
+const wearableShoeImage = buildImagePrompt({ name: "รองเท้าแตะผู้หญิง สีครีม" }, { ...settings, presenter: "wearable_crop", location: "Urban Street" });
+check("wearable shoe still uses seated feet-only close-up framing", /SHOE WORN-ON-FEET CLOSE-UP MODE/i.test(wearableShoeImage) && /model is seated/i.test(wearableShoeImage) && /both feet stay planted flat on the floor/i.test(wearableShoeImage) && /No raised leg/i.test(wearableShoeImage), wearableShoeImage);
+check("wearable shoe still respects its selected location", /SHOE WORN-ON-FEET SELECTED LOCATION LOCK[\s\S]*Urban Street/i.test(wearableShoeImage) && !/SHOE WORN-ON-FEET INDOOR BACKGROUND LOCK/i.test(wearableShoeImage) && !/HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE/i.test(wearableShoeImage), wearableShoeImage);
+check("wearable shoe video keeps a seated grounded pose with subtle foot movement", /SHOE WORN-ON-FEET VIDEO MODE/i.test(wearableShoeVideo) && /model remains seated/i.test(wearableShoeVideo) && /both feet planted flat on the floor/i.test(wearableShoeVideo) && /subtle natural foot movement|SUBTLE FOOT MOVEMENT ONLY/i.test(wearableShoeVideo) && /No raised leg/i.test(wearableShoeVideo), wearableShoeVideo);
+const selectedShoeImage = buildImagePrompt({ name: "รองเท้าแตะผู้หญิง สีครีม" }, { ...settings, presenter: "none", location: "Modern Living Room" });
+const selectedShoeVideo = buildVideoPrompt({ name: "รองเท้าแตะผู้หญิง สีครีม" }, { ...settings, presenter: "wearable_crop", location: "Modern Living Room" });
+check("explicit shoe location overrides the outdoor default in stills", /SELECTED BACKGROUND LOCATION LOCK[\s\S]*Modern Living Room/i.test(selectedShoeImage) && !/HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE/i.test(selectedShoeImage), selectedShoeImage);
+check("explicit shoe location reaches the video prompt", /Location setting:[\s\S]*Modern Living Room/i.test(selectedShoeVideo) && /SHOE WORN-ON-FEET SELECTED LOCATION LOCK[\s\S]*Modern Living Room/i.test(selectedShoeVideo) && !/Location setting:[\s\S]*Modern Bathroom/i.test(selectedShoeVideo), selectedShoeVideo);
+const autoCreamShoeVideo = buildVideoPrompt({ name: "รองเท้าแตะผู้หญิง สีครีม" }, { ...settings, presenter: "wearable_crop", location: "Auto" });
+check("shoe color word does not trigger the bathroom location classifier", !/Location setting:[\s\S]*Modern Bathroom/i.test(autoCreamShoeVideo), autoCreamShoeVideo);
 
 const wearableBraceletVideo = buildVideoPrompt({ name: "สร้อยข้อมือเงินแท้" }, { ...settings, presenter: "wearable_crop" });
 check("wearable crop mode frames bracelets on the wrist", /wrist-and-hand or forearm crop/i.test(wearableBraceletVideo), wearableBraceletVideo);
@@ -1136,7 +1146,7 @@ const shoeWithWrongSavedLocation = buildImagePrompt(
   { name: "รองเท้าวิ่งผู้หญิง", productId: "wrong-location-shoe" },
   { ...settings, location: "Modern Living Room" }
 );
-check("shoe still image overrides a wrong saved indoor location", /outdoor home driveway|front yard|quiet neighborhood street|park path/i.test(shoeWithWrongSavedLocation) && !/Modern Living Room/i.test(shoeWithWrongSavedLocation));
+check("shoe still image respects a saved indoor location", /SELECTED BACKGROUND LOCATION LOCK[\s\S]*Modern Living Room/i.test(shoeWithWrongSavedLocation) && !/HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE|outdoor home driveway|front yard|quiet neighborhood street|park path/i.test(shoeWithWrongSavedLocation));
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
