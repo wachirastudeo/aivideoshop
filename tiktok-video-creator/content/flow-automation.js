@@ -2229,7 +2229,7 @@ async function waitForResult(phase, options = {}) {
     const maxRetryAttempts = 1;
     // Image generation can legitimately take several minutes even while Flow
     // shows a temporary Failed/percentage state. Give it enough time to settle.
-    const maxMs = phase === "image" ? 300000 : 400000;
+    const maxMs = phase === "image" ? 300000 : 480000;
     const progressGraceMs = 25000;
     // Flow can briefly mark queued Veo jobs as Failed, then replace the same
     // cards with playable videos. Keep waiting long enough for that late result.

@@ -1063,7 +1063,7 @@ async function openGoogleFlowWithLoginResume(phase, prompt, imageUrl, options, p
       return await runInterruptibly(() => openGoogleFlow(phase, prompt, imageUrl, options));
     } catch (error) {
       if (isFlowTimeoutError(error)) {
-        // หมดเวลา 12 นาที → รีหน้า Flow แล้ว retry รายการนี้ใหม่ตั้งแต่ต้น
+        // หมดเวลา 15 นาที → รีหน้า Flow แล้ว retry รายการนี้ใหม่ตั้งแต่ต้น
         timeoutRetryCount++;
         if (timeoutRetryCount > FLOW_TIMEOUT_MAX_RETRY) {
           throw error; // เกินจำนวน retry สูงสุด → โยน error ออกตามปกติ

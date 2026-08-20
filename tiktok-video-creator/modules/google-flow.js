@@ -46,7 +46,7 @@ export async function openGoogleFlow(phase, prompt, imageUrl = "", options = {})
   return result;
 }
 
-function waitForFlowJob(jobId, timeoutMs = 12 * 60 * 1000) {
+function waitForFlowJob(jobId, timeoutMs = 15 * 60 * 1000) {
   const storageKey = `flowJob:${jobId}`;
   let timer = null;
   let handler = null;
@@ -75,7 +75,7 @@ function waitForFlowJob(jobId, timeoutMs = 12 * 60 * 1000) {
 
     timer = setTimeout(() => {
       cleanup();
-      resolve({ ok: false, error: "หมดเวลารอผลลัพธ์ Google Flow (12 นาที)" });
+      resolve({ ok: false, error: "หมดเวลารอผลลัพธ์ Google Flow (15 นาที)" });
     }, timeoutMs);
   });
 
