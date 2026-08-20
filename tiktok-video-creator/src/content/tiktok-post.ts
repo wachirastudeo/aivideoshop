@@ -209,7 +209,8 @@ async function fillCaption(caption: string, hashtags: string[]) {
   document.execCommand("delete", false);
   if (caption.trim()) await insertText(editor, caption.trim());
   for (const rawTag of hashtags) {
-    const tag = rawTag.replace(/^#+/, "").trim();
+    const rawCleanedTag = rawTag.replace(/^#+/, "").trim();
+    const tag = /^tiktokshp$/i.test(rawCleanedTag) || /^tiktokshop$/i.test(rawCleanedTag) ? "TikTokShop" : rawCleanedTag;
     if (tag) await insertText(editor, ` #${tag}`);
   }
 }

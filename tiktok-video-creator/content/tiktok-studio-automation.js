@@ -1872,7 +1872,8 @@ function normalizeHashtags(value) {
     const cleaned = String(rawTag || "").trim().replace(/\s+/g, "").replace(/^#+/, "");
     if (!cleaned) continue;
 
-    const tag = `#${cleaned}`;
+    const canonicalTag = /^tiktokshp$/i.test(cleaned) || /^tiktokshop$/i.test(cleaned) ? "TikTokShop" : cleaned;
+    const tag = `#${canonicalTag}`;
     const key = tag.toLowerCase();
     if (seen.has(key)) continue;
 

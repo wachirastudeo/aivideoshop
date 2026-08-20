@@ -317,6 +317,18 @@ check("boxed-motion mode has visibly stronger camera movement", /MODERATE VISIBL
 check("boxed-motion mode adds only a fitted open box to the still", /BOXED PRODUCT REFERENCE MODE/i.test(boxedMotionImage) && /open presentation box/i.test(boxedMotionImage) && /only newly added object/i.test(boxedMotionImage), boxedMotionImage);
 check("boxed-motion mode has no presenter or review structure", !/- Scene 1|Scene 2|Scene 3|Presenter:/i.test(boxedMotionVideo), boxedMotionVideo);
 
+const boxedCarFragranceProduct = {
+  name: "POLARIS | 120ml CARQIA เจลน้ำหอมปรับอากาศ น้ำหอมรถยนต์ Luxury car perfume",
+  category: "เครื่องหอม"
+};
+const boxedCarFragranceSettings = { ...settings, videoStyle: "boxed-motion", flowGenMode: "combined", presenter: "none", location: "Auto" };
+const boxedCarFragranceImage = buildImagePrompt(boxedCarFragranceProduct, boxedCarFragranceSettings);
+const boxedCarFragranceVideo = buildVideoPrompt(boxedCarFragranceProduct, boxedCarFragranceSettings);
+const boxedCarFragrancePrompt = `${boxedCarFragranceImage}\n${boxedCarFragranceVideo}`;
+check("boxed car fragrance uses an indoor tabletop presentation", /indoor premium gift-presentation room|clean elegant tabletop/i.test(boxedCarFragrancePrompt), boxedCarFragrancePrompt);
+check("boxed car fragrance does not put the gift box inside the car", !/Inside a parked luxury car|car cabin|dashboard|center console|cup-holder|air-vent/i.test(boxedCarFragrancePrompt), boxedCarFragrancePrompt);
+check("boxed mode locks box fit and tabletop support", /BOXED PRESENTATION COMPOSITION LOCK/i.test(boxedCarFragrancePrompt) && /rest flat and fully supported on a real tabletop/i.test(boxedCarFragrancePrompt), boxedCarFragrancePrompt);
+
 const autoLocationProducts = [
   { id: "camping", name: "เต็นท์แคมปิ้ง", category: "อุปกรณ์แคมปิ้ง", forbidden: /cafe|coffee shop/i, expected: /campsite|camping|forest|outdoor/i },
   { id: "fitness", name: "ยางยืดออกกำลังกาย", category: "อุปกรณ์ออกกำลังกาย", forbidden: /cafe|coffee shop/i, expected: /fitness|workout|gym|exercise/i },
@@ -328,6 +340,37 @@ for (const product of autoLocationProducts) {
   const locationLine = autoLocationPrompt.split("\n").find(line => /Keep the fitted open box and product/i.test(line)) || autoLocationPrompt;
   check(`Auto location fits ${product.id}`, product.expected.test(locationLine) && !product.forbidden.test(locationLine), locationLine);
 }
+
+const fragranceAutoProducts = [
+  { id: "perfume", name: "น้ำหอมผู้หญิง กลิ่นดอกไม้", category: "เครื่องหอม", expected: /vanity|bedroom console|perfume display|marble|wood console/i },
+  { id: "reed-diffuser", name: "ก้านหอมอโรม่า", category: "เครื่องหอมในบ้าน", expected: /home fragrance|wood console|relaxation|spa-like|entryway|bedside/i }
+];
+for (const product of fragranceAutoProducts) {
+  const fragranceSettings = { ...settings, presenter: "none", location: "Auto", flowGenMode: "combined" };
+  const fragranceImage = buildImagePrompt(product, fragranceSettings);
+  const fragranceVideo = buildVideoPrompt(product, fragranceSettings);
+  const combinedPrompt = `${fragranceImage}\n${fragranceVideo}`;
+  const fragranceLocation = fragranceVideo.match(/Location setting:[^\n]*/i)?.[0] || "";
+  check(`Auto fragrance background fits ${product.id}`, product.expected.test(combinedPrompt), combinedPrompt);
+  check(
+    `Auto fragrance background rejects unrelated scene ${product.id}`,
+    !/Modern Bathroom|Cafe \/ Coffee Shop|Kitchen|Sports setting/i.test(fragranceLocation),
+    fragranceLocation
+  );
+  check(`Auto fragrance prompt includes category lock ${product.id}`, /FRAGRANCE PRODUCT BACKGROUND LOCK/i.test(combinedPrompt), combinedPrompt);
+}
+
+const carFragranceProduct = {
+  name: "POLARIS | 120ml CARQIA เจลน้ำหอมปรับอากาศ กลิ่นหอมทนนาน น้ำหอมรถยนต์ หรูหรา ผ่อนคลาย Luxury car perfume ของขวัญวันหยุด",
+  category: "เครื่องหอม"
+};
+const carFragranceSettings = { ...settings, presenter: "none", location: "Auto", flowGenMode: "combined" };
+const carFragranceImage = buildImagePrompt(carFragranceProduct, carFragranceSettings);
+const carFragranceVideo = buildVideoPrompt(carFragranceProduct, carFragranceSettings);
+const carFragranceLocation = carFragranceVideo.match(/Location setting:[^\n]*/i)?.[0] || "";
+check("Car fragrance Auto background uses a real car cabin", /car cabin|car interior|dashboard|center console|cup-holder|air-vent/i.test(carFragranceLocation), carFragranceLocation);
+check("Car fragrance Auto background rejects garden and home scenes", !/garden|สวน|outdoor|bedroom|vanity|bathroom|kitchen|cafe|household table/i.test(carFragranceLocation), carFragranceLocation);
+check("Car fragrance prompt includes vehicle fragrance lock", /CAR FRAGRANCE BACKGROUND LOCK/i.test(`${carFragranceImage}\n${carFragranceVideo}`), `${carFragranceImage}\n${carFragranceVideo}`);
 
 const originalNameLocationPrompt = buildVideoPrompt(
   { name: "สินค้าทั่วไป", originalName: "อุปกรณ์แคมปิ้ง เต็นท์", category: "สินค้า", autoOptions: { location: "Cafe / Coffee Shop" } },
@@ -646,6 +689,7 @@ check("formatPrice non-empty", typeof fp === "string" && fp.length > 0, `fp=${fp
 // --- normalizeHashtags dedup + cap ---
 eq("normalizeHashtags dedup+cap", normalizeHashtags(["#a", "#a", "#b", "#c", "#d", "#e", "#f"], 3), ["#a", "#b", "#c"]);
 eq("normalizeHashtags removes repeated hash prefixes", normalizeHashtags(["##TikTokShop", "###ของดีบอกต่อ"]), ["#TikTokShop", "#ของดีบอกต่อ"]);
+eq("normalizeHashtags canonicalizes the TikTokShop typo", normalizeHashtags(["##TikTokShp", "#tiktokshop"]), ["#TikTokShop"]);
 eq("normalizeHashtags splits space-separated tags", normalizeHashtags("##TikTokShop #ของดีบอกต่อ"), ["#TikTokShop", "#ของดีบอกต่อ"]);
 eq("normalizeHashtags handles mixed comma and space input", normalizeHashtags("##Tiktok, ###ขายดี #ของดี"), ["#Tiktok", "#ขายดี", "#ของดี"]);
 check("normalizeHashtags never outputs repeated hash prefixes", normalizeHashtags(["##Tiktok", "###ขายดี"]).every((tag) => !/^##/.test(tag)));

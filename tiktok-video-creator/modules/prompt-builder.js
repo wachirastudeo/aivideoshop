@@ -197,10 +197,13 @@ const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to refere
 const REALISTIC_SCENE_SCALE_DIRECTION = "REALISTIC SCENE SCALE LOCK: Use real-world anchors, natural perspective, and background depth; never oversized, floating, or pasted on.";
 
 const BACKGROUND_COMPATIBILITY_LOCK = "BACKGROUND COMPATIBILITY LOCK: The environment, surface, props, colors, and lighting must make physical and commercial sense for the exact product. Use only category-relevant objects. Do not place unrelated food, pets, plants, sports gear, bathroom items, kitchen tools, vehicles, or decorative props in the scene. For vehicle accessories, the matching vehicle is a required relevant context object. Never let the background compete with, hide, recolor, or imply an incorrect use for the product.";
+const FRAGRANCE_BACKGROUND_LOCK = "FRAGRANCE PRODUCT BACKGROUND LOCK: Match the scene to the exact fragrance format. For perfume or body fragrance, use an elegant vanity, bedroom console, boutique perfume display, or clean marble/wood styling surface. For reed diffusers, scented candles, room sprays, aroma oils, or home fragrance, use a calm home console, bedside table, entryway, or spa-like corner where the product is naturally used. Keep the product as the hero with restrained relevant props only. ABSOLUTELY FORBIDDEN: Do not use a toilet, shower, sink, bathroom fixtures, kitchen, cafe, food, sports setting, or unrelated decorative objects unless the reference clearly requires them.";
+const CAR_FRAGRANCE_BACKGROUND_LOCK = "CAR FRAGRANCE BACKGROUND LOCK: This is a car fragrance product. Show it inside a real, clean, premium car cabin in its natural position: dashboard, center console, cup holder, or air-vent area according to the reference product. Keep the car interior clearly recognizable but restrained, with realistic scale and soft natural light. ABSOLUTELY FORBIDDEN: Do not place it in a garden, park, outdoor scene, bedroom, home vanity, bathroom, kitchen, cafe, generic studio, or on an unrelated household table.";
 const RAINWEAR_OUTDOOR_LOCATION_LOCK = "RAINWEAR OUTDOOR USE LOCK: Show the raincoat or waterproof garment outdoors in light rain or immediately after rain, with a safe wet path, covered walkway, campsite edge, park path, or residential street and believable wet-ground reflections. Keep the child and parent safely supervised. Never place rainwear in an indoor room, bedroom, nursery, cafe, studio, showroom, or dry fashion backdrop.";
 const VEHICLE_ACCESSORY_CONTEXT_DIRECTION = "STRICT VEHICLE ACCESSORY CONTEXT LOCK: The matching real vehicle MUST be clearly visible and correctly matched to the product. Motorcycle accessories (helmet, motorcycle top box, rear case, rack, pannier, phone mount, or motorcycle part) MUST be shown on, attached to, or directly beside a real motorcycle or scooter; show enough of the motorcycle to make the use unmistakable. Car accessories MUST be shown inside, attached to, or directly beside a real car; show the relevant dashboard, seat, trunk, door, windshield, or exterior body. ABSOLUTELY FORBIDDEN: Do not show a motorcycle/car accessory alone on a generic desk, empty studio floor, unrelated room, cafe, or mismatched vehicle. Keep the product as the hero while the matching vehicle provides clear real-world context.";
 const FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK = "HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE: The entire still-image scene MUST be clearly outdoors in open air, such as an outdoor home driveway, front yard, quiet neighborhood street, or park path. Use outdoor pavement, concrete, grass, or natural daylight. The shoe must be grounded on the outdoor surface or naturally worn on a visible foot outside. ABSOLUTELY FORBIDDEN: indoor rooms, houses, bedrooms, entryways, closets, shoe shelves, retail interiors, cafes, studios, indoor floors, or studio backdrops. If any other instruction conflicts with this, keep the shoe outdoors.";
 const STILL_VIDEO_SOURCE_HERO_LOCK = "VIDEO SOURCE SCALE LOCK: Keep product centered and sized from real-world scene anchors, not frame coverage; keep breathing room/background. No giant, floating, or pasted product.";
+const BOXED_PRESENTATION_COMPOSITION_LOCK = "BOXED PRESENTATION COMPOSITION LOCK: The open presentation box must rest flat and fully supported on a real tabletop or console. Use a proportionate premium gift box or fitted display tray with a snug molded insert, only a small margin around the product, and an open lid that stays behind the product. The box is not a shipping carton, not oversized, not floating, not tilted unnaturally, and not allowed to cover the product. Keep one product only, centered and fully visible.";
 
 function resolveMatchStillDirection(autoPresenter, firstSceneNoPeople = false) {
   const baseFidelity = "STRICT REFERENCE PHOTO PRODUCT FIDELITY LOCK: Reproduce the product 100% pixel-faithfully from the reference image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without distortion, morphing, redesign, or alteration.";
@@ -872,7 +875,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
   if (boxedMotionMode) {
-    return buildBoxedReferenceStillPrompt(productInfo, productText, productName, locationSetting, textEnabled);
+    return buildBoxedReferenceStillPrompt(productInfo, productText, productName, resolveBoxedPresentationLocation(productText, locationSetting), textEnabled);
   }
   if (isCoffeeImageAd && productOnlyStill) {
     return buildCoffeeReferenceFirstStillPrompt(productText, productName, locationSetting, textEnabled);
@@ -905,6 +908,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isClothing && !productOnlyStill && ["woman", "man"].includes(auto.presenter) ? INDEPENDENT_FICTIONAL_CAST_DIRECTION : "",
     isClothing && !productOnlyStill && !isChildPresenter ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     BACKGROUND_COMPATIBILITY_LOCK,
+    vehicleAccessoryContext === "car" && isFragranceProduct(productText) ? CAR_FRAGRANCE_BACKGROUND_LOCK : "",
+    isFragranceProduct(productText) ? FRAGRANCE_BACKGROUND_LOCK : "",
     REALISTIC_SCENE_SCALE_DIRECTION,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     auto.presenter && auto.presenter !== "none" && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
@@ -1087,6 +1092,7 @@ function buildBoxedReferenceStillPrompt(productInfo, productText, productName, l
     REFERENCE_PIXEL_ARTWORK_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
     "Preserve the product's exact shape, materials, colors, pattern, logo, printed artwork, label, text, seams, and every visible detail. Do not redesign, redraw, recolor, simplify, mirror, or invent anything on the product.",
+    BOXED_PRESENTATION_COMPOSITION_LOCK,
     "The box is the only newly added object: an open lid or open presentation box with a clean neutral interior and a realistic fitted insert/support if needed. Add no branding or text to the box. Keep the product fully visible and never let the box cover important details.",
     sizeDirection,
     `Use a realistic ${locationSetting || "category-appropriate"} setting. Natural eye-level product photography, soft depth of field, limited table context, floor mostly out of frame, true scale, no oversized product and no giant box.`,
@@ -1244,6 +1250,7 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
     buildProductIdentityLock(productInfo),
     REFERENCE_PIXEL_ARTWORK_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
+    BOXED_PRESENTATION_COMPOSITION_LOCK,
     scaleDirection,
     `Keep the fitted open box and product at true scale in a realistic ${locationStr || "category-appropriate"} setting. Keep only limited table context and almost no floor visible.`,
     "CAMERA MOTION ONLY — MODERATE VISIBLE MOVEMENT: Keep the product and box completely static while the handheld smartphone camera makes a clearly noticeable but realistic move. Over the clip, pan laterally from left to right by about 20–30 cm, gently push in or pull back by about 5–10%, then arc to a modest 15–20° three-quarter angle. Use natural parallax and light handheld sway; the camera must not feel locked off or static. Keep the movement smooth, continuous, controlled, and physically plausible.",
@@ -1287,7 +1294,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   if (auto.videoStyle === "boxed-motion") {
-    return buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale);
+    return buildBoxedMotionVideoPrompt(productInfo, productName, resolveBoxedPresentationLocation(productText, locationStr), durationSeconds, textEnabled, overlayText, specificScale);
   }
   if (auto.videoStyle === "still-motion") {
     return buildStillMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale);
@@ -1382,6 +1389,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     auto.audioMode === "music_only" ? MUSIC_ONLY_AUDIO_DIRECTION : PROGRESSIVE_AUDIO_NARRATION_MANDATE,
     resolveMatchStillDirection(auto.presenter, firstSceneNoPeople),
     BACKGROUND_COMPATIBILITY_LOCK,
+    vehicleAccessoryContext === "car" && isFragranceProduct(productText) ? CAR_FRAGRANCE_BACKGROUND_LOCK : "",
+    isFragranceProduct(productText) ? FRAGRANCE_BACKGROUND_LOCK : "",
     REALISTIC_SCENE_SCALE_DIRECTION,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
     PRODUCT_FIDELITY_DIRECTION,
@@ -2127,6 +2136,13 @@ function resolvePromptLocation(auto = {}) {
   return auto.location;
 }
 
+function resolveBoxedPresentationLocation(productText = "", locationStr = "") {
+  if (getVehicleAccessoryContext(productText) === "car" && isFragranceProduct(productText)) {
+    return "beautiful indoor premium gift-presentation room with the fitted box resting on a clean elegant tabletop and soft warm light";
+  }
+  return locationStr;
+}
+
 function inferPromptAutoOptions(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
   const vehicleAccessoryContext = getVehicleAccessoryContext(text);
@@ -2152,6 +2168,12 @@ function inferPromptAutoOptions(productInfo = {}) {
   }
   if (isOutdoorRideProduct(text)) {
     return promptAutoOptions("review", "none", "fun", "Natural", "Outdoor Home Driveway or Park Path", "Slow Zoom In", "Cut ตรง", "Ride-on product, shown outdoors where it is realistically used");
+  }
+  if (vehicleAccessoryContext === "car" && isFragranceProduct(text)) {
+    return promptAutoOptions("cinematic", "none", "professional", "หรูหรา", "Premium car interior: dashboard, center console, cup holder, or air-vent area", "Slow Zoom In", "Fade", "Car fragrance product, shown inside a real car cabin in its natural position");
+  }
+  if (isFragranceProduct(text)) {
+    return promptAutoOptions("cinematic", "woman", "kind", "หรูหรา", "Elegant vanity, bedroom console, or calm home fragrance corner", "Slow Zoom In", "Fade", "Fragrance product, shown on a refined styling surface that matches perfume or home-fragrance use");
   }
   if (/(ลด|sale|โปร|flash|discount|ถูก|ส่งฟรี)/i.test(text)) {
     return promptAutoOptions("flash-sale", "none", "hype", "Trendy", "Studio Minimal", "Push In Fast", "Whip Pan", "Promotion-led product, optimized for urgency and fast conversion");
@@ -2258,6 +2280,22 @@ function inferRequiredProductLocation(productInfo = {}) {
       "Shaded garden with a proper hammock stand",
       "Quiet lakeside campsite with safe hammock supports"
     ], "hammock");
+  }
+  if (vehicleAccessoryContext === "car" && isFragranceProduct(text)) {
+    return pickProductLocationVariant(productInfo, [
+      "Inside a real premium car cabin: clean dashboard with soft natural daylight",
+      "Inside a parked luxury car: realistic center console or cup-holder area with shallow depth of field",
+      "Inside a clean modern car: product naturally placed on the dashboard or center console at true scale",
+      "Inside a real car cabin: tidy air-vent or dashboard area with restrained premium styling"
+    ], "car-fragrance");
+  }
+  if (isFragranceProduct(text)) {
+    return pickProductLocationVariant(productInfo, [
+      "Elegant perfume vanity or bedroom console with soft warm daylight",
+      "Calm home fragrance corner on a clean wood console with subtle natural light",
+      "Boutique perfume display on a clean marble or wood surface with soft diffused light",
+      "Spa-like relaxation corner with a restrained neutral background and natural product scale"
+    ], "fragrance");
   }
   if (vehicleAccessoryContext === "motorcycle") {
     return "Outdoor motorcycle driveway, roadside, parking area, or garage entrance with a real motorcycle or scooter clearly visible; show the accessory on, attached to, or directly beside the matching motorcycle; never a generic desk, empty studio, unrelated room, cafe, or car-only setting";
@@ -2377,6 +2415,10 @@ function inferRequiredProductLocation(productInfo = {}) {
 function isFootwearProduct(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.category || ""}`.toLowerCase();
   return /(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text);
+}
+
+function isFragranceProduct(text = "") {
+  return /(เครื่องหอม|น้ำหอม|น้ำหอมปรับอากาศ|ก้านหอม|ดิฟฟิวเซอร์|diffuser|reed\s*diffuser|เทียนหอม|scented\s*candle|room\s*spray|สเปรย์ปรับอากาศ|สเปรย์หอม|น้ำมันหอมระเหย|essential\s*oil|อโรม่า|aroma|fragrance|perfume|body\s*mist|air\s*freshener|เจลหอม|ถุงหอม|potpourri|wax\s*melt|scented)/i.test(String(text));
 }
 
 function pickAutoReviewer(productInfo = {}) {
@@ -2673,7 +2715,8 @@ export function normalizeHashtags(value, maxTags = 5) {
       .replace(/^#+/, "");
     if (!cleaned) continue;
 
-    const tag = `#${cleaned}`;
+    const canonicalTag = /^tiktokshp$/i.test(cleaned) || /^tiktokshop$/i.test(cleaned) ? "TikTokShop" : cleaned;
+    const tag = `#${canonicalTag}`;
     const key = tag.toLowerCase();
     if (seen.has(key)) continue;
 
