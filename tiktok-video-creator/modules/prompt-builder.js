@@ -161,6 +161,43 @@ function fashionSelfieVideoDirection(presenter) {
   return `FASHION SELFIE MODE — PRIVACY-PRESERVING FULL-BODY OUTFIT SHOWCASE: Use one consistent ${modelLabel} standing still in a full-length head-to-toe shot. The model holds a real smartphone vertically at face height throughout the entire clip, and the phone must fully cover the face in every frame; never reveal eyes, nose, mouth, facial features, or an identifiable face. The exact reference garment is the hero: preserve its silhouette, fit, length, fabric, colors, pattern, seams, and printed artwork exactly. Keep the model front-facing, modestly dressed, and physically stable. No talking, lip-sync, waving, walking, turning around, outfit changes, extra people, mirror distortion, or added text. Use only minimal natural posture movement and a slow, subtle left-to-right smartphone-camera pan with a very small handheld micro-sway so the full outfit remains visible and sharp.`;
 }
 
+const FASHION_SELFIE_BACKGROUND_QUALITY_LOCK = "FASHION SELFIE BACKGROUND QUALITY LOCK: Use an elegant, believable lifestyle setting with clean architecture, soft natural daylight, subtle layered depth, a calm neutral palette, and an uncluttered floor. Keep the background beautiful but secondary to the outfit. Do not use a generic gray studio, messy bedroom, crowded street, storefront, harsh neon, random furniture, visible wall text, logos, watermark, extra people, or mirror-selfie distortion. Add only a few restrained decor details that naturally fit the garment.";
+
+function resolveFashionSelfieLocation(productInfo = {}, settings = {}, auto = null) {
+  const resolvedAuto = auto || resolveAutoSettings(productInfo, settings);
+  if (!isAuto(settings.location)) return resolvePromptLocation(resolvedAuto);
+
+  const productText = [
+    productInfo.name,
+    productInfo.originalName,
+    productInfo.productLinkTitle,
+    productInfo.category,
+    productInfo.highlights
+  ].filter(Boolean).join(" ");
+
+  // Keep hard product-use constraints stronger than the fashion backdrop.
+  if (isRainwearProduct(productText) || isSunProtectionProduct(productText) || isFootwearProduct(productInfo)) {
+    return inferRequiredProductLocation(productInfo);
+  }
+  if (isCampingOutdoorProduct(productText) || isOutdoorRideProduct(productText) || /(?:outdoor|เดินป่า|เดินเขา|แคมป์|กีฬา|fitness|workout|hiking)/i.test(productText)) {
+    return inferRequiredProductLocation(productInfo);
+  }
+  if (/(กระเป๋า|เป้|กระเป๋าถือ|กระเป๋าสะพาย|กระเป๋าสตางค์|แว่นตา|แว่นกันแดด|นาฬิกา|เครื่องประดับ|bag|backpack|wallet|purse|tote|handbag|crossbody|glasses|sunglasses|jewelry|watch|accessory)/i.test(productText)) {
+    return pickProductLocationVariant(productInfo, [
+      "beautiful minimalist apartment entryway with a sculptural bench, neutral walls, warm daylight, and uncluttered floor space",
+      "sunlit modern hotel-lobby corner with neutral stone, warm wood, clean architectural lines, and a softly blurred background",
+      "quiet botanical courtyard beside a modern building with clean paving, soft natural daylight, and restrained greenery"
+    ], "fashion-selfie-accessory");
+  }
+
+  return pickProductLocationVariant(productInfo, [
+    "bright minimalist apartment dressing area with neutral plaster walls, warm wood floor, soft window light, and one tasteful plant",
+    "elegant sunlit hotel-lobby corner with neutral stone, warm wood, clean architectural lines, and a softly blurred background",
+    "beautiful modern apartment entryway with a sculptural bench, neutral walls, warm daylight, and uncluttered floor space",
+    "quiet botanical courtyard beside a modern building with clean paving, soft natural daylight, and restrained greenery"
+  ], "fashion-selfie");
+}
+
 const FULL_PRODUCT_VISIBILITY_DIRECTION = "STRICT FULL PRODUCT VISIBILITY & NO CROPPING RULE: The ENTIRE product (including all top, bottom, left, right, side edges, legs, handles, doors, shelves, and structural frame) MUST be 100% fully visible inside the frame. ABSOLUTELY NO CROPPING or cutting off any edge or portion of the product. For large or bulky items (such as cabinets, wardrobes, kitchen sinks, dishwashers, refrigerators, sofas, desks, or shelves), use a wide-angle framing (wide camera shot) with ample breathing space around all four edges of the product so that the ENTIRE full cabinet/sink/furniture piece is completely captured in the frame without any part chopped off.";
 
 const HANDS_DIRECTION = "NATURAL HUMAN HAND REALISM & AUTHENTIC REVIEW POSES: Realistic first-person POV (Point of View) perspective. Show authentic, natural human hands and forearms holding, supporting, or presenting the product in a realistic, comfortable review pose. NATURAL HAND POSES & GESTURES: Hands must use authentic, relaxed, ergonomic holding poses — such as gently supporting the product from the bottom or sides, holding it steadily with a natural grip, softly turning it to show texture, or gesturing naturally toward details. ALWAYS keep the main brand logo, product title, and printed front artwork 100% visible without hands blocking or covering them. STRICTLY FORBIDDEN POSES: awkward claw grips squeezing the product, fingers covering key printed logos or text, unnaturally contorted wrists, impossible arm angles, or hands floating detached in mid-air. The hands must look 100% realistic, organic, and human with natural skin texture, realistic knuckles, soft fingernails, and natural wrist alignment. STRICT MAXIMUM TWO-HAND COUNT LOCK: The frame must contain AT MOST 2 human hands in total (strictly 1 left hand and 1 right hand, or 1 single hand). ABSOLUTELY FORBIDDEN & CRITICAL RULE: NEVER render 3 hands, NEVER render a third hand, NEVER render floating extra hands, duplicated hands, extra arms, or more than 2 hands under any circumstances across all frames. Each hand must have strictly exactly 5 fingers with natural fingernails, clean skin texture, realistic knuckles, and wrist joints; no extra fingers, no distorted digits, no clipping into the product.";
@@ -1282,7 +1319,9 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
 
 export function buildVideoPrompt(productInfo, settings = {}) {
   const auto = resolveAutoSettings(productInfo, settings);
-  const locationStr = resolvePromptLocation(auto);
+  const locationStr = auto.videoStyle === "fashion-selfie"
+    ? resolveFashionSelfieLocation(productInfo, settings, auto)
+    : resolvePromptLocation(auto);
   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
   const clipText = resolveClipText(productInfo, settings);
   const spokenOpeningHook = compactPromptText(resolveSpokenOpeningHook(productInfo), 30);
@@ -1740,14 +1779,15 @@ function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, 
   const garmentName = productName === "the attached product" ? "the exact attached garment" : productName;
   const apparelPriority = APPAREL_REFERENCE_PRIORITY;
   const fidelity = PRODUCT_FIDELITY_DIRECTION;
-  const location = resolvePromptLocation(resolveAutoSettings(productInfo, settings));
+  const location = resolveFashionSelfieLocation(productInfo, settings);
   const textRule = buildFashionSelfieTextDirection(productInfo, settings, false);
   return [
     `Create one photorealistic vertical 9:16 full-body fashion selfie image featuring ${garmentName}.`,
     fashionSelfieImageDirection(presenter),
     apparelPriority,
     fidelity,
-    `Use a clean, realistic fashion setting${location ? ` such as ${compactPromptText(location, 80)}` : ""}; keep the background simple and never let it hide the garment.`,
+    `Use this exact background direction: ${compactPromptText(location, 180)}. Keep the model and the complete garment clearly separated from the background with natural depth of field.`,
+    FASHION_SELFIE_BACKGROUND_QUALITY_LOCK,
     textRule,
     "The reference image is the only source of truth for the garment. Do not redesign, crop, duplicate, or replace it."
   ].join("\n");
@@ -1755,13 +1795,15 @@ function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, 
 
 function buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings = {}, presenter = "woman") {
   const garmentName = productName === "the attached product" ? "the exact attached garment" : productName;
-  const location = locationStr ? ` in a clean, realistic ${compactPromptText(locationStr, 80)} setting` : " in a clean, realistic fashion setting";
+  const location = locationStr ? ` in a beautiful, realistic ${compactPromptText(locationStr, 180)}` : " in a beautiful, realistic fashion setting";
   const textRule = buildFashionSelfieTextDirection(productInfo, settings, true);
   return [
     `Create a ${durationSeconds}-second photorealistic vertical 9:16 fashion outfit video featuring ${garmentName}${location}.`,
     fashionSelfieVideoDirection(presenter),
     APPAREL_REFERENCE_PRIORITY,
     PRODUCT_FIDELITY_DIRECTION,
+    `FASHION SELFIE BACKGROUND LOCK: Keep the same background direction throughout every scene: ${compactPromptText(locationStr, 180)}. Keep the outfit separated from the background with natural depth of field; the background must remain stable, tasteful, and secondary to the garment.`,
+    FASHION_SELFIE_BACKGROUND_QUALITY_LOCK,
     `MANDATORY SIMPLE SHOT PLAN: Scene 1 is a stable full-body front view with the model already holding the phone over her face. Scene 2 is a very slow, small left-to-right pan that keeps the complete outfit, feet, and phone visible. Scene 3 returns to a stable full-body hero view for garment inspection. Keep every shot single-frame, uncluttered, and easy to compare with the reference garment.`,
     `The model must remain standing in place; only subtle breathing, natural phone steadiness, and minimal camera motion are allowed. Do not zoom into the face or crop out the lower body.`,
     textRule,

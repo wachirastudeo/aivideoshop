@@ -174,6 +174,9 @@ check("fashion selfie image keeps the garment full body", /head-to-toe|full-body
 check("fashion selfie video keeps the phone over the face", /FASHION SELFIE MODE[\s\S]*phone must fully cover the face/i.test(fashionSelfieVideo), fashionSelfieVideo);
 check("fashion selfie video uses minimal pan movement", /slow, subtle left-to-right smartphone-camera pan/i.test(fashionSelfieVideo), fashionSelfieVideo);
 check("fashion selfie video forbids face reveal and walking", /never reveal eyes, nose, mouth[\s\S]*walking, turning around/i.test(fashionSelfieVideo), fashionSelfieVideo);
+check("fashion selfie Auto chooses a beautiful minimal background", /(minimalist apartment|hotel-lobby|modern apartment entryway|botanical courtyard)/i.test(fashionSelfieImage) && /FASHION SELFIE BACKGROUND QUALITY LOCK/i.test(fashionSelfieImage), fashionSelfieImage);
+check("fashion selfie Auto does not fall back to a generic urban street", !/Urban Street/i.test(fashionSelfieImage + fashionSelfieVideo), fashionSelfieImage + fashionSelfieVideo);
+check("fashion selfie keeps the background stable and secondary", /FASHION SELFIE BACKGROUND LOCK[\s\S]*stable, tasteful, and secondary to the garment/i.test(fashionSelfieVideo), fashionSelfieVideo);
 
 const fashionSelfieTextSettings = {
   ...fashionSelfieSettings,
