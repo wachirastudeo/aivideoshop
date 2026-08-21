@@ -791,17 +791,17 @@ async function applyProductLink(productId, productUrl, productName, isCustomProd
     titleInput.focus();
     try { titleInput.select(); } catch (_) {}
     await typeIntoInput(titleInput, finalTitle);
-    log(`[Product Link] 🎯 STEP8 ตั้งชื่อสินค้าสำเร็จ: "${finalTitle}" (ชื่อเดิม: "${existingTitle}")`);
     if (await waitForProductNameValidationError(titleInput)) {
       log(`[Product Link] ⚠️ TikTok ปฏิเสธชื่อสินค้า "${finalTitle}" — ล้างแล้วกรอก "${PRODUCT_TITLE_SAFE_FALLBACK}"`);
       finalTitle = PRODUCT_TITLE_SAFE_FALLBACK;
       await typeIntoInput(titleInput, finalTitle);
-      if (await waitForProductNameValidationError(titleInput)) {
+      if (!(await waitForProductNameValidationClear(titleInput))) {
         log(`[Product Link] ❌ ชื่อสำรอง "${PRODUCT_TITLE_SAFE_FALLBACK}" ยังถูก TikTok ปฏิเสธ`);
         return false;
       }
       log(`[Product Link] ✅ ใช้ชื่อสำรอง: "${finalTitle}"`);
     }
+    log(`[Product Link] 🎯 STEP8 ตั้งชื่อสินค้าสำเร็จ: "${finalTitle}" (ชื่อเดิม: "${existingTitle}")`);
   } else {
     log(`[Product Link] ⚠️ STEP8 ไม่พบกล่องข้อความให้กรอกชื่อสินค้า (จะลองกดเพิ่มต่อโดยใช้ค่าเริ่มต้น):
     - ID สินค้า: ${productId || "ไม่พบ ID"}
@@ -818,6 +818,16 @@ async function applyProductLink(productId, productUrl, productName, isCustomProd
   }, 15000, 1500, () => diagPrimaryButton(["add", "done", "เพิ่ม", "เสร็จ"]));
   let added = false;
   if (addBtn9) {
+    // TikTok อาจอัปเดตข้อความ validation ช้ากว่าการกรอก input — ห้ามกด Add ถ้ายังมี error
+    const currentTitleInput = findProductNameInput();
+    if (currentTitleInput && hasProductNameValidationError(currentTitleInput)) {
+      log(`[Product Link] ⚠️ พบ validation error ก่อนกด Add — ใช้ชื่อสำรอง "${PRODUCT_TITLE_SAFE_FALLBACK}"`);
+      await typeIntoInput(currentTitleInput, PRODUCT_TITLE_SAFE_FALLBACK);
+      if (!(await waitForProductNameValidationClear(currentTitleInput))) {
+        log(`[Product Link] ❌ ชื่อสำรอง "${PRODUCT_TITLE_SAFE_FALLBACK}" ยังถูก TikTok ปฏิเสธก่อนกด Add`);
+        return false;
+      }
+    }
     await sleep(500);
     await realClick(addBtn9);
     try { addBtn9.click(); } catch (_) {}
@@ -856,25 +866,57 @@ function findProductNameInput() {
 
 const PRODUCT_TITLE_SAFE_FALLBACK = "พร้อมส่ง";
 const PRODUCT_NAME_PROHIBITED_ERROR_RE = /product\s+names?\s+can['’]?t\s+contain\s+prohibited\s+words|prohibited\s+words|ชื่อสินค้า.*คำต้องห้าม|คำต้องห้าม/i;
+const PRODUCT_NAME_VALIDATION_TIMEOUT_MS = 3500;
 
-function productNameValidationScope(input) {
-  return input?.closest('.TUXModal, [role="dialog"], .common-modal') || input?.parentElement || document;
+function productNameValidationScopes(input) {
+  if (!input) return [];
+  const scopes = [];
+  let node = input;
+  // TikTok has used both field-level and modal-level error containers.
+  for (let depth = 0; node && depth < 6; depth += 1, node = node.parentElement) {
+    scopes.push(node);
+  }
+  const modal = input.closest('.TUXModal, [role="dialog"], .common-modal');
+  if (modal && !scopes.includes(modal)) scopes.push(modal);
+  return scopes;
 }
 
 function hasProductNameValidationError(input) {
   if (!input) return false;
   if (input.getAttribute("aria-invalid") === "true") return true;
-  const scope = productNameValidationScope(input);
-  return PRODUCT_NAME_PROHIBITED_ERROR_RE.test(normalizeText(scope.textContent));
+  return productNameValidationScopes(input).some((scope) => {
+    const errorNodes = scope.querySelectorAll?.(
+      '[role="alert"], [aria-live], [class*="error"], [class*="Error"], [class*="warning"], [class*="Warning"]'
+    ) || [];
+    if ([...errorNodes].some((node) => isVisible(node) && PRODUCT_NAME_PROHIBITED_ERROR_RE.test(normalizeText(node.textContent)))) {
+      return true;
+    }
+    return isVisible(scope) && PRODUCT_NAME_PROHIBITED_ERROR_RE.test(normalizeText(scope.textContent));
+  });
 }
 
-async function waitForProductNameValidationError(input, timeoutMs = 1200) {
+async function waitForProductNameValidationError(input, timeoutMs = PRODUCT_NAME_VALIDATION_TIMEOUT_MS) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (hasProductNameValidationError(input)) return true;
     await sleep(100);
   }
   return hasProductNameValidationError(input);
+}
+
+async function waitForProductNameValidationClear(input, timeoutMs = PRODUCT_NAME_VALIDATION_TIMEOUT_MS) {
+  const deadline = Date.now() + timeoutMs;
+  let clearSince = 0;
+  while (Date.now() < deadline) {
+    if (hasProductNameValidationError(input)) {
+      clearSince = 0;
+    } else {
+      if (!clearSince) clearSince = Date.now();
+      if (Date.now() - clearSince >= 250) return true;
+    }
+    await sleep(100);
+  }
+  return !hasProductNameValidationError(input);
 }
 
 // หาแถวสินค้าที่ "ตรงกับ key จริง" เท่านั้น (ไม่ fallback rows[0])
@@ -1441,10 +1483,11 @@ async function fillCaption(caption, hashtags) {
   document.execCommand("delete");
   await sleep(150 + Math.random() * 100);
 
-  // พิมพ์ caption แบบทีละตัวอักษรเพื่อความสมจริง
-  if (caption) {
-    for (let i = 0; i < caption.length; i++) {
-      document.execCommand("insertText", false, caption[i]);
+  // พิมพ์ caption แบบทีละตัวอักษรเพื่อความสมจริง — ต้อง clean ก่อนกัน ## จาก legacy draft flow
+  const cleanCaption = sanitizeCaption(caption);
+  if (cleanCaption) {
+    for (let i = 0; i < cleanCaption.length; i++) {
+      document.execCommand("insertText", false, cleanCaption[i]);
       await sleep(15 + Math.random() * 35);
     }
   }

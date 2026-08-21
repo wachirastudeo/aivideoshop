@@ -118,7 +118,7 @@ async function uploadChunks(uploadUrl, blob) {
 // ── Step 5: Publish draft ─────────────────────────────────────────────────
 async function publishDraft({ endpoint, uploadId, caption, hashtags, csrfToken }) {
   const captionWithTags = [
-    caption,
+    sanitizeTikTokCaption(caption),
     ...hashtags.map((tag) => `#${String(tag || "").replace(/^#+/, "").trim()}`).filter((tag) => tag !== "#")
   ].join(" ").trim();
 
@@ -148,6 +148,14 @@ async function publishDraft({ endpoint, uploadId, caption, hashtags, csrfToken }
 
   const data = await res.json();
   return data?.data || data;
+}
+
+function sanitizeTikTokCaption(value) {
+  return String(value || "")
+    .replace(/#{2,}/g, " ")
+    .replace(/#+[\p{L}\p{M}\p{N}_]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // ── CSRF token จาก cookie ─────────────────────────────────────────────────
