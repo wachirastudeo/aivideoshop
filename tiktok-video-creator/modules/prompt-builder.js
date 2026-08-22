@@ -1186,7 +1186,7 @@ function getProductSpecificScaleInstruction(text = "") {
   // Detect coffee bags, pouches, sachets, packets (ถุงกาแฟ, ซองกาแฟ, 200g, 250g, 500g)
   const isSmallPouch = /(กาแฟ|ชา|ผง|ถุง|ซอง|ห่อ|เมล็ด|coffee|tea|powder|pouch|bag|sachet|pack|packet|200\s*g|250\s*g|500\s*g|gr?a?m|กรัม)/i.test(clean);
   if (isSmallPouch && !/(กระสอบ|25\s*kg|50\s*kg|10\s*kg|5\s*kg)/i.test(clean)) {
-    return "STRICT PRODUCT-SPECIFIC SIZE RULE: This product is a standard hand-sized 200-500g pouch or bag. It must be depicted in a realistic hand-sized scale, easily held in one or both hands (height of the pouch is about 15-20cm). It must not be depicted as a tiny pocket sachet, nor as a giant sack or massive bag. Keep it perfectly proportional as a standard coffee/tea bag.";
+    return "STRICT PRODUCT-SPECIFIC SIZE RULE: This product is a standard hand-sized 200-500g pouch or bag. It must be depicted in a realistic hand-sized scale, easily held in one or both hands (height of the pouch is about 15-20cm). In the vertical frame, the pouch should occupy only about 30-40% of the image height with clear margins and visible surrounding space; never let it dominate the frame. It must not be depicted as a tiny pocket sachet, nor as a giant sack or massive bag. Keep it perfectly proportional as a standard coffee/tea bag.";
   }
   
   return "";
@@ -2331,7 +2331,7 @@ function inferRequiredProductLocation(productInfo = {}) {
       "Quiet home fitness space with neutral walls and safe open floor"
     ], "fitness");
   }
-  if (/(pet|animal|cat|kitten|dog|puppy|อาหารแมว|อาหารหมา|ปลอกคอ|สัตว์เลี้ยง)/i.test(text)) {
+  if (/(pet|animal|cat|kitten|dog|puppy|แมว|หมา|สุนัข|อาหารแมว|อาหารหมา|ปลอกคอ|สัตว์เลี้ยง)/i.test(text)) {
     return pickProductLocationVariant(productInfo, [
       "Clean pet-friendly home interior: neutral-floor pet-care corner",
       "Clean pet-friendly home interior: bright feeding-area corner",
@@ -2345,6 +2345,13 @@ function inferRequiredProductLocation(productInfo = {}) {
       "Open park path with natural daylight and safe clearance; never indoors",
       "Residential front yard with a clear outdoor riding area; never indoors"
     ], "outdoor-ride");
+  }
+  if (/(เครื่องชงกาแฟ|เครื่องทำกาแฟ|เครื่องชงเอสเพรสโซ่|coffee\s*machine|espresso\s*machine|coffee\s*maker)/i.test(text)) {
+    return pickProductLocationVariant(productInfo, [
+      "Modern kitchen coffee station with a clean countertop and soft natural window light",
+      "Home coffee bar on a tidy kitchen counter with realistic appliance context",
+      "Clean modern kitchen counter beside a coffee setup with warm morning daylight"
+    ], "coffee-machine");
   }
   if (isCampingOutdoorProduct(text)) {
     return pickProductLocationVariant(productInfo, [
@@ -2396,6 +2403,13 @@ function inferRequiredProductLocation(productInfo = {}) {
       "Bright dining table with simple food-safe surroundings",
       "Minimal breakfast corner with natural window light"
     ], "food");
+  }
+  if (/(เครื่องดูดฝุ่น|หุ่นยนต์ดูดฝุ่น|ไม้ถูพื้น|เครื่องซักผ้า|เครื่องอบผ้า|น้ำยาทำความสะอาด|vacuum|robot\s*vacuum|mop|washing\s*machine|dryer|cleaning\s*product)/i.test(text)) {
+    return pickProductLocationVariant(productInfo, [
+      "Clean modern home interior with open floor space and natural window light",
+      "Bright utility or laundry area with realistic household context",
+      "Neat living room with a clear floor and soft daylight for a cleaning product"
+    ], "home-cleaning");
   }
   if (/(laptop|computer|keyboard|mouse|headphone|charger|cable|อุปกรณ์ไอที|คอมพิวเตอร์|หูฟัง|สายชาร์จ)/i.test(text)) {
     return pickProductLocationVariant(productInfo, [

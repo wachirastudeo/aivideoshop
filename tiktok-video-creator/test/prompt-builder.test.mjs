@@ -824,8 +824,8 @@ check("image prompt with text disabled uses TEXT_FREE_DIRECTION", /STRICT NO-TEX
 const coffeeProduct = { name: "ถุงกาแฟ 200 กรัม" };
 const coffeeImage = buildImagePrompt(coffeeProduct, settings);
 const coffeeVideo = buildVideoPrompt(coffeeProduct, settings);
-check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeImage), coffeeImage);
-check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeVideo), coffeeVideo);
+check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeImage) && /occupy only about 30-40% of the image height/i.test(coffeeImage), coffeeImage);
+check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeVideo) && /occupy only about 30-40% of the image height/i.test(coffeeVideo), coffeeVideo);
 const groundCoffeeImage = buildImagePrompt({ name: "กาแฟผงคั่วบด 200 กรัม" }, settings);
 const groundCoffeeVideo = buildVideoPrompt({ name: "กาแฟผงคั่วบด 200 กรัม" }, settings);
 check("ground coffee name maps to coffee powder", /ground coffee powder/i.test(groundCoffeeImage) && /ground coffee powder/i.test(groundCoffeeVideo), groundCoffeeImage + groundCoffeeVideo);
@@ -1137,7 +1137,10 @@ const autoBackgroundCases = [
   ["toy", /Bright safe children's playroom/i],
   ["car phone holder", /Realistic clean car interior/i],
   ["laptop stand", /Neat modern desk workspace/i],
-  ["running shoes", /Outdoor home driveway|front yard|quiet neighborhood street|park path/i]
+  ["running shoes", /Outdoor home driveway|front yard|quiet neighborhood street|park path/i],
+  ["เครื่องชงกาแฟ", /kitchen coffee station|home coffee bar|modern kitchen counter/i],
+  ["ทรายแมว", /Clean pet-friendly home interior|pet-care/i],
+  ["เครื่องดูดฝุ่น", /clean modern home interior|utility or laundry|neat living room/i]
 ];
 for (const [name, expectedLocation] of autoBackgroundCases) {
   const autoImage = buildImagePrompt({ name }, { ...settings, location: "Auto", presenter: "Auto" });
