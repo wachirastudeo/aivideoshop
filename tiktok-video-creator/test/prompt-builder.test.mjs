@@ -1140,7 +1140,8 @@ const autoBackgroundCases = [
   ["running shoes", /Outdoor home driveway|front yard|quiet neighborhood street|park path/i],
   ["เครื่องชงกาแฟ", /kitchen coffee station|home coffee bar|modern kitchen counter/i],
   ["ทรายแมว", /Clean pet-friendly home interior|pet-care/i],
-  ["เครื่องดูดฝุ่น", /clean modern home interior|utility or laundry|neat living room/i]
+  ["เครื่องดูดฝุ่น", /clean modern home interior|utility or laundry|neat living room/i],
+  ["ไม้เท้าเดินป่า", /forest hiking trail|mountain trailhead|trekking path/i]
 ];
 for (const [name, expectedLocation] of autoBackgroundCases) {
   const autoImage = buildImagePrompt({ name }, { ...settings, location: "Auto", presenter: "Auto" });
@@ -1153,6 +1154,18 @@ const shoeWithWrongSavedLocation = buildImagePrompt(
   { ...settings, location: "Modern Living Room" }
 );
 check("shoe still image respects a saved indoor location", /SELECTED BACKGROUND LOCATION LOCK[\s\S]*Modern Living Room/i.test(shoeWithWrongSavedLocation) && !/HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE|outdoor home driveway|front yard|quiet neighborhood street|park path/i.test(shoeWithWrongSavedLocation));
+
+const hikingPoleVideo = buildVideoPrompt(
+  { name: "ไม้เท้าเดินป่า" },
+  { ...settings, location: "Auto", presenter: "Auto" }
+);
+check("hiking pole Auto scene uses a real trail", /forest hiking trail|mountain trailhead|trekking path/i.test(hikingPoleVideo) && !/Modern Living Room|Clean Modern Studio/i.test(hikingPoleVideo), hikingPoleVideo);
+check("hiking pole Auto presenter outfit matches hiking use", /PRESENTER OUTFIT MATCH:[^\n]*practical hiking outfit[\s\S]*hiking pants[\s\S]*trail shoes/i.test(hikingPoleVideo), hikingPoleVideo);
+const genericCaneVideo = buildVideoPrompt(
+  { name: "ไม้เท้า" },
+  { ...settings, location: "Auto", presenter: "Auto" }
+);
+check("generic cane does not inherit hiking-pole scene rules", !/forest hiking trail|mountain trailhead|trekking path|practical hiking outfit/i.test(genericCaneVideo), genericCaneVideo);
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));

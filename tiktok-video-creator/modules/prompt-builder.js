@@ -359,6 +359,9 @@ function getPresenterOutfitDirection(text = "", selectedPresenter = "") {
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(clean)) {
     return `PRESENTER OUTFIT MATCH: The ${model} wears the exact reference footwear when intended. Use coordinated casual streetwear or athletic wear; never show a different shoe model or mismatched styling.`;
   }
+  if (isHikingPoleProduct(clean)) {
+    return `PRESENTER OUTFIT MATCH: The ${model} wears a practical hiking outfit that fits a real trail: moisture-wicking long-sleeve top or outdoor jacket, durable hiking pants, trail shoes, and an optional small daypack. No indoor clothing, officewear, formalwear, or unrelated costume.`;
+  }
   if (isCampingOutdoorProduct(clean) || isOutdoorRideProduct(clean) || /(วิ่ง|ออกกำลังกาย|ฟิตเนส|กีฬา|sport|running|workout|fitness|athletic)/i.test(clean)) {
     return `PRESENTER OUTFIT MATCH: The ${model} wears modest outdoor clothing with sports shoes matched to the product and setting.`;
   }
@@ -1052,9 +1055,14 @@ function isCampingChairProduct(text = "") {
 
 function isCampingOutdoorProduct(text = "") {
   const clean = String(text || "").toLowerCase();
-  return isHammockProduct(clean)
+  return isHikingPoleProduct(clean)
+    || isHammockProduct(clean)
     || isCampingChairProduct(clean)
-    || /(แคมป์|แคมปิ้ง|อุปกรณ์แคมป์|อุปกรณ์แคมปิ้ง|เดินป่า|เต็นท์|ถุงนอน|\bcamping\b|\bhiking\b|\btent\b|sleeping\s+bag)/i.test(clean);
+    || /(แคมป์|แคมปิ้ง|อุปกรณ์แคมป์|อุปกรณ์แคมปิ้ง|เดินป่า|เดินเขา|ปีนเขา|ไต่เขา|เต็นท์|ถุงนอน|อุปกรณ์กลางแจ้ง|เอาท์ดอร์|\bcamping\b|\bhiking\b|\btrekking\b|\boutdoor\b|\btent\b|\bhammock\b|camp(?:ing)?\s+chair|sleeping\s+bag)/i.test(clean);
+}
+
+function isHikingPoleProduct(text = "") {
+  return /(ไม้เท้า(?:เดินป่า|เดินเขา|ปีนเขา)|ไม้เท้าค้ำยันเดินป่า|ไม้เท้าเทรคกิ้ง|trekking\s*pole|hiking\s*pole|walking\s*(?:stick|pole)|mountain\s*pole)/i.test(String(text || "").toLowerCase());
 }
 
 function isWearableProduct(text = "") {
@@ -2233,6 +2241,9 @@ function inferPromptAutoOptions(productInfo = {}) {
   if (vehicleAccessoryContext === "car") {
     return promptAutoOptions("review", "none", "professional", "Professional", "Realistic Car Interior or Driveway", "Slow Zoom In", "Cut ตรง", "Car accessory, shown inside or beside a real car with the relevant vehicle context clearly visible");
   }
+  if (isHikingPoleProduct(text)) {
+    return promptAutoOptions("testimonial", "man", "professional", "Natural", "Nature / Outdoor", "Slow Zoom In", "Cut ตรง", "Hiking pole, shown with an adult Thai man in a realistic trail setting using practical hiking gear");
+  }
   if (isCampingOutdoorProduct(text)) {
     return promptAutoOptions("testimonial", "man", "professional", "Natural", "Nature / Outdoor", "Slow Zoom In", "Cut ตรง", "Camping or outdoor gear, shown with an adult Thai man using it naturally at a realistic campsite");
   }
@@ -2345,6 +2356,13 @@ function inferRequiredProductLocation(productInfo = {}) {
       "Open park path with natural daylight and safe clearance; never indoors",
       "Residential front yard with a clear outdoor riding area; never indoors"
     ], "outdoor-ride");
+  }
+  if (isHikingPoleProduct(text)) {
+    return pickProductLocationVariant(productInfo, [
+      "Realistic forest hiking trail with natural ground, gentle incline, and soft daylight; never indoors",
+      "Mountain trailhead with safe rocky ground, trees, and clear outdoor daylight; never indoors",
+      "Outdoor trekking path beside a forest edge with practical hiking context; never indoors"
+    ], "hiking-pole");
   }
   if (/(เครื่องชงกาแฟ|เครื่องทำกาแฟ|เครื่องชงเอสเพรสโซ่|coffee\s*machine|espresso\s*machine|coffee\s*maker)/i.test(text)) {
     return pickProductLocationVariant(productInfo, [
