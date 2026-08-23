@@ -206,7 +206,7 @@ const staleFemaleForMenswear = buildVideoPrompt(
   { name: "เสื้อผ้าสุภาพบุรุษ", category: "แฟชั่น" },
   { ...fashionSelfieSettings, presenter: "woman" }
 );
-check("menswear product gender overrides stale female presenter state", /fictional adult Thai male fashion model/i.test(staleFemaleForMenswear) && !/fictional adult Thai female fashion model/i.test(staleFemaleForMenswear), staleFemaleForMenswear);
+check("explicit female presenter selection wins over menswear inference", /fictional adult Thai female fashion model/i.test(staleFemaleForMenswear) && !/fictional adult Thai male fashion model/i.test(staleFemaleForMenswear), staleFemaleForMenswear);
 
 const imageDetectedMenswear = buildVideoPrompt(
   { name: "เสื้อแฟชั่น", category: "เสื้อผ้า", imageGender: "man" },
@@ -770,6 +770,7 @@ const imgPresenterWoman = buildImagePrompt({ name: "ลิปสติก" }, { 
 check("image prompt with woman presenter focuses on product hero presentation", /Product Hero Focus|Product Focus|Product photography/i.test(imgPresenterWoman), imgPresenterWoman);
 check("image prompt with woman presenter uses single full-frame product intro", /one authentic full-frame smartphone photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterWoman), imgPresenterWoman);
 check("image prompt with one presenter forbids a third hand", /SINGLE-PRESENTER HAND ANATOMY[\s\S]*Never render a third hand/i.test(imgPresenterWoman), imgPresenterWoman);
+check("image prompt locks explicit woman presenter selection", /HIGHEST PRIORITY EXPLICIT PRESENTER GENDER LOCK[\s\S]*selected a woman presenter[\s\S]*Never substitute a man/i.test(imgPresenterWoman), imgPresenterWoman);
 
 const halfBodySettings = { ...settings, presenter: "woman", cameraFraming: "half_body" };
 const imgHalfBody = buildImagePrompt({ name: "ลิปสติก" }, halfBodySettings);
@@ -798,6 +799,7 @@ check("video prompt with no presenter has no positive presenter/person reference
 
 const vidPresenterWoman = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "woman" });
 check("video prompt with one presenter forbids a third hand", /SINGLE-PRESENTER HAND ANATOMY[\s\S]*Never render a third hand/i.test(vidPresenterWoman), vidPresenterWoman);
+check("video prompt locks explicit woman presenter selection", /HIGHEST PRIORITY EXPLICIT PRESENTER GENDER LOCK[\s\S]*selected a woman presenter[\s\S]*Never substitute a man/i.test(vidPresenterWoman), vidPresenterWoman);
 
 const vidPresenterHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("video prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(vidPresenterHands), vidPresenterHands);

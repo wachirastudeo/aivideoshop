@@ -134,6 +134,15 @@ const PRESENTERS = {
 
 const THAI_PERSON_DIRECTION = "Natural fictional adult Thai reviewer standing in a full-length shot, modestly dressed in a complete outfit (proper top AND long pants/skirt). The product must remain rigid and static; reviewer stands next to it gently.";
 const THAI_HUMAN_CAST_DIRECTION = "THAI PRESENTER CAST: Use the selected fictional Thai commercial presenter. In Auto mode, include exactly one well-groomed, realistic, age-appropriate fictional adult Thai presenter.";
+const EXPLICIT_PRESENTER_GENDER_DIRECTIONS = {
+  woman: "HIGHEST PRIORITY EXPLICIT PRESENTER GENDER LOCK: The user selected a woman presenter. Show exactly one fictional adult Thai woman as the on-screen presenter in every presenter scene. Never substitute a man, male model, boy, or mixed-gender cast. Do not let the product category or reference image change this selection.",
+  man: "HIGHEST PRIORITY EXPLICIT PRESENTER GENDER LOCK: The user selected a man presenter. Show exactly one fictional adult Thai man as the on-screen presenter in every presenter scene. Never substitute a woman, female model, girl, or mixed-gender cast. Do not let the product category or reference image change this selection."
+};
+
+function resolveExplicitPresenterGenderDirection(settings = {}, hasVisiblePresenter = false) {
+  if (!hasVisiblePresenter) return "";
+  return EXPLICIT_PRESENTER_GENDER_DIRECTIONS[settings?.presenter] || "";
+}
 
 const KIDS_WITH_PARENT_DIRECTION = "KIDS PRODUCT SCENE WITH CHILD & PARENT SUPERVISION: The scene MUST depict a happy young Thai kindergarten child (4-6 years old or older, strictly no babies or toddlers under kindergarten age) actively, safely, and naturally riding, playing with, wearing, or using the kids product (e.g. riding the kids bicycle, playing with the toy) in a bright, clean setting. The child is naturally enjoying and using the product naturally in the scene without hard-selling to the camera. Accompanying the child MUST BE a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby, supervising with love, warmth, and care. STRICTLY FORBIDDEN: Do NOT include dogs or unrelated pet animals. Do NOT show an isolated adult presenter without a child for kids products.";
 
@@ -157,10 +166,12 @@ function fashionSelfieModelLabel(presenter) {
 }
 
 function resolveFashionSelfiePresenter(productText, settings, autoPresenter, productInfo = {}) {
-  // A clear product gender must win over stale presenter state saved from an earlier run.
+  // An explicit UI selection must win. Product/image gender inference is only
+  // used while the presenter control remains on Auto.
+  if (["woman", "man"].includes(settings?.presenter)) return settings.presenter;
   const textGender = detectExplicitProductGender(productText);
   const imageGender = ["man", "woman"].includes(productInfo.imageGender) ? productInfo.imageGender : "";
-  return textGender || imageGender || (isAuto(settings?.presenter) ? autoPresenter : settings.presenter);
+  return textGender || imageGender || autoPresenter;
 }
 
 function fashionSelfieImageDirection(presenter) {
@@ -856,6 +867,10 @@ export function buildImagePrompt(productInfo, settings = {}) {
     settings,
     !noPeople && !handsOnly && !wearableCrop
   );
+  const explicitPresenterGenderDirection = resolveExplicitPresenterGenderDirection(
+    settings,
+    !noPeople && !handsOnly && !wearableCrop
+  );
 
   const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true");
 
@@ -1010,6 +1025,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     getStillProductUseDirection(productText),
     cameraFramingDirection,
+    explicitPresenterGenderDirection,
     peopleDirection,
     productTextFidelityDirection,
     STILL_TEXT_INTEGRITY_DIRECTION,
@@ -1408,6 +1424,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     settings,
     !noPeople && !handsOnly && !wearableCrop
   );
+  const explicitPresenterGenderDirection = resolveExplicitPresenterGenderDirection(
+    settings,
+    !noPeople && !handsOnly && !wearableCrop
+  );
   const sceneStyle = isUnboxingHands
     ? "unboxing"
     : (noPeople || handsOnly || wearableCrop) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
@@ -1486,6 +1506,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     auto.audioMode === "music_only" ? MUSIC_ONLY_AUDIO_DIRECTION : PROGRESSIVE_AUDIO_NARRATION_MANDATE,
     resolveMatchStillDirection(auto.presenter, firstSceneNoPeople),
     cameraFramingDirection,
+    explicitPresenterGenderDirection,
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext === "car" && isFragranceProduct(productText) ? CAR_FRAGRANCE_BACKGROUND_LOCK : "",
     isFragranceProduct(productText) ? FRAGRANCE_BACKGROUND_LOCK : "",
