@@ -95,7 +95,7 @@ export async function syncSelectedProductToVideoTab() {
 function bindGlobalEvents() {
   [
     "video-style", "presenter", "custom-presenter", "audio-mode", "voice-tone", "location", "custom-location",
-    "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement",
+    "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement", "camera-framing",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action", "post-no-link",
     "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
     "first-scene-no-people"
@@ -132,6 +132,7 @@ function fillGlobalFormFromState() {
   setValue("text-position", settings.textPosition);
   setValue("text-style-font", settings.textStyleFont);
   setValue("camera-movement", settings.cameraMovement);
+  setValue("camera-framing", settings.cameraFraming);
   setValue("image-model", settings.imageModel);
   setValue("video-model", settings.videoModel);
   setValue("image-count", settings.imageCount);
@@ -192,6 +193,7 @@ function syncSettingsForm() {
     textPosition: getValue("text-position"),
     textStyleFont: getValue("text-style-font"),
     cameraMovement: getValue("camera-movement"),
+    cameraFraming: getValue("camera-framing"),
     imageModel: getValue("image-model"),
     videoModel: getValue("video-model"),
     imageCount: parseInt(getValue("image-count"), 10) || 1,
@@ -306,6 +308,7 @@ function normalizeSettings(value) {
     postRandomCaptionHook: value.postRandomCaptionHook !== undefined ? Boolean(value.postRandomCaptionHook) : true,
     postCustomProductName: (value.postCustomProductName || "").trim(),
     textStyleFont: value.textStyleFont || "handwriting",
+    cameraFraming: ["full_body", "half_body", "medium_shot", "close_up"].includes(value.cameraFraming) ? value.cameraFraming : "Auto",
     postScheduleTime: value.postScheduleTime || "",
     postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10,
     modelRefImage: value.modelRefImage || ""

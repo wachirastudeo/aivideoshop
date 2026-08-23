@@ -140,6 +140,18 @@ const KIDS_WITH_PARENT_DIRECTION = "KIDS PRODUCT SCENE WITH CHILD & PARENT SUPER
 const STRICT_MODEST_DRESS_CODE_MANDATE = "STRICT MODEST & APPROPRIATE DRESS CODE LOCK (ห้ามชุดสุ่มเสี่ยง/วาบหวิว): Presenters and models MUST wear clean, elegant, modest, everyday commercial attire (such as casual shirts, blouses, t-shirts, jackets, jeans, trousers, or modest knee-length skirts/dresses). STRICTLY FORBIDDEN: Do NOT generate revealing, immodest, risqué, suggestive, or provocative outfits. No deep v-necks, no exposed cleavage, no strapless tops, no crop tops showing stomach, no micro-shorts, no see-through/sheer clothing, no underwear/lingerie, and no tight/revealing swimwear. Always keep clothing respectable, professional, and 100% appropriate for commercial advertising.";
 
 const FULL_BODY_PRESENTER_DIRECTION = "STRICT FULL-BODY SHOT & DECENT MODEST DRESS CODE: Presenter MUST be shown in a full-length head-to-toe standing view with head, torso, full legs, feet, and footwear fully visible on the floor. STRICT FULL OUTFIT REQUIREMENT: Presenter MUST wear a complete, modest FULL OUTFIT with BOTH a proper top (shirt/blouse/jacket) AND proper long bottoms (trousers/jeans/long pants/knee-length skirt). FORBIDDEN (ห้ามชุดสุ่มเสี่ยง/วาบหวิว): Absolutely NO revealing, immodest, risqué, suggestive, or provocative attire. No deep v-necks, no cleavage, no strapless tops, no stomach/crop tops, no micro-shorts, no sheer/see-through clothes, no lingerie, and no tight/revealing swimwear.";
+const CAMERA_FRAMING_DIRECTIONS = {
+  full_body: "CAMERA FRAMING LOCK: Use a full-body shot from the top of the head to the feet. Keep the entire presenter and product visible with comfortable space around the body.",
+  half_body: "CAMERA FRAMING LOCK: Use a medium half-body shot framed from the top of the head to the waist. Keep the presenter's face, shoulders, torso, arms, hands, and the product clearly visible. Do not show the legs or feet, and do not switch to a full-body or extreme close-up shot.",
+  medium_shot: "CAMERA FRAMING LOCK: Use a medium shot framed from the top of the head to mid-torso. Keep the presenter's face, upper body, hands, and product clearly visible with natural breathing room.",
+  close_up: "CAMERA FRAMING LOCK: Use a close product-review shot framed from the chest or shoulders upward. Keep the presenter's face, hands, and product visible and sharp; do not crop the product or use an extreme face-only close-up."
+};
+
+function resolveCameraFramingDirection(settings = {}, hasVisiblePresenter = false) {
+  if (!hasVisiblePresenter) return "";
+  const framing = String(settings?.cameraFraming || "Auto");
+  return CAMERA_FRAMING_DIRECTIONS[framing] || "";
+}
 function fashionSelfieModelLabel(presenter) {
   return presenter === "man" ? "fictional adult Thai male fashion model" : "fictional adult Thai female fashion model";
 }
@@ -283,6 +295,7 @@ const SHOE_WEARABLE_CROP_VIDEO_DIRECTION = "SHOE WORN-ON-FEET VIDEO MODE: Keep t
 const SHOE_WEARABLE_CROP_BACKGROUND_DIRECTION = "SHOE WORN-ON-FEET INDOOR BACKGROUND LOCK: Use a clean, aesthetically pleasing indoor floor in a cozy bedroom or living-room corner, with soft natural daylight, pale neutral/pastel tones, and shallow background blur. A restrained curtain, bed edge, or soft fabric detail may appear in the background, but never let props cover the footwear. ABSOLUTELY FORBIDDEN: outdoor street, driveway, grass, park, retail shoe store, shoe shelf, studio cyclorama, social-media UI, watermark, stickers, or added screenshot text.";
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
+const SHOE_PATTERN_COORDINATE_LOCK = "STRICT FOOTWEAR PATTERN COORDINATE LOCK: toe box/heel/sole/sides. Do not redraw.";
 const SHOE_SCALE_DIRECTION = "STRICT FOOTWEAR SCALE & PLACEMENT LOCK: This is a real human shoe, not a giant prop or miniature toy. Preserve true foot-sized proportions and the exact single-shoe/pair count. Show it at realistic scale relative to a human foot, leg, hand, shoe box, floor, shelf, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge the shoe to furniture-scale, make it tiny, or place it in an unrelated oversized environment. Keep the shoe grounded on a realistic floor, shelf, or naturally worn on a foot.";
 
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: Match the reference garment's type, cut, fit, length, neckline or waistband, sleeves or legs, fabric, color, print, logo, seams, pockets, and fasteners. Keep those visible design details consistent while allowing natural fabric drape and ordinary movement. Show the front design clearly and do not use a back-facing or 360-degree spin.";
@@ -607,6 +620,7 @@ export function getDefaultSettings() {
     cameraMovement: "Auto",
     pacing: 2,
     transition: "Auto",
+    cameraFraming: "Auto",
     postAction: "post",
     postRandomCaptionHook: true,
     firstSceneNoPeople: false,
@@ -838,6 +852,11 @@ export function buildImagePrompt(productInfo, settings = {}) {
     peopleDirection = NO_PEOPLE_DIRECTION;
   }
 
+  const cameraFramingDirection = resolveCameraFramingDirection(
+    settings,
+    !noPeople && !handsOnly && !wearableCrop
+  );
+
   const textEnabled = (settings?.textEnabled === true || settings?.textEnabled === "true");
 
   // If user typed a specific phrase → pass it; otherwise let Flow decide freely
@@ -990,6 +1009,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     STILL_VIDEO_SOURCE_HERO_LOCK,
     `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
     getStillProductUseDirection(productText),
+    cameraFramingDirection,
     peopleDirection,
     productTextFidelityDirection,
     STILL_TEXT_INTEGRITY_DIRECTION,
@@ -1337,7 +1357,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const visualProductName = getVisualProductName(productInfo);
   const productName = generationProductName(visualProductName, productInfo.category) || "the attached product";
   const analysisDirection = buildAnalysisDirection(productInfo);
-  const categoryDirection = buildCategoryFidelityDirection(productInfo);
+  // PRODUCT_FIDELITY_DIRECTION and REFERENCE_PIXEL_ARTWORK_LOCK already carry
+  // the generic pattern rules for video; keep the extra coordinate sentence
+  // in the still prompt without exceeding the existing video size guard.
+  const categoryDirection = buildCategoryFidelityDirection(productInfo)
+    .replace(`${SHOE_PATTERN_COORDINATE_LOCK}\n`, "");
   const overlayText = [
     clipText,
     textEnabled ? compactPromptText(settings?.promotionText, 80) : ""
@@ -1380,6 +1404,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const explicitlySelectedAnimal = settings?.presenter === "dog" || settings?.presenter === "cat";
   const animalName = auto.presenter === "cat" ? "cute cat" : "cute dog";
   const firstSceneNoPeople = (settings?.firstSceneNoPeople === true || settings?.firstSceneNoPeople === "true");
+  const cameraFramingDirection = resolveCameraFramingDirection(
+    settings,
+    !noPeople && !handsOnly && !wearableCrop
+  );
   const sceneStyle = isUnboxingHands
     ? "unboxing"
     : (noPeople || handsOnly || wearableCrop) && ["testimonial", "lifestyle", "unboxing"].includes(auto.videoStyle)
@@ -1457,6 +1485,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     SPEECH_DIRECTION,
     auto.audioMode === "music_only" ? MUSIC_ONLY_AUDIO_DIRECTION : PROGRESSIVE_AUDIO_NARRATION_MANDATE,
     resolveMatchStillDirection(auto.presenter, firstSceneNoPeople),
+    cameraFramingDirection,
     BACKGROUND_COMPATIBILITY_LOCK,
     vehicleAccessoryContext === "car" && isFragranceProduct(productText) ? CAR_FRAGRANCE_BACKGROUND_LOCK : "",
     isFragranceProduct(productText) ? FRAGRANCE_BACKGROUND_LOCK : "",
@@ -1973,7 +2002,7 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
     return `${SPRAY_BOTTLE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
-    return `${SHOE_FIDELITY_DIRECTION}\n${SHOE_SCALE_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+    return `${SHOE_FIDELITY_DIRECTION}\n${SHOE_PATTERN_COORDINATE_LOCK}\n${SHOE_SCALE_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (isClothingProduct(text)) {
     return `${isNeckScarfProduct(text) ? NECK_SCARF_USAGE_LOCK + "\n" : ""}${CLOTHING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
@@ -2089,6 +2118,14 @@ function generationProductName(value, category = "") {
   if (isCoffeeBeanProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing whole roasted coffee beans" : "whole roasted coffee beans";
   if (isCoffeeProduct(text) || isPackagedCoffeeProduct(text)) return "coffee pouch bag";
 
+  // Footwear must be identified before the generic Thai fabric keyword "ผ้า"
+  // in the clothing fallback (for example, "รองเท้าผ้าใบ").
+  if (/สนีกเกอร์|ผ้าใบ|sneaker|sneakers/i.test(text)) return "sneaker shoes";
+  if (/รองเท้าแตะ|แตะ|สลิปเปอร์|sandal|sandals|slipper|slippers/i.test(text)) return "sandals";
+  if (/ส้นสูง|รองเท้าส้นสูง|heels|high heels/i.test(text)) return "high heels";
+  if (/รองเท้าบูท|บูท|boots|boot/i.test(text)) return "boots";
+  if (/รองเท้า|footwear|shoe|shoes/i.test(text)) return "shoes";
+
   // Clothing & Fashion
   if (/เดรส|ชุดกระโปรง|แซก|dress/i.test(text)) return "fashion dress";
   if (/เสื้อยืด|คอกลม|คอวี|t-shirt|tshirt|tee/i.test(text)) return "t-shirt";
@@ -2102,13 +2139,6 @@ function generationProductName(value, category = "") {
   if (/ถุงเท้า|socks/i.test(text)) return "socks";
   if (/หมวก|cap|hat|beanie/i.test(text)) return "cap";
   if (/เสื้อ|ผ้า|clothe|apparel|garment/i.test(text)) return "clothing garment";
-
-  // Footwear
-  if (/สนีกเกอร์|ผ้าใบ|sneaker|sneakers/i.test(text)) return "sneaker shoes";
-  if (/รองเท้าแตะ|แตะ|สลิปเปอร์|sandal|sandals|slipper|slippers/i.test(text)) return "sandals";
-  if (/ส้นสูง|รองเท้าส้นสูง|heels|high heels/i.test(text)) return "high heels";
-  if (/รองเท้าบูท|บูท|boots|boot/i.test(text)) return "boots";
-  if (/รองเท้า|footwear|shoe|shoes/i.test(text)) return "shoes";
 
   // Beauty & Skincare & Personal Care
   if (/ลิป|ลิปสติก|ลิปแมตต์|ลิปมัน|ลิปบาล์ม|ลิปกลอส|lipstick|lipgloss|lip balm/i.test(text)) return "lipstick container";

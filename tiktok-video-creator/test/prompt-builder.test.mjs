@@ -265,6 +265,8 @@ const shoe = {
 const shoeImage = buildImagePrompt(shoe, settings);
 const shoeVideo = buildVideoPrompt(shoe, settings);
 check("shoe prompt locks shoe-specific geometry", /toe shape[\s\S]*sole thickness[\s\S]*lace pattern/i.test(shoeImage));
+check("shoe prompt uses a shoe semantic label instead of clothing", /Show sneaker shoes clearly|Show sandals clearly|Show shoes clearly/i.test(shoeImage) && !/Show clothing garment clearly/i.test(shoeImage), shoeImage);
+check("shoe prompt locks pattern coordinates to the reference", /STRICT FOOTWEAR PATTERN COORDINATE LOCK[\s\S]*toe box[\s\S]*heel[\s\S]*Do not redraw/i.test(shoeImage));
 check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.test(shoeImage));
 check("shoe prompt locks realistic human-foot scale", /STRICT FOOTWEAR SCALE & PLACEMENT LOCK/i.test(shoeImage) && /true foot-sized proportions/i.test(shoeImage));
 check("shoe prompt uses an outdoor footwear location", /outdoor home driveway|front yard|quiet neighborhood street|park path/i.test(shoeImage + shoeVideo));
@@ -768,6 +770,13 @@ const imgPresenterWoman = buildImagePrompt({ name: "ลิปสติก" }, { 
 check("image prompt with woman presenter focuses on product hero presentation", /Product Hero Focus|Product Focus|Product photography/i.test(imgPresenterWoman), imgPresenterWoman);
 check("image prompt with woman presenter uses single full-frame product intro", /one authentic full-frame smartphone photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterWoman), imgPresenterWoman);
 check("image prompt with one presenter forbids a third hand", /SINGLE-PRESENTER HAND ANATOMY[\s\S]*Never render a third hand/i.test(imgPresenterWoman), imgPresenterWoman);
+
+const halfBodySettings = { ...settings, presenter: "woman", cameraFraming: "half_body" };
+const imgHalfBody = buildImagePrompt({ name: "ลิปสติก" }, halfBodySettings);
+const vidHalfBody = buildVideoPrompt({ name: "ลิปสติก" }, halfBodySettings);
+check("half-body image framing is applied to the presenter", /CAMERA FRAMING LOCK[\s\S]*medium half-body shot[\s\S]*top of the head to the waist[\s\S]*product clearly visible/i.test(imgHalfBody), imgHalfBody);
+check("half-body video framing is applied to the presenter", /CAMERA FRAMING LOCK[\s\S]*medium half-body shot[\s\S]*top of the head to the waist[\s\S]*Do not show the legs or feet/i.test(vidHalfBody), vidHalfBody);
+check("half-body framing does not apply to hands-only mode", !/CAMERA FRAMING LOCK/i.test(buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only", cameraFraming: "half_body" })));
 
 const imgPresenterNone = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
 check("image prompt with no presenter forbids people", /No people, faces/i.test(imgPresenterNone), imgPresenterNone);
