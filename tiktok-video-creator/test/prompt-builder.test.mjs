@@ -96,8 +96,10 @@ const vid = buildVideoPrompt({ name: "ครีมบำรุงผิว", hig
 check("video prompt locks only the product object", /preserve its exact shape/i.test(vid));
 check("video prompt mentions sharp/clear product", /razor-sharp|clearly visible/i.test(vid), "missing sharpness directive");
 check("video prompt is 9:16 vertical", /9:16|vertical/i.test(vid));
-check("default video forbids added scene text", /do not add any new, extra, or unnecessary text/i.test(vid), vid);
-check("default video preserves the product's own printed text", /Keep the product's own printed text/i.test(vid), vid);
+check("default video forbids added scene text", /STRICT NO-TEXT RULE:[\s\S]*Do not add text overlays[\s\S]*anywhere/i.test(vid), vid);
+check("default video preserves only visible product text", /Preserve only product text visible in the reference/i.test(vid), vid);
+check("default video ignores surrounding image text", /STRICT LOGO & PRINTED TEXT FIDELITY LOCK:[\s\S]*physically present on the product\/packaging[\s\S]*Ignore surrounding overlay text/i.test(vid), vid);
+check("default video keeps absent product text blank", /If no text is visibly present on the reference product[\s\S]*surface completely blank[\s\S]*Never infer text from the title or surrounding image/i.test(vid), vid);
 check("video prompt starts with Thai advertisement prefix", /^สร้างวิดีโอโฆษณารีวิวสินค้า/i.test(vid), vid);
 check("default video puts no-text rule before style instructions", vid.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < vid.indexOf("Visual style:"), vid);
 
@@ -115,7 +117,9 @@ check(
   /motif identity, count, spacing, orientation, scale, edge placement, asymmetry/i.test(img),
   img
 );
-check("reference image keeps product text but forbids added text", /Keep the product's own printed text[\s\S]*do not add any new, extra, or unnecessary text/i.test(img), img);
+check("reference image keeps product text but forbids added text", /Preserve only product text visible in the reference[\s\S]*product surface blank/i.test(img), img);
+check("reference image ignores surrounding image text", /PRODUCT TEXT SCOPE:[\s\S]*Product text only[\s\S]*background text/i.test(img), img);
+check("reference image keeps absent product text blank", /If none is visible\/readable[\s\S]*surface blank[\s\S]*never infer text from the title or surrounding image/i.test(img), img);
 check("default image puts no-text rule before product instructions", img.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < img.indexOf("REFERENCE PHOTO OVERRIDES TEXT"), img);
 
 const coffeePouch = buildImagePrompt({
@@ -679,7 +683,7 @@ check(
 );
 check(
   "still image locks patterns to the uploaded reference",
-  /REFERENCE PIXEL ARTWORK LOCK:[\s\S]*copy only what is visibly present[\s\S]*Do not infer, redraw, beautify, simplify, mirror, recolor, or invent/i.test(childRaincoatImage),
+  /REFERENCE PIXEL ARTWORK LOCK:[\s\S]*Preserve only the product's visible physical pattern[\s\S]*Ignore surrounding overlay text/i.test(childRaincoatImage),
   childRaincoatImage
 );
 check(
