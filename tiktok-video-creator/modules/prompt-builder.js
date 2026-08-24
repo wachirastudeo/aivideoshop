@@ -237,6 +237,7 @@ const NO_UNREQUESTED_ANIMALS_DIRECTION = "No animals unless explicitly selected.
 
 const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, patterns, print designs, graphical illustrations, logos, labels, and parts. The pattern, artwork, and visual print on the product (especially for phone cases, clothes, or printed goods) must be 100% identical, keeping the same graphics, colors, and layout without any modification or hallucination. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.";
 const STILL_PRODUCT_FIDELITY_DIRECTION = "STILL PRODUCT IDENTITY: Preserve its exact shape, proportions, support structure, materials, colors, patterns, visible logos, labels, and printed text from the reference image. Keep the product physically coherent and at realistic scale. Do not invent parts, remove parts, redesign it, or force a new geometry.";
+const STILL_IMAGE_VARIANT_PATTERN_LOCK = "STILL IMAGE — EXACT VARIANT & PATTERN LOCK: The uploaded reference is the exact product variant to reproduce. Copy its visible pattern as one fixed surface map: preserve the same motif identity, count, spacing, orientation, scale, edge placement, asymmetry, color boundaries, and relationship to seams, corners, holes, and cutouts. Do not blend different variants, choose a similar pattern, complete hidden areas, mirror, simplify, or redraw the design. If any detail is unclear, keep it indistinct instead of guessing. Generate one product only; change the background and lighting only.";
 const STILL_TEXT_INTEGRITY_DIRECTION = "STILL TEXT INTEGRITY: Preserve any Thai, English, or other script physically printed on the reference product exactly as visible. Do not invent extra writing, fake letters, logos, labels, or gibberish anywhere else in the image.";
 const REFERENCE_PIXEL_ARTWORK_LOCK = "REFERENCE PIXEL ARTWORK LOCK: For every visible pattern, cartoon, stripe, logo, label, color block, seam, and surface texture, copy only what is visibly present in the uploaded reference image as one unchanged surface design. Do not infer, redraw, beautify, simplify, mirror, recolor, or invent details from the product name, category, or generic fashion knowledge. If a detail is unclear, preserve the visible shape and color without guessing.";
 const REFERENCE_IMAGE_HIGHEST_PRIORITY = "REFERENCE PHOTO OVERRIDES TEXT: Match the attached product exactly. BACKGROUND-ONLY EDIT: Keep the uploaded image as the source of truth: ISOLATE AND EXTRACT ONLY THE PRODUCT, then place that unchanged product in a 100% NEW SCENE & BACKGROUND. Preserve its exact shape, proportions, materials, colors, markings, printed text, parts, visible count, and realistic physical size relative to hands, presenter, or surroundings. Keep it fully visible, sharp and clearly visible. One product, one image; no collage or split screen. Never substitute, redesign, duplicate, combine, enlarge, shrink, or invent product details.";
@@ -429,7 +430,9 @@ function isCoffeeBeanProduct(text = "") {
 
 function isPackagedCoffeeProduct(text = "") {
   const clean = String(text || "").toLowerCase();
-  return /(ถุงกาแฟ|ซองกาแฟ|ถุง|ซอง|pouch|sachet|packet|coffee\s*(?:bag|pouch)|\b(?:200|250|500|1000|1\s*kg)\s*g?\b|(?:200|250|500|1000|1\s*กิโล|1\s*กก)\s*กรัม?)/i.test(clean);
+  const hasCoffeeContext = /(กาแฟ|coffee|arabica|robusta|doi\s*chang|roasters?|roastery|espresso)/i.test(clean);
+  if (!hasCoffeeContext) return false;
+  return /(ถุงกาแฟ|ซองกาแฟ|coffee\s*(?:bag|pouch)|pouch|sachet|packet|\b(?:200|250|500|1000|1\s*kg)\s*g?\b|(?:200|250|500|1000|1\s*กิโล|1\s*กก)\s*กรัม?)/i.test(clean);
 }
 
 function isCoffeeProduct(text = "") {
@@ -439,6 +442,21 @@ function isCoffeeProduct(text = "") {
   }
   return /(กาแฟ|coffee|arabica|robusta|doi chang|ดอยช้าง|roasters|roastery|espresso)/i.test(clean);
 }
+
+function isPaperFoodContainerProduct(text = "") {
+  const clean = String(text || "").toLowerCase();
+  return /(?:ถ้วยกระดาษ|แก้วกระดาษ|ชามกระดาษ|paper\s*(?:cup|bowl|food\s*container)|บรรจุภัณฑ์อาหาร)/i.test(clean)
+    && /(?:ถ้วย|แก้ว|ชาม|cup|bowl|container|กระดาษ|paper|ops)/i.test(clean);
+}
+
+function isCoffeeCategoryProduct(text = "") {
+  const clean = String(text || "").toLowerCase();
+  if (isPaperFoodContainerProduct(clean)) return false;
+  return isCoffeeProduct(clean)
+    || isCoffeePowderProduct(clean)
+    || isCoffeeBeanProduct(clean)
+    || isPackagedCoffeeProduct(clean);
+}
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
 const SMALL_TECH_ACCESSORY_SCALE_DIRECTION = "STRICT SMALL TECH ACCESSORY SCALE LOCK: This product is a real desk-sized tech accessory, not a large appliance or oversized prop. Preserve true physical scale: a mouse is about palm-sized (roughly 10-13cm long), a keyboard is desk-width and slim, earbuds fit in the ear or charging case, a charger/cable is small enough to hold in one hand, and a headset/headphones fit naturally on a human head or rest on a desk. Show it at realistic size relative to hands, a laptop, keyboard, desk surface, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge it into a giant object, appliance, bag-sized item, or furniture-scale prop; do not shrink it into a tiny toy.";
 const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, edge bevels, AND any built-in magnetic ring (MagSafe ring) MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, magnetic ring circle, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. CASE ARTWORK COORDINATE LOCK: Treat the reference artwork as an exact texture map on the case surface. Preserve every motif's orientation and position relative to the case's top, bottom, left, right edges, corners, camera cutout, MagSafe ring, and side boundaries. Do NOT invent a similar pattern, mirror it, rotate it, stretch it, reflow it, center-shift it, crop it, or let it drift onto the phone, camera bump, bezel, or background. If perspective or curvature is visible, follow the reference perspective while keeping the artwork aligned to the physical case surface. REAL-WORLD PHONE SCALE LOCK: When the case is on or near a phone, preserve true smartphone size relative to a full-size hand, table, room, and furniture. Never let one phone or case fill half a table or become furniture-sized just to look prominent. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
@@ -446,6 +464,7 @@ const PHONE_CASE_COMPLEX_PATTERN_REFERENCE_LOCK = "COMPLEX PHONE CASE PATTERN RE
 const JEWELRY_FIDELITY_DIRECTION = "For jewelry/watches, preserve exact gemstone cuts, metal luster/shade, chain link style, clasp, watch face indices, and sub-dials. Do not alter craftsmanship details.";
 const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK: You MUST reproduce the bag (handbag, backpack, tote bag, shoulder bag, cross-body bag, wallet, or pouch) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: All bag silhouettes, strap/handle drop lengths, zipper pulls, metal clasps, buckles, stitching lines, and pocket placements MUST be rendered 100% pixel-faithfully without structural warping. MATERIAL TEXTURE & PRINTED ARTWORK: Preserve exact leather grain, canvas weave, nylon sheen, quilted pattern, brand monogram, logo plaque, or printed artwork. ZERO DEFORMATION RULE: The bag must maintain its true 3D structure and form naturally without melting, twisting, stretching, or morphing across video frames.";
 const FOOD_BEVERAGE_FIDELITY_DIRECTION = "For food, beverages, coffee, and supplements: preserve the exact pouch/bottle/jar packaging shape, printed artwork, label text, and food presentation. Do not warp packaging dimensions or branding.";
+const PAPER_FOOD_CONTAINER_FIDELITY_DIRECTION = "PAPER FOOD CONTAINER FIDELITY LOCK: Interpret the product name as a paper food cup/container with its clear OPS lid, but let the uploaded reference decide the exact physical form and whether it is shown as an individual cup or a sealed retail package. Preserve the exact kraft-paper material, rim, lid, seams, dimensions, printed label, color, and pattern. Do not turn photos or illustrations printed on the label into real bowls, food, stacks, or background props. Do not unpack, multiply, or replace the referenced product; show one exact product/package only.";
 const GENERAL_PACKAGING_FIDELITY_DIRECTION = "UNIVERSAL PRODUCT & PACKAGING LABEL FIDELITY LOCK: You MUST reproduce the target product EXACTLY as shown in the reference image. Preserve its 100% exact 3D form, packaging shape, container type, brand logo, printed text, front label artwork, graphic illustrations, typography, color scheme, and texture. Copy the reference image pixel-faithfully; do NOT redesign, simplify, alter, recolor, or warp the product or its packaging in any way.";
 const HOME_LIVING_FIDELITY_DIRECTION = "For home goods, kitchenware, tumblers, mugs, and bedding: preserve the exact item shape, handle, lid, material texture (ceramic, stainless steel, fabric), print pattern, and proportions.";
 const TUMBLER_BOTTLE_FIDELITY_DIRECTION = "STRICT TUMBLER & WATER BOTTLE FIDELITY LOCK: You MUST reproduce the tumbler, mug, or water bottle EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: The exact cylindrical taper, height-to-width ratio, handle shape and placement (if any), lid type, straw (if present), spout, and bottom base MUST be rendered 100% pixel-faithfully without warping. EXACT MATERIAL & ARTWORK: Preserve the exact material finish (matte, glossy stainless steel, gradient colors, powder coating) and ALL printed surface artwork, brand logos, cartoon characters, and patterns 100% pixel-faithfully. ZERO DEFORMATION RULE: The cup must remain 100% rigid, perfectly cylindrical, and static without melting, denting, or shifting dimensions across video frames.";
@@ -797,7 +816,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
     const fashionPresenter = resolveFashionSelfiePresenter(productText, settings, auto.presenter, productInfo);
     return buildFashionSelfieImagePrompt(productInfo, productName, settings, fashionPresenter);
   }
-  const isCoffeeImageAd = isCoffeeProduct(productText) || isPackagedCoffeeProduct(productText) || isCoffeePowderProduct(productText) || isCoffeeBeanProduct(productText);
+  // Category routing must follow the stable product name, not AI highlights or
+  // generic scene text that may mention coffee/food as a use case.
+  const isCoffeeImageAd = isCoffeeCategoryProduct(visualProductName);
   const isClothing = isClothingProduct(productText);
   // In Combined mode this still becomes the source frame for video. Keep
   // clothing reference designs untouched before the video presenter is added.
@@ -813,7 +834,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const isFootwear = isFootwearProduct(productInfo);
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const isHeavy = isHeavyProduct(productText);
-  const specificScale = getProductSpecificScaleInstruction(productText);
+  const specificScale = getProductSpecificScaleInstruction(visualProductName);
 
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = !productOnlyStill && (auto.presenter === "hands_only" || isUnboxingHands);
@@ -984,6 +1005,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const promptParts = [
     !textEnabled ? (isCoffeeImageAd ? COFFEE_COMPACT_TEXT_LOCK : TEXT_FREE_DIRECTION) : "",
     buildProductIdentityLock(productInfo),
+    STILL_IMAGE_VARIANT_PATTERN_LOCK,
     isExplicitAdultPresenterSelection(settings) ? EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION : "",
     isClothing ? APPAREL_REFERENCE_PRIORITY : REFERENCE_IMAGE_HIGHEST_PRIORITY,
     REFERENCE_PIXEL_ARTWORK_LOCK,
@@ -1219,6 +1241,14 @@ function getVehicleAccessoryContext(text = "") {
 function getProductSpecificScaleInstruction(text = "") {
   const clean = text.toLowerCase();
 
+  const weightMatch = clean.match(/(\d+(?:\.\d+)?)\s*(?:กิโลกรัม|กิโล|กก\.?|kg|kilograms?)(?![a-zA-Z0-9])/i);
+  if (weightMatch) {
+    const weightKg = Number(weightMatch[1]);
+    const weightLabel = `${weightMatch[1]}kg`;
+    const packageLabel = /(กระสอบ|sack|bag|pouch|ถุง|ซอง)/i.test(clean) ? "bag/sack" : "product";
+    return `STRICT WEIGHT & PACKAGE SIZE LOCK: The exact reference ${packageLabel} weighs ${weightLabel}. Preserve the reference bag/sack dimensions, fill level, thickness, width-to-height ratio, seam placement, and true physical scale. Do NOT depict it as a 5kg, 1kg, smaller, thinner, or pocket-sized package, and do not replace it with a giant oversized sack. Keep the ${weightLabel} package grounded on a realistic floor, pallet, or suitable support with believable gravity and contact shadows. The printed artwork and pattern must remain on this exact ${weightLabel} package. ${weightKg >= 10 ? "Show it as a substantial heavy package, not a small retail pouch." : "Keep its package size proportional to the stated weight."}`;
+  }
+
   if (isSmallTechAccessoryProduct(clean)) {
     return SMALL_TECH_ACCESSORY_SCALE_DIRECTION;
   }
@@ -1228,7 +1258,7 @@ function getProductSpecificScaleInstruction(text = "") {
   }
   
   // Detect coffee bags, pouches, sachets, packets (ถุงกาแฟ, ซองกาแฟ, 200g, 250g, 500g)
-  const isSmallPouch = /(กาแฟ|ชา|ผง|ถุง|ซอง|ห่อ|เมล็ด|coffee|tea|powder|pouch|bag|sachet|pack|packet|200\s*g|250\s*g|500\s*g|gr?a?m|กรัม)/i.test(clean);
+  const isSmallPouch = /(กาแฟ|ชา|ผง|เมล็ด|coffee|tea|powder|\bpouch\b|\bsachet\b|\bpacket\b|200\s*g|250\s*g|500\s*g|gr?a?m|กรัม)/i.test(clean);
   if (isSmallPouch && !/(กระสอบ|25\s*kg|50\s*kg|10\s*kg|5\s*kg)/i.test(clean)) {
     return "STRICT PRODUCT-SPECIFIC SIZE RULE: This product is a standard hand-sized 200-500g pouch or bag. It must be depicted in a realistic hand-sized scale, easily held in one or both hands (height of the pouch is about 15-20cm). In the vertical frame, the pouch should occupy only about 30-40% of the image height with clear margins and visible surrounding space; never let it dominate the frame. It must not be depicted as a tiny pocket sachet, nor as a giant sack or massive bag. Keep it perfectly proportional as a standard coffee/tea bag.";
   }
@@ -1393,7 +1423,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isImmobile = weightCategory === "immobile";
   const isClothing = isClothingProduct(productText);
   const isWearable = isWearableProduct(productText);
-  const specificScale = getProductSpecificScaleInstruction(productText);
+  const specificScale = getProductSpecificScaleInstruction(visualProductName);
 
   if (auto.videoStyle === "fashion-selfie") {
     const fashionPresenter = resolveFashionSelfiePresenter(productText, settings, auto.presenter, productInfo);
@@ -2015,6 +2045,7 @@ export function isFurnitureProduct(text = "") {
 
 export function buildCategoryFidelityDirection(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`.toLowerCase();
+  const titleText = String(getVisualProductName(productInfo) || "").toLowerCase();
   const hasEngraving = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(text);
   if (isHammockProduct(text)) {
     return `${HAMMOCK_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
@@ -2051,13 +2082,16 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
   if (/(กระเป๋า|เป้|กระเป๋าถือ|กระเป๋าสะพาย|กระเป๋าสตางค์|นาฬิกา|สร้อย|แหวน|ต่างหู|เครื่องประดับ|bag|backpack|wallet|purse|tote|handbag|crossbody|clutch|watch|jewelry|necklace|ring|bracelet|accessory)/i.test(text)) {
     return `${BAGS_ACCESSORIES_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (isCoffeePowderProduct(text)) {
-    return `${isPackagedCoffeeProduct(text) ? COFFEE_SEALED_POWDER_POUCH_DIRECTION + "\n" : ""}${COFFEE_POWDER_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
+  if (isPaperFoodContainerProduct(titleText)) {
+    return `${PAPER_FOOD_CONTAINER_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (isCoffeeBeanProduct(text)) {
-    return `${isPackagedCoffeeProduct(text) ? COFFEE_SEALED_BEANS_POUCH_DIRECTION + "\n" : ""}${COFFEE_BEANS_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
+  if (isCoffeePowderProduct(titleText)) {
+    return `${isPackagedCoffeeProduct(titleText) ? COFFEE_SEALED_POWDER_POUCH_DIRECTION + "\n" : ""}${COFFEE_POWDER_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
   }
-  if (isCoffeeProduct(text) || /(ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean bag|coffee beans pouch)/i.test(text)) {
+  if (isCoffeeBeanProduct(titleText)) {
+    return `${isPackagedCoffeeProduct(titleText) ? COFFEE_SEALED_BEANS_POUCH_DIRECTION + "\n" : ""}${COFFEE_BEANS_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
+  }
+  if (isCoffeeCategoryProduct(titleText)) {
     return `${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
   }
   if (/(ชา|โกโก้|ขนม|อาหาร|อาหารเสริม|วิตามิน|คอลลาเจน|อาหารหมา|อาหารแมว|tea|snack|food|supplement|vitamin|collagen|pet food)/i.test(text)) {
@@ -2131,13 +2165,14 @@ function generationProductName(value, category = "") {
   // Outdoor products must be identified before generic fabric/clothing keywords.
   if (isHammockProduct(text)) return "camping hammock";
   if (isCampingChairProduct(text)) return "folding camping chair";
+  if (isPaperFoodContainerProduct(text)) return "paper food container with a clear OPS lid";
 
   // Coffee products must be identified before clothing keywords. Thai words
   // such as "โบราณ" contain the substring "บรา", which must not map coffee
   // to underwear.
   if (isCoffeePowderProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing ground coffee powder" : "ground coffee powder";
   if (isCoffeeBeanProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing whole roasted coffee beans" : "whole roasted coffee beans";
-  if (isCoffeeProduct(text) || isPackagedCoffeeProduct(text)) return "coffee pouch bag";
+  if (isCoffeeCategoryProduct(lowerVal)) return "coffee pouch bag";
 
   // Footwear must be identified before the generic Thai fabric keyword "ผ้า"
   // in the clothing fallback (for example, "รองเท้าผ้าใบ").
@@ -2188,7 +2223,7 @@ function generationProductName(value, category = "") {
 
   // Home & Kitchen
   if (/แก้วเก็บความเย็น|กระติกน้ำ|ขวดน้ำ|tumbler|water bottle|flask/i.test(text)) return "insulated tumbler bottle";
-  if (/แก้วกาแฟ|แก้ว|ถ้วย|mug|cup/i.test(text)) return "coffee mug";
+  if (/แก้วกาแฟ|แก้ว|ถ้วย|mug|cup/i.test(text)) return "food cup or container";
   if (/หมอน|หมอนข้าง|pillow|cushion/i.test(text)) return "pillow";
   if (/ผ้าห่ม|ผ้านวม|blanket|quilt/i.test(text)) return "blanket";
 

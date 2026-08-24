@@ -105,6 +105,16 @@ check("default video puts no-text rule before style instructions", vid.indexOf("
 const img = buildImagePrompt({ name: "ครีมบำรุงผิว", highlights: "" }, settings);
 check("image prompt mentions fidelity", /preserve its exact shape/i.test(img));
 check("image prompt sharp focus", /sharp and clearly visible|sharp focus/i.test(img));
+check(
+  "image prompt locks the exact pattern variant",
+  /STILL IMAGE — EXACT VARIANT & PATTERN LOCK[\s\S]*one fixed surface map[\s\S]*Do not blend different variants/i.test(img),
+  img
+);
+check(
+  "image prompt preserves pattern placement details",
+  /motif identity, count, spacing, orientation, scale, edge placement, asymmetry/i.test(img),
+  img
+);
 check("reference image keeps product text but forbids added text", /Keep the product's own printed text[\s\S]*do not add any new, extra, or unnecessary text/i.test(img), img);
 check("default image puts no-text rule before product instructions", img.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < img.indexOf("REFERENCE PHOTO OVERRIDES TEXT"), img);
 
@@ -149,6 +159,57 @@ check(
   "coffee still keeps floor and empty table mostly out of frame",
   /natural eye-level product photograph[\s\S]*floor mostly out of frame[\s\S]*soft background blur/i.test(compactCoffeeStill),
   compactCoffeeStill
+);
+
+const nonCoffeePaperFoodContainer = buildImagePrompt(
+  {
+    name: "Happy Safe Box ถุงกระดาษคราฟท์ พร้อมฝาพลาสติกใส OPS 750 ml",
+    category: "บรรจุภัณฑ์อาหาร"
+  },
+  { ...settings, flowGenMode: "combined", presenter: "none" }
+);
+check(
+  "paper food container does not enter the coffee pouch still branch",
+  !/Create one vertical 9:16 product still for coffee pouch bag|COFFEE REFERENCE VARIANT LOCK|COFFEE REFERENCE FIRST STILL/i.test(nonCoffeePaperFoodContainer),
+  nonCoffeePaperFoodContainer
+);
+check(
+  "paper food container keeps its uploaded product as the source",
+  /REFERENCE PHOTO OVERRIDES TEXT[\s\S]*ISOLATE AND EXTRACT ONLY THE PRODUCT/i.test(nonCoffeePaperFoodContainer),
+  nonCoffeePaperFoodContainer
+);
+
+const ttbPaperCupProduct = buildImagePrompt(
+  {
+    name: "TTB ถ้วยกระดาษคราฟท์ 500/750/1000ml พร้อมฝาใส OPS หนาพิเศษ กันน้ำ ไม่เป็นไอน้ำ Food Grade COD ส่งตรงจากโรงงาน คุณภาพพรีเมียม TTB FoodPack บรรจุภัณฑ์อาหาร",
+    originalName: "TTB ถ้วยกระดาษคราฟท์ 500/750/1000ml พร้อมฝาใส OPS หนาพิเศษ กันน้ำ ไม่เป็นไอน้ำ Food Grade COD ส่งตรงจากโรงงาน คุณภาพพรีเมียม TTB FoodPack บรรจุภัณฑ์อาหาร",
+    category: "บรรจุภัณฑ์อาหาร"
+  },
+  { ...settings, flowGenMode: "combined", presenter: "none" }
+);
+check(
+  "TTB paper cup title resolves to a paper food container, not a coffee mug",
+  /paper food container with a clear OPS lid/i.test(ttbPaperCupProduct) && !/coffee mug|coffee pouch bag|200-500g pouch/i.test(ttbPaperCupProduct),
+  ttbPaperCupProduct
+);
+check(
+  "TTB paper cup prompt prevents label artwork becoming real bowls",
+  /PAPER FOOD CONTAINER FIDELITY LOCK[\s\S]*Do not turn photos or illustrations printed on the label into real bowls, food, stacks/i.test(ttbPaperCupProduct),
+  ttbPaperCupProduct
+);
+const ttbPaperCupWithCoffeeHighlight = buildImagePrompt(
+  {
+    name: "TTB ถ้วยกระดาษคราฟท์ 500/750/1000ml พร้อมฝาใส OPS",
+    originalName: "TTB ถ้วยกระดาษคราฟท์ 500/750/1000ml พร้อมฝาใส OPS",
+    category: "บรรจุภัณฑ์อาหาร",
+    highlights: "ใช้ใส่กาแฟและเครื่องดื่มร้อนได้"
+  },
+  { ...settings, flowGenMode: "combined", presenter: "none" }
+);
+check(
+  "non-coffee product name blocks coffee routing even when highlights mention coffee",
+  !/coffee pouch bag|coffee mug|COFFEE REFERENCE VARIANT LOCK|standard coffee\/tea bag/i.test(ttbPaperCupWithCoffeeHighlight),
+  ttbPaperCupWithCoffeeHighlight
 );
 
 const hookDoesNotReplaceVisualIdentity = buildImagePrompt({
@@ -760,6 +821,13 @@ check("immobile heavy product weight 50kg prevents presenter holding product in 
 const heavyFertilizer = { name: "ปุ๋ยเคมี 15กก." };
 const heavyFertilizerImage = buildImagePrompt(heavyFertilizer, settings);
 check("heavy product weight 15kg (Thai abbreviation กก.) detected", /Real scale./i.test(heavyFertilizerImage), heavyFertilizerImage);
+
+const rice14Kg = { name: "ข้าวสารหอมมะลิ กระสอบ 14 กิโลกรัม" };
+const rice14KgImage = buildImagePrompt(rice14Kg, settings);
+const rice14KgVideo = buildVideoPrompt(rice14Kg, settings);
+check("14kg rice sack keeps the exact stated weight in the image prompt", /STRICT WEIGHT & PACKAGE SIZE LOCK[\s\S]*weighs 14kg[\s\S]*Do NOT depict it as a 5kg, 1kg/i.test(rice14KgImage), rice14KgImage);
+check("14kg rice sack keeps substantial physical scale in the image prompt", /substantial heavy package, not a small retail pouch/i.test(rice14KgImage), rice14KgImage);
+check("14kg rice sack keeps the exact stated weight in the video prompt", /STRICT WEIGHT & PACKAGE SIZE LOCK[\s\S]*weighs 14kg[\s\S]*Do NOT depict it as a 5kg, 1kg/i.test(rice14KgVideo), rice14KgVideo);
 
 const lightSoap = { name: "สบู่ก้อน 100 กรัม" };
 const lightSoapImage = buildImagePrompt(lightSoap, settings);
