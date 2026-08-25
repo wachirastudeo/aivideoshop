@@ -45,6 +45,12 @@ async function loadOptions() {
   setChecked("default-first-scene-no-people", media.firstSceneNoPeople === true);
 
   // Video defaults
+  const legacyWearableCrop = settings.defaultPresenter === "wearable_crop";
+  if (legacyWearableCrop) {
+    settings.defaultVideoStyle = "wearable-crop";
+    settings.defaultPresenter = "Auto";
+    chrome.storage.sync.set({ settings }).catch(() => {});
+  }
   setSelectValue("default-video-style", settings.defaultVideoStyle || "sales");
   setSelectValue("default-language", settings.defaultLanguage || "ไทย");
   setSelectValue("default-presenter", settings.defaultPresenter || "Auto");

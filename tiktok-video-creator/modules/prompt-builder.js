@@ -88,6 +88,14 @@ export const VIDEO_STYLES = [
     fragment: "full-body fashion selfie, fictional adult model holding a smartphone in front of her face, face fully hidden, exact outfit clearly visible, minimal natural movement, subtle smartphone camera pan"
   },
   {
+    id: "wearable-crop",
+    emoji: "🧤",
+    name: "สวมใส่เฉพาะส่วน",
+    description: "โฟกัสเฉพาะส่วนที่สวมใส่ ไม่เห็นหน้าและไม่เห็นตัวเต็ม",
+    shotPattern: "[โคลสอัปส่วนที่สวมใส่] → [สาธิตการใช้งานเบาๆ] → [โชว์รายละเอียดวัสดุ]",
+    fragment: "wearable close-up product showcase, cropped body-part framing, no face, no head, no full-body presenter, exact product clearly visible, subtle natural movement"
+  },
+  {
     id: "trending-hook",
     emoji: "🎵",
     name: "Trending Sound / Hook",
@@ -156,6 +164,37 @@ const CAMERA_FRAMING_DIRECTIONS = {
   close_up: "CAMERA FRAMING LOCK: Use a close product-review shot framed from the chest or shoulders upward. Keep the presenter's face, hands, and product visible and sharp; do not crop the product or use an extreme face-only close-up."
 };
 
+const FASHION_SELFIE_FRAMING_DIRECTIONS = {
+  full_body: {
+    image: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a full-body shot from the top of the head to the feet. Show the exact reference garment head-to-toe, including the complete outfit, full legs, feet, and footwear with comfortable space around the body.",
+    video: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a full-length head-to-toe shot. Keep the complete outfit, full legs, feet, footwear, and phone visible and sharp throughout every scene.",
+    shotPlan: "MANDATORY SIMPLE SHOT PLAN: Scene 1 is a stable full-body front view with the model already holding the phone over her face. Scene 2 is a very slow, small left-to-right pan that keeps the complete outfit, feet, and phone visible. Scene 3 returns to a stable full-body hero view for garment inspection.",
+    cropRule: "Do not zoom into the face or crop out the lower body."
+  },
+  half_body: {
+    image: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a medium half-body shot framed from the top of the head to the waist. Keep the phone, shoulders, torso, arms, hands, and upper garment clearly visible. Do not show the legs or feet. Never generate a full-body, full-length, or head-to-toe composition.",
+    video: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a medium half-body shot framed from the top of the head to the waist. Keep the phone, shoulders, torso, arms, hands, and upper garment visible and sharp throughout every scene. Do not show the legs or feet, and never switch to a full-body or head-to-toe shot.",
+    shotPlan: "MANDATORY SIMPLE SHOT PLAN: Scene 1 is a stable half-body front view with the model already holding the phone over her face. Scene 2 is a very slow, small left-to-right pan that keeps the phone, hands, torso, and upper garment visible. Scene 3 returns to a stable half-body hero view for garment inspection.",
+    cropRule: "Keep the camera framed from the top of the head to the waist in every scene; do not widen to show the lower body or feet."
+  },
+  medium_shot: {
+    image: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a medium shot framed from the top of the head to mid-torso. Keep the phone, upper body, hands, and upper garment clearly visible with natural breathing room. Do not show the lower body or feet. Never generate a full-body or head-to-toe composition.",
+    video: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a medium shot framed from the top of the head to mid-torso. Keep the phone, upper body, hands, and upper garment visible and sharp throughout every scene. Do not show the lower body or feet, and never switch to a full-body or head-to-toe shot.",
+    shotPlan: "MANDATORY SIMPLE SHOT PLAN: Scene 1 is a stable medium front view with the model already holding the phone over her face. Scene 2 is a very slow, small left-to-right pan that keeps the phone, hands, upper body, and upper garment visible. Scene 3 returns to a stable medium hero view for garment inspection.",
+    cropRule: "Keep the camera framed from the top of the head to mid-torso in every scene; do not widen to show the lower body or feet."
+  },
+  close_up: {
+    image: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a close shot framed from the chest or shoulders upward. Keep the phone, hands, and upper garment visible and sharp. Do not show the lower body or feet, and do not use a face-only composition. Never generate a full-body or head-to-toe composition.",
+    video: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a close shot framed from the chest or shoulders upward. Keep the phone, hands, and upper garment visible and sharp throughout every scene. Do not show the lower body or feet, and never switch to a full-body or head-to-toe shot.",
+    shotPlan: "MANDATORY SIMPLE SHOT PLAN: Scene 1 is a stable close front view with the model already holding the phone over her face. Scene 2 is a very slow, small left-to-right pan that keeps the phone, hands, and upper garment visible. Scene 3 returns to a stable close hero view for garment inspection.",
+    cropRule: "Keep the camera framed from the chest or shoulders upward in every scene; do not widen to show the lower body or feet."
+  }
+};
+
+function resolveFashionSelfieFraming(settings = {}) {
+  return FASHION_SELFIE_FRAMING_DIRECTIONS[String(settings?.cameraFraming || "")] || FASHION_SELFIE_FRAMING_DIRECTIONS.full_body;
+}
+
 function resolveCameraFramingDirection(settings = {}, hasVisiblePresenter = false) {
   if (!hasVisiblePresenter) return "";
   const framing = String(settings?.cameraFraming || "Auto");
@@ -174,14 +213,16 @@ function resolveFashionSelfiePresenter(productText, settings, autoPresenter, pro
   return textGender || imageGender || autoPresenter;
 }
 
-function fashionSelfieImageDirection(presenter) {
+function fashionSelfieImageDirection(presenter, settings = {}) {
   const modelLabel = fashionSelfieModelLabel(presenter);
-  return `FASHION SELFIE MODE: Create one realistic vertical 9:16 full-body fashion photograph of a ${modelLabel} standing naturally and holding a real smartphone vertically in front of the face. The smartphone must fully cover and obscure the face and facial features; do not show eyes, nose, mouth, or identifiable facial details. Show the exact reference garment worn by the model from head to toe, including the complete outfit, full legs, feet, and footwear with generous space around the body. Keep the model modestly dressed and front-facing so the garment is easy to inspect. This is a privacy-preserving outfit showcase: no face reveal, no extra people, no text, no logos added to the phone, and no mirror selfie distortion.`;
+  const framing = resolveFashionSelfieFraming(settings);
+  return `FASHION SELFIE MODE: Create one realistic vertical 9:16 fashion photograph of a ${modelLabel} standing naturally and holding a real smartphone vertically in front of the face. ${framing.image} The smartphone must fully cover and obscure the face and facial features; do not show eyes, nose, mouth, or identifiable facial details. Keep the model modestly dressed and front-facing so the garment is easy to inspect. This is a privacy-preserving outfit showcase: no face reveal, no extra people, no text, no logos added to the phone, and no mirror selfie distortion.`;
 }
 
-function fashionSelfieVideoDirection(presenter) {
+function fashionSelfieVideoDirection(presenter, settings = {}) {
   const modelLabel = fashionSelfieModelLabel(presenter);
-  return `FASHION SELFIE MODE — PRIVACY-PRESERVING FULL-BODY OUTFIT SHOWCASE: Use one consistent ${modelLabel} standing still in a full-length head-to-toe shot. The model holds a real smartphone vertically at face height throughout the entire clip, and the phone must fully cover the face in every frame; never reveal eyes, nose, mouth, facial features, or an identifiable face. The exact reference garment is the hero: preserve its silhouette, fit, length, fabric, colors, pattern, seams, and printed artwork exactly. Keep the model front-facing, modestly dressed, and physically stable. No talking, lip-sync, waving, walking, turning around, outfit changes, extra people, mirror distortion, or added text. Use only minimal natural posture movement and a slow, subtle left-to-right smartphone-camera pan with a very small handheld micro-sway so the full outfit remains visible and sharp.`;
+  const framing = resolveFashionSelfieFraming(settings);
+  return `FASHION SELFIE MODE — PRIVACY-PRESERVING OUTFIT SHOWCASE: Use one consistent ${modelLabel} standing still. ${framing.video} The model holds a real smartphone vertically at face height throughout the entire clip, and the phone must fully cover the face in every frame; never reveal eyes, nose, mouth, facial features, or an identifiable face. The exact reference garment is the hero: preserve its silhouette, fit, length, fabric, colors, pattern, seams, and printed artwork exactly. Keep the model front-facing, modestly dressed, and physically stable. No talking, lip-sync, waving, walking, turning around, outfit changes, extra people, mirror distortion, or added text. Use only minimal natural posture movement and a slow, subtle left-to-right smartphone-camera pan with a very small handheld micro-sway.`;
 }
 
 const FASHION_SELFIE_BACKGROUND_QUALITY_LOCK = "FASHION SELFIE BACKGROUND QUALITY LOCK: Use an elegant, believable lifestyle setting with clean architecture, soft natural daylight, subtle layered depth, a calm neutral palette, and an uncluttered floor. Keep the background beautiful but secondary to the outfit. Do not use a generic gray studio, messy bedroom, crowded street, storefront, harsh neon, random furniture, visible wall text, logos, watermark, extra people, or mirror-selfie distortion. Add only a few restrained decor details that naturally fit the garment.";
@@ -1871,8 +1912,8 @@ function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, 
   const location = resolveFashionSelfieLocation(productInfo, settings);
   const textRule = buildFashionSelfieTextDirection(productInfo, settings, false);
   return [
-    `Create one photorealistic vertical 9:16 full-body fashion selfie image featuring ${garmentName}.`,
-    fashionSelfieImageDirection(presenter),
+    `Create one photorealistic vertical 9:16 fashion selfie image featuring ${garmentName}.`,
+    fashionSelfieImageDirection(presenter, settings),
     apparelPriority,
     fidelity,
     `Use this exact background direction: ${compactPromptText(location, 180)}. Keep the model and the complete garment clearly separated from the background with natural depth of field.`,
@@ -1888,13 +1929,13 @@ function buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, du
   const textRule = buildFashionSelfieTextDirection(productInfo, settings, true);
   return [
     `Create a ${durationSeconds}-second photorealistic vertical 9:16 fashion outfit video featuring ${garmentName}${location}.`,
-    fashionSelfieVideoDirection(presenter),
+    fashionSelfieVideoDirection(presenter, settings),
     APPAREL_REFERENCE_PRIORITY,
     PRODUCT_FIDELITY_DIRECTION,
     `FASHION SELFIE BACKGROUND LOCK: Keep the same background direction throughout every scene: ${compactPromptText(locationStr, 180)}. Keep the outfit separated from the background with natural depth of field; the background must remain stable, tasteful, and secondary to the garment.`,
     FASHION_SELFIE_BACKGROUND_QUALITY_LOCK,
-    `MANDATORY SIMPLE SHOT PLAN: Scene 1 is a stable full-body front view with the model already holding the phone over her face. Scene 2 is a very slow, small left-to-right pan that keeps the complete outfit, feet, and phone visible. Scene 3 returns to a stable full-body hero view for garment inspection. Keep every shot single-frame, uncluttered, and easy to compare with the reference garment.`,
-    `The model must remain standing in place; only subtle breathing, natural phone steadiness, and minimal camera motion are allowed. Do not zoom into the face or crop out the lower body.`,
+    resolveFashionSelfieFraming(settings).shotPlan + " Keep every shot single-frame, uncluttered, and easy to compare with the reference garment.",
+    `The model must remain standing in place; only subtle breathing, natural phone steadiness, and minimal camera motion are allowed. ${resolveFashionSelfieFraming(settings).cropRule}`,
     textRule,
     autoAudioDirection(settings)
   ].filter(Boolean).join("\n");
@@ -2281,11 +2322,13 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
     : (autoPresenter === "hands_only" || autoPresenter === "none")
     ? (prefersMan ? "man" : "woman")
     : autoPresenter;
+  const videoStyle = isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle;
+  const presenter = isAuto(settings.presenter) ? safeAutoPresenter : settings.presenter;
   return {
-    videoStyle: isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle,
+    videoStyle,
     // Auto always includes a real reviewer. People-free output is only allowed
     // when the user explicitly selects the "none" presenter option.
-    presenter: isAuto(settings.presenter) ? safeAutoPresenter : settings.presenter,
+    presenter: videoStyle === "wearable-crop" ? "wearable_crop" : presenter,
     customPresenter: sanitizePolicySensitiveText(settings.customPresenter),
     audioMode: settings.audioMode === "music_only" ? "music_only" : "voiceover",
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,

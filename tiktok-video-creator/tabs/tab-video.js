@@ -282,8 +282,11 @@ function resetStaleStatuses(queue) {
 }
 
 function normalizeSettings(value) {
+  const legacyWearableCrop = value.presenter === "wearable_crop";
   return {
     ...value,
+    videoStyle: legacyWearableCrop ? "wearable-crop" : (value.videoStyle || "sales"),
+    presenter: legacyWearableCrop ? "Auto" : (value.presenter || "Auto"),
     language: "ไทย",
     textEnabled: value.textEnabled === true || value.textEnabled === "true" ? "true" : "false",
     clipText: (value.clipText || "").trim(),

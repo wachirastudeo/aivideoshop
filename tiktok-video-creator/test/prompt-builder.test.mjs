@@ -243,6 +243,12 @@ check("fashion selfie Auto chooses a beautiful minimal background", /(minimalist
 check("fashion selfie Auto does not fall back to a generic urban street", !/Urban Street/i.test(fashionSelfieImage + fashionSelfieVideo), fashionSelfieImage + fashionSelfieVideo);
 check("fashion selfie keeps the background stable and secondary", /FASHION SELFIE BACKGROUND LOCK[\s\S]*stable, tasteful, and secondary to the garment/i.test(fashionSelfieVideo), fashionSelfieVideo);
 
+const fashionSelfieHalfBodySettings = { ...fashionSelfieSettings, cameraFraming: "half_body" };
+const fashionSelfieHalfBodyImage = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว", category: "แฟชั่น" }, fashionSelfieHalfBodySettings);
+const fashionSelfieHalfBodyVideo = buildVideoPrompt({ name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว", category: "แฟชั่น" }, fashionSelfieHalfBodySettings);
+check("fashion selfie image honors half-body framing", /FASHION SELFIE CAMERA FRAMING LOCK[\s\S]*medium half-body shot[\s\S]*top of the head to the waist[\s\S]*Do not show the legs or feet/i.test(fashionSelfieHalfBodyImage) && !/full-body fashion selfie image|full-body fashion photograph|full-length head-to-toe shot|stable full-body front view|stable full-body hero view/i.test(fashionSelfieHalfBodyImage), fashionSelfieHalfBodyImage);
+check("fashion selfie video honors half-body framing", /FASHION SELFIE CAMERA FRAMING LOCK[\s\S]*medium half-body shot[\s\S]*top of the head to the waist[\s\S]*never switch to a full-body or head-to-toe shot/i.test(fashionSelfieHalfBodyVideo) && !/full-body fashion photograph|full-length head-to-toe shot|stable full-body front view|stable full-body hero view/i.test(fashionSelfieHalfBodyVideo), fashionSelfieHalfBodyVideo);
+
 const fashionSelfieTextSettings = {
   ...fashionSelfieSettings,
   textEnabled: "true",
@@ -557,6 +563,10 @@ const wearablePantsVideo = buildVideoPrompt({ name: "กางเกงออก
 check("wearable crop mode keeps pants in a lower-body frame", /WEARABLE CLOSE-UP MODE/i.test(wearablePantsVideo) && /waist-to-ankles lower-body crop/i.test(wearablePantsVideo), wearablePantsVideo);
 check("wearable crop mode hides the face and uses voiceover", /no face, head, full torso, or full-body presenter/i.test(wearablePantsVideo) && /off-screen Thai voiceover/i.test(wearablePantsVideo), wearablePantsVideo);
 check("wearable crop mode prevents a third hand", /at most two anatomically connected human hands total/i.test(wearablePantsVideo) && /never a third hand/i.test(wearablePantsVideo), wearablePantsVideo);
+
+const wearableStyleVideo = buildVideoPrompt({ name: "กางเกงออกกำลังกายผู้ชาย" }, { ...settings, videoStyle: "wearable-crop", presenter: "Auto" });
+check("wearable crop video style replaces the presenter option", /WEARABLE CLOSE-UP MODE/i.test(wearableStyleVideo) && /waist-to-ankles lower-body crop/i.test(wearableStyleVideo), wearableStyleVideo);
+check("wearable crop video style uses off-screen voiceover", /off-screen Thai voiceover/i.test(wearableStyleVideo), wearableStyleVideo);
 
 const wearableShoeVideo = buildVideoPrompt({ name: "รองเท้าวิ่งผู้หญิง" }, { ...settings, presenter: "wearable_crop" });
 check("wearable crop mode frames shoes on feet and lower legs", /feet-and-lower-legs crop/i.test(wearableShoeVideo), wearableShoeVideo);
