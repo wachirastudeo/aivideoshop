@@ -1137,16 +1137,20 @@ function isRadioSelected(input) {
 }
 
 async function fillScheduleTime(scheduleTime) {
-  const targetDate = new Date(scheduleTime);
-  if (Number.isNaN(targetDate.getTime())) {
+  const parts = parseScheduleWallClock(scheduleTime);
+  if (!parts) {
     throw new Error(`invalid scheduleTime: ${scheduleTime}`);
   }
 
-  const yyyy = targetDate.getFullYear();
-  const mm = String(targetDate.getMonth() + 1).padStart(2, "0");
-  const dd = String(targetDate.getDate()).padStart(2, "0");
-  const hh = String(targetDate.getHours()).padStart(2, "0");
-  const min = String(targetDate.getMinutes()).padStart(2, "0");
+  // scheduleTime is a wall-clock value selected by the user. Read its literal
+  // date/time fields instead of reparsing it as an instant in the tab's timezone.
+  const { year: yyyyNum, month: mmNum, day: ddNum, hour: hhNum, minute: minNum } = parts;
+  const targetDate = new Date(yyyyNum, mmNum - 1, ddNum, hhNum, minNum, 0, 0);
+  const yyyy = String(yyyyNum);
+  const mm = String(mmNum).padStart(2, "0");
+  const dd = String(ddNum).padStart(2, "0");
+  const hh = String(hhNum).padStart(2, "0");
+  const min = String(minNum).padStart(2, "0");
   const targetDateStr = `${yyyy}-${mm}-${dd}`;
   const targetTimeStr = `${hh}:${min}`;
 
@@ -1163,7 +1167,7 @@ async function fillScheduleTime(scheduleTime) {
     await realClick(dateInput);
     await sleep(1200);
 
-    const datePicked = await pickCalendarDate(targetDate);
+    const datePicked = await pickCalendarDate(targetDate, dateInput);
     if (!datePicked) throw new Error("เลือกวันที่ตั้งโพสต์ใน TikTok Studio ไม่สำเร็จ");
     log(`✓ click วันในปฏิทิน: ${datePicked ? "สำเร็จ" : "ไม่สำเร็จ"}`);
     await sleep(600);
@@ -1200,7 +1204,7 @@ function findReadonlyInputByPattern(pattern, root = document) {
   return null;
 }
 
-async function pickCalendarDate(targetDate) {
+async function pickCalendarDate(targetDate, dateInput = null) {
   const tYear = targetDate.getFullYear();
   const tMonth = targetDate.getMonth();
   const tDay = targetDate.getDate();
@@ -1222,8 +1226,12 @@ async function pickCalendarDate(targetDate) {
     if (!monthEl && !yearEl) {
         break;
     }
-    const monthIdx = monthNameToIndex((monthEl?.textContent || "").trim());
-    const yearNum = parseInt((yearEl?.textContent || "").trim(), 10);
+    const monthText = [monthEl?.textContent, yearEl?.textContent]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const monthIdx = monthNameToIndex(monthText);
+    const yearNum = parseCalendarYear(monthText);
 
     if (monthIdx < 0 || !yearNum) {
       log("warn", `ℹ parse header ไม่ได้: "${monthEl?.textContent}" / "${yearEl?.textContent}"`);
@@ -1245,14 +1253,44 @@ async function pickCalendarDate(targetDate) {
     await sleep(400);
   }
 
-  const days = Array.from(wrapper.querySelectorAll(".day, td span"));
-  const targetDayEl = days.find(el => {
-    const text = (el.textContent || "").trim();
-    if (text !== String(tDay)) return false;
-    if (el.classList.contains("valid") || el.classList.contains("selected")) return true;
-    if (!el.classList.contains("outside") && !el.classList.contains("gray")) return true;
-    return false;
-  });
+  const candidates = [];
+  const seenCells = new Set();
+  const dayElements = Array.from(wrapper.querySelectorAll(
+    ".day, td, [role=gridcell], [role=button], button, td span"
+  ));
+
+  for (const element of dayElements) {
+    if ((element.textContent || "").trim() !== String(tDay)) continue;
+
+    const cell = element.closest("td, [role=gridcell], button, [role=button], .day") || element;
+    if (seenCells.has(cell)) continue;
+    seenCells.add(cell);
+
+    const metadata = [];
+    let current = cell;
+    for (let level = 0; current && level < 2; level++, current = current.parentElement) {
+      metadata.push(
+        current.className,
+        current.getAttribute?.("aria-label"),
+        current.getAttribute?.("title"),
+        current.getAttribute?.("data-date"),
+        current.getAttribute?.("data-value")
+      );
+    }
+    const marker = metadata.filter(Boolean).join(" ").toLowerCase();
+    const isOutsideMonth = /(outside|prev|previous|next|other-month|sibling|muted|inactive|disabled|gray)/i.test(marker) ||
+      cell.getAttribute?.("aria-disabled") === "true" || cell.hasAttribute?.("disabled");
+    if (isOutsideMonth) continue;
+
+    const tagName = String(cell.tagName || "").toLowerCase();
+    const role = cell.getAttribute?.("role") || "";
+    const isInteractive = tagName === "button" || tagName === "td" || role === "gridcell" || role === "button";
+    const isActive = /\b(valid|selected|current|today)\b/i.test(String(cell.className || ""));
+    candidates.push({ cell, score: (isActive ? 20 : 0) + (isInteractive ? 10 : 0) });
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  const targetDayEl = candidates[0]?.cell;
 
   if (!targetDayEl) {
     log("warn", `ℹ ไม่เจอวัน ${tDay} (valid) ใน popup`);
@@ -1260,22 +1298,81 @@ async function pickCalendarDate(targetDate) {
   }
 
   await realClick(targetDayEl);
-  return true;
+  if (!dateInput) return true;
+
+  const matched = await waitForScheduleDateInput(dateInput, tYear, tMonth + 1, tDay);
+  if (!matched) {
+    log("warn", `ℹ ช่องวันที่หลังคลิกไม่ตรงเป้าหมาย: ${dateInput.value || "(ว่าง)"}`);
+  }
+  return matched;
+}
+
+async function waitForScheduleDateInput(input, year, month, day) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    if (scheduleDateInputMatches(input?.value, year, month, day)) return true;
+    await sleep(200);
+  }
+  return scheduleDateInputMatches(input?.value, year, month, day);
+}
+
+function scheduleDateInputMatches(value, year, month, day) {
+  const raw = normalizeCalendarDigits(value).trim();
+  const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  if (raw === iso) return true;
+
+  const match = raw.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+  if (!match) return false;
+  const first = Number(match[1]);
+  const second = Number(match[2]);
+  const inputYear = Number(match[3]);
+  return inputYear === year && (
+    (first === day && second === month) ||
+    (first === month && second === day)
+  );
 }
 
 function monthNameToIndex(monthStr) {
   const months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
-  const lower = monthStr.toLowerCase();
+  const lower = String(monthStr || "").trim().toLowerCase();
+  const compact = lower.replace(/\s+/g, "");
   for (let i = 0; i < 12; i++) {
-    if (lower === months[i] || lower === months[i].slice(0, 3)) return i;
+    if (compact === months[i] || compact === months[i].slice(0, 3) || compact.startsWith(months[i]) || compact.startsWith(months[i].slice(0, 3))) return i;
   }
   
   const thMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
   const thMonthsFull = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
   for (let i = 0; i < 12; i++) {
-    if (lower === thMonths[i] || lower === thMonthsFull[i]) return i;
+    if (compact === thMonths[i] || compact === thMonthsFull[i] || compact.startsWith(thMonths[i]) || compact.startsWith(thMonthsFull[i])) return i;
   }
   return -1;
+}
+
+function parseCalendarYear(value) {
+  const normalized = normalizeCalendarDigits(value);
+  const years = normalized.match(/\d{4}/g) || [];
+  const year = Number(years[years.length - 1]);
+  if (!Number.isFinite(year)) return NaN;
+  return year >= 2400 && year <= 3000 ? year - 543 : year;
+}
+
+function normalizeCalendarDigits(value) {
+  return String(value || "").replace(/[๐-๙]/g, (digit) => String("๐๑๒๓๔๕๖๗๘๙".indexOf(digit)));
+}
+
+function parseScheduleWallClock(value) {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::\d{2})?)?/);
+  if (!match) return null;
+  const parts = {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4] || 0),
+    minute: Number(match[5] || 0)
+  };
+  const check = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0);
+  if (check.getFullYear() !== parts.year || check.getMonth() !== parts.month - 1 || check.getDate() !== parts.day || check.getHours() !== parts.hour || check.getMinutes() !== parts.minute) return null;
+  return parts;
 }
 
 async function pickTimeHourMinute(hh, mm) {
