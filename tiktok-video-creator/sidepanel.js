@@ -1,4 +1,4 @@
-import { initVideoTab, syncSelectedProductToVideoTab } from "./tabs/tab-video.js";
+import { initVideoTab, persistVideoTabState, syncSelectedProductToVideoTab } from "./tabs/tab-video.js";
 import { initProductsTab } from "./tabs/tab-products.js";
 import { initCustomTab } from "./tabs/tab-custom.js";
 import { initPostTab } from "./tabs/tab-post.js";
@@ -127,6 +127,9 @@ function escapeHtml(value) {
  * @param {"video"|"products"|"post"} tabName - ชื่อแท็บ
  */
 async function loadTab(tabName) {
+  if (activeTab === "video" && tabName !== "video") {
+    await persistVideoTabState();
+  }
   activeTab = tabName;
   tabRoot.setAttribute("aria-busy", "true");
   logActivity(`กำลังโหลดแท็บ ${getTabLabel(tabName)}`).catch(() => {});

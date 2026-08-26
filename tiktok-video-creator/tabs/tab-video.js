@@ -7,7 +7,8 @@ import {
   buildCaption,
   buildPostHashtags,
   normalizeHashtags,
-  truncateShopeeCaptionAndHashtags
+  truncateShopeeCaptionAndHashtags,
+  isPhoneCaseProduct
 } from "../modules/prompt-builder.js";
 import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
@@ -48,12 +49,10 @@ export async function initVideoTab(injectedHelpers) {
     ...(savedOptions.mediaSettings || {})
   };
 
-  // โหลด creatorState (เก็บ UI state เช่น videoStyle, mood) แต่ค่า media settings
-  // จาก Options page ต้องชนะเสมอ เพื่อให้ตั้งค่าใหม่ใน Options มีผลทันที
-  const savedMediaSettings = savedOptions.mediaSettings || {};
+  // โหลด creatorState เพื่อคงค่าที่ผู้ใช้แก้ในแท็บนี้ไว้ขณะสลับแท็บ
   const creatorStateSettings = stored.creatorState?.settings || {};
   const creatorPresenter = creatorStateSettings.presenter;
-  const initialPresenter = creatorPresenter && creatorPresenter !== "Auto"
+  const initialPresenter = creatorPresenter !== undefined
     ? creatorPresenter
     : optionDefaults.presenter;
 
@@ -62,13 +61,6 @@ export async function initVideoTab(injectedHelpers) {
     ...optionDefaults,
     ...creatorStateSettings,
     presenter: initialPresenter,
-    // ค่าเหล่านี้มาจาก Options page — override creatorState เสมอ
-    imageCount: savedMediaSettings.imageCount || optionDefaults.imageCount || 1,
-    videoCount: savedMediaSettings.videoCount || optionDefaults.videoCount || 1,
-    imageModel: savedMediaSettings.imageModel || optionDefaults.imageModel || "nano-banana-pro",
-    videoModel: savedMediaSettings.videoModel || optionDefaults.videoModel || "veo-3.1-lite-low-priority",
-    videoDuration: savedMediaSettings.videoDuration || optionDefaults.videoDuration || 8,
-    aspectRatio: savedMediaSettings.aspectRatio || optionDefaults.aspectRatio || "9:16",
   });
   productQueue = resetStaleStatuses(normalizeProductQueue(stored.productQueue));
 
@@ -82,6 +74,11 @@ export async function initVideoTab(injectedHelpers) {
   const isRunning = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId);
   isProcessing = isRunning;
   setBatchButtons(isRunning);
+}
+
+export async function persistVideoTabState() {
+  if (!document.querySelector("#video-model")) return;
+  await syncSettingsForm();
 }
 
 export async function syncSelectedProductToVideoTab() {
@@ -1231,7 +1228,12 @@ function buildFlowOptions(product = null) {
     videoRefMode: settings.videoRefMode || "frames",
     modelRefImage: product?.modelRefImage || settings.modelRefImage || ""
   };
-  if (product) opts.imageUrls = getFlowProductImages(product);
+  if (product) {
+    const productText = `${product.originalName || ""} ${product.name || ""} ${product.category || ""}`;
+    const referenceImages = getFlowProductImages(product);
+    // Phone-case artwork is variant-specific; multiple product/variant images can make Flow blend patterns.
+    opts.imageUrls = isPhoneCaseProduct(productText) ? referenceImages.slice(0, 1) : referenceImages;
+  }
   return opts;
 }
 

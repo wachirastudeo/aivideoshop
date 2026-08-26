@@ -1350,10 +1350,12 @@ async function selectModel(modelKey) {
     const currentText = (modelBtn.textContent || "").trim().toUpperCase();
     
     // ตรวจสอบว่าเลือกอยู่แล้วหรือไม่ (exact match ก่อน → substring fallback)
-    const alreadySelected = targets.some(t => currentText === t) || targets.some(t => currentText.includes(t));
+    const isNormalLite = modelKey === "veo-3.1-lite";
+    const alreadySelected = !(isNormalLite && currentText.includes("LOWER PRIORITY"))
+        && (targets.some(t => currentText === t) || targets.some(t => currentText.includes(t)));
     if (alreadySelected) {
         log(`\u2705 Model ${modelKey} ถูกเลือกอยู่แล้ว (${currentText})`);
-        return true;
+        return modelKey;
     }
     
     log(`สลับโมเดลเป็น ${modelKey}... (ปัจจุบัน: ${currentText})`);
@@ -1361,18 +1363,20 @@ async function selectModel(modelKey) {
     await sleep(800);
     
     // ค้นหา item ใน sub-menu ที่เปิดขึ้นมา
-    const matchItem = (items) => {
+    const matchItem = (items, matchTargets = targets, excludeLowerPriority = false) => {
         // Pass 1: exact match
         for (const item of items) {
             if (!isVisible(item)) continue;
             const text = (item.textContent || "").trim().toUpperCase();
-            if (targets.some(t => text === t)) return item;
+            if (excludeLowerPriority && text.includes("LOWER PRIORITY")) continue;
+            if (matchTargets.some(t => text === t)) return item;
         }
         // Pass 2: substring match (เฉพาะ target ที่ยาวที่สุดก่อน เพื่อป้องกัน collision)
-        const sortedTargets = [...targets].sort((a, b) => b.length - a.length);
+        const sortedTargets = [...matchTargets].sort((a, b) => b.length - a.length);
         for (const item of items) {
             if (!isVisible(item)) continue;
             const text = (item.textContent || "").trim().toUpperCase();
+            if (excludeLowerPriority && text.includes("LOWER PRIORITY")) continue;
             if (sortedTargets.some(t => text.includes(t))) return item;
         }
         return null;
@@ -1382,23 +1386,50 @@ async function selectModel(modelKey) {
     for (const sub of openMenus) {
         if (sub === menu) continue;
         const items = sub.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="option"], [role="radio"], button, [data-radix-collection-item]');
-        const found = matchItem(Array.from(items));
+        const found = matchItem(Array.from(items), targets, isNormalLite);
         if (found) {
             log(`พบตัวเลือก model: ${found.textContent.trim()}, กำลังกดเลือก...`);
             await humanClick(found);
             await sleep(600);
-            return true;
+            return modelKey;
         }
     }
     
     // Fallback: ค้นหาทั่วทั้ง document
     const fallbackItems = document.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="option"], [role="radio"], [data-radix-collection-item]');
-    const found = matchItem(Array.from(fallbackItems));
+    const found = matchItem(Array.from(fallbackItems), targets, isNormalLite);
     if (found) {
         log(`พบตัวเลือก model (fallback): ${found.textContent.trim()}, กำลังกดเลือก...`);
         await humanClick(found);
         await sleep(600);
-        return true;
+        return modelKey;
+    }
+
+    if (modelKey === "veo-3.1-lite-low-priority") {
+        const fallbackKey = "veo-3.1-lite";
+        const fallbackTargets = mapping[fallbackKey];
+        log("⚠️ ไม่พบ Veo 3.1 — Lite [Lower Priority] (0 เครดิต) จึงใช้ Veo 3.1 — Lite แทน ซึ่งอาจมีค่าเครดิต");
+
+        for (const sub of openMenus) {
+            if (sub === menu) continue;
+            const items = sub.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="option"], [role="radio"], button, [data-radix-collection-item]');
+            const fallbackFound = matchItem(Array.from(items), fallbackTargets, true);
+            if (fallbackFound) {
+                log(`พบตัวเลือก model fallback: ${fallbackFound.textContent.trim()}, กำลังกดเลือก...`);
+                await humanClick(fallbackFound);
+                await sleep(600);
+                return fallbackKey;
+            }
+        }
+
+        const fallbackItems = document.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="option"], [role="radio"], [data-radix-collection-item]');
+        const fallbackFound = matchItem(Array.from(fallbackItems), fallbackTargets, true);
+        if (fallbackFound) {
+            log(`พบตัวเลือก model fallback (ทั่วหน้า): ${fallbackFound.textContent.trim()}, กำลังกดเลือก...`);
+            await humanClick(fallbackFound);
+            await sleep(600);
+            return fallbackKey;
+        }
     }
     
     log(`\u26a0\ufe0f ไม่พบตัวเลือกสำหรับ model key: ${modelKey}`);
@@ -1441,12 +1472,12 @@ async function ensureConfig(phase, options = {}) {
     }
     await selectAspectRatio(aspectRatio); await sleep(800);
     await selectBatchCount(count); await sleep(800);
-    await selectModel(modelKey); await sleep(800);
+    const selectedModelKey = await selectModel(modelKey); await sleep(800);
     
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await sleep(400);
     if (document.querySelector('[role="menu"][data-state="open"]')) { document.body.click(); await sleep(300); }
-    log(`✅ ตั้งค่า mode + ${aspectRatio} + ${count}x + ${modelKey} สำเร็จ`);
+    log(`✅ ตั้งค่า mode + ${aspectRatio} + ${count}x + ${selectedModelKey || modelKey} สำเร็จ`);
 }
 
 async function openMediaEditWorkspace(tile) {

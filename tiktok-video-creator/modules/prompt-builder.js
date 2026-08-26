@@ -2086,7 +2086,7 @@ export function isFurnitureProduct(text = "") {
 }
 
 export function buildCategoryFidelityDirection(productInfo = {}) {
-  const text = `${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`.toLowerCase();
+  const text = `${getVisualProductName(productInfo)} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`.toLowerCase();
   const titleText = String(getVisualProductName(productInfo) || "").toLowerCase();
   const hasEngraving = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(text);
   if (isHammockProduct(text)) {
