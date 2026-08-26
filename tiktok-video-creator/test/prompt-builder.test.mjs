@@ -1011,6 +1011,8 @@ const genericReferenceImage = buildImagePrompt({ name: "แก้วเก็บ
 check("non-apparel image still gives the product reference highest priority", /REFERENCE PHOTO OVERRIDES TEXT/i.test(genericReferenceImage), genericReferenceImage);
 check("image prompt locks realistic product scale to the scene", /REALISTIC SCENE SCALE LOCK[\s\S]*real-world anchors[\s\S]*natural perspective/i.test(genericReferenceImage), genericReferenceImage);
 check("image prompt scales from scene anchors instead of frame coverage", /Use real-world anchors, natural perspective, and background depth/i.test(genericReferenceImage), genericReferenceImage);
+check("insulated tumbler image uses reference-led geometry without forcing a cylinder", /STRICT INSULATED DRINKWARE FIDELITY LOCK[\s\S]*without forcing a generic cylindrical shape/i.test(genericReferenceImage), genericReferenceImage);
+check("insulated tumbler preserves printed text orientation and layout", /INSULATED DRINKWARE PRINTED-TEXT LAYOUT LOCK[\s\S]*If the reference text is vertical, keep it vertical[\s\S]*never reflow it horizontally/i.test(genericReferenceImage), genericReferenceImage);
 
 // Test 9: Video prompt fidelity directions
 const sampleVideoPrompt = buildVideoPrompt({ name: "กระเป๋าเป้ลายการ์ตูน" }, settings);
