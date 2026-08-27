@@ -243,6 +243,21 @@ check("fashion selfie Auto chooses a beautiful minimal background", /(minimalist
 check("fashion selfie Auto does not fall back to a generic urban street", !/Urban Street/i.test(fashionSelfieImage + fashionSelfieVideo), fashionSelfieImage + fashionSelfieVideo);
 check("fashion selfie keeps the background stable and secondary", /FASHION SELFIE BACKGROUND LOCK[\s\S]*stable, tasteful, and secondary to the garment/i.test(fashionSelfieVideo), fashionSelfieVideo);
 
+const fashionSelfiePantsSettings = { ...fashionSelfieSettings, cameraFraming: "half_body" };
+const fashionSelfiePants = { name: "กางเกงออกกำลังกายผู้ชาย", category: "เสื้อผ้า" };
+const fashionSelfiePantsImage = buildImagePrompt(fashionSelfiePants, fashionSelfiePantsSettings);
+const fashionSelfiePantsVideo = buildVideoPrompt(fashionSelfiePants, fashionSelfiePantsSettings);
+check("fashion selfie identifies pants instead of generic clothing", /featuring pants/i.test(fashionSelfiePantsImage) && /featuring pants/i.test(fashionSelfiePantsVideo), fashionSelfiePantsImage + fashionSelfiePantsVideo);
+check("fashion selfie pants adds only one complementary top", /exactly one pair[\s\S]*sole visible bottom garment[\s\S]*simple matching top/i.test(fashionSelfiePantsImage) && /exactly one pair[\s\S]*sole visible bottom garment[\s\S]*simple matching top/i.test(fashionSelfiePantsVideo), fashionSelfiePantsImage + fashionSelfiePantsVideo);
+check("fashion selfie pants forces complete full-body framing", /head-to-toe|full-body/i.test(fashionSelfiePantsImage) && /head-to-toe|full-length/i.test(fashionSelfiePantsVideo) && /FASHION SELFIE COMPLETE BODY LOCK/i.test(fashionSelfiePantsVideo), fashionSelfiePantsImage + fashionSelfiePantsVideo);
+check("fashion selfie shirt keeps one featured top and a complete body", /sole visible featured top[\s\S]*opaque, full-coverage matching bottom/i.test(fashionSelfieImage) && /FASHION SELFIE COMPLETE BODY LOCK/i.test(fashionSelfieImage), fashionSelfieImage);
+
+const fashionSelfieFitness = buildVideoPrompt(
+  { name: "กางเกงออกกำลังกายผู้ชาย", category: "เสื้อผ้า" },
+  { ...fashionSelfieSettings, location: "Auto" }
+);
+check("fashion selfie sportswear uses a fitness background", /Bright home workout|Outdoor park fitness|modern gym|home fitness|fitness studio/i.test(fashionSelfieFitness), fashionSelfieFitness);
+
 const fashionSelfieHalfBodySettings = { ...fashionSelfieSettings, cameraFraming: "half_body" };
 const fashionSelfieHalfBodyImage = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว", category: "แฟชั่น" }, fashionSelfieHalfBodySettings);
 const fashionSelfieHalfBodyVideo = buildVideoPrompt({ name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว", category: "แฟชั่น" }, fashionSelfieHalfBodySettings);
@@ -1013,6 +1028,18 @@ check("image prompt locks realistic product scale to the scene", /REALISTIC SCEN
 check("image prompt scales from scene anchors instead of frame coverage", /Use real-world anchors, natural perspective, and background depth/i.test(genericReferenceImage), genericReferenceImage);
 check("insulated tumbler image uses reference-led geometry without forcing a cylinder", /STRICT INSULATED DRINKWARE FIDELITY LOCK[\s\S]*without forcing a generic cylindrical shape/i.test(genericReferenceImage), genericReferenceImage);
 check("insulated tumbler preserves printed text orientation and layout", /INSULATED DRINKWARE PRINTED-TEXT LAYOUT LOCK[\s\S]*If the reference text is vertical, keep it vertical[\s\S]*never reflow it horizontally/i.test(genericReferenceImage), genericReferenceImage);
+const insulatedCupImage = buildImagePrompt({ name: "แก้วน้ำเก็บความเย็น", category: "แก้วน้ำ" }, { ...settings, presenter: "none" });
+check("insulated cup is not mislabeled as a food cup", /Show insulated tumbler bottle clearly/i.test(insulatedCupImage) && !/Show food cup or container clearly/i.test(insulatedCupImage), insulatedCupImage);
+const insulatedCupWithWrongAnalysis = buildImagePrompt(
+  {
+    name: "แก้วน้ำเก็บความเย็น",
+    category: "แก้วน้ำ",
+    structureAdvice: "The product is a ceramic food bowl with a wide open top.",
+    promptAdvice: "Preserve the ceramic food bowl exactly."
+  },
+  { ...settings, presenter: "none" }
+);
+check("drinkware ignores incompatible stale image analysis", !/food bowl|wide open top|ceramic food bowl/i.test(insulatedCupWithWrongAnalysis) && /Secondary reference analysis hint only|Show insulated tumbler bottle clearly/i.test(insulatedCupWithWrongAnalysis), insulatedCupWithWrongAnalysis);
 
 // Test 9: Video prompt fidelity directions
 const sampleVideoPrompt = buildVideoPrompt({ name: "กระเป๋าเป้ลายการ์ตูน" }, settings);
@@ -1225,9 +1252,15 @@ check("image prompt uses background-only compositing instead of product redesign
 const fidelityVid = buildVideoPrompt({ name: "black insulated bottle", category: "drinkware" }, { ...settings, presenter: "none" });
 check("video prompt keeps strict reference product fidelity", /STRICT PRODUCT FIDELITY LOCK/i.test(fidelityVid), fidelityVid);
 
+const insulatedCupAuto = buildVideoPrompt(
+  { name: "แก้วน้ำเก็บความเย็น", category: "แก้วน้ำ" },
+  { ...settings, presenter: "none", location: "Auto" }
+);
+check("insulated cup Auto scene allows a living room", /Bright realistic outdoor park or fitness setting|Bright modern living room/i.test(insulatedCupAuto), insulatedCupAuto);
+
 // Test 27: Auto background must match the product category.
 const autoBackgroundCases = [
-  ["water bottle", /Bright realistic outdoor park or fitness setting/i],
+  ["water bottle", /Bright realistic outdoor park or fitness setting|Bright modern living room/i],
   ["cat food", /Clean pet-friendly home interior/i],
   ["toy", /Bright safe children's playroom/i],
   ["car phone holder", /Realistic clean car interior/i],
