@@ -539,6 +539,7 @@ const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
 const CAMERA_ONLY_NO_HANDS_DIRECTION = "CAMERA-ONLY / NO-HANDS LOCK: The entire frame must contain zero hands, fingers, arms, people, presenters, reviewers, or human body parts. No hand may enter to hold, touch, adjust, lift, or present the product. The product is already placed and untouched; only the camera moves.";
+const PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION = "CAMERA MOTION ONLY — MULTI-ANGLE PRODUCT-ONLY DYNAMIC CAMERA SHOWCASE: Keep the exact product physically still, rigid, and unchanged while the camera creates energetic visual variety. Use 3–4 sequential full-frame shots with clean rhythmic hard cuts: front hero angle with a confident push in, left three-quarter angle with a smooth left-to-right slide, right three-quarter angle with a high tilt and short controlled arc, then a close detail shot with a push in and pull back to the hero view. Use smooth pan, dolly, tilt, and one short controlled arc of about 30–45 degrees; make the movement noticeable and fun but physically realistic. Never rotate the product itself, never use a collage or split screen, and keep the product sharp, centered, and fully visible in every shot.";
 const EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION = "EXPLICIT ADULT PRESENTER LOCK: The selected presenter is an adult woman or adult man. Show exactly one adult presenter only. Do NOT include any child, minor, baby, toddler, or parent-and-child pair, even when the product is intended for children.";
 const EXPLICIT_CHILD_PRESENTER_DIRECTION = "EXPLICIT CHILD PRESENTER MODE: The user explicitly selected the cute child presenter. MUST show a happy fictional Thai child on camera, age 4-6 years old for child mode or 7-12 years old for older_child mode, actively and safely using or interacting with the product, together with exactly one friendly Thai parent/guardian supervising nearby. Do NOT replace the child with an adult-only presenter, Auto mode, hands-only, product-only, or voiceover-only presentation. Keep the same child and parent consistent across all scenes.";
 
@@ -1404,10 +1405,10 @@ function buildStillMotionVideoPrompt(productInfo, productName, locationStr, dura
     scaleDirection,
     `Place the product naturally in a realistic ${locationStr || "category-appropriate"} setting. Keep natural photography composition, true scale, visible but limited context, and realistic contact shadows. Do not make the product oversized or let it fill the table or frame.`,
     CAMERA_ONLY_NO_HANDS_DIRECTION,
-    "CAMERA MOTION ONLY — MULTI-ANGLE / LEFT-RIGHT / IN-OUT: Keep the product completely static while the smartphone camera makes a clearly noticeable but realistic move. Use three clean camera angles in sequence: front hero angle, left three-quarter angle, then right three-quarter angle. Between angles, use a smooth lateral left-to-right slide of about 20–30 cm, then gently push in and pull back by about 5–10%. The object itself never rotates; only the camera changes angle. No arc, orbit, roll, or object rotation.",
+    PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION,
     "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, or busy scene action.",
     overlayDirection,
-    "Use only three gentle angle transitions: front hero → left three-quarter → right three-quarter. No fast cuts, zoom punch, 360-degree orbit, dramatic effects, collage, or scene change that alters the product. Use quiet natural instrumental ambience or no audio."
+    "Use energetic but controlled angle transitions: front hero → low left three-quarter → high right three-quarter → detail pull-back. No whip pan, violent shake, 360-degree orbit, dramatic effects, collage, or scene change that alters the product. Use upbeat but clean instrumental ambience or no audio."
   ].filter(Boolean).join("\n");
 }
 
@@ -1427,10 +1428,10 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
     scaleDirection,
     `Keep the fitted open box and product at true scale in a realistic ${locationStr || "category-appropriate"} setting. Keep only limited table context and almost no floor visible.`,
     CAMERA_ONLY_NO_HANDS_DIRECTION,
-    "CAMERA MOTION ONLY — MULTI-ANGLE / LEFT-RIGHT / IN-OUT: Keep the product and box completely static while the smartphone camera makes a clearly noticeable but realistic move. Use three clean camera angles in sequence: front hero angle, left three-quarter angle, then right three-quarter angle. Between angles, use a smooth lateral left-to-right slide of about 20–30 cm, then gently push in and pull back by about 5–10%. The product and box never rotate; only the camera changes angle. No arc, orbit, roll, or object rotation.",
+    PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION,
     "STRICTLY FORBIDDEN: Do not move, rotate, slide, bounce, float, resize, morph, open, close, deform, or otherwise animate the product or box. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, busy props, fast cuts, macro zoom, 360-degree orbit, or scene changes.",
     overlayDirection,
-    "Use only three gentle angle transitions: front hero → left three-quarter → right three-quarter. Use quiet natural instrumental ambience or no audio."
+    "Use energetic but controlled angle transitions: front hero → low left three-quarter → high right three-quarter → detail pull-back. Use upbeat but clean instrumental ambience or no audio."
   ].filter(Boolean).join("\n");
 }
 
@@ -1637,6 +1638,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "the product shown on its own")
       .replace(/\b(a |an )?(presenter|reviewer|model|person|hands?)\b/gi, "the product shown on its own");
+    sceneBreakdown = [
+      "PRODUCT-ONLY MULTI-ANGLE SEQUENCE: Show one exact unchanged product in sequential full-frame shots, never a collage or split screen:",
+      "- Scene 1 (Hook): Front hero view with a confident camera push-in.",
+      "- Scene 2 (Move): Low left three-quarter view with a smooth lateral slide.",
+      "- Scene 3 (Detail): High right three-quarter view with a short controlled camera arc and tilt.",
+      "- Scene 4 (Finish): Sharp close-up of the key detail, then a brief pull-back to the hero view."
+    ].join("\n");
   } else if (handsOnly) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, "hands holding and presenting the product")
@@ -1729,7 +1737,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     isUnboxingHands ? UNBOXING_REVEAL_SEQUENCE : "",
     sceneBreakdown,
     isClothing && !wearableCrop && !noPeople && !handsOnly && !isAnimal ? APPAREL_PRESENTER_FRAME_CONTINUITY : "",
-    `Subtle ${compactPromptText(auto.cameraMovement, 80)}; camera movement should feel like a real handheld/tripod shot while the product remains physically stable. Keep shots sharp and clearly visible. No morphing, duplication, floating, or impossible action.`
+    noPeople
+      ? `${PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION} The camera movement should feel like a real handheld/tripod shot while the product remains physically stable.`
+      : `Subtle ${compactPromptText(auto.cameraMovement, 80)}; camera movement should feel like a real handheld/tripod shot while the product remains physically stable. Keep shots sharp and clearly visible. No morphing, duplication, floating, or impossible action.`
   );
 
   const videoUserPhrase = settings?.clipText

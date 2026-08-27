@@ -146,6 +146,7 @@ export async function initCustomTab(injectedHelpers) {
     "activeFlowTabId",
     "activeTikTokTabId"
   ]);
+  const { settings: syncSettings = {} } = await chrome.storage.sync.get("settings");
 
   populateStyleDropdown();
 
@@ -193,16 +194,17 @@ export async function initCustomTab(injectedHelpers) {
     setValue("custom-post-schedule-time", `${defaultHh}:${defaultMm}`);
   }
 
-  if (stored.customCreatorSettings) {
-    const settings = stored.customCreatorSettings;
-    if (settings.flowMode) setValue("custom-flow-mode", settings.flowMode);
-    if (settings.audioMode) setValue("custom-audio-mode", settings.audioMode);
-    if (settings.videoModel) setValue("custom-video-model", settings.videoModel);
-    if (settings.duration) setValue("custom-video-duration", settings.duration);
-    if (settings.aspectRatio) setValue("custom-aspect-ratio", settings.aspectRatio);
-    setValue("custom-loops", settings.loops || 1);
-    setValue("custom-schedule-interval", settings.scheduleInterval || 10);
-  }
+  const customSettings = stored.customCreatorSettings || {};
+  setValue("custom-flow-mode", customSettings.flowMode || "combined");
+  setValue("custom-audio-mode", customSettings.audioMode || "voiceover");
+  setValue(
+    "custom-video-model",
+    customSettings.videoModel || syncSettings.flow?.videoModel || "veo-3.1-lite-low-priority"
+  );
+  setValue("custom-video-duration", customSettings.duration || "8");
+  setValue("custom-aspect-ratio", customSettings.aspectRatio || "9:16");
+  setValue("custom-loops", customSettings.loops || 1);
+  setValue("custom-schedule-interval", customSettings.scheduleInterval || 10);
 
   if (stored.customCreatorModelRefImage) {
     selectedModelRefImageBase64 = stored.customCreatorModelRefImage;
@@ -393,6 +395,11 @@ async function saveState() {
     customCreatorSettings: settings,
     customCreatorModelRefImage: selectedModelRefImageBase64
   });
+}
+
+export async function persistCustomTabState() {
+  if (!document.querySelector("#custom-video-model")) return;
+  await saveState();
 }
 
 async function persistSelectedImageReference() {

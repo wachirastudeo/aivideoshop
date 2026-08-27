@@ -1,6 +1,6 @@
 import { initVideoTab, persistVideoTabState, syncSelectedProductToVideoTab } from "./tabs/tab-video.js";
 import { initProductsTab } from "./tabs/tab-products.js";
-import { initCustomTab } from "./tabs/tab-custom.js";
+import { initCustomTab, persistCustomTabState } from "./tabs/tab-custom.js";
 import { initPostTab } from "./tabs/tab-post.js";
 
 const TAB_HTML = {
@@ -21,6 +21,7 @@ const isTabMode = new URLSearchParams(location.search).get("mode") === "tab";
 let activeTab = "video";
 let activityLog = [];
 let collapsedGroups = {};
+let tabLoadChain = Promise.resolve();
 
 if (isTabMode) {
   document.documentElement.dataset.mode = "tab";
@@ -126,9 +127,18 @@ function escapeHtml(value) {
  * @description โหลด HTML ของแท็บและ init logic ที่ตรงกัน
  * @param {"video"|"products"|"post"} tabName - ชื่อแท็บ
  */
-async function loadTab(tabName) {
+function loadTab(tabName) {
+  const nextLoad = tabLoadChain.then(() => loadTabInternal(tabName));
+  tabLoadChain = nextLoad.catch(() => {});
+  return nextLoad;
+}
+
+async function loadTabInternal(tabName) {
   if (activeTab === "video" && tabName !== "video") {
     await persistVideoTabState();
+  }
+  if (activeTab === "custom" && tabName !== "custom") {
+    await persistCustomTabState();
   }
   activeTab = tabName;
   tabRoot.setAttribute("aria-busy", "true");
