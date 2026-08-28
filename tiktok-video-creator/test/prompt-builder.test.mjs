@@ -129,6 +129,14 @@ check("reference image ignores surrounding image text", /PRODUCT TEXT SCOPE:[\s\
 check("reference image keeps absent product text blank", /If none is visible\/readable[\s\S]*surface blank[\s\S]*never infer text from the title or surrounding image/i.test(img), img);
 check("default image puts no-text rule before product instructions", img.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < img.indexOf("REFERENCE PHOTO OVERRIDES TEXT"), img);
 
+const coloredBoxImage = buildImagePrompt({
+  name: "กล่องของขวัญสีฟ้าพร้อมฉลาก",
+  category: "บรรจุภัณฑ์",
+  highlights: "กล่องสีฟ้า ฉลากสีขาว และโลโก้สีน้ำเงิน"
+}, settings);
+check("packaging still image locks visible box colors", /HIGHEST PRIORITY STILL REFERENCE FIDELITY[\s\S]*visible packaging colors[\s\S]*STRICT COLOR REPRODUCTION LOCK/i.test(coloredBoxImage), coloredBoxImage);
+check("packaging still image separates product colors from the background", /Reference overrides title, highlights, generic info, and style instructions[\s\S]*Change only background/i.test(coloredBoxImage), coloredBoxImage);
+
 const coffeePouch = buildImagePrompt({
   name: "กาแฟคั่วบด Angry Bears Coffee",
   originalName: "กาแฟคั่วบด Angry Bears Coffee",
@@ -366,6 +374,11 @@ check("shoe prompt uses an outdoor footwear location", /outdoor home driveway|fr
 check("shoe prompt rejects oversized placement", /do not enlarge the shoe to furniture-scale/i.test(shoeImage));
 check("shoe prompt rejects indoor locations", /never inside a house|bedroom|entryway|closet|shoe shelf|showroom|cafe|studio/i.test(shoeImage));
 check("shoe still image has highest-priority outdoor background lock", /HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE/i.test(shoeImage) && /outdoor pavement|concrete|grass|natural daylight/i.test(shoeImage));
+check("shoe still image locks grounded placement", /REALISTIC FOOTWEAR STILL PLACEMENT LOCK/i.test(shoeImage) && /sole touching the surface|soles supported by the surface/i.test(shoeImage) && /believable contact shadow/i.test(shoeImage));
+check("shoe still image uses a natural footwear composition", /Single full-frame footwear .*product shot/i.test(shoeImage) && /realistic 3\/4 product angle/i.test(shoeImage) && /natural spacing/i.test(shoeImage));
+check("shoe still image requires both shoes together", /MANDATORY FOOTWEAR PAIR STILL COMPOSITION/i.test(shoeImage) && /BOTH shoes/i.test(shoeImage) && /NEVER output only one shoe/i.test(shoeImage));
+const singleShoeImage = buildImagePrompt({ name: "รองเท้าข้างเดียว", structureAdvice: "Reference shows one single shoe only." }, settings);
+check("explicit single-shoe reference stays single", /exact single shoe from the reference/i.test(singleShoeImage) && !/MANDATORY FOOTWEAR PAIR STILL COMPOSITION/i.test(singleShoeImage));
 check("shoe video Auto includes a reviewer", /Presenter: (?:A fictional adult Thai woman reviewer|A fictional adult Thai man reviewer)/i.test(shoeVideo));
 check("shoe presenter outfit matches the footwear", /PRESENTER OUTFIT MATCH[\s\S]*exact reference footwear[\s\S]*casual streetwear or athletic wear/i.test(shoeVideo), shoeVideo);
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
@@ -1142,7 +1155,7 @@ check("workout pants prompt does not request vague supporting clothes", !/suppor
 const womensWorkoutPantsVid = buildVideoPrompt({ name: "กางเกงออกกำลังกายผู้หญิง", category: "เสื้อผ้า" }, settings);
 check("women's workout pants select a woman model", /Presenter: A fictional adult Thai woman commercial fit model/i.test(womensWorkoutPantsVid), womensWorkoutPantsVid);
 check("Auto men's apparel uses a handsome young working-age presenter", /AUTO PRESENTER PROFILE:[^\n]*Thai man around 22-35 years old[^\n]*handsome/i.test(mensWorkoutPantsVid), mensWorkoutPantsVid);
-check("Auto women's apparel uses a beautiful young working-age presenter", /AUTO PRESENTER PROFILE:[^\n]*Thai woman around 22-35 years old[^\n]*beautiful/i.test(womensWorkoutPantsVid), womensWorkoutPantsVid);
+check("Auto women's apparel uses a youthful 20-29 presenter", /AUTO PRESENTER PROFILE:[^\n]*Thai woman around 20-29 years old[^\n]*visibly youthful adult appearance[^\n]*not mature-looking or elderly[^\n]*beautiful/i.test(womensWorkoutPantsVid), womensWorkoutPantsVid);
 
 const manualWomanProfileVid = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, { ...settings, presenter: "woman" });
 check("manual presenter selection does not receive the Auto age profile", !/AUTO PRESENTER PROFILE/i.test(manualWomanProfileVid), manualWomanProfileVid);

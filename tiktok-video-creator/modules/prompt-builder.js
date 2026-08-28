@@ -320,14 +320,15 @@ const HANDS_ONLY_BACKGROUND_DIRECTION = "BACKGROUND AESTHETICS: The background m
 const ANIMAL_PRESENTER_DIRECTION = "Show a friendly Thai reviewer standing together with a cute consistent pet animal (cat or dog as specified) in the frame interacting with or standing near the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
 const NO_UNREQUESTED_ANIMALS_DIRECTION = "No animals unless explicitly selected.";
 
-const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, patterns, print designs, graphical illustrations, logos, labels, and parts. The pattern, artwork, and visual print on the product (especially for phone cases, clothes, or printed goods) must be 100% identical, keeping the same graphics, colors, and layout without any modification or hallucination. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. If no text is visibly present on the reference product, keep its surface completely blank; if text is unclear, treat it as absent. Never infer text from the title or surrounding image.";
+const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product or product set EXACTLY as in the reference image. Preserve its exact shape, geometry, colors, texture, printed artwork, patterns, logos, labels, parts, visible count, and arrangement. Every included piece must remain 100% identical without modification or hallucination. Do NOT redesign, warp, deform, restyle, simplify, merge, omit, or modify the product/set. Do not add unrelated items or decorations. If no text is visibly present on the reference product, keep its surface completely blank; if text is unclear, treat it as absent. Never infer text from the title or surrounding image.";
 const STILL_PRODUCT_FIDELITY_DIRECTION = "STILL PRODUCT IDENTITY: Preserve its exact shape, proportions, support structure, materials, colors, patterns, visible logos, labels, and printed text from the reference image. Keep the product physically coherent and at realistic scale. Do not invent parts, remove parts, redesign it, or force a new geometry.";
-const STILL_IMAGE_VARIANT_PATTERN_LOCK = "STILL IMAGE — EXACT VARIANT & PATTERN LOCK: The uploaded reference is the exact product variant to reproduce. Match its visible pattern as one fixed surface map: preserve the same motif identity, count, spacing, orientation, scale, edge placement, asymmetry, color boundaries, and relationship to seams, corners, holes, and cutouts. Do not blend different variants, choose a similar pattern, complete hidden areas, mirror, simplify, or redraw the design. If any detail is unclear, keep it indistinct instead of guessing. Generate one product only; change the background and lighting only.";
+const STILL_IMAGE_VARIANT_PATTERN_LOCK = "STILL IMAGE — EXACT VARIANT & PATTERN LOCK: The uploaded reference is the exact product variant or product set to reproduce. Match every visible piece as one fixed surface map: preserve the same motif identity, count, spacing, orientation, scale, edge placement, asymmetry, color boundaries, and relationship to seams, corners, holes, and cutouts. Do not blend different variants, choose a similar pattern, complete hidden areas, mirror, simplify, or redraw the design. If any detail is unclear, keep it indistinct instead of guessing. Generate one coherent product scene/set only, preserving every included piece; change the background and lighting only.";
 const STILL_TEXT_INTEGRITY_DIRECTION = "STILL TEXT INTEGRITY: Preserve only text visibly printed on the product. If none is visible/readable, keep the surface blank; never infer text from the title or surrounding image.";
 const PRODUCT_TEXT_SCOPE_LOCK = "PRODUCT TEXT SCOPE: Product text only; ignore captions, prices, CTAs, badges, watermarks, UI, and background text.";
 const REFERENCE_PIXEL_ARTWORK_LOCK = "REFERENCE PIXEL ARTWORK LOCK: Preserve only the product's visible physical pattern, logo, label, color, seam, and texture. Ignore surrounding overlay text; do not invent, redraw, or infer details.";
-const REFERENCE_IMAGE_HIGHEST_PRIORITY = `REFERENCE PHOTO OVERRIDES TEXT: Match the attached product exactly. BACKGROUND-ONLY EDIT: Keep the uploaded image as the source of truth: ISOLATE AND EXTRACT ONLY THE PRODUCT, then place that unchanged product in a 100% NEW SCENE & BACKGROUND. Preserve its exact shape, proportions, materials, colors, markings, printed text, parts, visible count, and realistic scale. ${PRODUCT_TEXT_SCOPE_LOCK} Keep it sharp and fully visible. One product; no collage. Never substitute, redesign, duplicate, combine, enlarge, shrink, or invent details.`;
-const REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION = "REFERENCE VARIANT DISAMBIGUATION: If the reference is a screenshot, collage, comparison, or has multiple product appearances, use only the original product. Ignore alternate/generated versions and never combine their design details. Generate one product, not the comparison layout.";
+const REFERENCE_IMAGE_HIGHEST_PRIORITY = `REFERENCE PHOTO OVERRIDES TEXT: Match the attached product or product set exactly. BACKGROUND-ONLY EDIT: Keep the uploaded image as the source of truth: ISOLATE AND EXTRACT ONLY THE PRODUCT OR PRODUCT SET, then place that unchanged product/set in a 100% NEW SCENE & BACKGROUND. Preserve its exact shape, proportions, materials, colors, markings, printed text, visible count, piece arrangement, and realistic scale. ${PRODUCT_TEXT_SCOPE_LOCK} Keep every included piece sharp and fully visible. Treat the complete product/set as one coherent subject; no collage. Never substitute, redesign, duplicate, omit, merge, enlarge, shrink, or invent details.`;
+const REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION = "REFERENCE VARIANT DISAMBIGUATION: If the reference is a screenshot, collage, comparison, or has multiple product appearances, use only the original product design. Do not combine alternate/generated variants. Preserve all repeated pieces that visibly belong to the same product set (such as a pair or bundle), while rejecting unrelated products and comparison panels.";
+const STILL_REFERENCE_FIDELITY_PRIORITY = "HIGHEST PRIORITY STILL REFERENCE FIDELITY: Reference image controls the product/set. Preserve its exact shape, count, arrangement, silhouette, geometry, materials, colors, visible packaging colors, pattern coordinates, logos, labels, text, and construction. REFERENCE PIXEL ARTWORK LOCK: Preserve only the product's visible physical pattern, logo, label, color, seam, and texture; ignore surrounding overlay text. STRICT COLOR REPRODUCTION LOCK: Match every product color exactly. Reference overrides title, highlights, generic info, and style instructions. Do not beautify, recolor, mirror, simplify, merge, omit, duplicate, or invent details. Change only background; keep pieces coherent.";
 const APPAREL_REFERENCE_PRIORITY = "APPAREL REFERENCE PRIORITY: The attached reference image is the single source of truth for the garment. Preserve the exact garment type, silhouette, cut, length, neckline, sleeves, fit, fabric, colors, print, and visible construction. Do not let a sales hook, generic fashion wording, or presenter styling replace or redesign the garment.";
 const REFERENCE_COMPOSITING_DIRECTION = "BACKGROUND-ONLY EDIT: Keep the reference product unchanged; replace only the background.";
 const IMAGE_AUTO_ANIMAL_EXCLUSION = "IMAGE AUTO MODE: No dog, cat, puppy, kitten, or other animal unless the user explicitly selected dog or cat presenter.";
@@ -336,9 +337,9 @@ const LABEL_EXACT_COPY_MANDATE = "⚠️ ABSOLUTE LABEL & COLOR FIDELITY MANDATE
 
 const COLOR_EXACT_LOCK = "STRICT COLOR REPRODUCTION LOCK: Every color on the product — packaging background color, text ink color, logo color, pattern fill colors, gradient transitions — MUST match the reference image EXACTLY. FORBIDDEN: Do NOT warm up or cool down tones, do NOT darken or brighten any area, do NOT change saturation, do NOT substitute one color for another. The product's own surface colors must remain 100% identical to the reference regardless of the new background lighting.";
 
-const PRODUCT_ISOLATION_DIRECTION = "CRITICAL ISOLATION RULE — ISOLATE AND EXTRACT ONLY THE PRODUCT: You must cut out the single product from the reference photo, ignoring its original background. Place the exact same product into a 100% NEW SCENE & BACKGROUND. STRICT RESTRICTION: Do NOT redraw, redesign, mutate, or alter the product's shape, logo, patterns, branding, or colors. Transfer it with 100% pixel-faithful identity to the reference image.";
+const PRODUCT_ISOLATION_DIRECTION = "CRITICAL ISOLATION RULE — ISOLATE AND EXTRACT ONLY THE PRODUCT OR PRODUCT SET: You must cut out the requested product/set from the reference photo, ignoring its original background. Place the exact same product/set into a 100% NEW SCENE & BACKGROUND. STRICT RESTRICTION: Do NOT redraw, redesign, mutate, merge, omit, or alter the product/set's shape, logo, patterns, branding, colors, visible count, or arrangement. Transfer every included piece with pixel-faithful identity to the reference image.";
 
-const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count of parts. Never add, remove, or rearrange them.";
+const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangement of all product parts and included set pieces. Never add, remove, merge, omit, duplicate, or rearrange them.";
 
 const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to reference: never stretch, squash, enlarge, or shrink it. The physical size of the product must be realistic and true-to-life compared to the environment, hands, or presenter. Do not make the product abnormally large or out-of-scale relative to the surroundings (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
 const REALISTIC_SCENE_SCALE_DIRECTION = "REALISTIC SCENE SCALE LOCK: Use real-world anchors, natural perspective, and background depth; never oversized, floating, or pasted on.";
@@ -350,7 +351,7 @@ const RAINWEAR_OUTDOOR_LOCATION_LOCK = "RAINWEAR OUTDOOR USE LOCK: Show the rain
 const VEHICLE_ACCESSORY_CONTEXT_DIRECTION = "STRICT VEHICLE ACCESSORY CONTEXT LOCK: The matching real vehicle MUST be clearly visible and correctly matched to the product. Motorcycle accessories (helmet, motorcycle top box, rear case, rack, pannier, phone mount, or motorcycle part) MUST be shown on, attached to, or directly beside a real motorcycle or scooter; show enough of the motorcycle to make the use unmistakable. Car accessories MUST be shown inside, attached to, or directly beside a real car; show the relevant dashboard, seat, trunk, door, windshield, or exterior body. ABSOLUTELY FORBIDDEN: Do not show a motorcycle/car accessory alone on a generic desk, empty studio floor, unrelated room, cafe, or mismatched vehicle. Keep the product as the hero while the matching vehicle provides clear real-world context.";
 const FOOTWEAR_STILL_OUTDOOR_BACKGROUND_LOCK = "HIGHEST PRIORITY FOOTWEAR STILL BACKGROUND OVERRIDE: The entire still-image scene MUST be clearly outdoors in open air, such as an outdoor home driveway, front yard, quiet neighborhood street, or park path. Use outdoor pavement, concrete, grass, or natural daylight. The shoe must be grounded on the outdoor surface or naturally worn on a visible foot outside. ABSOLUTELY FORBIDDEN: indoor rooms, houses, bedrooms, entryways, closets, shoe shelves, retail interiors, cafes, studios, indoor floors, or studio backdrops. If any other instruction conflicts with this, keep the shoe outdoors.";
 const STILL_VIDEO_SOURCE_HERO_LOCK = "VIDEO SOURCE SCALE LOCK: Keep product centered and sized from real-world scene anchors, not frame coverage; keep breathing room/background. No giant, floating, or pasted product.";
-const BOXED_PRESENTATION_COMPOSITION_LOCK = "BOXED PRESENTATION COMPOSITION LOCK: The open presentation box must rest flat and fully supported on a real tabletop or console. Use a proportionate premium gift box or fitted display tray with a snug molded insert, only a small margin around the product, and an open lid that stays behind the product. The box is not a shipping carton, not oversized, not floating, not tilted unnaturally, and not allowed to cover the product. Keep one product only, centered and fully visible.";
+const BOXED_PRESENTATION_COMPOSITION_LOCK = "BOXED PRESENTATION COMPOSITION LOCK: The open presentation box must rest flat and fully supported on a real tabletop or console. Use a proportionate premium gift box or fitted display tray with a snug molded insert, only a small margin around the product/set, and an open lid that stays behind the product. The box is not a shipping carton, not oversized, not floating, not tilted unnaturally, and not allowed to cover the product. Keep only the requested product or product set, centered and fully visible.";
 
 function resolveMatchStillDirection(autoPresenter, firstSceneNoPeople = false) {
   const baseFidelity = "STRICT REFERENCE PHOTO PRODUCT FIDELITY LOCK: Reproduce the product 100% pixel-faithfully from the reference image. Preserve exact 3D form, contours, colors, material texture, printed artwork, brand logos, typography, and packaging text without distortion, morphing, redesign, or alteration.";
@@ -395,6 +396,8 @@ const SHOE_WEARABLE_CROP_BACKGROUND_DIRECTION = "SHOE WORN-ON-FEET INDOOR BACKGR
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
 const SHOE_PATTERN_COORDINATE_LOCK = "STRICT FOOTWEAR PATTERN COORDINATE LOCK: toe box/heel/sole/sides. Do not redraw.";
 const SHOE_SCALE_DIRECTION = "STRICT FOOTWEAR SCALE & PLACEMENT LOCK: This is a real human shoe, not a giant prop or miniature toy. Preserve true foot-sized proportions and the exact single-shoe/pair count. Show it at realistic scale relative to a human foot, leg, hand, shoe box, floor, shelf, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge the shoe to furniture-scale, make it tiny, or place it in an unrelated oversized environment. Keep the shoe grounded on a realistic floor, shelf, or naturally worn on a foot.";
+const SHOE_STILL_PLACEMENT_DIRECTION = "REALISTIC FOOTWEAR STILL PLACEMENT LOCK: For a product-only shoe still, place the exact shoe or exact pair naturally on a level, stable surface appropriate to the selected background (outdoor pavement, concrete, or grass by default), with the sole touching the surface and a believable contact shadow. Preserve the reference's single-shoe or pair count; when a pair is shown, arrange it as a natural left/right pair at a slight three-quarter angle with aligned toe directions, realistic spacing, and no overlapping or interpenetrating shoes. Keep the full silhouette visible with breathing room. ABSOLUTELY FORBIDDEN: floating shoes, shoes standing vertically without support, tilted-on-edge placement, giant or miniature scale, duplicate shoes, or catalog-collage layouts.";
+const SHOE_PAIR_STILL_DIRECTION = "MANDATORY FOOTWEAR PAIR STILL COMPOSITION: Show BOTH shoes from the reference together in the same single full-frame still image: the left shoe and the right shoe must both be clearly visible, complete, and identifiable. Place them side by side as a natural pair on the same level surface, with both soles touching the surface, matching perspective, realistic spacing, and separate contact shadows. NEVER output only one shoe, crop away one shoe, hide one shoe behind the other, or split the pair into separate panels.";
 
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: Match the reference garment's type, cut, fit, length, neckline or waistband, sleeves or legs, fabric, color, print, logo, seams, pockets, and fasteners. Keep those visible design details consistent while allowing natural fabric drape and ordinary movement. Show the front design clearly and do not use a back-facing or 360-degree spin.";
 const FASHION_SELFIE_BODY_CONTINUITY_LOCK = "FASHION SELFIE COMPLETE BODY LOCK: Render exactly one anatomically complete adult model with one connected head, neck, shoulders, torso, hips, two arms, two hands, two legs, and two feet. Never erase, crop away, detach, duplicate, or deform the torso, shoulders, arms, hands, hips, legs, or feet. The phone covers only the face; it must never replace or hide the upper body. When full-body framing is required, keep the complete head-to-toe body visible and grounded in every frame.";
@@ -610,7 +613,11 @@ function getDefaultAutoPresenterProfile(text = "", presenter = "") {
   const appearance = presenter === "man"
     ? "handsome, naturally attractive, well-groomed, and confident"
     : "beautiful, naturally attractive, well-groomed, and confident";
-  return `AUTO PRESENTER PROFILE: Use a fictional Thai ${presenter} around 22-35 years old with a young working-age appearance: ${appearance}, realistic, approachable, and suitable for a modern commercial product review.`;
+  const ageRange = presenter === "woman" ? "20-29" : "22-35";
+  const ageGuard = presenter === "woman"
+    ? "visibly youthful adult appearance, not mature-looking or elderly"
+    : "young working-age appearance";
+  return `AUTO PRESENTER PROFILE: Use a fictional Thai ${presenter} around ${ageRange} years old with a ${ageGuard}: ${appearance}, realistic, approachable, and suitable for a modern commercial product review.`;
 }
 
 export function isFarmPoultryProduct(text = "") {
@@ -932,6 +939,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const handsOnly = !productOnlyStill && (handsOnlyStyle || auto.presenter === "hands_only" || isUnboxingHands);
   const wearableCrop = !productOnlyStill && auto.presenter === "wearable_crop";
   const shoeWearableCrop = wearableCrop && isFootwear;
+  const footwearStillCount = isFootwear && !shoeWearableCrop ? getFootwearStillCount(productInfo) : "";
   const noPeople = productOnlyStill || !(auto.presenter && auto.presenter !== "none");
   const referenceCompositingDirection = isClothing
     ? (productOnlyStill ? REFERENCE_COMPOSITING_DIRECTION : APPAREL_REFERENCE_USE_DIRECTION)
@@ -1041,6 +1049,10 @@ export function buildImagePrompt(productInfo, settings = {}) {
   let shotDistribution = isSingleMode
     ? (shoeWearableCrop
         ? "Single full-frame vertical footwear-on-feet close-up: show both exact shoes worn naturally on feet and lower legs, with a relaxed pose and flattering 3/4 angle. No face, head, torso, arms, hands, or full body; no collage, split screen, or social-media screenshot UI."
+        : isFootwear
+        ? footwearStillCount === "pair"
+          ? "Single full-frame footwear pair product shot: show both the left and right shoes from the reference together on one level surface in a realistic 3/4 product angle, with both complete silhouettes visible, soles supported by the surface, natural spacing, and separate contact shadows. No one-shoe-only output, collage, split screen, floating shoe, unsupported vertical placement, duplicate shoe, or social-media screenshot UI."
+          : "Single full-frame footwear product shot: show the exact single shoe from the reference naturally resting on a level surface in a realistic 3/4 product angle, with the complete silhouette visible, sole supported by the surface, and a believable contact shadow. No collage, split screen, floating shoe, unsupported vertical placement, duplicate shoe, or social-media screenshot UI."
         : isClothing
         ? "Single full-frame front shot: Depict ONLY the front-facing view of the clothing item in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side."
         : "Single full-frame hero shot: Depict the product in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity, printed text, brand logo, and packaging artwork.")
@@ -1096,13 +1108,11 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const promptParts = [
     !textEnabled ? (isCoffeeImageAd ? COFFEE_COMPACT_TEXT_LOCK : TEXT_FREE_DIRECTION) : "",
+    STILL_REFERENCE_FIDELITY_PRIORITY,
     buildProductIdentityLock(productInfo),
     STILL_IMAGE_VARIANT_PATTERN_LOCK,
     isExplicitAdultPresenterSelection(settings) ? EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION : "",
     isClothing ? APPAREL_REFERENCE_PRIORITY : REFERENCE_IMAGE_HIGHEST_PRIORITY,
-    REFERENCE_PIXEL_ARTWORK_LOCK,
-    // Keep the uploaded product's own colors unchanged; only the background may change.
-    COLOR_EXACT_LOCK,
     REFERENCE_BRAND_ONLY_LOCK,
     (stillMotionMode || boxedMotionMode) ? CAMERA_ONLY_NO_HANDS_DIRECTION : "",
     isNeckScarfProduct(productText) ? NECK_SCARF_USAGE_LOCK : "",
@@ -1117,6 +1127,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isFragranceProduct(productText) ? FRAGRANCE_BACKGROUND_LOCK : "",
     REALISTIC_SCENE_SCALE_DIRECTION,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
+    isFootwear && !shoeWearableCrop ? SHOE_STILL_PLACEMENT_DIRECTION : "",
+    footwearStillCount === "pair" ? SHOE_PAIR_STILL_DIRECTION : "",
     auto.presenter && auto.presenter !== "none" && !handsOnly && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
     autoPresenterProfile,
     intro,
@@ -1136,7 +1148,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isFullFaceCoveringProduct(productText) ? FULL_FACE_COVERAGE_LOCK : "",
     stillBackgroundDirection,
     STILL_VIDEO_SOURCE_HERO_LOCK,
-    `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize (do NOT write as text): ${details}.` : ""}`,
+    `Centered, true scale, sharp and clearly visible, uncluttered.${details ? ` Visually emphasize only if clearly visible in the reference (do NOT write as text or invent details): ${details}.` : ""}`,
     getStillProductUseDirection(productText),
     cameraFramingDirection,
     explicitPresenterGenderDirection,
@@ -2790,6 +2802,32 @@ function inferRequiredProductLocation(productInfo = {}) {
 function isFootwearProduct(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.category || ""}`.toLowerCase();
   return /(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(text);
+}
+
+function getFootwearStillCount(productInfo = {}) {
+  const explicitCount = String(productInfo.footwearCount || productInfo.shoeCount || "").toLowerCase();
+  if (/^(?:pair|both|two|2)$/.test(explicitCount)) return "pair";
+  if (/^(?:single|one|1)$/.test(explicitCount)) return "single";
+
+  const text = [
+    productInfo.name,
+    productInfo.originalName,
+    productInfo.productLinkTitle,
+    productInfo.category,
+    productInfo.structureAdvice,
+    productInfo.promptAdvice
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  if (/(?:รองเท้าข้างเดียว|รองเท้าข้างซ้าย|รองเท้าข้างขวา|ข้างเดียว|\bone\s+(?:shoe|sneaker|sandal|boot)\b|\bsingle[-\s]shoe\b|\bleft\s+shoe\b|\bright\s+shoe\b)/i.test(text)) {
+    return "single";
+  }
+  if (/(?:รองเท้าคู่|รองเท้าเป็นคู่|รองเท้าทั้งคู่|สองข้าง|2\s*ข้าง|\bpair\s+of\s+(?:shoes?|sneakers?|sandals?|boots?)\b|\bboth\s+(?:shoes?|sneakers?|sandals?|boots?)\b|\bleft\s+and\s+right\s+(?:shoes?|sneakers?|sandals?|boots?)\b)/i.test(text)) {
+    return "pair";
+  }
+
+  // Normal footwear listings represent a wearable pair unless the reference
+  // metadata explicitly verifies a single shoe.
+  return "pair";
 }
 
 function isFragranceProduct(text = "") {
