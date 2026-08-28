@@ -16,6 +16,22 @@ export const VIDEO_STYLES = [
     fragment: "clean product showcase, multiple angles, feature callout text overlays, white or neutral background, professional lighting, no distractions"
   },
   {
+    id: "hands-only",
+    emoji: "🤲",
+    name: "Hands Only / เห็นเฉพาะมือ",
+    description: "โชว์การจับและใช้งานสินค้าโดยเห็นเฉพาะมือ ไม่เห็นหน้า",
+    shotPattern: "[มือหยิบสินค้า] → [สาธิตการใช้งาน] → [ซูมรายละเอียดสินค้า]",
+    fragment: "hands-only first-person POV product video, realistic natural hands using or presenting the product, face and head fully out of frame, authentic smartphone perspective"
+  },
+  {
+    id: "review-voiceover",
+    emoji: "🎙️",
+    name: "รีวิวใช้งานจริง + พากย์ทับ",
+    description: "เห็นหน้าได้ตามปกติ เน้นสาธิตการใช้สินค้า มีเสียงพากย์ทับ ห้ามพูดหรือขยับปาก",
+    shotPattern: "[เห็นหน้าผู้รีวิวแบบไม่พูด] → [สาธิตใช้งานจริง] → [ซูมจุดเด่น] → [จบด้วยสินค้าและผู้รีวิว]",
+    fragment: "authentic hands-on product review, presenter with natural visible face, real-world product use demonstration, off-screen Thai voiceover, no on-screen speech, no lip movement, natural everyday setting"
+  },
+  {
     id: "lifestyle",
     emoji: "💃",
     name: "Lifestyle / In-Use",
@@ -104,6 +120,22 @@ export const VIDEO_STYLES = [
     fragment: "attention-grabbing opening 3 seconds, bold hook visual, quick product reveal, trending TikTok pacing, text hook overlay at start, fast energetic edit"
   }
 ];
+
+export const HIDDEN_VIDEO_STYLE_IDS = new Set([
+  "review",
+  "flash-sale",
+  "sales",
+  "lifestyle",
+  "cinematic",
+  "trending-hook",
+  "before-after"
+]);
+
+export function getSelectableVideoStyles() {
+  return VIDEO_STYLES
+    .filter((style) => !HIDDEN_VIDEO_STYLE_IDS.has(style.id))
+    .sort((a, b) => Number(b.id === "testimonial") - Number(a.id === "testimonial"));
+}
 
 export const TEXT_FONT_STYLES = {
   handwriting: "cute Thai handwritten-style text in white with a soft shadow",
@@ -531,6 +563,7 @@ const HAMMOCK_FIDELITY_DIRECTION = "HAMMOCK STRUCTURE FIDELITY: Preserve the exa
 
 const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION, NATURAL UNHURRIED TEMPO & ZERO REPETITION LOCK: Each scene in the video MUST have its own UNIQUE, DIFFERENT spoken sentence in Thai that flows naturally at a relaxed, unhurried human pace (do NOT rush or speak too fast). ABSOLUTELY FORBIDDEN: NEVER repeat, loop, echo, or re-say the sentence spoken in the previous scene. Scene 2 MUST speak a NEW, DIFFERENT sentence from Scene 1; Scene 3 MUST speak a NEW, DIFFERENT sentence from Scene 2. Maintain a continuous, natural progressive voiceover across all scenes without repeating any phrase or sentence.";
 const VOICEOVER_DIRECTION = "Add a clear, natural Thai off-screen voiceover narration speaking at a comfortable, unhurried pace (no visible person). All spoken audio must be in Thai.";
+const REVIEW_VOICEOVER_STYLE_DIRECTION = "REVIEW WITH OVERDUB STYLE LOCK: Show the presenter's face normally and naturally when the presenter is selected, with eyes and facial features clearly visible. The presenter must never speak on camera, never mouth words, never lip-sync, and never move the lips while the Thai voiceover plays. Use the voice as a separate off-screen overdub over natural product-use footage. Prioritize practical hands-on demonstration, ordinary gestures, and clear views of the product being used as intended. Keep facial expression relaxed and closed-mouth; do not hide, cover, distort, or replace the face.";
 const NO_WOW_DIRECTION = "STRICT WORD EXCLUSION: The Thai word \"ว้าว\" MUST NEVER appear in spoken dialogue, voiceover, subtitles, captions, or any newly generated on-screen text. Use natural product-specific wording instead. Preserve only text that physically exists on the product reference.";
 
 const TEXT_FREE_DIRECTION = "HIGHEST PRIORITY — STRICT NO-TEXT RULE: Do not add text overlays, subtitles, captions, prices, banners, promotional copy, watermarks, CTAs, signs, labels, or text graphics anywhere. Preserve only product text visible in the reference. If none is visible/readable, keep the product surface blank; never infer text from the title or surrounding image.";
@@ -552,6 +585,7 @@ const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
 const CAMERA_ONLY_NO_HANDS_DIRECTION = "CAMERA-ONLY / NO-HANDS LOCK: The entire frame must contain zero hands, fingers, arms, people, presenters, reviewers, or human body parts. No hand may enter to hold, touch, adjust, lift, or present the product. The product is already placed and untouched; only the camera moves.";
+const HANDS_ONLY_VIDEO_STYLE_DIRECTION = "HANDS-ONLY VIDEO STYLE LOCK: The entire video must be filmed from a realistic first-person point of view showing only one person's natural hands and forearms interacting with the exact product. No face, head, torso, full body, or second person may appear in any scene.";
 const PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION = "CAMERA MOTION ONLY — MULTI-ANGLE PRODUCT-ONLY DYNAMIC CAMERA SHOWCASE: Keep the exact product physically still, rigid, and unchanged while the camera creates energetic visual variety. Use 3–4 sequential full-frame shots with clean rhythmic hard cuts: front hero angle with a confident push in, left three-quarter angle with a smooth left-to-right slide, right three-quarter angle with a high tilt and short controlled arc, then a close detail shot with a push in and pull back to the hero view. Use smooth pan, dolly, tilt, and one short controlled arc of about 30–45 degrees; make the movement noticeable and fun but physically realistic. Never rotate the product itself, never use a collage or split screen, and keep the product sharp, centered, and fully visible in every shot.";
 const EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION = "EXPLICIT ADULT PRESENTER LOCK: The selected presenter is an adult woman or adult man. Show exactly one adult presenter only. Do NOT include any child, minor, baby, toddler, or parent-and-child pair, even when the product is intended for children.";
 const EXPLICIT_CHILD_PRESENTER_DIRECTION = "EXPLICIT CHILD PRESENTER MODE: The user explicitly selected the cute child presenter. MUST show a happy fictional Thai child on camera, age 4-6 years old for child mode or 7-12 years old for older_child mode, actively and safely using or interacting with the product, together with exactly one friendly Thai parent/guardian supervising nearby. Do NOT replace the child with an adult-only presenter, Auto mode, hands-only, product-only, or voiceover-only presentation. Keep the same child and parent consistent across all scenes.";
@@ -689,7 +723,7 @@ const MUSIC_ONLY_AUDIO_DIRECTION = "AUDIO MODE — INSTRUMENTAL MUSIC ONLY: Use 
  */
 export function getDefaultSettings() {
   return {
-    videoStyle: "sales",
+    videoStyle: "testimonial",
     presenter: "Auto",
     customPresenter: "",
     audioMode: "voiceover",
@@ -882,7 +916,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const explicitChildPresenter = ["child", "older_child"].includes(settings?.presenter);
   const stillMotionMode = settings?.videoStyle === "still-motion";
   const boxedMotionMode = settings?.videoStyle === "boxed-motion";
-  const productOnlyStill = stillMotionMode || boxedMotionMode || (settings?.flowGenMode === "combined" && (!explicitChildPresenter || isClothing));
+  const handsOnlyStyle = settings?.videoStyle === "hands-only";
+  const productOnlyStill = stillMotionMode || boxedMotionMode || (!handsOnlyStyle && settings?.flowGenMode === "combined" && (!explicitChildPresenter || isClothing));
   const autoPresenterProfile = !productOnlyStill && isAuto(settings.presenter)
     ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
     : "";
@@ -894,7 +929,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const specificScale = getProductSpecificScaleInstruction(visualProductName);
 
   const isUnboxingHands = auto.presenter === "unboxing_hands";
-  const handsOnly = !productOnlyStill && (auto.presenter === "hands_only" || isUnboxingHands);
+  const handsOnly = !productOnlyStill && (handsOnlyStyle || auto.presenter === "hands_only" || isUnboxingHands);
   const wearableCrop = !productOnlyStill && auto.presenter === "wearable_crop";
   const shoeWearableCrop = wearableCrop && isFootwear;
   const noPeople = productOnlyStill || !(auto.presenter && auto.presenter !== "none");
@@ -1082,7 +1117,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     isFragranceProduct(productText) ? FRAGRANCE_BACKGROUND_LOCK : "",
     REALISTIC_SCENE_SCALE_DIRECTION,
     vehicleAccessoryContext ? VEHICLE_ACCESSORY_CONTEXT_DIRECTION : "",
-    auto.presenter && auto.presenter !== "none" && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
+    auto.presenter && auto.presenter !== "none" && !handsOnly && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
     autoPresenterProfile,
     intro,
     hasEngravedPattern ? ENGRAVED_EMBOSSED_FIDELITY_DIRECTION : "",
@@ -1495,8 +1530,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   const isUnboxingHands = auto.presenter === "unboxing_hands";
-  const handsOnly = auto.presenter === "hands_only" || isUnboxingHands;
+  const handsOnlyStyle = auto.videoStyle === "hands-only";
+  const handsOnly = handsOnlyStyle || auto.presenter === "hands_only" || isUnboxingHands;
   const wearableCrop = auto.presenter === "wearable_crop";
+  const voiceoverReview = auto.videoStyle === "review-voiceover";
   const shoeWearableCrop = wearableCrop && isFootwearProduct(productInfo);
   const explicitLocationSelected = !isAuto(settings.location);
   const noPeople = !(auto.presenter && auto.presenter !== "none");
@@ -1585,10 +1622,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     childApparelPrompt ? "" : NO_HALLUCINATED_BRAND_LOGOS_RULE,
     REFERENCE_BRAND_ONLY_LOCK,
     FICTIONAL_CAST_DIRECTION,
-    auto.presenter && auto.presenter !== "none" && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
+    auto.presenter && auto.presenter !== "none" && !handsOnly && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
     autoPresenterProfile,
     isClothing && !wearableCrop && !isChildPresenter ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     styleFragment ? `Visual style: ${styleFragment}.` : "",
+    voiceoverReview ? REVIEW_VOICEOVER_STYLE_DIRECTION : "",
     SPEECH_DIRECTION,
     auto.audioMode === "music_only" ? MUSIC_ONLY_AUDIO_DIRECTION : PROGRESSIVE_AUDIO_NARRATION_MANDATE,
     resolveMatchStillDirection(auto.presenter, firstSceneNoPeople),
@@ -1695,6 +1733,16 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `${childDesc} together with a supervising parent`);
   }
 
+  if (voiceoverReview) {
+    sceneBreakdown = [
+      "REVIEW WITH OVERDUB SEQUENCE: Use 3–4 simple sequential full-frame shots with clean cuts; show the presenter and product naturally, without on-camera speech:",
+      `- Scene 1 (Silent Hook): Show the presenter's normally visible face with a relaxed closed-mouth expression while introducing ${productName} in a realistic everyday setting.`,
+      `- Scene 2 (Hands-On Use): Show the presenter using ${productName} exactly as intended, with practical hand movement and the product clearly visible.`,
+      `- Scene 3 (Detail): Cut to a sharp close-up of the product during real use, highlighting one verified feature, material, or useful detail.`,
+      `- Scene 4 (Finish): Return to ${productName} with the presenter naturally in frame, face visible and mouth closed, ending on a clean product-focused shot.`
+    ].join("\n");
+  }
+
   // Adjust prompt for heavy/large products to prevent unnatural holding/lifting
   if (isImmobile) {
     const escapedName = productName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1747,6 +1795,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   promptParts.push(
     `Use distinct scenes with hard cuts; split the ${durationSeconds}s evenly across the scenes below.`,
     `STRICT LIMIT: The video must contain AT MOST 3 to 4 sequential scenes/shots. Do not generate too many scenes, cuts, or edits. Keep the storytelling simple and clean.`,
+    handsOnlyStyle ? HANDS_ONLY_VIDEO_STYLE_DIRECTION : "",
     isUnboxingHands ? UNBOXING_REVEAL_SEQUENCE : "",
     sceneBreakdown,
     isClothing && !wearableCrop && !noPeople && !handsOnly && !isAnimal ? APPAREL_PRESENTER_FRAME_CONTINUITY : "",
@@ -1774,6 +1823,12 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   let presenterInstruction = auto.presenter && PRESENTERS[auto.presenter] ? PRESENTERS[auto.presenter] : PRESENTERS.none;
   if (auto.presenter === "กรอกเอง") {
     presenterInstruction = auto.customPresenter || "a fictional adult presenter";
+  }
+  if (voiceoverReview) {
+    presenterInstruction = presenterInstruction
+      .replace(/smiling at the camera/gi, "with a relaxed closed-mouth expression")
+      .replace(/presenting the product/gi, "demonstrating the product silently")
+      + " The on-screen presenter never speaks or lip-syncs.";
   }
   if (isClothing && ["woman", "man"].includes(auto.presenter)) {
     presenterInstruction = `A fictional adult Thai ${auto.presenter} commercial fit model`;
@@ -1894,7 +1949,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     }
     promptParts.push(`${animalInstructions} ${speechDir}`);
   } else if (auto.presenter && auto.presenter !== "none") {
-    let personDir = isClothing
+    let personDir = voiceoverReview
+      ? "Natural fictional adult Thai product reviewer visible on camera with the full face clearly visible and a relaxed closed-mouth expression. The reviewer demonstrates the product silently and never speaks or moves the lips."
+      : isClothing
       ? "Natural fictional adult Thai commercial fit model in a full-length front-facing shot."
       : THAI_PERSON_DIRECTION;
     const presenterHandAnatomy = isKids
@@ -1915,7 +1972,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     if (firstSceneNoPeople) {
       presenterInstructions = `PRODUCT-ONLY SCENE 1: Do not show the presenter, any other people, hands, faces, or human features in Scene 1. Show only the product resting on its own. The presenter may appear starting from Scene 2 only.\n${presenterInstructions}`;
     }
-    promptParts.push(`${presenterInstructions} ${speechDir}`);
+    promptParts.push(`${presenterInstructions} ${voiceoverReview ? `${voiceoverDir} ` : ""}${speechDir}`);
   } else {
     promptParts.push(`${NO_PEOPLE_DIRECTION} ${voiceoverDir} ${speechDir}`);
   }
@@ -2018,6 +2075,16 @@ function getMultiSceneDescription(videoStyle, productName, locationStr, mood, pr
   const loc = locationStr ? ` in a ${locationStr} setting` : "";
   const moodStyle = mood ? ` with ${mood} lighting` : "";
 
+  if (videoStyle === "hands-only") {
+    return [
+      "This video must use a hands-only first-person POV with no visible face or person:",
+      `- Scene 1 (Product Hook): Show natural hands picking up or presenting ${productName}${loc}${moodStyle}.`,
+      `- Scene 2 (Real Use): Show the same hands using ${productName} exactly as intended, with the product fully visible.`,
+      `- Scene 3 (Detail): Show a close-up of the hands demonstrating one verified feature, material, or useful detail of ${productName}.`,
+      `- Scene 4 (Finish): End with the hands placing or presenting ${productName} clearly without covering its logo, label, or key details.`
+    ].join("\n");
+  }
+
   if (isPhoneCaseProduct(productText || productName) || isMagneticPhoneCaseProduct(productText || productName)) {
     return [
       "This video uses four sequential phone-case showcase beats with clear cuts, preserving the exact artwork and built-in features:",
@@ -2044,6 +2111,15 @@ function getMultiSceneDescription(videoStyle, productName, locationStr, mood, pr
         `- Scene 1 (Showcase): A 3-second 360-degree rotation showing ${productName} from all angles${loc}${moodStyle}.`,
         `- Scene 2 (Detail Zoom): A 3-second close-up zoom on the main features and highlights of the product.`,
         `- Scene 3 (Realistic Use): A 2-second final scene showing the product placed ready for use.`
+      ].join("\n");
+
+    case "review-voiceover":
+      return [
+        "This video must be a natural hands-on product review with a separate Thai voiceover overdub and no on-camera speech:",
+        `- Scene 1 (Silent Hook): Show the presenter's normally visible face with a relaxed closed-mouth expression beside ${productName}${loc}${moodStyle}.`,
+        `- Scene 2 (Real Use): Show the presenter using ${productName} naturally and correctly for its category, with the product and hands clearly visible.`,
+        `- Scene 3 (Feature Detail): Show a sharp close-up of ${productName} during use, focusing on one verified feature or material detail.`,
+        `- Scene 4 (Finish): Return to a clean product-focused shot with the presenter visible naturally, face unobstructed and mouth closed.`
       ].join("\n");
 
     case "lifestyle":
@@ -2353,9 +2429,12 @@ function stripStructuralVariantCounts(value) {
 
 function resolveAutoSettings(productInfo = {}, settings = {}) {
   const inferred = inferPromptAutoOptions(productInfo);
-  const recommended = productInfo.autoOptions && typeof productInfo.autoOptions === "object"
+  const recommendedSource = productInfo.autoOptions && typeof productInfo.autoOptions === "object"
     ? productInfo.autoOptions
     : {};
+  const recommended = recommendedSource.presenter === "hands_only"
+    ? { ...recommendedSource, videoStyle: "hands-only", presenter: "none" }
+    : recommendedSource;
   const requiredLocation = inferRequiredProductLocation(productInfo);
   const footwear = isFootwearProduct(productInfo);
   const productText = [productInfo.name, productInfo.originalName, productInfo.category, productInfo.highlights]
@@ -2380,9 +2459,9 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
     videoStyle,
     // Auto always includes a real reviewer. People-free output is only allowed
     // when the user explicitly selects the "none" presenter option.
-    presenter: videoStyle === "wearable-crop" ? "wearable_crop" : presenter,
+    presenter: videoStyle === "hands-only" ? "hands_only" : (videoStyle === "wearable-crop" ? "wearable_crop" : presenter),
     customPresenter: sanitizePolicySensitiveText(settings.customPresenter),
-    audioMode: settings.audioMode === "music_only" ? "music_only" : "voiceover",
+    audioMode: videoStyle === "review-voiceover" ? "voiceover" : (settings.audioMode === "music_only" ? "music_only" : "voiceover"),
     voiceTone: isAuto(settings.voiceTone) ? (recommended.voiceTone || inferred.voiceTone) : settings.voiceTone,
     mood: isAuto(settings.mood) ? (recommended.mood || inferred.mood) : settings.mood,
     location: isAuto(settings.location)
@@ -2468,7 +2547,7 @@ function inferPromptAutoOptions(productInfo = {}) {
     return promptAutoOptions("before-after", "none", "professional", "Professional", "Modern Living Room", "Pan Left to Right", "Swipe", "Home utility product, optimized to show the problem and result clearly");
   }
   if (/(เคส|เคสโทรศัพท์|เคสมือถือ|โทรศัพท์|มือถือ|case|phone|mobile|gadget|cover)/i.test(text)) {
-    return promptAutoOptions("review", "hands_only", "fun", "Trendy", "Cafe / Coffee Shop", "Slow Zoom In", "Cut ตรง", "Phone or mobile accessory product, shown held by hands in a cozy aesthetic cafe background");
+    return promptAutoOptions("hands-only", "none", "fun", "Trendy", "Cafe / Coffee Shop", "Slow Zoom In", "Cut ตรง", "Phone or mobile accessory product, shown held by hands in a cozy aesthetic cafe background");
   }
 
   if (/(กล่อง|แพ็ค|package|เซ็ต|bundle|gift)/i.test(text)) {

@@ -1,4 +1,4 @@
-import { normalizeHashtags, VIDEO_STYLES } from "../modules/prompt-builder.js";
+import { normalizeHashtags, getSelectableVideoStyles, HIDDEN_VIDEO_STYLE_IDS } from "../modules/prompt-builder.js";
 import { DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL, testGeminiConnection, testOpenAIConnection } from "../modules/image-analyzer.js";
 
 // ─── DOM refs ───────────────────────────────────────────────
@@ -10,9 +10,10 @@ async function loadOptions() {
 
   // Video style dropdown
   const styleSelect = document.querySelector("#default-video-style");
-  styleSelect.innerHTML = VIDEO_STYLES
+  styleSelect.innerHTML = getSelectableVideoStyles()
     .map((s) => `<option value="${s.id}">${s.emoji} ${s.name}</option>`)
     .join("");
+  styleSelect.insertAdjacentHTML("afterbegin", `<option value="Auto">อัตโนมัติ</option>`);
 
   // AI
   setSelectValue("ai-provider", settings.aiProvider || "gemini");
@@ -46,12 +47,15 @@ async function loadOptions() {
 
   // Video defaults
   const legacyWearableCrop = settings.defaultPresenter === "wearable_crop";
-  if (legacyWearableCrop) {
-    settings.defaultVideoStyle = "wearable-crop";
+  const legacyHandsOnly = settings.defaultPresenter === "hands_only";
+  const hiddenVideoStyle = HIDDEN_VIDEO_STYLE_IDS.has(settings.defaultVideoStyle);
+  if (legacyWearableCrop || legacyHandsOnly || hiddenVideoStyle) {
+    settings.defaultVideoStyle = legacyHandsOnly ? "hands-only" : "wearable-crop";
+    if (hiddenVideoStyle && !legacyHandsOnly && !legacyWearableCrop) settings.defaultVideoStyle = "testimonial";
     settings.defaultPresenter = "Auto";
     chrome.storage.sync.set({ settings }).catch(() => {});
   }
-  setSelectValue("default-video-style", settings.defaultVideoStyle || "sales");
+  setSelectValue("default-video-style", settings.defaultVideoStyle || "testimonial");
   setSelectValue("default-language", settings.defaultLanguage || "ไทย");
   setSelectValue("default-presenter", settings.defaultPresenter || "Auto");
   setSelectValue("default-audio-mode", settings.defaultAudioMode || "voiceover");

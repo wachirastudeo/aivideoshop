@@ -1,5 +1,6 @@
 import {
-  VIDEO_STYLES,
+  getSelectableVideoStyles,
+  HIDDEN_VIDEO_STYLE_IDS,
   buildImagePrompt,
   buildVideoPrompt,
   getDefaultSettings,
@@ -35,7 +36,7 @@ export async function initVideoTab(injectedHelpers) {
   const { settings: savedOptions = {} } = await chrome.storage.sync.get("settings");
 
   const optionDefaults = {
-    videoStyle: savedOptions.defaultVideoStyle || "sales",
+    videoStyle: HIDDEN_VIDEO_STYLE_IDS.has(savedOptions.defaultVideoStyle) ? "testimonial" : (savedOptions.defaultVideoStyle || "testimonial"),
     presenter: savedOptions.defaultPresenter || "Auto",
     audioMode: savedOptions.defaultAudioMode || "voiceover",
     voiceTone: savedOptions.defaultVoiceTone || "Auto",
@@ -173,10 +174,12 @@ function syncSettingsForm() {
   const dateVal = getValue("post-schedule-date");
   const timeVal = getValue("post-schedule-time") || "00:00";
   const combinedTime = (dateVal && timeVal) ? `${dateVal}T${timeVal}` : "";
+  const selectedVideoStyle = getValue("video-style");
+  if (selectedVideoStyle === "hands-only") setValue("presenter", "Auto");
 
   settings = normalizeSettings({
     ...settings,
-    videoStyle: getValue("video-style"),
+    videoStyle: selectedVideoStyle,
     presenter: getValue("presenter"),
     firstSceneNoPeople: getValue("first-scene-no-people"),
     customPresenter: getValue("custom-presenter"),
@@ -280,10 +283,13 @@ function resetStaleStatuses(queue) {
 
 function normalizeSettings(value) {
   const legacyWearableCrop = value.presenter === "wearable_crop";
+  const legacyHandsOnly = value.presenter === "hands_only";
+  const handsOnlyStyle = value.videoStyle === "hands-only";
+  const configuredVideoStyle = value.videoStyle || "testimonial";
   return {
     ...value,
-    videoStyle: legacyWearableCrop ? "wearable-crop" : (value.videoStyle || "sales"),
-    presenter: legacyWearableCrop ? "Auto" : (value.presenter || "Auto"),
+    videoStyle: legacyWearableCrop ? "wearable-crop" : (legacyHandsOnly ? "hands-only" : (HIDDEN_VIDEO_STYLE_IDS.has(configuredVideoStyle) ? "testimonial" : configuredVideoStyle)),
+    presenter: legacyWearableCrop || legacyHandsOnly || handsOnlyStyle ? "Auto" : (value.presenter || "Auto"),
     language: "ไทย",
     textEnabled: value.textEnabled === true || value.textEnabled === "true" ? "true" : "false",
     clipText: (value.clipText || "").trim(),
@@ -404,11 +410,11 @@ async function handleModelRefClear() {
 function populateStyleDropdown() {
   const select = document.querySelector("#video-style");
   if (!select) return;
-  select.innerHTML = VIDEO_STYLES.map((style) => `
+  select.innerHTML = getSelectableVideoStyles().map((style) => `
     <option value="${style.id}">${style.emoji} ${style.name} - ${style.description}</option>
   `).join("");
   select.insertAdjacentHTML("afterbegin", `<option value="Auto">อัตโนมัติ</option>`);
-  select.value = settings.videoStyle;
+  select.value = HIDDEN_VIDEO_STYLE_IDS.has(settings.videoStyle) ? "Auto" : settings.videoStyle;
 }
 
 function renderPills(rootId, values, activeValue, onSelect) {

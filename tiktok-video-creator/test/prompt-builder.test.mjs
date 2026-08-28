@@ -17,7 +17,10 @@ import {
   isFurnitureProduct,
   buildCategoryFidelityDirection,
   resolveSpokenOpeningHook,
-  stripForeignNonThaiScripts
+  stripForeignNonThaiScripts,
+  VIDEO_STYLES,
+  HIDDEN_VIDEO_STYLE_IDS,
+  getSelectableVideoStyles
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -31,6 +34,10 @@ function eq(name, got, want) {
 }
 
 const settings = getDefaultSettings();
+
+check("hands-only is a standalone video style", VIDEO_STYLES.some((style) => style.id === "hands-only"));
+check("requested sales styles are hidden from selectors", ["review", "flash-sale", "sales", "lifestyle", "cinematic", "trending-hook", "before-after"].every((id) => HIDDEN_VIDEO_STYLE_IDS.has(id)));
+check("UGC/Testimonial appears first in selectable styles", getSelectableVideoStyles()[0]?.id === "testimonial");
 
 // --- caption: product name first, then hashtags ---
 const prodA = {
@@ -365,18 +372,27 @@ check("shoe video Auto overrides no-person recommendation", !/No people, faces, 
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
 check("shoe prompts remain concise", shoeImage.length < 15000 && shoeVideo.length < 21000, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
-// --- default behavior: sales style + stable Auto reviewer ---
+// --- default behavior: UGC/testimonial style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
 const generalReviewB = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
-check("default style is sales", settings.videoStyle === "sales");
-check("default video uses reusable four-beat sales structure", /reusable four-beat TikTok sales structure/i.test(generalReviewA));
-check("sales structure includes a category-fit lifestyle scene", /Scene 3 \(Lifestyle Fit\)/i.test(generalReviewA));
+check("default style is UGC/testimonial", settings.videoStyle === "testimonial");
+check("default video uses UGC testimonial structure", /UGC testimonial/i.test(generalReviewA));
+check("testimonial structure includes a recommendation scene", /Scene 3 \(Recommendation\)/i.test(generalReviewA));
 eq(
   "Auto reviewer is stable per product",
   generalReviewA.match(/Presenter: ([^\n.]+)/)?.[1],
   generalReviewB.match(/Presenter: ([^\n.]+)/)?.[1]
 );
 check("Auto reviewer is male or female", /Presenter: (?:A fictional adult Thai woman reviewer|A fictional adult Thai man reviewer)/i.test(generalReviewA));
+
+const voiceoverReviewVideo = buildVideoPrompt(
+  { name: "แก้วเก็บความเย็น", category: "เครื่องใช้ในบ้าน" },
+  { ...settings, videoStyle: "review-voiceover", presenter: "woman", audioMode: "music_only" }
+);
+check("voiceover review style is hands-on and multi-scene", /REVIEW WITH OVERDUB SEQUENCE|Hands-On Use|Real Use/i.test(voiceoverReviewVideo) && /product being used|using .* naturally/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
+check("voiceover review style keeps the face visible", /face (?:normally|clearly visible)|face unobstructed/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
+check("voiceover review style forbids lip movement", /never lip-sync|never move the lips|mouth closed/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
+check("voiceover review style forces overdub instead of music-only", /Voiceover: Add a natural Thai off-screen voiceover/i.test(voiceoverReviewVideo) && !/INSTRUMENTAL MUSIC ONLY/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
 
 const stillMotionSettings = {
   ...settings,
@@ -904,6 +920,24 @@ check("video prompt with hands_only has strict hand details", /STRICT MAXIMUM TW
 check("video prompt with hands_only globally locks two hands across all scenes", /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(vidPresenterHands) && /Never add a third hand/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only strictly forbids faces", /STRICTLY FORBIDDEN: Do not show any face|FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
 
+const handsOnlyStyleVideo = buildVideoPrompt(
+  { name: "แก้วเก็บความเย็น", category: "เครื่องใช้ในบ้าน" },
+  { ...settings, videoStyle: "hands-only", presenter: "woman", flowGenMode: "video" }
+);
+const handsOnlyStyleImage = buildImagePrompt(
+  { name: "แก้วเก็บความเย็น", category: "เครื่องใช้ในบ้าน" },
+  { ...settings, videoStyle: "hands-only", presenter: "woman", flowGenMode: "combined" }
+);
+check("hands-only style forces hands-only video behavior", /HANDS-ONLY VIDEO STYLE LOCK/i.test(handsOnlyStyleVideo) && /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
+check("hands-only style ignores the selected woman presenter", !/fictional adult Thai woman reviewer|adult Thai woman reviewer/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
+check("hands-only style also reaches the combined still prompt", /realistic hands|first-person POV/i.test(handsOnlyStyleImage) && /FIRST-PERSON POV FACE EXCLUSION/i.test(handsOnlyStyleImage), handsOnlyStyleImage);
+
+const legacyHandsOnlyAutoVideo = buildVideoPrompt(
+  { name: "แก้วเก็บความเย็น", category: "เครื่องใช้ในบ้าน", autoOptions: { videoStyle: "review", presenter: "hands_only" } },
+  { ...settings, videoStyle: "Auto", presenter: "Auto" }
+);
+check("legacy hands_only auto recommendation migrates to hands-only style", /HANDS-ONLY VIDEO STYLE LOCK/i.test(legacyHandsOnlyAutoVideo), legacyHandsOnlyAutoVideo);
+
 const vidPresenterUnboxingHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
 const imgPresenterUnboxingHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
 check("unboxing still globally locks two hands", /STILL IMAGE TWO-HAND LOCK[\s\S]*Never render a third hand/i.test(imgPresenterUnboxingHands), imgPresenterUnboxingHands);
@@ -1257,6 +1291,11 @@ const insulatedCupAuto = buildVideoPrompt(
   { ...settings, presenter: "none", location: "Auto" }
 );
 check("insulated cup Auto scene allows a living room", /Bright realistic outdoor park or fitness setting|Bright modern living room/i.test(insulatedCupAuto), insulatedCupAuto);
+const explicitFitnessLocationImage = buildImagePrompt(
+  { name: "แก้วน้ำเก็บความเย็น", category: "แก้วน้ำ" },
+  { ...settings, presenter: "none", location: "Fitness Studio" }
+);
+check("explicit Fitness Studio location reaches the still prompt", /SELECTED BACKGROUND LOCATION LOCK[\s\S]*Fitness Studio/i.test(explicitFitnessLocationImage), explicitFitnessLocationImage);
 
 // Test 27: Auto background must match the product category.
 const autoBackgroundCases = [
