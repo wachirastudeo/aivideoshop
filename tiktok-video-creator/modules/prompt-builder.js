@@ -394,10 +394,11 @@ const SHOE_WEARABLE_CROP_VIDEO_DIRECTION = "SHOE WORN-ON-FEET VIDEO MODE: Keep t
 const SHOE_WEARABLE_CROP_BACKGROUND_DIRECTION = "SHOE WORN-ON-FEET INDOOR BACKGROUND LOCK: Use a clean, aesthetically pleasing indoor floor in a cozy bedroom or living-room corner, with soft natural daylight, pale neutral/pastel tones, and shallow background blur. A restrained curtain, bed edge, or soft fabric detail may appear in the background, but never let props cover the footwear. ABSOLUTELY FORBIDDEN: outdoor street, driveway, grass, park, retail shoe store, shoe shelf, studio cyclorama, social-media UI, watermark, stickers, or added screenshot text.";
 
 const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
-const SHOE_PATTERN_COORDINATE_LOCK = "STRICT FOOTWEAR PATTERN COORDINATE LOCK: toe box/heel/sole/sides. Do not redraw.";
+const SHOE_PATTERN_COORDINATE_LOCK = "STRICT FOOTWEAR PATTERN COORDINATE LOCK: Copy the exact reference pattern as a fixed texture map across the toe box, heel, sole, and side panels. Preserve motif positions, orientation, colors, and left/right asymmetry. Do not redraw, mirror, rotate, simplify, recolor, or move it.";
 const SHOE_SCALE_DIRECTION = "STRICT FOOTWEAR SCALE & PLACEMENT LOCK: This is a real human shoe, not a giant prop or miniature toy. Preserve true foot-sized proportions and the exact single-shoe/pair count. Show it at realistic scale relative to a human foot, leg, hand, shoe box, floor, shelf, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge the shoe to furniture-scale, make it tiny, or place it in an unrelated oversized environment. Keep the shoe grounded on a realistic floor, shelf, or naturally worn on a foot.";
 const SHOE_STILL_PLACEMENT_DIRECTION = "REALISTIC FOOTWEAR STILL PLACEMENT LOCK: For a product-only shoe still, place the exact shoe or exact pair naturally on a level, stable surface appropriate to the selected background (outdoor pavement, concrete, or grass by default), with the sole touching the surface and a believable contact shadow. Preserve the reference's single-shoe or pair count; when a pair is shown, arrange it as a natural left/right pair at a slight three-quarter angle with aligned toe directions, realistic spacing, and no overlapping or interpenetrating shoes. Keep the full silhouette visible with breathing room. ABSOLUTELY FORBIDDEN: floating shoes, shoes standing vertically without support, tilted-on-edge placement, giant or miniature scale, duplicate shoes, or catalog-collage layouts.";
 const SHOE_PAIR_STILL_DIRECTION = "MANDATORY FOOTWEAR PAIR STILL COMPOSITION: Show BOTH shoes from the reference together in the same single full-frame still image: the left shoe and the right shoe must both be clearly visible, complete, and identifiable. Place them side by side as a natural pair on the same level surface, with both soles touching the surface, matching perspective, realistic spacing, and separate contact shadows. NEVER output only one shoe, crop away one shoe, hide one shoe behind the other, or split the pair into separate panels.";
+const SHOE_STILL_REFERENCE_LOCK = "FINAL SHOE REFERENCE CHECK: Treat the reference shoe design as immutable. Copy the exact shoe model, visible count, toe shape, sole thickness, lace pattern, logo, panels, and colors. STRICT FOOTWEAR PATTERN COORDINATE LOCK: Copy the pattern as a fixed texture map across the toe box, heel, sole, and side panels; preserve motif positions, orientation, colors, and left/right asymmetry. STRICT FOOTWEAR SCALE & PLACEMENT LOCK: Keep real foot-sized proportions and natural contact. Before output, compare every shoe with the reference and remove any invented stripe, logo, color, panel, or sole detail. Do not redraw, mirror, rotate, simplify, recolor, or move the design.";
 
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: Match the reference garment's type, cut, fit, length, neckline or waistband, sleeves or legs, fabric, color, print, logo, seams, pockets, and fasteners. Keep those visible design details consistent while allowing natural fabric drape and ordinary movement. Show the front design clearly and do not use a back-facing or 360-degree spin.";
 const FASHION_SELFIE_BODY_CONTINUITY_LOCK = "FASHION SELFIE COMPLETE BODY LOCK: Render exactly one anatomically complete adult model with one connected head, neck, shoulders, torso, hips, two arms, two hands, two legs, and two feet. Never erase, crop away, detach, duplicate, or deform the torso, shoulders, arms, hands, hips, legs, or feet. The phone covers only the face; it must never replace or hide the upper body. When full-body framing is required, keep the complete head-to-toe body visible and grounded in every frame.";
@@ -1137,7 +1138,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
     scaleInstruction,
     shotDistribution,
     specificScale,
-    categoryDirection,
+    isFootwear && !shoeWearableCrop ? "" : categoryDirection,
     isCoffeeImageAd ? COFFEE_REFERENCE_VARIANT_LOCK : "",
     analysisDirection,
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
@@ -1156,7 +1157,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
     productTextFidelityDirection,
     STILL_TEXT_INTEGRITY_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
-    textDirection
+    textDirection,
+    isFootwear && !shoeWearableCrop ? SHOE_STILL_REFERENCE_LOCK : ""
   ];
 
   return promptParts.filter(Boolean).join("\n");

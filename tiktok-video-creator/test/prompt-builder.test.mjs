@@ -368,6 +368,7 @@ const shoeVideo = buildVideoPrompt(shoe, settings);
 check("shoe prompt locks shoe-specific geometry", /toe shape[\s\S]*sole thickness[\s\S]*lace pattern/i.test(shoeImage));
 check("shoe prompt uses a shoe semantic label instead of clothing", /Show sneaker shoes clearly|Show sandals clearly|Show shoes clearly/i.test(shoeImage) && !/Show clothing garment clearly/i.test(shoeImage), shoeImage);
 check("shoe prompt locks pattern coordinates to the reference", /STRICT FOOTWEAR PATTERN COORDINATE LOCK[\s\S]*toe box[\s\S]*heel[\s\S]*Do not redraw/i.test(shoeImage));
+check("shoe prompt preserves exact pattern orientation and asymmetry", /fixed texture map[\s\S]*motif positions[\s\S]*orientation[\s\S]*left\/right asymmetry[\s\S]*Do not redraw, mirror, rotate, simplify, recolor/i.test(shoeImage), shoeImage);
 check("shoe prompt preserves single or pair count", /single-shoe\/pair count/i.test(shoeImage));
 check("shoe prompt locks realistic human-foot scale", /STRICT FOOTWEAR SCALE & PLACEMENT LOCK/i.test(shoeImage) && /true foot-sized proportions/i.test(shoeImage));
 check("shoe prompt uses an outdoor footwear location", /outdoor home driveway|front yard|quiet neighborhood street|park path/i.test(shoeImage + shoeVideo));
