@@ -386,6 +386,19 @@ check("shoe video Auto overrides no-person recommendation", !/No people, faces, 
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
 check("shoe prompts remain concise", shoeImage.length < 15000 && shoeVideo.length < 21000, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
+const runningShoeVideo = buildVideoPrompt(
+  { name: "รองเท้าวิ่งผู้หญิง", productId: "running-activity-shoe" },
+  { ...settings, presenter: "woman", productActivity: "running" }
+);
+check("running activity requires visible running motion", /PRODUCT USE — RUNNING[\s\S]*clearly visible natural running stride|ACTIVE RUNNING FOOTWEAR SEQUENCE/i.test(runningShoeVideo), runningShoeVideo);
+check("running activity rejects standing-only movement", /Do not make the whole video standing in place|never standing-only/i.test(runningShoeVideo), runningShoeVideo);
+
+const wearOnlyShoeVideo = buildVideoPrompt(
+  { name: "รองเท้าผู้หญิง", productId: "wear-activity-shoe" },
+  { ...settings, presenter: "woman", productActivity: "wear" }
+);
+check("wear activity keeps movement minimal", /PRODUCT USE — WEAR\/SHOW ONLY[\s\S]*mostly stable pose/i.test(wearOnlyShoeVideo), wearOnlyShoeVideo);
+
 // --- default behavior: UGC/testimonial style + stable Auto reviewer ---
 const generalReviewA = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
 const generalReviewB = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);

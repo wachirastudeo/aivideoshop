@@ -734,6 +734,7 @@ export function getDefaultSettings() {
     videoStyle: "testimonial",
     presenter: "Auto",
     customPresenter: "",
+    productActivity: "Auto",
     audioMode: "voiceover",
     voiceTone: "Auto",
     mood: "Auto",
@@ -1268,6 +1269,25 @@ function getNaturalProductInteractionDirection(text = "") {
   return NATURAL_PRODUCT_INTERACTION_DIRECTION;
 }
 
+function getProductActivityDirection(productText = "", settings = {}) {
+  const activity = settings?.productActivity;
+  if (activity === "wear") {
+    return "PRODUCT USE — WEAR/SHOW ONLY: Keep the product worn or presented naturally with a mostly stable pose. Allow only subtle breathing, a small weight shift, gentle hand movement, or controlled camera movement. Do not make the presenter run, walk, jump, dance, or perform an active demonstration.";
+  }
+  if (activity === "running") {
+    const isFootwear = /(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(productText);
+    return `PRODUCT USE — RUNNING: Show the exact reference product in real running use from the first active scene. ${isFootwear ? "The presenter MUST wear the exact reference pair and perform a clearly visible natural running stride or jog: alternating steps, foot lift, forward movement, landing, and push-off. Include at least one side-tracking running shot and one lower-body detail shot." : "Use a realistic running or jogging context that is appropriate for this exact product, with clear forward movement and practical interaction."} Do not make the whole video standing in place or only swaying. Do not change, recolor, duplicate, or redesign the product.`;
+  }
+  if (activity === "walking") {
+    const isFootwear = /(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(productText);
+    return `PRODUCT USE — WALKING: Show the exact reference product in real walking use with clear natural forward movement. ${isFootwear ? "The presenter wears the exact reference pair and takes several realistic alternating steps, with the shoes remaining fully visible and unchanged." : "Use a realistic walking context appropriate for this exact product and show practical interaction while moving."} Do not make the entire video a standing pose with only slight swaying. Do not change, recolor, duplicate, or redesign the product.`;
+  }
+  if (activity === "demonstrate") {
+    return "PRODUCT USE — ACTIVE DEMONSTRATION: Show the presenter actively using the exact product for its real intended purpose in a clear, natural, practical demonstration. The action must be visibly meaningful, not just standing still or making tiny idle movements. Keep the exact product unchanged throughout.";
+  }
+  return "";
+}
+
 function getStillProductUseDirection(text = "") {
   if (isHammockProduct(text)) {
     return "Natural still composition: Install the hammock between two sturdy trees or on a proper hammock stand using its visible end ropes or straps. Show the reviewer sitting or reclining naturally; never show the loose hammock held or stretched by hand.";
@@ -1530,6 +1550,8 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const isClothing = isClothingProduct(productText);
   const isWearable = isWearableProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(visualProductName);
+  const productActivityDirection = getProductActivityDirection(productText, settings);
+  const selectedProductActivity = settings?.productActivity;
 
   if (auto.videoStyle === "fashion-selfie") {
     const fashionPresenter = resolveFashionSelfiePresenter(productText, settings, auto.presenter, productInfo);
@@ -1667,6 +1689,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     isClothing ? "" : getNaturalProductInteractionDirection(productText),
     isClothing ? "" : OBJECT_REALISM_DIRECTION,
     isWearable ? NO_PUTTING_ON_OR_TAKING_OFF_MANDATE : "",
+    productActivityDirection,
     scaleInstruction,
     specificScale,
     PRODUCT_STRUCTURE_DIRECTION,
@@ -1745,6 +1768,24 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     sceneBreakdown = sceneBreakdown
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b[^.]*?(interacting|holding|demonstrating|opening|unwrapping|talking|smiling)[^.]*/gi, `${childDesc} ${childAction}, ${parentCare}`)
       .replace(/\b(a |an )?(presenter|reviewer|model|person)\b/gi, `${childDesc} together with a supervising parent`);
+  }
+
+  if (selectedProductActivity === "running" && isFootwearProduct(productInfo) && !noPeople && !handsOnly) {
+    sceneBreakdown = [
+      "ACTIVE RUNNING FOOTWEAR SEQUENCE: Show the presenter wearing the exact reference pair in continuous, realistic running use; never standing-only:",
+      "- Scene 1 (Start): Lower-body hero shot as the presenter begins a natural jog, showing both exact shoes and their unchanged design.",
+      "- Scene 2 (Motion): Side-tracking shot with clear alternating strides, foot lift, landing, and push-off; keep both shoes sharp enough to verify the reference pattern.",
+      "- Scene 3 (Detail): Low-angle moving close-up of the exact shoes during a natural stride, with no invented details or shoe changes.",
+      "- Scene 4 (Finish): Presenter completes the run and slows naturally while the exact pair remains visible and unchanged."
+    ].join("\n");
+  } else if (selectedProductActivity === "walking" && isFootwearProduct(productInfo) && !noPeople && !handsOnly) {
+    sceneBreakdown = [
+      "ACTIVE WALKING FOOTWEAR SEQUENCE: Show the presenter wearing the exact reference pair while walking naturally; never standing-only:",
+      "- Scene 1 (Start): Lower-body hero shot as the presenter takes the first step, showing both exact shoes.",
+      "- Scene 2 (Motion): Side or front tracking shot with several natural alternating steps and clear forward movement.",
+      "- Scene 3 (Detail): Low-angle close-up during walking, preserving the exact pattern, sole, logo, and colors.",
+      "- Scene 4 (Finish): Presenter stops naturally with both shoes visible, unchanged, and grounded."
+    ].join("\n");
   }
 
   if (voiceoverReview) {

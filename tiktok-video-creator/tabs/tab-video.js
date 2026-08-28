@@ -92,7 +92,7 @@ export async function syncSelectedProductToVideoTab() {
 
 function bindGlobalEvents() {
   [
-    "video-style", "presenter", "custom-presenter", "audio-mode", "voice-tone", "location", "custom-location",
+    "video-style", "presenter", "custom-presenter", "audio-mode", "voice-tone", "location", "custom-location", "product-activity",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement", "camera-framing",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action", "post-no-link",
     "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
@@ -131,6 +131,7 @@ function fillGlobalFormFromState() {
   setValue("text-style-font", settings.textStyleFont);
   setValue("camera-movement", settings.cameraMovement);
   setValue("camera-framing", settings.cameraFraming);
+  setValue("product-activity", settings.productActivity);
   setValue("image-model", settings.imageModel);
   setValue("video-model", settings.videoModel);
   setValue("image-count", settings.imageCount);
@@ -194,6 +195,7 @@ function syncSettingsForm() {
     textStyleFont: getValue("text-style-font"),
     cameraMovement: getValue("camera-movement"),
     cameraFraming: getValue("camera-framing"),
+    productActivity: getValue("product-activity") || "Auto",
     imageModel: getValue("image-model"),
     videoModel: getValue("video-model"),
     imageCount: parseInt(getValue("image-count"), 10) || 1,
@@ -298,6 +300,7 @@ function normalizeSettings(value) {
     location: value.location || "Auto",
     customLocation: value.customLocation || "",
     customPresenter: value.customPresenter || "",
+    productActivity: ["wear", "running", "walking", "demonstrate"].includes(value.productActivity) ? value.productActivity : "Auto",
     firstSceneNoPeople: value.firstSceneNoPeople === true || value.firstSceneNoPeople === "true" || value.firstSceneNoPeople === "false" ? (value.firstSceneNoPeople === true || value.firstSceneNoPeople === "true") : false,
     pacing: value.pacing || 2,
     transition: value.transition || "Auto",
