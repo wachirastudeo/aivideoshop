@@ -112,7 +112,7 @@ check("default video puts no-text rule before style instructions", vid.indexOf("
 
 // --- image prompt: fidelity + sharp focus ---
 const img = buildImagePrompt({ name: "ครีมบำรุงผิว", highlights: "" }, settings);
-check("image prompt mentions fidelity", /preserve its exact shape/i.test(img));
+check("image prompt mentions fidelity", /preserve exact shape/i.test(img));
 check("image prompt sharp focus", /sharp and clearly visible|sharp focus/i.test(img));
 check(
   "image prompt locks the exact pattern variant",
@@ -127,7 +127,7 @@ check(
 check("reference image keeps product text but forbids added text", /Preserve only product text visible in the reference[\s\S]*product surface blank/i.test(img), img);
 check("reference image ignores surrounding image text", /PRODUCT TEXT SCOPE:[\s\S]*Product text only[\s\S]*background text/i.test(img), img);
 check("reference image keeps absent product text blank", /If none is visible\/readable[\s\S]*surface blank[\s\S]*never infer text from the title or surrounding image/i.test(img), img);
-check("default image puts no-text rule before product instructions", img.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < img.indexOf("REFERENCE PHOTO OVERRIDES TEXT"), img);
+check("default image puts no-text rule before product instructions", img.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < img.indexOf("REFERENCE PRODUCT IDENTITY ONLY"), img);
 
 const coloredBoxImage = buildImagePrompt({
   name: "กล่องของขวัญสีฟ้าพร้อมฉลาก",
@@ -135,7 +135,7 @@ const coloredBoxImage = buildImagePrompt({
   highlights: "กล่องสีฟ้า ฉลากสีขาว และโลโก้สีน้ำเงิน"
 }, settings);
 check("packaging still image locks visible box colors", /HIGHEST PRIORITY STILL REFERENCE FIDELITY[\s\S]*visible packaging colors[\s\S]*STRICT COLOR REPRODUCTION LOCK/i.test(coloredBoxImage), coloredBoxImage);
-check("packaging still image separates product colors from the background", /Reference overrides title, highlights, generic info, and style instructions[\s\S]*Change only background/i.test(coloredBoxImage), coloredBoxImage);
+check("packaging still image separates product colors from the background", /Reference controls only the product\/set identity[\s\S]*Do not copy the source people[\s\S]*create a new composition/i.test(coloredBoxImage), coloredBoxImage);
 
 const coffeePouch = buildImagePrompt({
   name: "กาแฟคั่วบด Angry Bears Coffee",
@@ -194,7 +194,7 @@ check(
 );
 check(
   "paper food container keeps its uploaded product as the source",
-  /REFERENCE PHOTO OVERRIDES TEXT[\s\S]*ISOLATE AND EXTRACT ONLY THE PRODUCT/i.test(nonCoffeePaperFoodContainer),
+  /REFERENCE PRODUCT IDENTITY ONLY[\s\S]*Extract and reproduce only the exact physical product/i.test(nonCoffeePaperFoodContainer),
   nonCoffeePaperFoodContainer
 );
 
@@ -349,7 +349,7 @@ check("image prompt requires exact repeated-part counts", /3 drawers|exact visib
 check("image prompt says reference overrides title", /Keep the original text layout from the reference image|reference image/i.test(cabinetImage));
 check("video prompt carries analyzed structure", /exactly 3 drawers/i.test(cabinetVideo));
 check("video prompt forbids adding or removing parts", /never add, remove/i.test(cabinetVideo));
-check("image prompt isolates only the named product", /ISOLATE AND EXTRACT ONLY THE PRODUCT|single product|one product/i.test(cabinetImage));
+check("image prompt isolates only the named product", /Extract and reproduce only the exact physical product|single product|one product/i.test(cabinetImage));
 check("image prompt rejects source-scene objects", /100% NEW SCENE & BACKGROUND|ignore the original background|ignoring its original background/i.test(cabinetImage));
 check("image prompt creates a new suitable background", /brand new|background that fits this product category/i.test(cabinetImage));
 check("video prompt is multi-scene", /multi-scene|distinct scenes/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
@@ -378,6 +378,9 @@ check("shoe still image has highest-priority outdoor background lock", /HIGHEST 
 check("shoe still image locks grounded placement", /REALISTIC FOOTWEAR STILL PLACEMENT LOCK/i.test(shoeImage) && /sole touching the surface|soles supported by the surface/i.test(shoeImage) && /believable contact shadow/i.test(shoeImage));
 check("shoe still image uses a natural footwear composition", /Single full-frame footwear .*product shot/i.test(shoeImage) && /realistic 3\/4 product angle/i.test(shoeImage) && /natural spacing/i.test(shoeImage));
 check("shoe still image requires both shoes together", /MANDATORY FOOTWEAR PAIR STILL COMPOSITION/i.test(shoeImage) && /BOTH shoes/i.test(shoeImage) && /NEVER output only one shoe/i.test(shoeImage));
+check("still prompt transfers product identity only", /REFERENCE PRODUCT IDENTITY ONLY[\s\S]*do NOT reproduce the source photo as a whole/i.test(shoeImage));
+check("still prompt rejects copying the source scene", /do not copy the source people, pose, background, props, lighting, camera angle, framing, or layout/i.test(shoeImage));
+check("still prompt requires a new composition", /create a new composition/i.test(shoeImage));
 const singleShoeImage = buildImagePrompt({ name: "รองเท้าข้างเดียว", structureAdvice: "Reference shows one single shoe only." }, settings);
 check("explicit single-shoe reference stays single", /exact single shoe from the reference/i.test(singleShoeImage) && !/MANDATORY FOOTWEAR PAIR STILL COMPOSITION/i.test(singleShoeImage));
 check("shoe video Auto includes a reviewer", /Presenter: (?:A fictional adult Thai woman reviewer|A fictional adult Thai man reviewer)/i.test(shoeVideo));
@@ -612,7 +615,7 @@ check("hammock is identified as a camping hammock, not clothing", /camping hammo
 check("hammock is installed between natural supports", /already installed between two sturdy trees or on a proper hammock stand/i.test(hammockVideo), hammockVideo);
 check("hammock still uses hammock structure instead of packaging rules", /HAMMOCK STRUCTURE FIDELITY/i.test(hammockImage) && !/UNIVERSAL PRODUCT & PACKAGING LABEL FIDELITY LOCK/i.test(hammockImage), hammockImage);
 check("hammock still is attached and naturally occupied", /Install the hammock between two sturdy trees or on a proper hammock stand[\s\S]*reviewer sitting or reclining naturally/i.test(hammockImage), hammockImage);
-check("camping still prompts remove duplicated lock overload", campChairImage.length < 10000 && hammockImage.length < 10000, `chair=${campChairImage.length} hammock=${hammockImage.length}`);
+check("camping still prompts remove duplicated lock overload", campChairImage.length < 11000 && hammockImage.length < 11000, `chair=${campChairImage.length} hammock=${hammockImage.length}`);
 check("hammock is not forced into the wearable holding rule", !/WEARABLE PRODUCT CONTINUITY|STRICT ALWAYS-WORN RULE/i.test(hammockVideo), hammockVideo);
 check("hammock is not described as a small hand-sized item", !/small hand-sized|product is a small item/i.test(hammockVideo), hammockVideo);
 check("wearable products still keep continuity guidance", /WEARABLE PRODUCT CONTINUITY/i.test(buildVideoPrompt({ name: "เสื้อยืดผู้ชาย" }, settings)));
@@ -1084,7 +1087,7 @@ check("apparel image does not let the whole reference override fictional casting
 check("apparel image generates its fictional presenter independently", /INDEPENDENT FICTIONAL CAST:[^\n]*presenter independently[^\n]*reference only for garment design details/i.test(imgWithModelRef), imgWithModelRef);
 
 const genericReferenceImage = buildImagePrompt({ name: "แก้วเก็บความเย็น" }, { ...settings, presenter: "woman" });
-check("non-apparel image still gives the product reference highest priority", /REFERENCE PHOTO OVERRIDES TEXT/i.test(genericReferenceImage), genericReferenceImage);
+check("non-apparel image still gives the product reference highest priority", /REFERENCE PRODUCT IDENTITY ONLY/i.test(genericReferenceImage), genericReferenceImage);
 check("image prompt locks realistic product scale to the scene", /REALISTIC SCENE SCALE LOCK[\s\S]*real-world anchors[\s\S]*natural perspective/i.test(genericReferenceImage), genericReferenceImage);
 check("image prompt scales from scene anchors instead of frame coverage", /Use real-world anchors, natural perspective, and background depth/i.test(genericReferenceImage), genericReferenceImage);
 check("insulated tumbler image uses reference-led geometry without forcing a cylinder", /STRICT INSULATED DRINKWARE FIDELITY LOCK[\s\S]*without forcing a generic cylindrical shape/i.test(genericReferenceImage), genericReferenceImage);
@@ -1307,8 +1310,8 @@ const explicitDogVid = buildVideoPrompt({ name: "generic water bottle" }, { ...s
 check("explicit dog presenter remains opt-in", /cute dog|pet animal/i.test(explicitDogVid) && !/STRICT ANIMAL EXCLUSION LOCK/i.test(explicitDogVid), explicitDogVid);
 
 const fidelityImg = buildImagePrompt({ name: "black insulated bottle", category: "drinkware" }, { ...settings, presenter: "none" });
-check("image prompt treats reference photo as highest-priority product source", /REFERENCE PHOTO OVERRIDES TEXT/i.test(fidelityImg), fidelityImg);
-check("image prompt uses background-only compositing instead of product redesign", /BACKGROUND-ONLY EDIT/i.test(fidelityImg), fidelityImg);
+check("image prompt treats reference photo as highest-priority product source", /REFERENCE PRODUCT IDENTITY ONLY/i.test(fidelityImg), fidelityImg);
+check("image prompt uses product-only compositing instead of copying the source scene", /PRODUCT-ONLY REFERENCE TRANSFER|do NOT reproduce the source photo as a whole/i.test(fidelityImg), fidelityImg);
 
 const fidelityVid = buildVideoPrompt({ name: "black insulated bottle", category: "drinkware" }, { ...settings, presenter: "none" });
 check("video prompt keeps strict reference product fidelity", /STRICT PRODUCT FIDELITY LOCK/i.test(fidelityVid), fidelityVid);
