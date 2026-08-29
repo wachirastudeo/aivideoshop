@@ -420,8 +420,12 @@ const voiceoverReviewVideo = buildVideoPrompt(
   { ...settings, videoStyle: "review-voiceover", presenter: "woman", audioMode: "music_only" }
 );
 check("voiceover review style is hands-on and multi-scene", /REVIEW WITH OVERDUB SEQUENCE|Hands-On Use|Real Use/i.test(voiceoverReviewVideo) && /product being used|using .* naturally/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
-check("voiceover review style keeps the face visible", /face (?:normally|clearly visible)|face unobstructed/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
+check("voiceover review style makes the product action primary", /hands-on product-use review|product and hands must dominate|Product Hook/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
+check("voiceover review does not open with a face", /face must not be the opening subject|before showing any face|never a face-to-camera intro/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
+check("voiceover review uses multiple product angles", /different practical angle|another angle|close-up during real use/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
 check("voiceover review style forbids lip movement", /never lip-sync|never move the lips|mouth closed/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
+check("voiceover review ends with a silent-presenter override", /FINAL VOICEOVER-ONLY OVERRIDE[\s\S]*NOT a talking-head or on-camera speaking video[\s\S]*mouth must remain closed and completely motionless/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
+check("voiceover review removes generic on-camera narration conflict", !/STRICT PROGRESSIVE SCENE NARRATION/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
 check("voiceover review style forces overdub instead of music-only", /Voiceover: Add a natural Thai off-screen voiceover/i.test(voiceoverReviewVideo) && !/INSTRUMENTAL MUSIC ONLY/i.test(voiceoverReviewVideo), voiceoverReviewVideo);
 
 const stillMotionSettings = {
@@ -1133,6 +1137,9 @@ check("Auto presenter is attractive and age-appropriate", /naturally attractive|
 const caseAutoImg = buildImagePrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" }, { ...settings, presenter: "Auto", location: "Auto" });
 check("phone case image Auto uses a fictional Thai presenter", /Presenter: A fictional adult Thai (?:woman|man) reviewer/i.test(caseAutoImg) && /THAI PRESENTER CAST/i.test(caseAutoImg), caseAutoImg);
 check("phone case image locks printed artwork to the case coordinates", /CASE ARTWORK COORDINATE LOCK[\s\S]*relative to the case's top, bottom, left, right edges[\s\S]*camera cutout/i.test(caseAutoImg), caseAutoImg);
+check("phone case still uses the exact source product", /REFERENCE PRODUCT SOURCE[\s\S]*attached reference image as the exact source[\s\S]*Copy the visible case or case set 1:1/i.test(caseAutoImg), caseAutoImg);
+check("phone case still keeps the original shape and camera opening", /REFERENCE PRODUCT SOURCE[\s\S]*outer silhouette[\s\S]*camera opening/i.test(caseAutoImg), caseAutoImg);
+check("phone case still rejects a lookalike replacement", /FINAL PHONE CASE CHECK[\s\S]*same case from the original image[\s\S]*not a lookalike or generic replacement/i.test(caseAutoImg), caseAutoImg);
 const caseImagePresenter = caseAutoImg.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 const caseVideoPresenter = caseAutoVid.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 check("Auto still and video use the same presenter gender", caseImagePresenter === caseVideoPresenter, `${caseImagePresenter} vs ${caseVideoPresenter}`);
@@ -1224,6 +1231,8 @@ check("phone case video prompt includes phone case fidelity lock", /STRICT PHONE
 check("phone case video prevents pattern rotation and drift", /CASE ARTWORK COORDINATE LOCK[\s\S]*mirror it, rotate it, stretch it, reflow it, center-shift it[\s\S]*drift onto the phone/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case keeps true size against full-size scene anchors", /REAL-WORLD PHONE SCALE LOCK[\s\S]*true smartphone size relative to a full-size hand, table, room, and furniture[\s\S]*fill half a table/i.test(phoneCaseVid), phoneCaseVid);
 check("complex phone case patterns copy from the clear reference", /COMPLEX PHONE CASE PATTERN REFERENCE LOCK[\s\S]*entire visible case-back artwork as one exact graphic layer[\s\S]*reference image overrides the product title/i.test(phoneCaseVid), phoneCaseVid);
+check("phone case uses a natural one-hand grip", /NATURAL PHONE CASE HANDLING LOCK[\s\S]*relaxed ergonomic grip[\s\S]*thumb along one side[\s\S]*fingers naturally supporting/i.test(phoneCaseVid), phoneCaseVid);
+check("phone case keeps camera cutout aligned while held", /NATURAL PHONE CASE HANDLING LOCK[\s\S]*cover the camera cutout[\s\S]*camera opening.*aligned/i.test(phoneCaseVid), phoneCaseVid);
 
 const bagVid = buildVideoPrompt({ name: "กระเป๋าสะพายข้างหนังแท้สำหรับผู้หญิง" }, settings);
 check("bag video prompt includes bags fidelity lock", /STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK/i.test(bagVid), bagVid);

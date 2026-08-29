@@ -27,9 +27,9 @@ export const VIDEO_STYLES = [
     id: "review-voiceover",
     emoji: "🎙️",
     name: "รีวิวใช้งานจริง + พากย์ทับ",
-    description: "เห็นหน้าได้ตามปกติ เน้นสาธิตการใช้สินค้า มีเสียงพากย์ทับ ห้ามพูดหรือขยับปาก",
-    shotPattern: "[เห็นหน้าผู้รีวิวแบบไม่พูด] → [สาธิตใช้งานจริง] → [ซูมจุดเด่น] → [จบด้วยสินค้าและผู้รีวิว]",
-    fragment: "authentic hands-on product review, presenter with natural visible face, real-world product use demonstration, off-screen Thai voiceover, no on-screen speech, no lip movement, natural everyday setting"
+    description: "เปิดด้วยมือหยิบจับและใช้งานสินค้า เปลี่ยนมุมดูรายละเอียด มีเสียงพากย์ทับ ห้ามพูดหรือขยับปาก",
+    shotPattern: "[มือหยิบ/เริ่มใช้งานสินค้า] → [สาธิตใช้งานหลายมุม] → [ซูมรายละเอียด] → [จบด้วยสินค้า]",
+    fragment: "authentic hands-on product review led by close product-use action, hands and product dominant, presenter face secondary and never the opening shot, off-screen Thai voiceover, no on-screen speech, no lip movement, natural everyday setting"
   },
   {
     id: "lifestyle",
@@ -551,6 +551,9 @@ function isCoffeeCategoryProduct(text = "") {
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
 const SMALL_TECH_ACCESSORY_SCALE_DIRECTION = "STRICT SMALL TECH ACCESSORY SCALE LOCK: This product is a real desk-sized tech accessory, not a large appliance or oversized prop. Preserve true physical scale: a mouse is about palm-sized (roughly 10-13cm long), a keyboard is desk-width and slim, earbuds fit in the ear or charging case, a charger/cable is small enough to hold in one hand, and a headset/headphones fit naturally on a human head or rest on a desk. Show it at realistic size relative to hands, a laptop, keyboard, desk surface, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge it into a giant object, appliance, bag-sized item, or furniture-scale prop; do not shrink it into a tiny toy.";
 const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, edge bevels, AND any built-in magnetic ring (MagSafe ring) MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, magnetic ring circle, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. CASE ARTWORK COORDINATE LOCK: Treat the reference artwork as an exact texture map on the case surface. Preserve every motif's orientation and position relative to the case's top, bottom, left, right edges, corners, camera cutout, MagSafe ring, and side boundaries. Do NOT invent a similar pattern, mirror it, rotate it, stretch it, reflow it, center-shift it, crop it, or let it drift onto the phone, camera bump, bezel, or background. If perspective or curvature is visible, follow the reference perspective while keeping the artwork aligned to the physical case surface. REAL-WORLD PHONE SCALE LOCK: When the case is on or near a phone, preserve true smartphone size relative to a full-size hand, table, room, and furniture. Never let one phone or case fill half a table or become furniture-sized just to look prominent. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
+const PHONE_CASE_HANDLING_DIRECTION = "NATURAL PHONE CASE HANDLING LOCK: When a presenter holds the phone, use one natural adult hand with a relaxed ergonomic grip: thumb along one side or lightly on the case back, fingers naturally supporting the opposite edge behind the phone, wrist and fingers anatomically connected. Keep the phone and case at true smartphone size. Do not pinch the artwork, cover the camera cutout, bend the case, make the hand claw-like, add fingers, float the hand, or make the phone/case oversized. Keep the case fitted flush to the phone, with the exact camera opening, buttons, corners, pattern, and edges aligned and clearly visible.";
+const PHONE_CASE_STILL_GEOMETRY_LOCK = "EXACT PHONE CASE SOURCE: Use the attached phone-case image as the exact product source. Copy the visible case or case set 1:1—same count, outer silhouette, edges, proportions, camera opening, color, material, and artwork. Do not redraw or generate a similar case. Change only the hand, scene, and background.";
+const PHONE_CASE_STILL_SOURCE_ASSET_RULE = "FINAL PHONE CASE CHECK: The generated phone case must be the same case from the original image, not a lookalike or generic replacement. Preserve every visible case separately; never merge, omit, duplicate, or redesign it.";
 const PHONE_CASE_COMPLEX_PATTERN_REFERENCE_LOCK = "COMPLEX PHONE CASE PATTERN REFERENCE LOCK: When the source image is clear, copy the entire visible case-back artwork as one exact graphic layer from the reference. The reference image overrides the product title, generic knowledge, and memory. Preserve motif count, linework, spacing, orientation, borders, colors, asymmetry, and partial edge motifs. Do not reinterpret, clean up, complete, simplify, symmetrize, or redraw a difficult pattern; never replace it with a similar-looking design.";
 const JEWELRY_FIDELITY_DIRECTION = "For jewelry/watches, preserve exact gemstone cuts, metal luster/shade, chain link style, clasp, watch face indices, and sub-dials. Do not alter craftsmanship details.";
 const BAGS_ACCESSORIES_FIDELITY_DIRECTION = "STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK: You MUST reproduce the bag (handbag, backpack, tote bag, shoulder bag, cross-body bag, wallet, or pouch) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D SHAPE & HARDWARE: All bag silhouettes, strap/handle drop lengths, zipper pulls, metal clasps, buckles, stitching lines, and pocket placements MUST be rendered 100% pixel-faithfully without structural warping. MATERIAL TEXTURE & PRINTED ARTWORK: Preserve exact leather grain, canvas weave, nylon sheen, quilted pattern, brand monogram, logo plaque, or printed artwork. ZERO DEFORMATION RULE: The bag must maintain its true 3D structure and form naturally without melting, twisting, stretching, or morphing across video frames.";
@@ -567,7 +570,7 @@ const HAMMOCK_FIDELITY_DIRECTION = "HAMMOCK STRUCTURE FIDELITY: Preserve the exa
 
 const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION, NATURAL UNHURRIED TEMPO & ZERO REPETITION LOCK: Each scene in the video MUST have its own UNIQUE, DIFFERENT spoken sentence in Thai that flows naturally at a relaxed, unhurried human pace (do NOT rush or speak too fast). ABSOLUTELY FORBIDDEN: NEVER repeat, loop, echo, or re-say the sentence spoken in the previous scene. Scene 2 MUST speak a NEW, DIFFERENT sentence from Scene 1; Scene 3 MUST speak a NEW, DIFFERENT sentence from Scene 2. Maintain a continuous, natural progressive voiceover across all scenes without repeating any phrase or sentence.";
 const VOICEOVER_DIRECTION = "Add a clear, natural Thai off-screen voiceover narration speaking at a comfortable, unhurried pace (no visible person). All spoken audio must be in Thai.";
-const REVIEW_VOICEOVER_STYLE_DIRECTION = "REVIEW WITH OVERDUB STYLE LOCK: Show the presenter's face normally and naturally when the presenter is selected, with eyes and facial features clearly visible. The presenter must never speak on camera, never mouth words, never lip-sync, and never move the lips while the Thai voiceover plays. Use the voice as a separate off-screen overdub over natural product-use footage. Prioritize practical hands-on demonstration, ordinary gestures, and clear views of the product being used as intended. Keep facial expression relaxed and closed-mouth; do not hide, cover, distort, or replace the face.";
+const REVIEW_VOICEOVER_STYLE_DIRECTION = "REVIEW WITH OVERDUB STYLE LOCK: This mode is a hands-on product-use review, not a talking-head intro. Open with a close-up of hands picking up, opening, holding, or using the product; the product and hands must dominate the first shot and the face must not be the opening subject. Use multiple practical angles and real interaction before any optional brief face shot. The presenter is a SILENT ACTOR only: must not speak to camera, mouth words, lip-sync, or move the lips at all while the Thai voiceover plays. Use the voice as a separate off-screen overdub. Keep any visible facial expression relaxed and closed-mouth.";
 const NO_WOW_DIRECTION = "STRICT WORD EXCLUSION: The Thai word \"ว้าว\" MUST NEVER appear in spoken dialogue, voiceover, subtitles, captions, or any newly generated on-screen text. Use natural product-specific wording instead. Preserve only text that physically exists on the product reference.";
 
 const TEXT_FREE_DIRECTION = "HIGHEST PRIORITY — STRICT NO-TEXT RULE: Do not add text overlays, subtitles, captions, prices, banners, promotional copy, watermarks, CTAs, signs, labels, or text graphics anywhere. Preserve only product text visible in the reference. If none is visible/readable, keep the product surface blank; never infer text from the title or surrounding image.";
@@ -645,7 +648,7 @@ export function isMagneticPhoneCaseProduct(text = "") {
   return /(แม่เหล็ก|magsafe|วงกลม|ชาร์จไร้สาย|wireless charge|magnetic|ขาตั้งยึด|ยึดแม่เหล็ก)/i.test(String(text || ""));
 }
 
-const PHONE_CASE_MULTI_SHOT_MANDATE = "MULTI-ANGLE PHONE CASE SHOT MANDATE (โชว์หลายมุมหลายช็อต): The video MUST showcase the phone case across multiple distinct close-up angles (Scene 1: Full back cover artwork & built-in magnetic ring design, Scene 2: Close-up zoom of camera lens cutout border & side button covers, Scene 3: Bottom charging port cutout & edge finish, Scene 4: Full phone case fitted elegantly). Provide sequential multi-shot coverage highlighting every angle, built-in magnetic ring feature, and detail of the phone case.";
+const PHONE_CASE_MULTI_SHOT_MANDATE = "MULTI-ANGLE PHONE CASE SHOT MANDATE (โชว์หลายมุมหลายช็อต): The video MUST showcase the phone case across multiple distinct close-up angles (Scene 1: Natural one-hand grip showing the full back cover artwork, Scene 2: Close-up zoom of the exact camera lens cutout border & side button covers, Scene 3: Bottom charging port cutout & edge finish, Scene 4: Full phone case fitted naturally to the phone). Provide sequential multi-shot coverage highlighting the exact case size, artwork coordinates, camera cutout, buttons, ports, and edge finish.";
 
 const MAGNETIC_PHONE_CASE_FIDELITY_MANDATE = "BUILT-IN MAGNETIC RING (MAGSAFE) FEATURE LOCK (วงกลมแม่เหล็กในตัว ชาร์จไร้สาย/ยึดขาตั้งง่าย): The circular ring on the back of the case is a built-in magnetic ring (MagSafe ring) integrated directly into the case for wireless charging alignment and magnetic stand mounting. Render this circular magnetic ring crisp, clean, centered, and 100% built-in seamlessly into the case back. ABSOLUTELY FORBIDDEN: Do NOT render external stick-on pads, separate adhesive magnetic plates, or extra stick-on accessories. The magnetic ring is 100% built-in to the case itself — no extra attachments or stick-ons required.";
 
@@ -891,6 +894,42 @@ function buildProductIdentityLock(productInfo = {}) {
   return `PRODUCT NAME / CATEGORY LOCK: The requested product is "${stableProductName}". Use this explicit product name to determine what the item is. The attached product reference remains authoritative for its exact visual design. Never substitute a different product type; if the name says shirt/top, generate a shirt/top, never underwear, lingerie, panties, briefs, or another unrelated garment. This instruction is semantic context only and must not appear as visible text.`;
 }
 
+function buildCompactPhoneCaseStillPrompt(productInfo = {}, productName, auto, settings, productOnlyStill) {
+  const sourceName = compactPromptText(
+    sanitizePolicySensitiveText(
+      productInfo.originalName ||
+      productInfo.productLinkTitle ||
+      productInfo.rawProduct?.title ||
+      productInfo.name ||
+      productName
+    ),
+    220
+  );
+  const location = compactPromptText(auto.location || "Clean modern studio", 120);
+  const handsOnly = ["hands_only", "unboxing_hands"].includes(auto.presenter) || settings?.presenter === "hands_only";
+  const presenter = handsOnly
+    ? "HANDS-ONLY PRODUCT USE: Use a natural first-person close-up of the product being held or used. Show only realistic hands and forearms; no face or head."
+    : productOnlyStill
+    ? "PRODUCT-ONLY STILL: Show only the product or case set on a clean surface; no people or hands."
+    : `THAI PRESENTER CAST: Presenter: A fictional adult Thai ${auto.presenter === "man" ? "man" : "woman"} reviewer. Keep the product primary in a natural close or medium product-use frame.`;
+  const background = handsOnly
+    ? `BACKGROUND AESTHETICS: Use a beautiful, warm, realistic ${location} setting with soft-focus shallow depth of field and cinematic bokeh blur; keep the hands and product sharp.`
+    : `Place the unchanged product prominently on a clean surface in a realistic ${location} scene. Do not copy the reference background, people, pose, framing, or composition.`;
+
+  return [
+    "Create one professional product advertisement still image in a vertical 9:16 frame. Single image only; no collage or split screen.",
+    `Product: "${sourceName}".`,
+    "REFERENCE PRODUCT SOURCE: Use the attached reference image as the exact source for the product only. Copy the visible case or case set 1:1; do not redraw, redesign, beautify, or generate a lookalike replacement.",
+    "Preserve the exact visible count, outer silhouette, edge profile, proportions, material, color, printed pattern, logo, and camera opening. Change only the surrounding scene, hand, lighting, and background.",
+    "CASE ARTWORK COORDINATE LOCK: Keep every pattern and printed detail fixed relative to the case's top, bottom, left, right edges, corners, and camera cutout; never shift, stretch, mirror, simplify, or recolor it.",
+    "FINAL PHONE CASE CHECK: The result must be the same case from the original image, not a lookalike or generic replacement. Keep each visible case separate with the same count.",
+    background,
+    presenter,
+    "If a hand is visible, use one natural adult hand with five correctly attached fingers, relaxed grip, believable scale, and natural contact. Do not cover the camera opening or distort the case.",
+    "No added text, captions, stickers, watermarks, shop logos, or graphics. Preserve only text physically printed on the product. Keep the product sharp, complete, realistic, and at true smartphone scale."
+  ].join("\n");
+}
+
 function getVisualProductName(productInfo = {}) {
   return productInfo.originalName ||
     productInfo.productLinkTitle ||
@@ -936,6 +975,12 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const isHeavy = isHeavyProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(visualProductName);
+
+  // Keep regular phone-case stills concise: the attached asset is the product
+  // source, so only the scene and natural handling need to be generated.
+  if (isPhoneCaseProduct(productText) && !stillMotionMode && !boxedMotionMode) {
+    return buildCompactPhoneCaseStillPrompt(productInfo, productName, auto, settings, productOnlyStill);
+  }
 
   const isUnboxingHands = auto.presenter === "unboxing_hands";
   const handsOnly = !productOnlyStill && (handsOnlyStyle || auto.presenter === "hands_only" || isUnboxingHands);
@@ -1055,6 +1100,8 @@ export function buildImagePrompt(productInfo, settings = {}) {
         ? footwearStillCount === "pair"
           ? "Single full-frame footwear pair product shot: show both the left and right shoes from the reference together on one level surface in a realistic 3/4 product angle, with both complete silhouettes visible, soles supported by the surface, natural spacing, and separate contact shadows. No one-shoe-only output, collage, split screen, floating shoe, unsupported vertical placement, duplicate shoe, or social-media screenshot UI."
           : "Single full-frame footwear product shot: show the exact single shoe from the reference naturally resting on a level surface in a realistic 3/4 product angle, with the complete silhouette visible, sole supported by the surface, and a believable contact shadow. No collage, split screen, floating shoe, unsupported vertical placement, duplicate shoe, or social-media screenshot UI."
+        : isPhoneCaseProduct(productText)
+        ? "Single full-frame phone-case product scene: reproduce the exact phone case or exact phone-case set shown in the reference. If multiple cases are visible, preserve every visible case as a separate object with the same count, color order, spacing, overlap, outer silhouette, camera opening, and artwork; do not collapse the set into one case or invent variants. No collage, split screen, generic replacement case, merged cases, omitted cases, or social-media screenshot UI."
         : isClothing
         ? "Single full-frame front shot: Depict ONLY the front-facing view of the clothing item in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side."
         : "Single full-frame hero shot: Depict the product in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity, printed text, brand logo, and packaging artwork.")
@@ -1159,7 +1206,9 @@ export function buildImagePrompt(productInfo, settings = {}) {
     STILL_TEXT_INTEGRITY_DIRECTION,
     STRICT_SHOP_LOGO_EXCLUSION_RULE,
     textDirection,
-    isFootwear && !shoeWearableCrop ? SHOE_STILL_REFERENCE_LOCK : ""
+    isFootwear && !shoeWearableCrop ? SHOE_STILL_REFERENCE_LOCK : "",
+    isPhoneCaseProduct(productText) ? PHONE_CASE_STILL_GEOMETRY_LOCK : "",
+    isPhoneCaseProduct(productText) ? PHONE_CASE_STILL_SOURCE_ASSET_RULE : ""
   ];
 
   return promptParts.filter(Boolean).join("\n");
@@ -1663,7 +1712,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     isClothing && !wearableCrop && !isChildPresenter ? APPAREL_FICTIONAL_MODEL_DIRECTION : "",
     styleFragment ? `Visual style: ${styleFragment}.` : "",
     voiceoverReview ? REVIEW_VOICEOVER_STYLE_DIRECTION : "",
-    SPEECH_DIRECTION,
+    voiceoverReview ? "" : SPEECH_DIRECTION,
     auto.audioMode === "music_only" ? MUSIC_ONLY_AUDIO_DIRECTION : PROGRESSIVE_AUDIO_NARRATION_MANDATE,
     resolveMatchStillDirection(auto.presenter, firstSceneNoPeople),
     cameraFramingDirection,
@@ -1790,11 +1839,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   if (voiceoverReview) {
     sceneBreakdown = [
-      "REVIEW WITH OVERDUB SEQUENCE: Use 3–4 simple sequential full-frame shots with clean cuts; show the presenter and product naturally, without on-camera speech:",
-      `- Scene 1 (Silent Hook): Show the presenter's normally visible face with a relaxed closed-mouth expression while introducing ${productName} in a realistic everyday setting.`,
-      `- Scene 2 (Hands-On Use): Show the presenter using ${productName} exactly as intended, with practical hand movement and the product clearly visible.`,
-      `- Scene 3 (Detail): Cut to a sharp close-up of the product during real use, highlighting one verified feature, material, or useful detail.`,
-      `- Scene 4 (Finish): Return to ${productName} with the presenter naturally in frame, face visible and mouth closed, ending on a clean product-focused shot.`
+      "REVIEW WITH OVERDUB SEQUENCE: Use 4 sequential hands-on product-use shots with clean cuts; the opening must show product action, not a face-to-camera intro:",
+      `- Scene 1 (Product Hook): Close-up of the presenter's hands picking up, opening, holding, or starting to use ${productName}; show the product clearly before showing any face.`,
+      `- Scene 2 (Hands-On Use): Show ${productName} being used exactly as intended from a different practical angle, with hands and product dominant.`,
+      `- Scene 3 (Detail): Cut to a sharp close-up during real use, rotating or handling ${productName} to reveal verified features, material, and construction from another angle.`,
+      `- Scene 4 (Finish): End on ${productName} in use or resting naturally after the demonstration. A brief silent presenter shot is optional only after the product shots; never speak to camera.`
     ].join("\n");
   }
 
@@ -2005,7 +2054,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     promptParts.push(`${animalInstructions} ${speechDir}`);
   } else if (auto.presenter && auto.presenter !== "none") {
     let personDir = voiceoverReview
-      ? "Natural fictional adult Thai product reviewer visible on camera with the full face clearly visible and a relaxed closed-mouth expression. The reviewer demonstrates the product silently and never speaks or moves the lips."
+      ? "Natural fictional adult Thai product demonstrator acting silently. Start with a close-up of the hands picking up or using the product; keep the product and hands dominant, and keep the face out of the opening shot. The face may appear only as a secondary brief shot after product use, with the mouth closed and motionless."
       : isClothing
       ? "Natural fictional adult Thai commercial fit model in a full-length front-facing shot."
       : THAI_PERSON_DIRECTION;
@@ -2018,7 +2067,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     if (["baby", "toddler", "child", "older_child"].includes(auto.presenter)) {
       personDir = "Natural Thai child character. The product must remain rigid, static, and completely unchanged; the child stands next to it, plays with it, or holds it gently without deforming it. The child must NOT speak to the camera, must NOT speak any dialogue, and must NOT review the product directly; all spoken dialogue in this video is strictly an off-screen voiceover by a caring Thai mother.";
     }
-    const presenterFraming = isChildPresenter && isClothing
+    const presenterFraming = voiceoverReview
+      ? `HANDS-ON PRODUCT FRAMING: Use close and medium product-use angles with the hands and exact product larger and more visually important than the presenter's face. ${getPresenterOutfitDirection(productText, auto.presenter)}`
+      : isChildPresenter && isClothing
       ? getChildApparelWearDirection(productText)
       : isClothing
       ? getApparelWearDirection(productText, auto.presenter)
@@ -2037,6 +2088,9 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   promptParts.push("STRICT ACTION RULE: Do NOT perform a thumbs up gesture (ห้ามยกนิ้วโป้ง/ยกนิ้วเยี่ยม) as it looks unnatural. Keep all poses and hand gestures completely natural and relaxed.");
+  if (voiceoverReview) {
+    promptParts.push("FINAL VOICEOVER-ONLY OVERRIDE: This is NOT a talking-head or on-camera speaking video. The presenter may look at the camera and demonstrate silently, but the mouth must remain closed and completely motionless in every frame. All words and spoken audio come only from a separate off-screen Thai narrator; never show the presenter speaking, lip-syncing, mouthing, or visibly delivering dialogue.");
+  }
 
   return promptParts.filter(Boolean).join("\n");
 }
@@ -2295,7 +2349,7 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
   }
   if (/(เคส|ไอโฟน|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|phone case|phone cover|mobile case|mobile cover|gadget)/i.test(text) || isMagneticPhoneCaseProduct(text)) {
     const extraMag = isMagneticPhoneCaseProduct(text) ? `\n${MAGNETIC_PHONE_CASE_FIDELITY_MANDATE}` : "";
-    return `${PHONE_CASE_FIDELITY_DIRECTION}\n${PHONE_CASE_COMPLEX_PATTERN_REFERENCE_LOCK}${extraMag}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+    return `${PHONE_CASE_FIDELITY_DIRECTION}\n${PHONE_CASE_COMPLEX_PATTERN_REFERENCE_LOCK}${extraMag}\n${PHONE_CASE_HANDLING_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (isSmallTechAccessoryProduct(text)) {
     return `${ELECTRONICS_GADGETS_FIDELITY_DIRECTION}\n${SMALL_TECH_ACCESSORY_SCALE_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
