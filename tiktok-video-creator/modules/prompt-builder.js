@@ -10,7 +10,7 @@ export const VIDEO_STYLES = [
   {
     id: "review",
     emoji: "🎯",
-    name: "Review สินค้า",
+    name: "Review",
     description: "โชว์สินค้าชัดทุกมุม ครบ feature",
     shotPattern: "[สินค้า 360°] → [ซูมจุดเด่นหลัก] → [ปุ่มสั่งซื้อ]",
     fragment: "clean product showcase, multiple angles, feature callout text overlays, white or neutral background, professional lighting, no distractions"
@@ -18,7 +18,7 @@ export const VIDEO_STYLES = [
   {
     id: "hands-only",
     emoji: "🤲",
-    name: "Hands Only / เห็นเฉพาะมือ",
+    name: "Hands Only",
     description: "โชว์การจับและใช้งานสินค้าโดยเห็นเฉพาะมือ ไม่เห็นหน้า",
     shotPattern: "[มือหยิบสินค้า] → [สาธิตการใช้งาน] → [ซูมรายละเอียดสินค้า]",
     fragment: "hands-only first-person POV product video, realistic natural hands using or presenting the product, face and head fully out of frame, authentic smartphone perspective"
@@ -26,7 +26,7 @@ export const VIDEO_STYLES = [
   {
     id: "review-voiceover",
     emoji: "🎙️",
-    name: "รีวิวใช้งานจริง + พากย์ทับ",
+    name: "รีวิว + พากย์",
     description: "เปิดด้วยมือหยิบจับและใช้งานสินค้า เปลี่ยนมุมดูรายละเอียด มีเสียงพากย์ทับ ห้ามพูดหรือขยับปาก",
     shotPattern: "[มือหยิบ/เริ่มใช้งานสินค้า] → [สาธิตใช้งานหลายมุม] → [ซูมรายละเอียด] → [จบด้วยสินค้า]",
     fragment: "authentic hands-on product review led by close product-use action, hands and product dominant, presenter face secondary and never the opening shot, off-screen Thai voiceover, no on-screen speech, no lip movement, natural everyday setting"
@@ -34,7 +34,7 @@ export const VIDEO_STYLES = [
   {
     id: "lifestyle",
     emoji: "💃",
-    name: "Lifestyle / In-Use",
+    name: "Lifestyle",
     description: "สินค้าอยู่ในชีวิตจริง บรรยากาศสบายๆ",
     shotPattern: "[ภาพบรรยากาศชีวิตจริง] → [คนใช้งานสินค้า] → [ซูมสินค้าใกล้ๆ]",
     fragment: "lifestyle product video, natural environment, person using product, warm natural lighting, authentic feel, UGC-style organic look"
@@ -42,7 +42,7 @@ export const VIDEO_STYLES = [
   {
     id: "flash-sale",
     emoji: "🔥",
-    name: "Flash Sale / Urgency",
+    name: "Flash Sale",
     description: "กระตุ้นซื้อ โปรเด่น เวลาจำกัด",
     shotPattern: "[สินค้า] → [โชว์โปรโมชั่น] → [นับถอยหลัง/ปุ่มสั่งซื้อ]",
     fragment: "high energy flash sale ad, bold promotion text, red and white color scheme, fast cuts every 1-2 seconds, urgency visual elements, countdown timer graphic"
@@ -58,7 +58,7 @@ export const VIDEO_STYLES = [
   {
     id: "before-after",
     emoji: "🌟",
-    name: "Before / After",
+    name: "Before/After",
     description: "เปรียบเทียบก่อน-หลัง ผลลัพธ์ชัดเจน",
     shotPattern: "[โชว์ปัญหาก่อนใช้] → [เอฟเฟกต์เปลี่ยนผ่าน] → [ผลลัพธ์หลังใช้]",
     fragment: "before and after comparison, split screen or transition wipe effect, problem state then solution state, dramatic improvement reveal, text labels Before / After"
@@ -66,7 +66,7 @@ export const VIDEO_STYLES = [
   {
     id: "testimonial",
     emoji: "👩",
-    name: "UGC / Testimonial",
+    name: "UGC รีวิว",
     description: "เหมือนคนจริงรีวิว น่าเชื่อถือ",
     shotPattern: "[คนพูดถึงสินค้า] → [ใช้งานสินค้าตามจริง] → [แนะนำให้ลอง]",
     fragment: "user generated content style, talking head, handheld camera feel, natural lighting, genuine review vibe, product shown in its normal real-world position and use, casual authentic presentation"
@@ -74,7 +74,7 @@ export const VIDEO_STYLES = [
   {
     id: "cinematic",
     emoji: "✨",
-    name: "Cinematic / Premium",
+    name: "Cinematic",
     description: "ดูแพง หรูหรา เหมาะสินค้า premium",
     shotPattern: "[สินค้าสโลว์โมชั่น] → [ซูมรายละเอียดผิวสัมผัส] → [จบด้วยโลโก้แบรนด์]",
     fragment: "cinematic product advertisement, slow motion, luxury feel, dark moody or bright airy lighting, macro close-ups, smooth camera movements, premium brand aesthetic, no text clutter"
@@ -82,7 +82,7 @@ export const VIDEO_STYLES = [
   {
     id: "still-motion",
     emoji: "📷",
-    name: "ภาพนิ่งขยับกล้อง",
+    name: "ภาพนิ่ง + กล้อง",
     description: "สินค้านิ่ง กล้องมือถือขยับซ้าย-ขวาเบาๆ ไม่รีวิว ไม่พูด",
     shotPattern: "[ภาพสินค้าเดิม] → [แพนซ้าย-ขวาเบาๆ] → [เปลี่ยนมุมเล็กน้อย]",
     fragment: "single still product image with subtle smartphone camera movement, natural handheld micro-motion, no presenter, no product handling, no review"
@@ -90,7 +90,7 @@ export const VIDEO_STYLES = [
   {
     id: "boxed-motion",
     emoji: "📦",
-    name: "สินค้าในกล่อง + ขยับกล้อง",
+    name: "ในกล่อง + กล้อง",
     description: "วางสินค้าในกล่องเปิด สินค้านิ่ง กล้องมือถือเคลื่อนเบาๆ",
     shotPattern: "[สินค้าในกล่องเปิด] → [แพนซ้าย-ขวาเบาๆ] → [เปลี่ยนมุมกล่องเล็กน้อย]",
     fragment: "exact product displayed inside an open presentation box, subtle smartphone camera movement, product remains still, no presenter, no product handling, no review"
@@ -98,10 +98,18 @@ export const VIDEO_STYLES = [
   {
     id: "fashion-selfie",
     emoji: "👗",
-    name: "Fashion Selfie เต็มตัว",
+    name: "Fashion Selfie",
     description: "นางแบบถือมือถือบังหน้า เห็นชุดเต็มตัว กล้องแพนเบาๆ",
     shotPattern: "[ยืนถือมือถือบังหน้า] → [แพนซ้าย-ขวาเบาๆ] → [โชว์ชุดเต็มตัว]",
     fragment: "full-body fashion selfie, fictional adult model holding a smartphone in front of her face, face fully hidden, exact outfit clearly visible, minimal natural movement, subtle smartphone camera pan"
+  },
+  {
+    id: "fashion-hanger-presenter",
+    emoji: "🧥",
+    name: "ถือเสื้อบนไม้แขวน",
+    description: "นางแบบเห็นหน้า ใส่เสื้อตัวเดียวกับสินค้า และถือเสื้อแบบเดียวกันบนไม้แขวนพรีเซนต์เข้ากล้อง",
+    shotPattern: "[ยืนมองกล้องพร้อมถือเสื้อบนไม้แขวน] → [โชว์เสื้อที่ใส่และเสื้อบนไม้แขวน] → [จบด้วยการพรีเซนต์ตรงเข้ากล้อง]",
+    fragment: "direct-to-camera fashion product presentation, fictional adult model with a visible face, wearing the exact reference garment and holding an identical copy on a hanger, natural eye contact, clean commercial smartphone video"
   },
   {
     id: "wearable-crop",
@@ -114,7 +122,7 @@ export const VIDEO_STYLES = [
   {
     id: "trending-hook",
     emoji: "🎵",
-    name: "Trending Sound / Hook",
+    name: "Trending Hook",
     description: "เน้นช่วงแรก 3 วินาที hook คนหยุดดู",
     shotPattern: "[เปิดด้วยภาพที่สะดุดตามาก] → [เผยโฉมสินค้า] → [สรุปสั้นๆ เร็วๆ]",
     fragment: "attention-grabbing opening 3 seconds, bold hook visual, quick product reveal, trending TikTok pacing, text hook overlay at start, fast energetic edit"
@@ -191,6 +199,7 @@ const STRICT_MODEST_DRESS_CODE_MANDATE = "STRICT MODEST & APPROPRIATE DRESS CODE
 const FULL_BODY_PRESENTER_DIRECTION = "STRICT FULL-BODY SHOT & DECENT MODEST DRESS CODE: Presenter MUST be shown in a full-length head-to-toe standing view with head, torso, full legs, feet, and footwear fully visible on the floor. STRICT FULL OUTFIT REQUIREMENT: Presenter MUST wear a complete, modest FULL OUTFIT with BOTH a proper top (shirt/blouse/jacket) AND proper long bottoms (trousers/jeans/long pants/knee-length skirt). FORBIDDEN (ห้ามชุดสุ่มเสี่ยง/วาบหวิว): Absolutely NO revealing, immodest, risqué, suggestive, or provocative attire. No deep v-necks, no cleavage, no strapless tops, no stomach/crop tops, no micro-shorts, no sheer/see-through clothes, no lingerie, and no tight/revealing swimwear.";
 const CAMERA_FRAMING_DIRECTIONS = {
   full_body: "CAMERA FRAMING LOCK: Use a full-body shot from the top of the head to the feet. Keep the entire presenter and product visible with comfortable space around the body.",
+  lower_body: "CAMERA FRAMING LOCK: Use a lower-body shot framed from the waist to the feet. Keep the waistband, hips, complete lower-body garment, legs, and footwear clearly visible. Crop out the head and upper torso; do not switch to a full-body or upper-body shot.",
   half_body: "CAMERA FRAMING LOCK: Use a medium half-body shot framed from the top of the head to the waist. Keep the presenter's face, shoulders, torso, arms, hands, and the product clearly visible. Do not show the legs or feet, and do not switch to a full-body or extreme close-up shot.",
   medium_shot: "CAMERA FRAMING LOCK: Use a medium shot framed from the top of the head to mid-torso. Keep the presenter's face, upper body, hands, and product clearly visible with natural breathing room.",
   close_up: "CAMERA FRAMING LOCK: Use a close product-review shot framed from the chest or shoulders upward. Keep the presenter's face, hands, and product visible and sharp; do not crop the product or use an extreme face-only close-up."
@@ -202,6 +211,12 @@ const FASHION_SELFIE_FRAMING_DIRECTIONS = {
     video: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a full-length head-to-toe shot. Keep the complete outfit, full legs, feet, footwear, and phone visible and sharp throughout every scene.",
     shotPlan: "MANDATORY SIMPLE SHOT PLAN: Scene 1 is a stable full-body front view with the model already holding the phone over her face. Scene 2 is a very slow, small left-to-right pan that keeps the complete outfit, feet, and phone visible. Scene 3 returns to a stable full-body hero view for garment inspection.",
     cropRule: "Do not zoom into the face or crop out the lower body."
+  },
+  lower_body: {
+    image: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a lower-body shot framed from the waist to the feet. Show the exact reference lower garment, including its waistband, hips, full length, legs, and footwear. Crop out the head and upper torso; the phone and face do not need to be visible. Never generate an upper-body or face-focused composition.",
+    video: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a lower-body shot framed from the waist to the feet. Keep the exact reference lower garment, waistband, hips, full length, legs, and footwear visible and sharp throughout every scene. Crop out the head and upper torso; the phone and face do not need to be visible, and never switch to a full-body or upper-body shot.",
+    shotPlan: "MANDATORY SIMPLE SHOT PLAN: Scene 1 is a stable lower-body front view framed from the waist to the feet. Scene 2 is a very slow, small left-to-right pan that keeps the waistband, garment, legs, and footwear visible. Scene 3 returns to a stable lower-body hero view for garment inspection.",
+    cropRule: "Keep the camera framed from the waist to the feet in every scene; do not widen to show the head or upper torso."
   },
   half_body: {
     image: "HIGHEST PRIORITY FASHION SELFIE CAMERA FRAMING LOCK: Use a medium half-body shot framed from the top of the head to the waist. Keep the phone, shoulders, torso, arms, hands, and upper garment clearly visible. Do not show the legs or feet. Never generate a full-body, full-length, or head-to-toe composition.",
@@ -233,7 +248,10 @@ function isLowerBodyGarment(text = "") {
 
 function resolveFashionSelfieFramingForProduct(productText = "", settings = {}) {
   // A lower-body garment cannot be inspected in a half-body or close crop.
-  if (isLowerBodyGarment(productText) || /(เดรส|จั๊มสูท|ชุดหมี|dress|jumpsuit|romper|one.?piece)/i.test(String(productText || ""))) {
+  if (isLowerBodyGarment(productText) && settings?.cameraFraming !== "lower_body") {
+    return FASHION_SELFIE_FRAMING_DIRECTIONS.full_body;
+  }
+  if (/(เดรส|จั๊มสูท|ชุดหมี|dress|jumpsuit|romper|one.?piece)/i.test(String(productText || ""))) {
     return FASHION_SELFIE_FRAMING_DIRECTIONS.full_body;
   }
   return resolveFashionSelfieFraming(settings);
@@ -260,12 +278,18 @@ function resolveFashionSelfiePresenter(productText, settings, autoPresenter, pro
 function fashionSelfieImageDirection(presenter, settings = {}, productText = "") {
   const modelLabel = fashionSelfieModelLabel(presenter);
   const framing = resolveFashionSelfieFramingForProduct(productText, settings);
+  if (settings?.cameraFraming === "lower_body") {
+    return `LOWER-BODY GARMENT SHOWCASE MODE: Create one realistic vertical 9:16 lower-body garment photograph of a ${modelLabel} from the waist to the feet. ${framing.image} This is not a selfie: do not include a smartphone, mirror, selfie pose, hands, or face. Keep the exact lower garment as the only visual hero.`;
+  }
   return `FASHION SELFIE MODE: Create one realistic vertical 9:16 fashion photograph of a ${modelLabel} standing naturally and holding a real smartphone vertically in front of the face. ${framing.image} The smartphone must fully cover and obscure the face and facial features; do not show eyes, nose, mouth, or identifiable facial details. Keep the model modestly dressed and front-facing so the garment is easy to inspect. This is a privacy-preserving outfit showcase: no face reveal, no extra people, no text, no logos added to the phone, and no mirror selfie distortion.`;
 }
 
 function fashionSelfieVideoDirection(presenter, settings = {}, productText = "") {
   const modelLabel = fashionSelfieModelLabel(presenter);
   const framing = resolveFashionSelfieFramingForProduct(productText, settings);
+  if (settings?.cameraFraming === "lower_body") {
+    return `LOWER-BODY GARMENT SHOWCASE MODE: Use one consistent ${modelLabel} in a waist-to-feet lower-body garment video. ${framing.video} This is not a selfie: do not include a smartphone, mirror, selfie pose, hands, or face. Keep the exact lower garment as the only visual hero.`;
+  }
   return `FASHION SELFIE MODE — PRIVACY-PRESERVING OUTFIT SHOWCASE: Use one consistent ${modelLabel} standing still. ${framing.video} The model holds a real smartphone vertically at face height throughout the entire clip, and the phone must fully cover the face in every frame; never reveal eyes, nose, mouth, facial features, or an identifiable face. The exact reference garment is the hero: preserve its silhouette, fit, length, fabric, colors, pattern, seams, and printed artwork exactly. Keep the model front-facing, modestly dressed, and physically stable. No talking, lip-sync, waving, walking, turning around, outfit changes, extra people, mirror distortion, or added text. Use only minimal natural posture movement and a slow, subtle left-to-right smartphone-camera pan with a very small handheld micro-sway.`;
 }
 
@@ -402,6 +426,12 @@ const SHOE_STILL_REFERENCE_LOCK = "FINAL SHOE REFERENCE CHECK: Treat the referen
 
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: Match the reference garment's type, cut, fit, length, neckline or waistband, sleeves or legs, fabric, color, print, logo, seams, pockets, and fasteners. Keep those visible design details consistent while allowing natural fabric drape and ordinary movement. Show the front design clearly and do not use a back-facing or 360-degree spin.";
 const FASHION_SELFIE_BODY_CONTINUITY_LOCK = "FASHION SELFIE COMPLETE BODY LOCK: Render exactly one anatomically complete adult model with one connected head, neck, shoulders, torso, hips, two arms, two hands, two legs, and two feet. Never erase, crop away, detach, duplicate, or deform the torso, shoulders, arms, hands, hips, legs, or feet. The phone covers only the face; it must never replace or hide the upper body. When full-body framing is required, keep the complete head-to-toe body visible and grounded in every frame.";
+const LOWER_BODY_GARMENT_CONTINUITY_LOCK = "LOWER-BODY GARMENT FRAME LOCK: Render only the natural lower body from the waist to the feet so the exact pants or skirt remains the hero. Keep the waistband, hips, full garment length, legs, and footwear anatomically connected and visible. Do not include a smartphone, mirror, selfie pose, hands, face, head, or upper torso.";
+const FASHION_HANGER_MODEL_DIRECTION = "FASHION HANGER PRESENTER MODE: Show exactly one fictional, visibly youthful, naturally beautiful, attractive, polished Thai fashion model aged 20-25 years old with a distinctly Thai identity and a Korean-inspired K-fashion/K-beauty aesthetic: soft clean makeup, fresh luminous skin, neat modern hair, and elegant youthful styling. This is a Thai model, not a Korean or foreign model. She stands and faces the camera directly with a fully visible fresh youthful face, clear eye contact, and a friendly confident commercial presentation. Never make the model older than 25, mature-looking, or elderly. Generate a brand-new fictional face that does not copy, match, resemble, or reproduce any face from the reference image or any uploaded model image. Do not infer identity, likeness, or facial features from the source.";
+const FASHION_HANGER_PRODUCT_ONLY_STYLE_LOCK = "FASHION HANGER PRODUCT-ONLY STYLE LOCK: Copy only the exact garment that is the product being sold. If the product is a shirt, copy only that shirt; use newly generated fashionable, simple, modest, opaque non-denim bottoms and newly generated styling. If the product is a skirt or pants, copy only that exact skirt or pants; use a newly generated fashionable, simple, modest, opaque non-denim top and newly generated styling. NO UNREQUESTED JEANS LOCK: Do not dress the model in jeans, denim pants, denim skirts, or a denim jacket when denim is not the sold product; choose tailored trousers, wide-leg trousers, a pleated midi skirt, or another polished non-denim option instead. If the sold product itself is denim, preserve only that exact product garment. Do not copy any non-product clothing, outfit combination, shoes, accessories, jewelry, hairstyle, makeup, pose, background, or overall styling from the reference image or model image. The worn garment and the hanger garment must match the product only; everything else must be an original fictional choice.";
+const FASHION_HANGER_GARMENT_PAIR_DIRECTION = "EXACT GARMENT PAIR LOCK: Create exactly two visually identical instances of the exact reference garment for this requested presentation: one instance naturally worn by the standing model and one identical instance hanging on a real clothes hanger held beside the model's torso. Both garments must match the reference type, cut, size proportions, fabric, colors, print, logo, seams, and every visible detail exactly. Do not add any third garment, alternate design, or generic substitute.";
+const FASHION_HANGER_BODY_CONTINUITY_LOCK = "FASHION HANGER BODY CONTINUITY: Keep one anatomically complete adult model with one connected visible face, head, neck, torso, two arms, two hands, hips, two legs, and two feet. Keep the model standing, grounded, and fully inside the frame with comfortable space around the body. The hanger and held garment must remain separate from the worn garment and must not cover the model's face.";
+const FASHION_HANGER_SHOT_PLAN = "MANDATORY FASHION HANGER SHOT PLAN: Scene 1 is a stable full-body front-facing hero shot with the model already wearing the exact garment and holding the identical garment on a hanger. Scene 2 is a gentle closer presentation toward the camera while keeping the model's face, worn garment, and hanging garment visible. Scene 3 returns to a stable direct-to-camera hero pose so viewers can compare both identical garments. No outfit change, turning away, back view, walking, dancing, or extra people.";
 const APPAREL_REFERENCE_USE_DIRECTION = "APPAREL REFERENCE USE: Treat the attached image as the authoritative reference for the garment itself. Reproduce that exact garment as the featured clothing item, preserving its cut, fit, length, neckline, sleeves, fabric, seams, pockets, fasteners, colors, print, logo, and every visible design detail. When a presenter is selected, the presenter is already wearing the exact reference garment naturally. When no presenter is selected, display the full-size garment naturally on a hanger, mannequin, or clean flat lay.";
 const APPAREL_SCALE_DIRECTION = "APPAREL SCALE: Show the garment at realistic full-size human clothing scale, naturally fitted on the selected presenter or displayed at its true wearable size. Preserve the reference garment's exact proportions and fit.";
 const APPAREL_VISIBILITY_DIRECTION = "APPAREL VISIBILITY: Keep the complete featured garment and its important front details clearly visible without covering it with hands, hair, outerwear, or props.";
@@ -592,7 +622,8 @@ const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
 const CAMERA_ONLY_NO_HANDS_DIRECTION = "CAMERA-ONLY / NO-HANDS LOCK: The entire frame must contain zero hands, fingers, arms, people, presenters, reviewers, or human body parts. No hand may enter to hold, touch, adjust, lift, or present the product. The product is already placed and untouched; only the camera moves.";
-const HANDS_ONLY_VIDEO_STYLE_DIRECTION = "HANDS-ONLY VIDEO STYLE LOCK: The entire video must be filmed from a realistic first-person point of view showing only one person's natural hands and forearms interacting with the exact product. No face, head, torso, full body, or second person may appear in any scene.";
+const HANDS_ONLY_SIMPLE_MOTION_DIRECTION = "HANDS-ONLY SIMPLE HOLDING MOTION LOCK: Show only one person's natural hands and forearms holding the exact product. STRICT MAXIMUM TWO-HAND COUNT LOCK: Show at most two natural hands from the same person, with exactly five fingers per hand. Keep the product mostly steady, move it gently a short distance left and right, and make only one small natural partial turn to reveal its front and side. Do not open, use, shake, swing, toss, repeatedly rotate, place down, or perform a multi-step demonstration.";
+const HANDS_ONLY_VIDEO_STYLE_DIRECTION = "HANDS-ONLY VIDEO STYLE LOCK: The entire video must be filmed from a realistic first-person point of view showing only one person's natural hands and forearms interacting with the exact product. No face, head, torso, full body, or second person may appear in any scene. Keep the action simple: hold the product steadily, move it slightly back and forth, and turn it only a little.";
 const PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION = "CAMERA MOTION ONLY — MULTI-ANGLE PRODUCT-ONLY DYNAMIC CAMERA SHOWCASE: Keep the exact product physically still, rigid, and unchanged while the camera creates energetic visual variety. Use 3–4 sequential full-frame shots with clean rhythmic hard cuts: front hero angle with a confident push in, left three-quarter angle with a smooth left-to-right slide, right three-quarter angle with a high tilt and short controlled arc, then a close detail shot with a push in and pull back to the hero view. Use smooth pan, dolly, tilt, and one short controlled arc of about 30–45 degrees; make the movement noticeable and fun but physically realistic. Never rotate the product itself, never use a collage or split screen, and keep the product sharp, centered, and fully visible in every shot.";
 const EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION = "EXPLICIT ADULT PRESENTER LOCK: The selected presenter is an adult woman or adult man. Show exactly one adult presenter only. Do NOT include any child, minor, baby, toddler, or parent-and-child pair, even when the product is intended for children.";
 const EXPLICIT_CHILD_PRESENTER_DIRECTION = "EXPLICIT CHILD PRESENTER MODE: The user explicitly selected the cute child presenter. MUST show a happy fictional Thai child on camera, age 4-6 years old for child mode or 7-12 years old for older_child mode, actively and safely using or interacting with the product, together with exactly one friendly Thai parent/guardian supervising nearby. Do NOT replace the child with an adult-only presenter, Auto mode, hands-only, product-only, or voiceover-only presentation. Keep the same child and parent consistent across all scenes.";
@@ -951,6 +982,10 @@ export function buildImagePrompt(productInfo, settings = {}) {
   const analysisDirection = buildAnalysisDirection(productInfo);
   const categoryDirection = buildCategoryFidelityDirection(productInfo);
   const productText = `${visualProductName} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
+  if (auto.videoStyle === "fashion-hanger-presenter") {
+    const hangerPresenter = resolveFashionHangerPresenter(productText, settings, auto.presenter, productInfo);
+    return buildFashionHangerImagePrompt(productInfo, productName, settings, hangerPresenter);
+  }
   if (auto.videoStyle === "fashion-selfie") {
     const fashionPresenter = resolveFashionSelfiePresenter(productText, settings, auto.presenter, productInfo);
     return buildFashionSelfieImagePrompt(productInfo, productName, settings, fashionPresenter);
@@ -1568,7 +1603,7 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
 
 export function buildVideoPrompt(productInfo, settings = {}) {
   const auto = resolveAutoSettings(productInfo, settings);
-  const locationStr = auto.videoStyle === "fashion-selfie"
+  const locationStr = ["fashion-selfie", "fashion-hanger-presenter"].includes(auto.videoStyle)
     ? resolveFashionSelfieLocation(productInfo, settings, auto)
     : resolvePromptLocation(auto);
   const durationSeconds = Number.parseInt(settings?.videoDuration, 10) || 8;
@@ -1601,6 +1636,11 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const specificScale = getProductSpecificScaleInstruction(visualProductName);
   const productActivityDirection = getProductActivityDirection(productText, settings);
   const selectedProductActivity = settings?.productActivity;
+
+  if (auto.videoStyle === "fashion-hanger-presenter") {
+    const hangerPresenter = resolveFashionHangerPresenter(productText, settings, auto.presenter, productInfo);
+    return buildFashionHangerVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings, hangerPresenter);
+  }
 
   if (auto.videoStyle === "fashion-selfie") {
     const fashionPresenter = resolveFashionSelfiePresenter(productText, settings, auto.presenter, productInfo);
@@ -1761,7 +1801,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       : "",
     shoeWearableCrop ? "SUBTLE FOOT MOVEMENT ONLY: Keep the feet mostly still with one small natural ankle, toe, or weight shift; camera movement remains gentle and controlled. Do not turn this into walking, dancing, kicking, or a full-body fashion scene." : "",
   ];
-  let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60), productText)
+  let sceneBreakdown = getMultiSceneDescription(sceneStyle, productName, compactPromptText(locationStr, 100), compactPromptText(auto.mood, 60), productText, handsOnly && !isUnboxingHands)
     .replace(/\d+-second\s*/g, "");
   if (shoeWearableCrop) {
     sceneBreakdown = [
@@ -2039,7 +2079,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
-    let handsInstructions = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : handsDir}\n${HANDS_ONLY_FACE_EXCLUSION}\n${HANDS_ONLY_GLOBAL_COUNT_LOCK}`;
+    let handsInstructions = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : (handsOnlyStyle || auto.presenter === "hands_only" ? HANDS_ONLY_SIMPLE_MOTION_DIRECTION : handsDir)}\n${HANDS_ONLY_FACE_EXCLUSION}\n${HANDS_ONLY_GLOBAL_COUNT_LOCK}`;
     if (firstSceneNoPeople) {
       handsInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show hands or any human features in Scene 1. Hands are only allowed starting from Scene 2 onwards.\n${handsInstructions}`;
     }
@@ -2105,19 +2145,24 @@ function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, 
     productInfo.highlights
   ].filter(Boolean).join(" ");
   const framing = resolveFashionSelfieFramingForProduct(productText, settings);
+  const lowerBodyFraming = settings?.cameraFraming === "lower_body";
   const apparelPriority = APPAREL_REFERENCE_PRIORITY;
   const apparelWearDirection = getApparelWearDirection(productText, presenter);
   const fidelity = PRODUCT_FIDELITY_DIRECTION;
   const location = resolveFashionSelfieLocation(productInfo, settings);
   const textRule = buildFashionSelfieTextDirection(productInfo, settings, false);
   return [
-    `Create one photorealistic vertical 9:16 fashion selfie image featuring ${garmentName}.`,
+    lowerBodyFraming
+      ? `Create one photorealistic vertical 9:16 lower-body garment showcase image featuring ${garmentName}.`
+      : `Create one photorealistic vertical 9:16 fashion selfie image featuring ${garmentName}.`,
     fashionSelfieImageDirection(presenter, settings, productText),
     apparelPriority,
     apparelWearDirection,
-    FASHION_SELFIE_BODY_CONTINUITY_LOCK,
+    lowerBodyFraming ? LOWER_BODY_GARMENT_CONTINUITY_LOCK : FASHION_SELFIE_BODY_CONTINUITY_LOCK,
     fidelity,
-    `Use this exact background direction: ${compactPromptText(location, 180)}. Keep the model and the complete garment clearly separated from the background with natural depth of field. ${framing.cropRule}`,
+    lowerBodyFraming
+      ? `Use this exact background direction: ${compactPromptText(location, 180)}. Keep the lower body and complete lower garment clearly separated from the background with natural depth of field. ${framing.cropRule}`
+      : `Use this exact background direction: ${compactPromptText(location, 180)}. Keep the model and the complete garment clearly separated from the background with natural depth of field. ${framing.cropRule}`,
     FASHION_SELFIE_BACKGROUND_QUALITY_LOCK,
     textRule,
     "The reference image is the only source of truth for the garment. Do not redesign, crop, duplicate, or replace it."
@@ -2134,21 +2179,101 @@ function buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, du
     productInfo.highlights
   ].filter(Boolean).join(" ");
   const framing = resolveFashionSelfieFramingForProduct(productText, settings);
+  const lowerBodyFraming = settings?.cameraFraming === "lower_body";
   const location = locationStr ? ` in a beautiful, realistic ${compactPromptText(locationStr, 180)}` : " in a beautiful, realistic fashion setting";
   const textRule = buildFashionSelfieTextDirection(productInfo, settings, true);
   return [
-    `Create a ${durationSeconds}-second photorealistic vertical 9:16 fashion outfit video featuring ${garmentName}${location}.`,
+    lowerBodyFraming
+      ? `Create a ${durationSeconds}-second photorealistic vertical 9:16 lower-body garment showcase video featuring ${garmentName}${location}.`
+      : `Create a ${durationSeconds}-second photorealistic vertical 9:16 fashion outfit video featuring ${garmentName}${location}.`,
     fashionSelfieVideoDirection(presenter, settings, productText),
     APPAREL_REFERENCE_PRIORITY,
     getApparelWearDirection(productText, presenter),
-    FASHION_SELFIE_BODY_CONTINUITY_LOCK,
+    lowerBodyFraming ? LOWER_BODY_GARMENT_CONTINUITY_LOCK : FASHION_SELFIE_BODY_CONTINUITY_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
     `FASHION SELFIE BACKGROUND LOCK: Keep the same background direction throughout every scene: ${compactPromptText(locationStr, 180)}. Keep the outfit separated from the background with natural depth of field; the background must remain stable, tasteful, and secondary to the garment.`,
     FASHION_SELFIE_BACKGROUND_QUALITY_LOCK,
     framing.shotPlan + " Keep every shot single-frame, uncluttered, and easy to compare with the reference garment.",
-    `The model must remain standing in place; only subtle breathing, natural phone steadiness, and minimal camera motion are allowed. ${framing.cropRule}`,
+    lowerBodyFraming
+      ? `The model must remain standing in place; no phone or selfie pose is needed. Allow only subtle natural leg posture movement and minimal camera motion. ${framing.cropRule}`
+      : `The model must remain standing in place; only subtle breathing, natural phone steadiness, and minimal camera motion are allowed. ${framing.cropRule}`,
     textRule,
     autoAudioDirection(settings)
+  ].filter(Boolean).join("\n");
+}
+
+function resolveFashionHangerPresenter(productText, settings, autoPresenter, productInfo = {}) {
+  if (["woman", "man"].includes(settings?.presenter)) return settings.presenter;
+  const inferredGender = detectExplicitProductGender(productText)
+    || (["woman", "man"].includes(productInfo.imageGender) ? productInfo.imageGender : "")
+    || (["woman", "man"].includes(autoPresenter) ? autoPresenter : "");
+  return inferredGender || "woman";
+}
+
+function fashionHangerAudioDirection(settings = {}) {
+  return settings?.audioMode === "music_only"
+    ? MUSIC_ONLY_AUDIO_DIRECTION
+    : "DIRECT-TO-CAMERA AUDIO: Use a natural, concise Thai product presentation delivered by the on-screen model while looking into the camera. Keep speech clear, relaxed, and synchronized with natural lip movement. Do not add subtitles, captions, or any invented product claims.";
+}
+
+function buildFashionHangerImagePrompt(productInfo, productName, settings = {}, presenter = "woman") {
+  const garmentName = productName === "the attached product" ? "the exact attached garment" : productName;
+  const productText = [
+    productInfo.name,
+    productInfo.originalName,
+    productInfo.productLinkTitle,
+    productInfo.category,
+    productInfo.highlights
+  ].filter(Boolean).join(" ");
+  const location = resolveFashionSelfieLocation(productInfo, settings);
+  return [
+    `Create one photorealistic vertical 9:16 direct-to-camera fashion product presentation image featuring ${garmentName}.`,
+    FASHION_HANGER_MODEL_DIRECTION,
+    FASHION_HANGER_PRODUCT_ONLY_STYLE_LOCK,
+    FASHION_HANGER_GARMENT_PAIR_DIRECTION,
+    APPAREL_REFERENCE_PRIORITY,
+    getApparelWearDirection(productText, presenter),
+    FASHION_HANGER_BODY_CONTINUITY_LOCK,
+    FULL_BODY_PRESENTER_DIRECTION,
+    STRICT_MODEST_DRESS_CODE_MANDATE,
+    `Use a clean, beautiful, realistic ${compactPromptText(location, 180)} setting with natural smartphone lighting and the background secondary to the garments.`,
+    APPAREL_VISIBILITY_DIRECTION,
+    PRODUCT_FIDELITY_DIRECTION,
+    COLOR_AND_PATTERN_FIDELITY_DIRECTION,
+    TEXT_FREE_DIRECTION,
+    "The model must face the camera directly and present the worn garment and the identical garment on the hanger clearly. Keep both garments sharp, unobstructed, and easy to compare."
+  ].filter(Boolean).join("\n");
+}
+
+function buildFashionHangerVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings = {}, presenter = "woman") {
+  const garmentName = productName === "the attached product" ? "the exact attached garment" : productName;
+  const productText = [
+    productInfo.name,
+    productInfo.originalName,
+    productInfo.productLinkTitle,
+    productInfo.category,
+    productInfo.highlights
+  ].filter(Boolean).join(" ");
+  const location = locationStr ? ` in a beautiful, realistic ${compactPromptText(locationStr, 180)}` : " in a beautiful, realistic fashion setting";
+  return [
+    `Create a ${durationSeconds}-second photorealistic vertical 9:16 direct-to-camera fashion product presentation video featuring ${garmentName}${location}.`,
+    FASHION_HANGER_MODEL_DIRECTION,
+    FASHION_HANGER_PRODUCT_ONLY_STYLE_LOCK,
+    FASHION_HANGER_GARMENT_PAIR_DIRECTION,
+    APPAREL_REFERENCE_PRIORITY,
+    getApparelWearDirection(productText, presenter),
+    FASHION_HANGER_BODY_CONTINUITY_LOCK,
+    FULL_BODY_PRESENTER_DIRECTION,
+    STRICT_MODEST_DRESS_CODE_MANDATE,
+    FASHION_HANGER_SHOT_PLAN,
+    PRODUCT_FIDELITY_DIRECTION,
+    COLOR_AND_PATTERN_FIDELITY_DIRECTION,
+    APPAREL_FABRIC_PHYSICS_DIRECTION,
+    `FASHION HANGER BACKGROUND LOCK: Keep the same clean background direction throughout every scene: ${compactPromptText(locationStr, 180)}. Keep the model, worn garment, and hanging garment separated from the background with natural depth of field.`,
+    APPAREL_VISIBILITY_DIRECTION,
+    TEXT_FREE_DIRECTION,
+    "Use only subtle natural posture and hand movement. Keep the model's face visible, looking into the camera, and consistently fictional throughout the entire clip; keep the hanger stable and never let it obscure the face or worn garment.",
+    fashionHangerAudioDirection(settings)
   ].filter(Boolean).join("\n");
 }
 
@@ -2180,17 +2305,17 @@ function autoAudioDirection(settings = {}) {
     : "Use only a calm off-screen Thai voiceover if narration is needed; the on-screen model must never speak or move her mouth behind the phone.";
 }
 
-function getMultiSceneDescription(videoStyle, productName, locationStr, mood, productText = "") {
+function getMultiSceneDescription(videoStyle, productName, locationStr, mood, productText = "", handsOnlyMode = false) {
   const loc = locationStr ? ` in a ${locationStr} setting` : "";
   const moodStyle = mood ? ` with ${mood} lighting` : "";
 
-  if (videoStyle === "hands-only") {
+  if (handsOnlyMode || videoStyle === "hands-only") {
     return [
-      "This video must use a hands-only first-person POV with no visible face or person:",
-      `- Scene 1 (Product Hook): Show natural hands picking up or presenting ${productName}${loc}${moodStyle}.`,
-      `- Scene 2 (Real Use): Show the same hands using ${productName} exactly as intended, with the product fully visible.`,
-      `- Scene 3 (Detail): Show a close-up of the hands demonstrating one verified feature, material, or useful detail of ${productName}.`,
-      `- Scene 4 (Finish): End with the hands placing or presenting ${productName} clearly without covering its logo, label, or key details.`
+      "This video must use a simple hands-only POV holding showcase with no visible face, head, or body:",
+      `- Scene 1 (Hold): Show natural hands holding ${productName} steadily${loc}${moodStyle}, with the product fully visible.`,
+      `- Scene 2 (Gentle Move): Move the same product slightly left and right, then make one small partial turn to show its front and side.`,
+      `- Scene 3 (Finish): Return to a steady front-facing hold of ${productName}; keep the logo, label, and key details unobstructed.`,
+      "Use only subtle, controlled hand movement. Do not open, use, shake, swing, toss, repeatedly rotate, place down, or perform a multi-step demonstration."
     ].join("\n");
   }
 

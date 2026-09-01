@@ -38,6 +38,7 @@ const settings = getDefaultSettings();
 check("hands-only is a standalone video style", VIDEO_STYLES.some((style) => style.id === "hands-only"));
 check("requested sales styles are hidden from selectors", ["review", "flash-sale", "sales", "lifestyle", "cinematic", "trending-hook", "before-after"].every((id) => HIDDEN_VIDEO_STYLE_IDS.has(id)));
 check("UGC/Testimonial appears first in selectable styles", getSelectableVideoStyles()[0]?.id === "testimonial");
+check("fashion hanger presenter is a selectable style", getSelectableVideoStyles().some((style) => style.id === "fashion-hanger-presenter"));
 
 // --- caption: product name first, then hashtags ---
 const prodA = {
@@ -109,6 +110,21 @@ check("default video ignores surrounding image text", /STRICT LOGO & PRINTED TEX
 check("default video keeps absent product text blank", /If no text is visibly present on the reference product[\s\S]*surface completely blank[\s\S]*Never infer text from the title or surrounding image/i.test(vid), vid);
 check("video prompt starts with Thai advertisement prefix", /^สร้างวิดีโอโฆษณารีวิวสินค้า/i.test(vid), vid);
 check("default video puts no-text rule before style instructions", vid.indexOf("HIGHEST PRIORITY — STRICT NO-TEXT RULE") < vid.indexOf("Visual style:"), vid);
+
+const hangerProduct = { name: "เสื้อเชิ้ตลายดอก", category: "เสื้อผ้า", highlights: "เสื้อเชิ้ตแขนสั้น ลายดอกสีฟ้า" };
+const hangerImage = buildImagePrompt(hangerProduct, { ...settings, videoStyle: "fashion-hanger-presenter", presenter: "woman" });
+const hangerVideo = buildVideoPrompt(hangerProduct, { ...settings, videoStyle: "fashion-hanger-presenter", presenter: "woman" });
+check("fashion hanger image shows a visible fictional face", /FASHION HANGER PRESENTER MODE[\s\S]*fully visible fresh youthful face[\s\S]*brand-new fictional face/i.test(hangerImage), hangerImage);
+check("fashion hanger image limits model age to 25", /aged 20-25 years old[\s\S]*Never make the model older than 25/i.test(hangerImage), hangerImage);
+check("fashion hanger image uses a youthful attractive model", /visibly youthful[\s\S]*naturally beautiful[\s\S]*aged 20-25 years old/i.test(hangerImage), hangerImage);
+check("fashion hanger image uses a Thai model with Korean-inspired styling", /distinctly Thai identity[\s\S]*Korean-inspired K-fashion\/K-beauty aesthetic[\s\S]*not a Korean or foreign model/i.test(hangerImage), hangerImage);
+check("fashion hanger image matches the worn and held garments", /EXACT GARMENT PAIR LOCK[\s\S]*one instance naturally worn[\s\S]*one identical instance hanging on a real clothes hanger/i.test(hangerImage), hangerImage);
+check("fashion hanger image copies only the sold garment", /FASHION HANGER PRODUCT-ONLY STYLE LOCK[\s\S]*copy only the exact garment[\s\S]*copy only that shirt[\s\S]*Do not copy any non-product clothing/i.test(hangerImage), hangerImage);
+check("fashion hanger image avoids unrequested jeans", /NO UNREQUESTED JEANS LOCK[\s\S]*Do not dress the model in jeans[\s\S]*non-denim option/i.test(hangerImage), hangerImage);
+check("fashion hanger video presents directly to camera", /direct-to-camera[\s\S]*looks into the camera|direct-to-camera[\s\S]*looking into the camera/i.test(hangerVideo), hangerVideo);
+check("fashion hanger video keeps non-product styling original", /FASHION HANGER PRODUCT-ONLY STYLE LOCK[\s\S]*everything else must be an original fictional choice/i.test(hangerVideo), hangerVideo);
+check("fashion hanger video prevents source-face matching", /does not copy, match, resemble, or reproduce any face from the reference image/i.test(hangerVideo), hangerVideo);
+check("fashion hanger video keeps the exact garment on the model", /already wearing|naturally wears the exact reference garment|exact reference garment/i.test(hangerVideo), hangerVideo);
 
 // --- image prompt: fidelity + sharp focus ---
 const img = buildImagePrompt({ name: "ครีมบำรุงผิว", highlights: "" }, settings);
@@ -265,6 +281,13 @@ const fashionSelfiePantsVideo = buildVideoPrompt(fashionSelfiePants, fashionSelf
 check("fashion selfie identifies pants instead of generic clothing", /featuring pants/i.test(fashionSelfiePantsImage) && /featuring pants/i.test(fashionSelfiePantsVideo), fashionSelfiePantsImage + fashionSelfiePantsVideo);
 check("fashion selfie pants adds only one complementary top", /exactly one pair[\s\S]*sole visible bottom garment[\s\S]*simple matching top/i.test(fashionSelfiePantsImage) && /exactly one pair[\s\S]*sole visible bottom garment[\s\S]*simple matching top/i.test(fashionSelfiePantsVideo), fashionSelfiePantsImage + fashionSelfiePantsVideo);
 check("fashion selfie pants forces complete full-body framing", /head-to-toe|full-body/i.test(fashionSelfiePantsImage) && /head-to-toe|full-length/i.test(fashionSelfiePantsVideo) && /FASHION SELFIE COMPLETE BODY LOCK/i.test(fashionSelfiePantsVideo), fashionSelfiePantsImage + fashionSelfiePantsVideo);
+const fashionSelfiePantsLowerBodySettings = { ...fashionSelfieSettings, cameraFraming: "lower_body" };
+const fashionSelfiePantsLowerBodyImage = buildImagePrompt(fashionSelfiePants, fashionSelfiePantsLowerBodySettings);
+const fashionSelfiePantsLowerBodyVideo = buildVideoPrompt(fashionSelfiePants, fashionSelfiePantsLowerBodySettings);
+check("fashion selfie lower-body framing shows pants from waist to feet", /lower-body shot[\s\S]*framed from the waist to the feet/i.test(fashionSelfiePantsLowerBodyImage) && /lower-body shot[\s\S]*framed from the waist to the feet/i.test(fashionSelfiePantsLowerBodyVideo), fashionSelfiePantsLowerBodyImage + fashionSelfiePantsLowerBodyVideo);
+check("fashion selfie lower-body framing crops out the upper body", /crop out the head and upper torso/i.test(fashionSelfiePantsLowerBodyImage) && /crop out the head and upper torso/i.test(fashionSelfiePantsLowerBodyVideo), fashionSelfiePantsLowerBodyImage + fashionSelfiePantsLowerBodyVideo);
+check("fashion selfie lower-body framing does not use a selfie phone", /not a selfie[\s\S]*do not include a smartphone/i.test(fashionSelfiePantsLowerBodyImage) && /not a selfie[\s\S]*do not include a smartphone/i.test(fashionSelfiePantsLowerBodyVideo), fashionSelfiePantsLowerBodyImage + fashionSelfiePantsLowerBodyVideo);
+check("fashion selfie lower-body framing uses lower-body continuity only", /LOWER-BODY GARMENT FRAME LOCK/i.test(fashionSelfiePantsLowerBodyImage) && /LOWER-BODY GARMENT FRAME LOCK/i.test(fashionSelfiePantsLowerBodyVideo) && !/FASHION SELFIE COMPLETE BODY LOCK/i.test(fashionSelfiePantsLowerBodyImage + fashionSelfiePantsLowerBodyVideo), fashionSelfiePantsLowerBodyImage + fashionSelfiePantsLowerBodyVideo);
 check("fashion selfie shirt keeps one featured top and a complete body", /sole visible featured top[\s\S]*opaque, full-coverage matching bottom/i.test(fashionSelfieImage) && /FASHION SELFIE COMPLETE BODY LOCK/i.test(fashionSelfieImage), fashionSelfieImage);
 
 const fashionSelfieFitness = buildVideoPrompt(
@@ -953,6 +976,7 @@ check("video prompt with hands_only uses scale relative to hands", /relative to 
 check("video prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only globally locks two hands across all scenes", /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(vidPresenterHands) && /Never add a third hand/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only strictly forbids faces", /STRICTLY FORBIDDEN: Do not show any face|FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
+check("video prompt with hands_only keeps movement to a simple hold and slight turn", /HANDS-ONLY SIMPLE HOLDING MOTION LOCK[\s\S]*move it gently a short distance left and right[\s\S]*one small natural partial turn/i.test(vidPresenterHands) && /Do not open, use, shake, swing, toss, repeatedly rotate/i.test(vidPresenterHands), vidPresenterHands);
 
 const handsOnlyStyleVideo = buildVideoPrompt(
   { name: "แก้วเก็บความเย็น", category: "เครื่องใช้ในบ้าน" },
@@ -964,6 +988,7 @@ const handsOnlyStyleImage = buildImagePrompt(
 );
 check("hands-only style forces hands-only video behavior", /HANDS-ONLY VIDEO STYLE LOCK/i.test(handsOnlyStyleVideo) && /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
 check("hands-only style ignores the selected woman presenter", !/fictional adult Thai woman reviewer|adult Thai woman reviewer/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
+check("hands-only style uses a simple three-beat holding sequence", /Scene 1 \(Hold\)[\s\S]*Scene 2 \(Gentle Move\)[\s\S]*Scene 3 \(Finish\)/i.test(handsOnlyStyleVideo) && /Do not open, use, shake, swing, toss, repeatedly rotate/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
 check("hands-only style also reaches the combined still prompt", /realistic hands|first-person POV/i.test(handsOnlyStyleImage) && /FIRST-PERSON POV FACE EXCLUSION/i.test(handsOnlyStyleImage), handsOnlyStyleImage);
 
 const legacyHandsOnlyAutoVideo = buildVideoPrompt(

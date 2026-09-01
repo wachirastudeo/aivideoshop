@@ -317,7 +317,7 @@ function normalizeSettings(value) {
     postRandomCaptionHook: value.postRandomCaptionHook !== undefined ? Boolean(value.postRandomCaptionHook) : true,
     postCustomProductName: (value.postCustomProductName || "").trim(),
     textStyleFont: value.textStyleFont || "handwriting",
-    cameraFraming: ["full_body", "half_body", "medium_shot", "close_up"].includes(value.cameraFraming) ? value.cameraFraming : "Auto",
+    cameraFraming: ["full_body", "lower_body", "half_body", "medium_shot", "close_up"].includes(value.cameraFraming) ? value.cameraFraming : "Auto",
     postScheduleTime: value.postScheduleTime || "",
     postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10,
     modelRefImage: value.modelRefImage || ""
