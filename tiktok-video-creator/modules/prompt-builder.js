@@ -333,8 +333,9 @@ function resolveFashionSelfieLocation(productInfo = {}, settings = {}, auto = nu
 const FULL_PRODUCT_VISIBILITY_DIRECTION = "STRICT FULL PRODUCT VISIBILITY & NO CROPPING RULE: The ENTIRE product (including all top, bottom, left, right, side edges, legs, handles, doors, shelves, and structural frame) MUST be 100% fully visible inside the frame. ABSOLUTELY NO CROPPING or cutting off any edge or portion of the product. For large or bulky items (such as cabinets, wardrobes, kitchen sinks, dishwashers, refrigerators, sofas, desks, or shelves), use a wide-angle framing (wide camera shot) with ample breathing space around all four edges of the product so that the ENTIRE full cabinet/sink/furniture piece is completely captured in the frame without any part chopped off.";
 
 const HANDS_DIRECTION = "NATURAL HUMAN HAND REALISM & AUTHENTIC REVIEW POSES: Realistic first-person POV (Point of View) perspective. Show authentic, natural human hands and forearms holding, supporting, or presenting the product in a realistic, comfortable review pose. NATURAL HAND POSES & GESTURES: Hands must use authentic, relaxed, ergonomic holding poses — such as gently supporting the product from the bottom or sides, holding it steadily with a natural grip, softly turning it to show texture, or gesturing naturally toward details. ALWAYS keep the main brand logo, product title, and printed front artwork 100% visible without hands blocking or covering them. STRICTLY FORBIDDEN POSES: awkward claw grips squeezing the product, fingers covering key printed logos or text, unnaturally contorted wrists, impossible arm angles, or hands floating detached in mid-air. The hands must look 100% realistic, organic, and human with natural skin texture, realistic knuckles, soft fingernails, and natural wrist alignment. STRICT MAXIMUM TWO-HAND COUNT LOCK: The frame must contain AT MOST 2 human hands in total (strictly 1 left hand and 1 right hand, or 1 single hand). ABSOLUTELY FORBIDDEN & CRITICAL RULE: NEVER render 3 hands, NEVER render a third hand, NEVER render floating extra hands, duplicated hands, extra arms, or more than 2 hands under any circumstances across all frames. Each hand must have strictly exactly 5 fingers with natural fingernails, clean skin texture, realistic knuckles, and wrist joints; no extra fingers, no distorted digits, no clipping into the product.";
-const HANDS_ONLY_GLOBAL_COUNT_LOCK = "GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO: Across every scene and frame, show only 1 or 2 human hands total. Use exactly one left hand and one right hand at most. Never add a third hand, extra arm, duplicated hand, floating hand, or hand belonging to another person. If a shot would create a third hand, remove that hand and keep only the primary pair.";
-const HANDS_ONLY_STILL_COUNT_LOCK = "STILL IMAGE TWO-HAND LOCK: Show at most 2 human hands total, one left and one right from the same person. Never render a third hand, extra arm, duplicated hand, detached hand, or more than 5 fingers on either hand.";
+const HANDS_ONLY_SINGLE_HAND_DIRECTION = "SINGLE-HAND LOCK FOR HANDS-ONLY MODE: Show exactly one natural human hand and forearm from one person holding, supporting, or presenting the product in a realistic, comfortable pose, with exactly five correctly attached fingers. Never show a second hand, extra arm, duplicated hand, floating hand, detached hand, or any hand belonging to another person.";
+const HANDS_ONLY_GLOBAL_COUNT_LOCK = "GLOBAL SINGLE-HAND LOCK FOR THE ENTIRE HANDS-ONLY VIDEO: Across every scene and frame, show exactly one natural human hand total from one person. Never add a second hand, third hand, extra arm, duplicated hand, floating hand, or hand belonging to another person. If a shot would create more than one hand, remove every hand except the primary hand.";
+const HANDS_ONLY_STILL_COUNT_LOCK = "STILL IMAGE SINGLE-HAND LOCK: Show exactly one natural human hand total from one person, with exactly five correctly attached fingers. Never render a second hand, extra arm, duplicated hand, detached hand, or more than 5 fingers.";
 const SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION = "SINGLE-PRESENTER HAND ANATOMY: The one presenter has exactly 2 arms and at most 2 hands total, one left and one right, naturally attached to the same body. Never render a third hand, duplicated hand, extra arm, detached hand, or more than 5 fingers on either hand. Hands may be naturally hidden behind the body or outside the crop, but no additional hands may appear.";
 const MULTI_PERSON_HAND_ANATOMY_DIRECTION = "MULTI-PERSON HAND ANATOMY: Each human has exactly 2 arms and no more than 2 anatomically attached hands, one left and one right. Never give any person a third hand, duplicate a hand or arm, add detached or anonymous hands, or render more than 5 fingers on either hand.";
 const UNBOXING_HANDS_DIRECTION = "STRICT HANDS-ONLY UNBOXING PRESENTER MODE: First-person POV tabletop unboxing video. Show ONLY realistic human hands and forearms opening a shipping box or product box, lifting the lid/flaps, removing tissue paper/bubble wrap/protective insert, and revealing the exact target product inside the box. The product must become clearly visible after the box opens and remain the hero focus. No face, head, torso, full body, or on-screen presenter may appear at any time. Keep the scene natural, satisfying, tactile, and realistic, like a TikTok unboxing review shot from the presenter's point of view.";
@@ -427,7 +428,7 @@ const SHOE_STILL_REFERENCE_LOCK = "FINAL SHOE REFERENCE CHECK: Treat the referen
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: Match the reference garment's type, cut, fit, length, neckline or waistband, sleeves or legs, fabric, color, print, logo, seams, pockets, and fasteners. Keep those visible design details consistent while allowing natural fabric drape and ordinary movement. Show the front design clearly and do not use a back-facing or 360-degree spin.";
 const FASHION_SELFIE_BODY_CONTINUITY_LOCK = "FASHION SELFIE COMPLETE BODY LOCK: Render exactly one anatomically complete adult model with one connected head, neck, shoulders, torso, hips, two arms, two hands, two legs, and two feet. Never erase, crop away, detach, duplicate, or deform the torso, shoulders, arms, hands, hips, legs, or feet. The phone covers only the face; it must never replace or hide the upper body. When full-body framing is required, keep the complete head-to-toe body visible and grounded in every frame.";
 const LOWER_BODY_GARMENT_CONTINUITY_LOCK = "LOWER-BODY GARMENT FRAME LOCK: Render only the natural lower body from the waist to the feet so the exact pants or skirt remains the hero. Keep the waistband, hips, full garment length, legs, and footwear anatomically connected and visible. Do not include a smartphone, mirror, selfie pose, hands, face, head, or upper torso.";
-const FASHION_HANGER_MODEL_DIRECTION = "FASHION HANGER PRESENTER MODE: Show exactly one fictional, visibly youthful, naturally beautiful, attractive, polished Thai fashion model aged 20-25 years old with a distinctly Thai identity and a Korean-inspired K-fashion/K-beauty aesthetic: soft clean makeup, fresh luminous skin, neat modern hair, and elegant youthful styling. This is a Thai model, not a Korean or foreign model. She stands and faces the camera directly with a fully visible fresh youthful face, clear eye contact, and a friendly confident commercial presentation. Never make the model older than 25, mature-looking, or elderly. Generate a brand-new fictional face that does not copy, match, resemble, or reproduce any face from the reference image or any uploaded model image. Do not infer identity, likeness, or facial features from the source.";
+const FASHION_HANGER_MODEL_DIRECTION = "FASHION HANGER PRESENTER MODE: Show exactly one fictional, visibly youthful, naturally beautiful, cute, polished Thai female fashion model aged 20-25 years old with a distinctly Thai identity and a Korean-inspired K-fashion/K-beauty aesthetic: soft clean makeup, fresh luminous skin, neat modern hair, and elegant youthful styling. This is a Thai woman, not a Korean or foreign model. She stands and faces the camera directly with a fully visible fresh youthful face, clear eye contact, and a friendly confident commercial presentation. Never make the model older than 25, mature-looking, or elderly. Generate a brand-new fictional face that does not copy, match, resemble, or reproduce any face from the reference image or any uploaded model image. Do not infer identity, likeness, or facial features from the source.";
 const FASHION_HANGER_PRODUCT_ONLY_STYLE_LOCK = "FASHION HANGER PRODUCT-ONLY STYLE LOCK: Copy only the exact garment that is the product being sold. If the product is a shirt, copy only that shirt; use newly generated fashionable, simple, modest, opaque non-denim bottoms and newly generated styling. If the product is a skirt or pants, copy only that exact skirt or pants; use a newly generated fashionable, simple, modest, opaque non-denim top and newly generated styling. NO UNREQUESTED JEANS LOCK: Do not dress the model in jeans, denim pants, denim skirts, or a denim jacket when denim is not the sold product; choose tailored trousers, wide-leg trousers, a pleated midi skirt, or another polished non-denim option instead. If the sold product itself is denim, preserve only that exact product garment. Do not copy any non-product clothing, outfit combination, shoes, accessories, jewelry, hairstyle, makeup, pose, background, or overall styling from the reference image or model image. The worn garment and the hanger garment must match the product only; everything else must be an original fictional choice.";
 const FASHION_HANGER_GARMENT_PAIR_DIRECTION = "EXACT GARMENT PAIR LOCK: Create exactly two visually identical instances of the exact reference garment for this requested presentation: one instance naturally worn by the standing model and one identical instance hanging on a real clothes hanger held beside the model's torso. Both garments must match the reference type, cut, size proportions, fabric, colors, print, logo, seams, and every visible detail exactly. Do not add any third garment, alternate design, or generic substitute.";
 const FASHION_HANGER_BODY_CONTINUITY_LOCK = "FASHION HANGER BODY CONTINUITY: Keep one anatomically complete adult model with one connected visible face, head, neck, torso, two arms, two hands, hips, two legs, and two feet. Keep the model standing, grounded, and fully inside the frame with comfortable space around the body. The hanger and held garment must remain separate from the worn garment and must not cover the model's face.";
@@ -531,7 +532,8 @@ const PRINTED_GRAPHIC_FIDELITY_DIRECTION = "STRICT LOGO & PRINTED TEXT FIDELITY 
 const SPRAY_BOTTLE_FIDELITY_DIRECTION = "SPRAY BOTTLE & PACKAGING LABEL FIDELITY LOCK: The product is a spray bottle, pump spray, aerosol canister, or liquid grooming bottle. You MUST reproduce the EXACT bottle shape, trigger/spray pump nozzle type, cap style, liquid container color, and printed front label artwork 100% pixel-faithfully as shown in the reference image. Preserve the exact brand logo, product name typography, printed graphics, patterns, illustrations, animal mascot graphics, and label colors. Do NOT draw a plain generic bottle, do NOT omit or change the brand logo/pattern, and do NOT alter the spray nozzle shape or label design.";
 const EYEWEAR_FIDELITY_DIRECTION = "For eyewear, the size and scale of the glasses must be perfectly proportioned to a human face, head, or hands. Do not make the glasses abnormally large, tiny, or out-of-scale relative to the presenter. Maintain the exact frame shape, lens color/transparency, bridge width, and temple length.";
 const BEAUTY_SKINCARE_FIDELITY_DIRECTION = "For cosmetics, skincare, and personal care (creams, serums, lipsticks, bottles, tubes, compacts): preserve the exact container bottle/jar/tube shape, dispenser cap/pump type, brand logo, printed text, label artwork, and formula texture. Do not alter container proportions, lid type, or packaging design.";
-const COFFEE_BAG_FIDELITY_DIRECTION = "STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK: The product is a printed coffee bag or coffee bean pouch (such as a black matte side-gusset flat-bottom pouch with top zipper seal crimp line and round one-way degassing valve). You MUST reproduce the EXACT printed front label artwork, brand logo/mascot emblem (such as roaring bear, animal icon, or roastery logo), typography, font style, exact Thai/English brand text, grade markings (e.g. Grade A/B, 100% Arabica, Doi Chang), weight markings (e.g. 200g/250g/500g/1Kg), roasting badges, degassing valve, seal crimp edges, pouch color, and pouch shape 100% pixel-faithfully as shown in the reference image. Maintain the exact label background color, logo placement, badge alignment, and printed text layout without redrawing, altering, replacing, simplifying, changing fonts, or writing gibberish on the label.";
+const COFFEE_BAG_FIDELITY_DIRECTION = "STRICT COFFEE/TEA POUCH & PRINTED LABEL FIDELITY LOCK: The product is the exact tea or coffee package shown in the uploaded reference. It may be a flat sachet, stand-up pouch, side-gusset bag, zipper pouch, valve pouch, or another visible package form; do not assume a generic coffee-bag shape. Reproduce the exact visible pouch silhouette, seams, closure, material, front label artwork, brand logo/mascot, typography, Thai/English lettering, weight markings, badges, colors, and layout 100% faithfully from the reference image. Never redraw, alter, replace, simplify, change fonts, or write gibberish on the package label.";
+const COFFEE_POUCH_ARTWORK_STABILITY_LOCK = "COFFEE/TEA POUCH ARTWORK STABILITY LOCK: Treat the uploaded pouch front as one rigid printed texture map attached to the exact package surface. Keep the package geometry and every printed mark fixed relative to the pouch edges in every frame. Camera movement, lighting, and a natural hand may change, but the pouch silhouette, seams, closure, label boundaries, logo, illustrations, colors, and lettering must not bend, melt, stretch, drift, reflow, morph, or be regenerated. If small text is unclear, preserve it as the same unreadable reference detail; do not invent replacement text or a new design.";
 const COFFEE_POWDER_FORM_DIRECTION = "STRICT COFFEE POWDER FORM LOCK: The product is ground coffee powder/grounds, not whole coffee beans. Preserve the exact fine powder or ground-coffee form shown in the reference. If the package is opened or the contents are shown, reveal only loose ground coffee powder with a fine granular texture. ABSOLUTELY FORBIDDEN: Do not show whole roasted coffee beans, coffee cherries, unground beans, or a different coffee form.";
 const COFFEE_BEANS_FORM_DIRECTION = "STRICT WHOLE COFFEE BEANS FORM LOCK: The product is whole roasted coffee beans, not ground coffee powder. Preserve the exact whole-bean form shown in the reference. If the package is opened or the contents are shown, reveal only whole roasted coffee beans. ABSOLUTELY FORBIDDEN: Do not show ground coffee powder, loose coffee grounds, coffee dust, or a different coffee form.";
 const COFFEE_SEALED_POWDER_POUCH_DIRECTION = "STRICT SEALED COFFEE POUCH IDENTITY LOCK: The reference product is a sealed printed coffee pouch containing ground coffee powder. The sealed pouch itself is the hero product and must remain fully closed, upright, intact, and unchanged; keep all ground coffee inside the pouch. Do not replace the pouch with loose powder, a bowl, a cup, beans, or a generic package. Preserve the exact pouch silhouette, front artwork, label, colors, typography, seams, zipper/valve, and weight marking from the reference.";
@@ -580,6 +582,8 @@ function isCoffeeCategoryProduct(text = "") {
 }
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
 const SMALL_TECH_ACCESSORY_SCALE_DIRECTION = "STRICT SMALL TECH ACCESSORY SCALE LOCK: This product is a real desk-sized tech accessory, not a large appliance or oversized prop. Preserve true physical scale: a mouse is about palm-sized (roughly 10-13cm long), a keyboard is desk-width and slim, earbuds fit in the ear or charging case, a charger/cable is small enough to hold in one hand, and a headset/headphones fit naturally on a human head or rest on a desk. Show it at realistic size relative to hands, a laptop, keyboard, desk surface, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge it into a giant object, appliance, bag-sized item, or furniture-scale prop; do not shrink it into a tiny toy.";
+const REAL_WORLD_SCALE_AND_PLACEMENT_DIRECTION = "REAL-WORLD SCALE & PLACEMENT LOCK: Analyze the product name/category/size wording and uploaded product image together. Image is truth; name supplies context. Infer scale from anchors, especially the holder's hand; when uncertain, choose the smaller plausible scale. Capacity/weight/dimensions are facts, not enlargement cues. Product is the hero: use focus, light, contrast, placement—not resizing. If held, fit it naturally to the hand; never make it oversized. Place it with perspective, gravity, shadows, reflections. Keep product sharp; background soft/blurred and secondary, without forced props. On tables, show surface and background depth. Never use macro framing or let the product/table fill the frame.";
+const PACKAGE_SCALE_FROM_NAME_AND_IMAGE_DIRECTION = "PACKAGE SCALE FROM NAME + IMAGE: Analyze the package type and stated weight/capacity in the product name together with the uploaded product image. When held, infer a normal retail package size relative to the person's hand; a 250g coffee pouch should look like a normal hand-held retail pouch, not a sack or oversized prop. Preserve the reference proportions and do not enlarge it for hero emphasis.";
 const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, edge bevels, AND any built-in magnetic ring (MagSafe ring) MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, magnetic ring circle, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. CASE ARTWORK COORDINATE LOCK: Treat the reference artwork as an exact texture map on the case surface. Preserve every motif's orientation and position relative to the case's top, bottom, left, right edges, corners, camera cutout, MagSafe ring, and side boundaries. Do NOT invent a similar pattern, mirror it, rotate it, stretch it, reflow it, center-shift it, crop it, or let it drift onto the phone, camera bump, bezel, or background. If perspective or curvature is visible, follow the reference perspective while keeping the artwork aligned to the physical case surface. REAL-WORLD PHONE SCALE LOCK: When the case is on or near a phone, preserve true smartphone size relative to a full-size hand, table, room, and furniture. Never let one phone or case fill half a table or become furniture-sized just to look prominent. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
 const PHONE_CASE_HANDLING_DIRECTION = "NATURAL PHONE CASE HANDLING LOCK: When a presenter holds the phone, use one natural adult hand with a relaxed ergonomic grip: thumb along one side or lightly on the case back, fingers naturally supporting the opposite edge behind the phone, wrist and fingers anatomically connected. Keep the phone and case at true smartphone size. Do not pinch the artwork, cover the camera cutout, bend the case, make the hand claw-like, add fingers, float the hand, or make the phone/case oversized. Keep the case fitted flush to the phone, with the exact camera opening, buttons, corners, pattern, and edges aligned and clearly visible.";
 const PHONE_CASE_STILL_GEOMETRY_LOCK = "EXACT PHONE CASE SOURCE: Use the attached phone-case image as the exact product source. Copy the visible case or case set 1:1—same count, outer silhouette, edges, proportions, camera opening, color, material, and artwork. Do not redraw or generate a similar case. Change only the hand, scene, and background.";
@@ -602,6 +606,7 @@ const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION, NATURAL UNHURRIED 
 const VOICEOVER_DIRECTION = "Add a clear, natural Thai off-screen voiceover narration speaking at a comfortable, unhurried pace (no visible person). All spoken audio must be in Thai.";
 const REVIEW_VOICEOVER_STYLE_DIRECTION = "REVIEW WITH OVERDUB STYLE LOCK: This mode is a hands-on product-use review, not a talking-head intro. Open with a close-up of hands picking up, opening, holding, or using the product; the product and hands must dominate the first shot and the face must not be the opening subject. Use multiple practical angles and real interaction before any optional brief face shot. The presenter is a SILENT ACTOR only: must not speak to camera, mouth words, lip-sync, or move the lips at all while the Thai voiceover plays. Use the voice as a separate off-screen overdub. Keep any visible facial expression relaxed and closed-mouth.";
 const NO_WOW_DIRECTION = "STRICT WORD EXCLUSION: The Thai word \"ว้าว\" MUST NEVER appear in spoken dialogue, voiceover, subtitles, captions, or any newly generated on-screen text. Use natural product-specific wording instead. Preserve only text that physically exists on the product reference.";
+const SPEECH_PRODUCT_TITLE_EXCLUSION = "STRICT SPOKEN PRODUCT TITLE EXCLUSION: Never read or repeat the full product title verbatim. Never speak any SKU, product ID, catalog code, serial number, model code, variant code, alphanumeric string, or numeric code from product metadata, the title, or the reference. In spoken Thai, use only a short natural generic product type and verified useful facts; do not recite the product name, code, or list of numbers.";
 
 const TEXT_FREE_DIRECTION = "HIGHEST PRIORITY — STRICT NO-TEXT RULE: Do not add text overlays, subtitles, captions, prices, banners, promotional copy, watermarks, CTAs, signs, labels, or text graphics anywhere. Preserve only product text visible in the reference. If none is visible/readable, keep the product surface blank; never infer text from the title or surrounding image.";
 
@@ -622,8 +627,8 @@ const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
 const CAMERA_ONLY_NO_HANDS_DIRECTION = "CAMERA-ONLY / NO-HANDS LOCK: The entire frame must contain zero hands, fingers, arms, people, presenters, reviewers, or human body parts. No hand may enter to hold, touch, adjust, lift, or present the product. The product is already placed and untouched; only the camera moves.";
-const HANDS_ONLY_SIMPLE_MOTION_DIRECTION = "HANDS-ONLY SIMPLE HOLDING MOTION LOCK: Show only one person's natural hands and forearms holding the exact product. STRICT MAXIMUM TWO-HAND COUNT LOCK: Show at most two natural hands from the same person, with exactly five fingers per hand. Keep the product mostly steady, move it gently a short distance left and right, and make only one small natural partial turn to reveal its front and side. Do not open, use, shake, swing, toss, repeatedly rotate, place down, or perform a multi-step demonstration.";
-const HANDS_ONLY_VIDEO_STYLE_DIRECTION = "HANDS-ONLY VIDEO STYLE LOCK: The entire video must be filmed from a realistic first-person point of view showing only one person's natural hands and forearms interacting with the exact product. No face, head, torso, full body, or second person may appear in any scene. Keep the action simple: hold the product steadily, move it slightly back and forth, and turn it only a little.";
+const HANDS_ONLY_SIMPLE_MOTION_DIRECTION = "HANDS-ONLY SIMPLE HOLDING MOTION LOCK: Show only one person's natural hand and forearm holding the exact product. Use exactly one hand with exactly five correctly attached fingers; never show a second hand. Keep the product mostly steady, move it gently a short distance left and right, and make only one small natural partial turn to reveal its front and side. Do not open, use, shake, swing, toss, repeatedly rotate, place down, or perform a multi-step demonstration.";
+const HANDS_ONLY_VIDEO_STYLE_DIRECTION = "HANDS-ONLY VIDEO STYLE LOCK: The entire video must be filmed from a realistic first-person point of view showing exactly one person's natural hand and forearm interacting with the exact product. Exactly one hand only; no second hand, face, head, torso, full body, or second person may appear in any scene. Keep the action simple: hold the product steadily, move it slightly back and forth, and turn it only a little.";
 const PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION = "CAMERA MOTION ONLY — MULTI-ANGLE PRODUCT-ONLY DYNAMIC CAMERA SHOWCASE: Keep the exact product physically still, rigid, and unchanged while the camera creates energetic visual variety. Use 3–4 sequential full-frame shots with clean rhythmic hard cuts: front hero angle with a confident push in, left three-quarter angle with a smooth left-to-right slide, right three-quarter angle with a high tilt and short controlled arc, then a close detail shot with a push in and pull back to the hero view. Use smooth pan, dolly, tilt, and one short controlled arc of about 30–45 degrees; make the movement noticeable and fun but physically realistic. Never rotate the product itself, never use a collage or split screen, and keep the product sharp, centered, and fully visible in every shot.";
 const EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION = "EXPLICIT ADULT PRESENTER LOCK: The selected presenter is an adult woman or adult man. Show exactly one adult presenter only. Do NOT include any child, minor, baby, toddler, or parent-and-child pair, even when the product is intended for children.";
 const EXPLICIT_CHILD_PRESENTER_DIRECTION = "EXPLICIT CHILD PRESENTER MODE: The user explicitly selected the cute child presenter. MUST show a happy fictional Thai child on camera, age 4-6 years old for child mode or 7-12 years old for older_child mode, actively and safely using or interacting with the product, together with exactly one friendly Thai parent/guardian supervising nearby. Do NOT replace the child with an adult-only presenter, Auto mode, hands-only, product-only, or voiceover-only presentation. Keep the same child and parent consistent across all scenes.";
@@ -912,17 +917,17 @@ function stripForbiddenVideoWords(value) {
   return String(value || "").replace(/ว้าว/gi, "").replace(/\s+/g, " ").trim();
 }
 
-function buildProductIdentityLock(productInfo = {}) {
+function buildProductIdentityLock(productInfo = {}, identityName = "") {
   const productName = compactPromptText(
     sanitizePolicySensitiveText(
-      getVisualProductName(productInfo)
+      identityName || getVisualProductName(productInfo)
     ),
     180
   );
   if (!productName) return "";
   const stableProductName = stripStructuralVariantCounts(productName);
 
-  return `PRODUCT NAME / CATEGORY LOCK: The requested product is "${stableProductName}". Use this explicit product name to determine what the item is. The attached product reference remains authoritative for its exact visual design. Never substitute a different product type; if the name says shirt/top, generate a shirt/top, never underwear, lingerie, panties, briefs, or another unrelated garment. This instruction is semantic context only and must not appear as visible text.`;
+  return `PRODUCT NAME / CATEGORY LOCK: The requested product is "${stableProductName}". Use this explicit product name to determine what the item is. The attached product reference remains authoritative for its exact visual design. Never substitute a different product type; if the name says shirt/top, generate a shirt/top, never underwear, lingerie, panties, briefs, or another unrelated garment. This instruction is visual/semantic context only; never read the full title aloud or use it as spoken narration, and it must not appear as visible text.`;
 }
 
 function buildCompactPhoneCaseStillPrompt(productInfo = {}, productName, auto, settings, productOnlyStill) {
@@ -1042,8 +1047,10 @@ export function buildImagePrompt(productInfo, settings = {}) {
   if (productOnlyStill) {
     peopleDirection = NO_PEOPLE_DIRECTION;
   } else if (handsOnly) {
-    const stillHandCount = isUnboxingHands ? `\n${HANDS_ONLY_STILL_COUNT_LOCK}` : "";
-    peopleDirection = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : HANDS_DIRECTION}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}`;
+    const stillHandCount = isUnboxingHands || handsOnlyStyle || auto.presenter === "hands_only"
+      ? `\n${HANDS_ONLY_STILL_COUNT_LOCK}`
+      : "";
+    peopleDirection = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : (handsOnlyStyle || auto.presenter === "hands_only" ? HANDS_ONLY_SINGLE_HAND_DIRECTION : HANDS_DIRECTION)}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}`;
   } else if (isAnimal) {
     peopleDirection = `Pet Animal: A cute, friendly pet animal (${auto.presenter === "cat" ? "cat" : "dog"}) sitting next to or interacting naturally with the product in a bright, clean indoor setting. ${ANIMAL_PRESENTER_DIRECTION} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION}`;
   } else if (wearableCrop) {
@@ -1392,11 +1399,12 @@ function buildCoffeeReferenceFirstStillPrompt(productText, productName, location
     ? "If an overlay is enabled, place it only in empty background space; never cover or rewrite the pouch label."
     : "No added captions, slogans, logos, watermarks, or text overlays.";
   const sizeDirection = getProductSpecificScaleInstruction(productText)
-    || "STRICT PRODUCT SCALE: This is a small hand-sized coffee pouch, about 15-20cm tall. Keep the table and surrounding background visibly larger than the pouch; never let the pouch fill the table or frame.";
+    || REAL_WORLD_SCALE_AND_PLACEMENT_DIRECTION;
 
   return [
     `Create one vertical 9:16 product still for ${productName}.`,
     "REFERENCE-FIRST MODE: The uploaded image is the only visual source of truth. Keep the actual coffee pouch from that image unchanged; do not redraw or reconstruct it from the product name, category, memory, or generic coffee knowledge.",
+    COFFEE_POUCH_ARTWORK_STABILITY_LOCK,
     "Preserve the exact pouch silhouette, seams, zipper, material, label artwork, Thai/English lettering, logo, illustrations, colors, layout, and printed details. If any detail is unclear, keep the visible reference detail rather than guessing.",
     "Do not replace the pouch with a similar package, alternate design, clean generic label, new wording, or another brand. Show exactly one pouch, fully closed, upright, and physically realistic.",
     formDirection,
@@ -1470,10 +1478,10 @@ function getProductSpecificScaleInstruction(text = "") {
   // Detect coffee bags, pouches, sachets, packets (ถุงกาแฟ, ซองกาแฟ, 200g, 250g, 500g)
   const isSmallPouch = /(กาแฟ|ชา|ผง|เมล็ด|coffee|tea|powder|\bpouch\b|\bsachet\b|\bpacket\b|200\s*g|250\s*g|500\s*g|gr?a?m|กรัม)/i.test(clean);
   if (isSmallPouch && !/(กระสอบ|25\s*kg|50\s*kg|10\s*kg|5\s*kg)/i.test(clean)) {
-    return "STRICT PRODUCT-SPECIFIC SIZE RULE: This product is a standard hand-sized 200-500g pouch or bag. It must be depicted in a realistic hand-sized scale, easily held in one or both hands (height of the pouch is about 15-20cm). In the vertical frame, the pouch should occupy only about 30-40% of the image height with clear margins and visible surrounding space; never let it dominate the frame. It must not be depicted as a tiny pocket sachet, nor as a giant sack or massive bag. Keep it perfectly proportional as a standard coffee/tea bag.";
+    return PACKAGE_SCALE_FROM_NAME_AND_IMAGE_DIRECTION;
   }
   
-  return "";
+  return REAL_WORLD_SCALE_AND_PLACEMENT_DIRECTION;
 }
 /**
  * @description เลือก Hook เด็ดๆ ตามหมวดหมู่สินค้า
@@ -1533,9 +1541,6 @@ export function resolveSpokenOpeningHook(productInfo = {}, random = Math.random)
 }
 
 function buildSpeechProductContext(productInfo = {}, productName = "the attached product") {
-  const sourceName = sanitizePolicySensitiveText(
-    getVisualProductName(productInfo)
-  );
   const highlights = Array.isArray(productInfo.highlights)
     ? productInfo.highlights
     : String(productInfo.highlights || "").split(/[,;\n]/);
@@ -1547,11 +1552,9 @@ function buildSpeechProductContext(productInfo = {}, productName = "the attached
     ? verifiedFacts.join(" | ")
     : "only details visibly verified from the attached product reference";
 
-  return "PRODUCT-SPECIFIC SPEECH CONTEXT: Treat this as " +
+  return "PRODUCT-SPECIFIC SPEECH CONTEXT: Treat this as the short generic product type \"" +
     productName +
-    ". Internal product title for factual grounding: \"" +
-    (compactPromptText(sourceName, 180) || productName) +
-    "\". Verified product facts: [" +
+    "\". The raw product title is visual metadata only and is never a spoken phrase. Verified product facts: [" +
     factText +
     "]. Use this as flexible context, not a fixed script. Choose a natural problem, use case, detail, or benefit only when it genuinely fits this product. Do not force every fact, invent claims, or describe another product category.";
 }
@@ -1639,12 +1642,20 @@ export function buildVideoPrompt(productInfo, settings = {}) {
 
   if (auto.videoStyle === "fashion-hanger-presenter") {
     const hangerPresenter = resolveFashionHangerPresenter(productText, settings, auto.presenter, productInfo);
-    return buildFashionHangerVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings, hangerPresenter);
+    return applyFirstScenePeopleToggle(
+      buildFashionHangerVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings, hangerPresenter),
+      settings,
+      "hanging garment or the exact product on a stable display"
+    );
   }
 
   if (auto.videoStyle === "fashion-selfie") {
     const fashionPresenter = resolveFashionSelfiePresenter(productText, settings, auto.presenter, productInfo);
-    return buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings, fashionPresenter);
+    return applyFirstScenePeopleToggle(
+      buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings, fashionPresenter),
+      settings,
+      "the exact garment displayed on its own"
+    );
   }
 
   if (auto.videoStyle === "boxed-motion") {
@@ -1736,6 +1747,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const promptParts = [
     `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
     buildProductIdentityLock(productInfo),
+    isCoffeeCategoryProduct(productText) ? COFFEE_POUCH_ARTWORK_STABILITY_LOCK : "",
     !textEnabled ? TEXT_FREE_DIRECTION : "",
     NO_WOW_DIRECTION,
     isExplicitAdultPresenterSelection(settings) ? EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION : "",
@@ -2019,7 +2031,6 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const details = [];
   if (productInfo.highlights) details.push(`Highlights: ${sanitizePolicySensitiveText(productInfo.highlights)}`);
   if (settings?.clipText) details.push(`Main Message: ${sanitizePolicySensitiveText(settings.clipText)}`);
-  if (productInfo.name) details.push(`Product context only, never say aloud: ${sanitizePolicySensitiveText(productInfo.name)}`);
   const combinedProductDetails = [buildSpeechProductContext(productInfo, productName), ...details].filter(Boolean).join(", ");
   const openingHookDirection = `OPENING HOOK GUIDANCE: Start naturally from a customer problem, use case, or curiosity that genuinely fits this product. Optional inspiration: "${spokenOpeningHook}". Adapt or ignore it as needed; do not repeat it verbatim and do not force an unrelated problem. Use the product reference and verified details to guide the wording. Never invent claims.`;
 
@@ -2066,7 +2077,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
     : "present the product naturally in Thai; mention a relevant benefit, feature, material, or realistic use only when it fits";
 
-  const speechCore = `Use [${combinedProductDetails}] as flexible context, not a script. Choose a natural Thai line that fits the actual product and its realistic use. Mention a relevant detail or benefit only when supported by the reference or product information. Avoid unrelated situations, exaggerated claims, filler, repetition, prices, or a forced CTA. The wording is up to the model.`;
+  const speechCore = `${SPEECH_PRODUCT_TITLE_EXCLUSION} Use [${combinedProductDetails}] as flexible context, not a script. Choose a natural Thai line that fits the actual product and its realistic use. Mention a relevant detail or benefit only when supported by the reference or product information. Avoid unrelated situations, exaggerated claims, filler, repetition, prices, or a forced CTA. The wording is up to the model.`;
   const speechDir = auto.audioMode === "music_only"
     ? MUSIC_ONLY_AUDIO_DIRECTION
     : isFullFaceCoveringProduct(productText)
@@ -2133,6 +2144,14 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   }
 
   return promptParts.filter(Boolean).join("\n");
+}
+
+function applyFirstScenePeopleToggle(prompt, settings = {}, scene1ProductDescription = "the exact product resting on its own") {
+  const firstSceneNoPeople = settings?.firstSceneNoPeople === true || settings?.firstSceneNoPeople === "true";
+  const presenter = settings?.presenter;
+  if (!firstSceneNoPeople || presenter === "none") return prompt;
+
+  return `${prompt}\nFINAL SCENE 1 PEOPLE TOGGLE: Scene 1 must show only ${scene1ProductDescription}. Do not show any presenter, person, face, body, hands, arms, or human features in Scene 1. The presenter may appear starting from Scene 2 only.`;
 }
 
 function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, presenter = "woman") {
@@ -2204,10 +2223,9 @@ function buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, du
 
 function resolveFashionHangerPresenter(productText, settings, autoPresenter, productInfo = {}) {
   if (["woman", "man"].includes(settings?.presenter)) return settings.presenter;
-  const inferredGender = detectExplicitProductGender(productText)
-    || (["woman", "man"].includes(productInfo.imageGender) ? productInfo.imageGender : "")
-    || (["woman", "man"].includes(autoPresenter) ? autoPresenter : "");
-  return inferredGender || "woman";
+  // Fashion-hanger Auto is intentionally a fixed female Thai model profile.
+  // Explicit Woman/Man selections above remain authoritative.
+  return "woman";
 }
 
 function fashionHangerAudioDirection(settings = {}) {

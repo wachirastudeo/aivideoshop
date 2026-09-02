@@ -645,7 +645,7 @@ function populateStyleDropdown() {
   const select = document.querySelector("#custom-video-style");
   if (!select) return;
   select.innerHTML = CUSTOM_VISUAL_STYLES.map((style) => `
-    <option value="${style.id}">${style.emoji} ${style.name} - ${style.description}</option>
+    <option value="${style.id}">${style.emoji} ${style.name}</option>
   `).join("");
   select.insertAdjacentHTML("afterbegin", `<option value="none" selected>ไม่ระบุสไตล์ (ใช้ Prompt ล้วนๆ)</option>`);
 }

@@ -114,6 +114,10 @@ check("default video puts no-text rule before style instructions", vid.indexOf("
 const hangerProduct = { name: "เสื้อเชิ้ตลายดอก", category: "เสื้อผ้า", highlights: "เสื้อเชิ้ตแขนสั้น ลายดอกสีฟ้า" };
 const hangerImage = buildImagePrompt(hangerProduct, { ...settings, videoStyle: "fashion-hanger-presenter", presenter: "woman" });
 const hangerVideo = buildVideoPrompt(hangerProduct, { ...settings, videoStyle: "fashion-hanger-presenter", presenter: "woman" });
+const autoHangerVideo = buildVideoPrompt(
+  { name: "เสื้อเชิ้ตผู้ชาย", category: "เสื้อผ้าผู้ชาย" },
+  { ...settings, videoStyle: "fashion-hanger-presenter", presenter: "Auto" }
+);
 check("fashion hanger image shows a visible fictional face", /FASHION HANGER PRESENTER MODE[\s\S]*fully visible fresh youthful face[\s\S]*brand-new fictional face/i.test(hangerImage), hangerImage);
 check("fashion hanger image limits model age to 25", /aged 20-25 years old[\s\S]*Never make the model older than 25/i.test(hangerImage), hangerImage);
 check("fashion hanger image uses a youthful attractive model", /visibly youthful[\s\S]*naturally beautiful[\s\S]*aged 20-25 years old/i.test(hangerImage), hangerImage);
@@ -125,6 +129,7 @@ check("fashion hanger video presents directly to camera", /direct-to-camera[\s\S
 check("fashion hanger video keeps non-product styling original", /FASHION HANGER PRODUCT-ONLY STYLE LOCK[\s\S]*everything else must be an original fictional choice/i.test(hangerVideo), hangerVideo);
 check("fashion hanger video prevents source-face matching", /does not copy, match, resemble, or reproduce any face from the reference image/i.test(hangerVideo), hangerVideo);
 check("fashion hanger video keeps the exact garment on the model", /already wearing|naturally wears the exact reference garment|exact reference garment/i.test(hangerVideo), hangerVideo);
+check("fashion hanger Auto always uses a Thai Korean-style woman aged 20-25", /Thai female fashion model aged 20-25 years old[\s\S]*Korean-inspired K-fashion\/K-beauty aesthetic[\s\S]*This is a Thai woman/i.test(autoHangerVideo), autoHangerVideo);
 
 // --- image prompt: fidelity + sharp focus ---
 const img = buildImagePrompt({ name: "ครีมบำรุงผิว", highlights: "" }, settings);
@@ -181,7 +186,7 @@ check(
 );
 check(
   "combined coffee still enforces real pouch scale",
-  /STRICT PRODUCT-SPECIFIC SIZE RULE:[\s\S]*200-500g pouch[\s\S]*15-20cm/i.test(compactCoffeeStill)
+  /PACKAGE SCALE FROM NAME \+ IMAGE:[\s\S]*package type and stated weight\/capacity[\s\S]*normal retail package size relative to the person's hand/i.test(compactCoffeeStill)
     && /visible table space and background around it|small amount of the supporting table surface|never let the pouch fill the table/i.test(compactCoffeeStill),
   compactCoffeeStill
 );
@@ -565,7 +570,7 @@ eq(
 );
 const spokenHookVideo = buildVideoPrompt({ ...spokenHookProduct, hooks: ["สายแคมป์ต้องดูจุดนี้"] }, settings);
 check("video prompt keeps the selected hook as optional inspiration", /OPENING HOOK GUIDANCE[\s\S]*Optional inspiration: "สายแคมป์ต้องดูจุดนี้"[\s\S]*Adapt or ignore it as needed/i.test(spokenHookVideo), spokenHookVideo);
-check("video prompt marks product name as context-only", /Product context only, never say aloud: เก้าอี้แคมป์พับได้/i.test(spokenHookVideo), spokenHookVideo);
+check("video prompt forbids reading the full product title aloud", /STRICT SPOKEN PRODUCT TITLE EXCLUSION[\s\S]*Never read or repeat the full product title verbatim[\s\S]*Never speak any SKU, product ID, catalog code/i.test(spokenHookVideo), spokenHookVideo);
 check("video prompt lets the model choose natural wording", /The wording is up to the model/i.test(spokenHookVideo), spokenHookVideo);
 const groundedSpeechVideo = buildVideoPrompt(
   { name: "เสื้อเชิ้ตลายดอก", highlights: ["ผ้าชีฟอง", "แขนพอง", "ลายจุด"] },
@@ -574,6 +579,22 @@ const groundedSpeechVideo = buildVideoPrompt(
 check("spoken prompt provides flexible product context", /PRODUCT-SPECIFIC SPEECH CONTEXT[\s\S]*ผ้าชีฟอง[\s\S]*แขนพอง[\s\S]*ลายจุด[\s\S]*flexible context, not a fixed script/i.test(groundedSpeechVideo), groundedSpeechVideo);
 check("spoken prompt avoids unrelated or invented claims", /Avoid unrelated situations[\s\S]*exaggerated claims/i.test(groundedSpeechVideo), groundedSpeechVideo);
 check("spoken prompt leaves wording to the model", /The wording is up to the model/i.test(groundedSpeechVideo), groundedSpeechVideo);
+const codedTitleSpeechVideo = buildVideoPrompt(
+  {
+    name: "เซรั่มวิตามินซี รุ่น ABC-12345 สีทอง",
+    originalName: "เซรั่มวิตามินซี รุ่น ABC-12345 สีทอง",
+    productId: "987654321",
+    highlights: ["เนื้อบางเบา", "ใช้ตอนเช้า"]
+  },
+  { ...settings, presenter: "none", flowGenMode: "video" }
+);
+check(
+  "spoken prompt does not expose raw product titles or IDs",
+  /raw product title is visual metadata only and is never a spoken phrase/i.test(codedTitleSpeechVideo)
+    && /STRICT SPOKEN PRODUCT TITLE EXCLUSION/i.test(codedTitleSpeechVideo)
+    && !/Internal product title for factual grounding|Product context only, never say aloud:|987654321/i.test(codedTitleSpeechVideo),
+  codedTitleSpeechVideo
+);
 const fallbackHookSamples = Array.from({ length: 100 }, (_, index) =>
   resolveSpokenOpeningHook({ name: "สินค้าไม่มีหมวด", hooks: [] }, () => index / 100)
 );
@@ -961,7 +982,7 @@ const imgPresenterHands = buildImagePrompt({ name: "ลิปสติก" }, { 
 check("image prompt with hands_only presenter shows hands", /realistic hands|first-person POV/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only presenter uses single full-frame product intro", /one authentic full-frame smartphone photograph|single full-frame authentic smartphone camera photograph/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only uses scale relative to hands", /relative to the hands|relative to the surroundings/i.test(imgPresenterHands), imgPresenterHands);
-check("image prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(imgPresenterHands), imgPresenterHands);
+check("image prompt with hands_only requires exactly one hand", /SINGLE-HAND LOCK FOR HANDS-ONLY MODE[\s\S]*Never show a second hand/i.test(imgPresenterHands), imgPresenterHands);
 check("image prompt with hands_only strictly forbids faces", /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(imgPresenterHands) && !/deformed|mutated/i.test(imgPresenterHands), imgPresenterHands);
 
 const vidPresenterNone = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "none" });
@@ -973,8 +994,8 @@ check("video prompt locks explicit woman presenter selection", /HIGHEST PRIORITY
 
 const vidPresenterHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "hands_only" });
 check("video prompt with hands_only uses scale relative to hands", /relative to the hands/i.test(vidPresenterHands), vidPresenterHands);
-check("video prompt with hands_only has strict hand details", /STRICT MAXIMUM TWO-HAND COUNT LOCK/i.test(vidPresenterHands), vidPresenterHands);
-check("video prompt with hands_only globally locks two hands across all scenes", /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(vidPresenterHands) && /Never add a third hand/i.test(vidPresenterHands), vidPresenterHands);
+check("video prompt with hands_only requires exactly one hand", /HANDS-ONLY SIMPLE HOLDING MOTION LOCK[\s\S]*exactly one hand[\s\S]*never show a second hand/i.test(vidPresenterHands), vidPresenterHands);
+check("video prompt with hands_only globally locks one hand across all scenes", /GLOBAL SINGLE-HAND LOCK FOR THE ENTIRE HANDS-ONLY VIDEO[\s\S]*exactly one natural human hand total[\s\S]*Never add a second hand/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only strictly forbids faces", /STRICTLY FORBIDDEN: Do not show any face|FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterHands) && !/deformed|mutated/i.test(vidPresenterHands), vidPresenterHands);
 check("video prompt with hands_only keeps movement to a simple hold and slight turn", /HANDS-ONLY SIMPLE HOLDING MOTION LOCK[\s\S]*move it gently a short distance left and right[\s\S]*one small natural partial turn/i.test(vidPresenterHands) && /Do not open, use, shake, swing, toss, repeatedly rotate/i.test(vidPresenterHands), vidPresenterHands);
 
@@ -986,10 +1007,10 @@ const handsOnlyStyleImage = buildImagePrompt(
   { name: "แก้วเก็บความเย็น", category: "เครื่องใช้ในบ้าน" },
   { ...settings, videoStyle: "hands-only", presenter: "woman", flowGenMode: "combined" }
 );
-check("hands-only style forces hands-only video behavior", /HANDS-ONLY VIDEO STYLE LOCK/i.test(handsOnlyStyleVideo) && /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
+check("hands-only style forces exactly one hand", /HANDS-ONLY VIDEO STYLE LOCK[\s\S]*Exactly one hand only/i.test(handsOnlyStyleVideo) && /GLOBAL SINGLE-HAND LOCK FOR THE ENTIRE HANDS-ONLY VIDEO/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
 check("hands-only style ignores the selected woman presenter", !/fictional adult Thai woman reviewer|adult Thai woman reviewer/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
 check("hands-only style uses a simple three-beat holding sequence", /Scene 1 \(Hold\)[\s\S]*Scene 2 \(Gentle Move\)[\s\S]*Scene 3 \(Finish\)/i.test(handsOnlyStyleVideo) && /Do not open, use, shake, swing, toss, repeatedly rotate/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
-check("hands-only style also reaches the combined still prompt", /realistic hands|first-person POV/i.test(handsOnlyStyleImage) && /FIRST-PERSON POV FACE EXCLUSION/i.test(handsOnlyStyleImage), handsOnlyStyleImage);
+check("hands-only style also reaches the combined still prompt with one hand", /realistic hands|first-person POV/i.test(handsOnlyStyleImage) && /FIRST-PERSON POV FACE EXCLUSION/i.test(handsOnlyStyleImage) && /STILL IMAGE SINGLE-HAND LOCK[\s\S]*exactly one natural human hand total/i.test(handsOnlyStyleImage), handsOnlyStyleImage);
 
 const legacyHandsOnlyAutoVideo = buildVideoPrompt(
   { name: "แก้วเก็บความเย็น", category: "เครื่องใช้ในบ้าน", autoOptions: { videoStyle: "review", presenter: "hands_only" } },
@@ -999,11 +1020,11 @@ check("legacy hands_only auto recommendation migrates to hands-only style", /HAN
 
 const vidPresenterUnboxingHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
 const imgPresenterUnboxingHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
-check("unboxing still globally locks two hands", /STILL IMAGE TWO-HAND LOCK[\s\S]*Never render a third hand/i.test(imgPresenterUnboxingHands), imgPresenterUnboxingHands);
+check("unboxing still globally locks one hand", /STILL IMAGE SINGLE-HAND LOCK[\s\S]*Never render a second hand/i.test(imgPresenterUnboxingHands), imgPresenterUnboxingHands);
 check("video prompt with unboxing_hands uses hands-only unboxing presenter mode", /STRICT HANDS-ONLY UNBOXING PRESENTER MODE/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("video prompt with unboxing_hands opens box and reveals product", /opening a shipping box|opening the product box/i.test(vidPresenterUnboxingHands) && /revealing the exact target product inside the box|reveals the exact product inside the box/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("video prompt with unboxing_hands strictly forbids face and full person", /No face, head, torso, full body/i.test(vidPresenterUnboxingHands) && /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
-check("unboxing video globally locks two hands across all scenes", /GLOBAL TWO-HAND LOCK FOR THE ENTIRE VIDEO/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+check("unboxing video globally locks one hand across all scenes", /GLOBAL SINGLE-HAND LOCK FOR THE ENTIRE HANDS-ONLY VIDEO/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 
 const childHandsImage = buildImagePrompt({ name: "จักรยานเด็ก" }, settings);
 const childHandsVideo = buildVideoPrompt({ name: "จักรยานเด็ก" }, settings);
@@ -1022,24 +1043,97 @@ const imgTextDisabled = buildImagePrompt({ name: "พัดลมไร้สา
 check("image prompt with text disabled uses TEXT_FREE_DIRECTION", /STRICT NO-TEXT RULE/i.test(imgTextDisabled), imgTextDisabled);
 
 // --- small bag/coffee pouch scale tests ---
-const coffeeProduct = { name: "ถุงกาแฟ 200 กรัม" };
+const coffeeProduct = { name: "ถุงกาแฟ 250 กรัม" };
 const coffeeImage = buildImagePrompt(coffeeProduct, settings);
 const coffeeVideo = buildVideoPrompt(coffeeProduct, settings);
-check("coffee 200g image prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeImage) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeImage) && /occupy only about 30-40% of the image height/i.test(coffeeImage), coffeeImage);
-check("coffee 200g video prompt has strict pouch scale instruction", /STRICT PRODUCT-SPECIFIC SIZE RULE/i.test(coffeeVideo) && /standard hand-sized 200-500g pouch or bag/i.test(coffeeVideo) && /occupy only about 30-40% of the image height/i.test(coffeeVideo), coffeeVideo);
+check("coffee 250g image prompt infers hand-held package scale from name and image", /PACKAGE SCALE FROM NAME \+ IMAGE:[\s\S]*stated weight\/capacity[\s\S]*normal retail package size relative to the person's hand/i.test(coffeeImage), coffeeImage);
+check("coffee 250g video prompt infers hand-held package scale from name and image", /PACKAGE SCALE FROM NAME \+ IMAGE:[\s\S]*stated weight\/capacity[\s\S]*normal retail package size relative to the person's hand/i.test(coffeeVideo), coffeeVideo);
 const groundCoffeeImage = buildImagePrompt({ name: "กาแฟผงคั่วบด 200 กรัม" }, settings);
 const groundCoffeeVideo = buildVideoPrompt({ name: "กาแฟผงคั่วบด 200 กรัม" }, settings);
 check("ground coffee name maps to coffee powder", /ground coffee powder/i.test(groundCoffeeImage) && /ground coffee powder/i.test(groundCoffeeVideo), groundCoffeeImage + groundCoffeeVideo);
 check("ground coffee prompt forbids whole beans", /STRICT COFFEE POWDER FORM LOCK[\s\S]*not whole coffee beans[\s\S]*Do not show whole roasted coffee beans/i.test(groundCoffeeImage + groundCoffeeVideo), groundCoffeeImage + groundCoffeeVideo);
 const packagedGroundCoffeeImage = buildImagePrompt({ name: "กาแฟคั่วบด Arabica 200 กรัม" }, settings);
 check("packaged ground coffee keeps the sealed pouch as the hero", /sealed printed coffee pouch bag containing ground coffee powder/i.test(packagedGroundCoffeeImage) && /STRICT SEALED COFFEE POUCH IDENTITY LOCK[\s\S]*must remain fully closed/i.test(packagedGroundCoffeeImage) && !/Show ground coffee powder clearly at realistic scale/i.test(packagedGroundCoffeeImage), packagedGroundCoffeeImage);
+const teaCoffeePouchVideo = buildVideoPrompt(
+  { name: "ซองชากาแฟ", category: "ซองชา/กาแฟ" },
+  { ...settings, flowGenMode: "video", presenter: "none" }
+);
+check(
+  "tea/coffee pouch video treats the uploaded front artwork as a rigid texture map",
+  /COFFEE\/TEA POUCH ARTWORK STABILITY LOCK[\s\S]*rigid printed texture map[\s\S]*must not bend, melt, stretch, drift, reflow, morph/i.test(teaCoffeePouchVideo),
+  teaCoffeePouchVideo
+);
+check(
+  "tea/coffee pouch video does not assume a generic black valve pouch",
+  /flat sachet, stand-up pouch, side-gusset bag, zipper pouch, valve pouch[\s\S]*do not assume a generic coffee-bag shape/i.test(teaCoffeePouchVideo),
+  teaCoffeePouchVideo
+);
 const wholeBeanVideo = buildVideoPrompt({ name: "เมล็ดกาแฟคั่ว 200 กรัม" }, settings);
 check("whole coffee bean name maps to whole roasted beans", /whole roasted coffee beans/i.test(wholeBeanVideo), wholeBeanVideo);
 check("whole coffee prompt forbids ground powder", /STRICT WHOLE COFFEE BEANS FORM LOCK[\s\S]*not ground coffee powder[\s\S]*Do not show ground coffee powder/i.test(wholeBeanVideo), wholeBeanVideo);
 const angryBearsCoffeeImage = buildImagePrompt({ name: "ANGRY BEARS COFFEE 100% ARABICA GRADE B DOI CHANG" }, settings);
-check("angry bears coffee image prompt includes coffee pouch fidelity", /STRICT COFFEE POUCH & PRINTED LABEL TYPOGRAPHY LOCK/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
+check("angry bears coffee image prompt includes coffee pouch fidelity", /STRICT COFFEE\/TEA POUCH & PRINTED LABEL FIDELITY LOCK/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
 check("angry bears coffee image prompt includes label exact copy mandate", /ABSOLUTE LABEL & COLOR FIDELITY MANDATE/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
 check("angry bears coffee image prompt includes exact color lock", /STRICT COLOR REPRODUCTION LOCK/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
+
+// --- liquid capacity and tabletop composition scale tests ---
+const serum100mlImage = buildImagePrompt(
+  { name: "เซรั่มบำรุงผิว 100 ml", category: "สกินแคร์" },
+  { ...settings, flowGenMode: "combined", presenter: "none" }
+);
+const serum100mlVideo = buildVideoPrompt(
+  { name: "เซรั่มบำรุงผิว 100 ml", category: "สกินแคร์" },
+  { ...settings, flowGenMode: "video", presenter: "none" }
+);
+check(
+  "100ml image prompt uses the real-world scale instruction",
+  /100ml|100 ml/i.test(serum100mlImage)
+    && /REAL-WORLD SCALE & PLACEMENT LOCK/i.test(serum100mlImage)
+    && /Analyze the product name.*uploaded product image together/i.test(serum100mlImage)
+    && /capacity\/weight\/dimensions are facts|capacity, weight, and dimensions are facts|capacity, weight, and dimensions as facts/i.test(serum100mlImage),
+  serum100mlImage
+);
+check(
+  "100ml image prompt keeps the tabletop/background proportionate",
+  /surrounding surface and background depth|surface and background depth|medium framing with breathing room/i.test(serum100mlImage)
+    && /never use macro framing|let the product\/table fill the frame|let the product or table fill the frame/i.test(serum100mlImage),
+  serum100mlImage
+);
+check(
+  "100ml video prompt uses the real-world scale instruction",
+  /100ml|100 ml/i.test(serum100mlVideo)
+    && /REAL-WORLD SCALE & PLACEMENT LOCK/i.test(serum100mlVideo)
+    && /Analyze the product name.*uploaded product image together/i.test(serum100mlVideo)
+    && /capacity\/weight\/dimensions are facts|capacity, weight, and dimensions are facts|capacity, weight, and dimensions as facts/i.test(serum100mlVideo),
+  serum100mlVideo
+);
+check(
+  "100ml video prompt keeps the tabletop/background proportionate",
+  /surrounding surface and background depth|surface and background depth|medium framing with breathing room/i.test(serum100mlVideo)
+    && /never use macro framing|let the product\/table fill the frame|let the product or table fill the frame/i.test(serum100mlVideo),
+  serum100mlVideo
+);
+check(
+  "100ml prompts keep the background secondary and do not force props",
+  /product sharp and the background naturally soft\/blurred as secondary visual context|Keep product sharp; background soft\/blurred and secondary/i.test(`${serum100mlImage}\n${serum100mlVideo}`)
+    && /do not force identifiable props or fill the scene with category objects|no forced props or category clutter|without forced props/i.test(`${serum100mlImage}\n${serum100mlVideo}`),
+  `${serum100mlImage}\n${serum100mlVideo}`
+);
+check(
+  "100ml prompts keep the product as the hero without changing physical size",
+  /Product is the hero:[\s\S]*use focus[\s\S]*not resizing/i.test(`${serum100mlImage}\n${serum100mlVideo}`),
+  `${serum100mlImage}\n${serum100mlVideo}`
+);
+check(
+  "100ml prompts choose the smaller plausible scale when uncertain",
+  /when uncertain, choose the smaller plausible scale/i.test(`${serum100mlImage}\n${serum100mlVideo}`),
+  `${serum100mlImage}\n${serum100mlVideo}`
+);
+check(
+  "held products fit the holder's hand",
+  /especially the holder's hand[\s\S]*If held, fit it naturally to the hand; never make it oversized/i.test(`${serum100mlImage}\n${serum100mlVideo}`),
+  `${serum100mlImage}\n${serum100mlVideo}`
+);
 
 // --- small tech accessory scale tests ---
 const mouseProduct = { name: "ไร้สาย Gaming Mouse RGB", category: "computer accessory" };

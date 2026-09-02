@@ -707,6 +707,15 @@ function isUnusualActivityFailure(message) {
 function isAudioGenerationFailure(message) {
     return /audio generation failed|please try a different prompt|silent videos/i.test(String(message || ""));
 }
+async function clearFlowStateForRecovery() {
+    const response = await chrome.runtime.sendMessage({
+        type: "CLEAR_SITE_DATA",
+        payload: { reload: false }
+    }).catch(() => null);
+    if (!response?.ok) {
+        throw new Error(response?.error || "ล้างข้อมูล Google Flow สำหรับ Retry ไม่สำเร็จ");
+    }
+}
 function buildPeopleSafePrompt(prompt) {
     const cleaned = String(prompt || "")
         .split(/\n+/)
@@ -775,8 +784,8 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
                 indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
             }
         } catch(e) {}
-        chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" }).catch(() => {});
-        await sleep(1000);
+        await clearFlowStateForRecovery();
+        await sleep(1500);
         return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
             unusualFallback: true,
             failureReason
@@ -792,8 +801,8 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
                 indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
             }
         } catch(e) {}
-        chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" }).catch(() => {});
-        await sleep(1000);
+        await clearFlowStateForRecovery();
+        await sleep(1500);
         return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
             failureReason
         });
@@ -832,8 +841,8 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
             indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
         }
     } catch(e) {}
-    chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" }).catch(() => {});
-    await sleep(1000);
+    await clearFlowStateForRecovery();
+    await sleep(1500);
     return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
         failureReason
     });
@@ -2363,7 +2372,7 @@ async function waitForResult(phase, options = {}) {
                         indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
                     }
                 } catch(e) {}
-                chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" }).catch(() => {});
+                await clearFlowStateForRecovery();
             } else if (!policyFailure && failureAge < failureGraceMs) {
                 log(`Flow แสดง Failed ชั่วคราว รอผลลัพธ์สำเร็จอีก ${Math.ceil((failureGraceMs - failureAge) / 1000)}s...`);
                 await sleep(1000);

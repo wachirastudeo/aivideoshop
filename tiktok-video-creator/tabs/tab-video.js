@@ -414,7 +414,7 @@ function populateStyleDropdown() {
   const select = document.querySelector("#video-style");
   if (!select) return;
   select.innerHTML = getSelectableVideoStyles().map((style) => `
-    <option value="${style.id}">${style.emoji} ${style.name} - ${style.description}</option>
+    <option value="${style.id}">${style.emoji} ${style.name}</option>
   `).join("");
   select.insertAdjacentHTML("afterbegin", `<option value="Auto">อัตโนมัติ</option>`);
   select.value = HIDDEN_VIDEO_STYLE_IDS.has(settings.videoStyle) ? "Auto" : settings.videoStyle;

@@ -92,12 +92,12 @@ async function routeMessage(message, sender) {
     case "TIKTOK_STUDIO_LOG":        console.log("TikTok Studio:", message.message); return { ok: true };
     case "TIKTOK_DONE":              return handleTikTokDone(message.payload);
     case "PIPELINE_LOG":             console.log("Pipeline:", message.payload); return { ok: true };
-    case "CLEAR_SITE_DATA":          return clearGoogleFlowSiteData();
+    case "CLEAR_SITE_DATA":          return clearGoogleFlowSiteData(message.payload || {});
     default: throw new Error("ไม่รู้จักคำสั่งที่ส่งมา");
   }
 }
 
-async function clearGoogleFlowSiteData() {
+async function clearGoogleFlowSiteData({ reload = true } = {}) {
   console.log("[Background] Clearing labs.google site data (preserving login)...");
   try {
     await new Promise((resolve, reject) => {
@@ -129,16 +129,20 @@ async function clearGoogleFlowSiteData() {
     });
     console.log("[Background] labs.google site data cleared successfully.");
 
-    // รีเฟรชแท็บ Google Flow ทั้งหมดที่เปิดอยู่อัตโนมัติ
-    try {
-      const flowTabs = await queryFlowTabs();
-      for (const tab of flowTabs) {
-        if (tab.id) {
-          chrome.tabs.reload(tab.id);
+    if (reload) {
+      // รีเฟรชแท็บ Google Flow ทั้งหมดที่เปิดอยู่อัตโนมัติ
+      try {
+        const flowTabs = await queryFlowTabs();
+        for (const tab of flowTabs) {
+          if (tab.id) {
+            chrome.tabs.reload(tab.id);
+          }
         }
+      } catch (e) {
+        console.warn("[Background] Reload tabs warning:", e);
       }
-    } catch (e) {
-      console.warn("[Background] Reload tabs warning:", e);
+    } else {
+      console.log("[Background] Skipping Flow tab reload so the active pipeline can recover in-place.");
     }
 
     return { ok: true };
