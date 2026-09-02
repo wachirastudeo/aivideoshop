@@ -31,7 +31,7 @@ async function loadOptions() {
   setChecked("flow-reuse-tab", flow.reuseTab !== false);
   setChecked("flow-reuse-project", flow.reuseProject === true);
   setChecked("focus-tabs", settings.focusTabs === true);
-  const uploadWait = flow.uploadWaitSec ?? 8;
+  const uploadWait = Math.max(30, Math.min(300, flow.uploadWaitSec ?? 120));
   setValue("flow-upload-wait", uploadWait);
   document.querySelector("#flow-upload-wait-label").textContent = uploadWait + "s";
 
@@ -119,7 +119,7 @@ async function saveSettings() {
       autoPortrait: getChecked("flow-auto-portrait"),
       reuseTab: getChecked("flow-reuse-tab"),
       reuseProject: getChecked("flow-reuse-project"),
-      uploadWaitSec: parseInt(getValue("flow-upload-wait"), 10) || 8
+      uploadWaitSec: parseInt(getValue("flow-upload-wait"), 10) || 120
     },
 
     mediaSettings: {

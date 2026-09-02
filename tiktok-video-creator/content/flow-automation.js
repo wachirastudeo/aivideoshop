@@ -106,63 +106,10 @@ const sleep = (ms) => {
         logDelay(totalMs);
     }
 
-    if (document.hidden) {
-        // หากหน้าต่างถูกซ่อน/ย่อไว้ ให้ใช้ setTimeout ตัวเดียวตรงๆ
-        // เพื่อเลี่ยงไม่ให้การวนลูปเช็ค Date.now() + setTimeout(r, 100) ถี่ๆ โดนเบราว์เซอร์หน่วงเวลาสะสม (Timer Throttling)
-        return new Promise(r => setTimeout(r, totalMs));
-    }
-
-    if (totalMs >= 2500) {
-        return new Promise(async (resolve) => {
-            const start = Date.now();
-            const doWiggle = Math.random() > 0.35; // 65% chance of mouse movement
-            const doScroll = Math.random() > 0.60; // 40% chance of screen scroll
-            let wiggleTriggered = false;
-            let scrollTriggered = false;
-            const wiggleDelay = 500 + Math.random() * (totalMs - 1500);
-            const scrollDelay = 800 + Math.random() * (totalMs - 1800);
-            
-            while (Date.now() - start < totalMs) {
-                if (stopRequested) break;
-                const elapsed = Date.now() - start;
-                if (doWiggle && !wiggleTriggered && elapsed > wiggleDelay) {
-                    wiggleTriggered = true;
-                    await wiggleMouse();
-                }
-                if (doScroll && !scrollTriggered && elapsed > scrollDelay) {
-                    scrollTriggered = true;
-                    await nudgeScroll();
-                }
-                await new Promise(r => setTimeout(r, 100));
-            }
-            resolve();
-        });
-    }
+    // การยิง mousemove/scroll สุ่มระหว่างรอไม่ได้ช่วยให้ขั้นตอนสำเร็จ และ event
+    // ที่สร้างจาก content script เป็น synthetic จึงไม่ควรใช้เป็นสัญญาณแทนผู้ใช้จริง
     return new Promise(r => setTimeout(r, totalMs));
 };
-
-async function wiggleMouse() {
-    try {
-        const offsetRange = 40 + Math.random() * 80;
-        const directionX = Math.random() > 0.5 ? 1 : -1;
-        const directionY = Math.random() > 0.5 ? 1 : -1;
-        const targetX = Math.max(10, Math.min(window.innerWidth - 10, currentMouseX + offsetRange * directionX));
-        const targetY = Math.max(10, Math.min(window.innerHeight - 10, currentMouseY + offsetRange * directionY));
-        await trail(targetX, targetY);
-    } catch (e) {}
-}
-
-async function nudgeScroll() {
-    try {
-        const scrollAmount = Math.floor(Math.random() * 90) + 30; // 30-120px
-        const direction = Math.random() > 0.6 ? 1 : -1;
-        window.scrollBy({ top: scrollAmount * direction, behavior: "smooth" });
-        // พักสักครู่แล้วเลื่อนกลับเพื่อไม่ให้เสียมุมมองหลัก
-        const holdTime = 600 + Math.random() * 800;
-        await new Promise(r => setTimeout(r, holdTime));
-        window.scrollBy({ top: -scrollAmount * direction, behavior: "smooth" });
-    } catch (e) {}
-}
 
 function jitter(min, max) { return sleep(min + Math.random() * (max - min)); }
 async function sleepStop(ms) {
@@ -193,14 +140,13 @@ function fireAt(el, cx, cy) {
     el.dispatchEvent(new MouseEvent("click", b()));
 }
 function click(el) {
-    const r = el.getBoundingClientRect();
-    const px = r.width * .2, py = r.height * .2;
+    // DOM fallback ต้องยิง click เพียงครั้งเดียว การเรียก el.click() แล้วตามด้วย
+    // fireAt() จะสร้าง click event สองรอบและทำให้ toggle/menu เปิดแล้วปิดกลับทันที
     try { el.click?.(); } catch { }
-    fireAt(el, r.left + px + Math.random() * (r.width - px * 2), r.top + py + Math.random() * (r.height - py * 2));
 }
 
-// คลิกแบบ "ครั้งเดียว" ด้วย pointer sequence จริง โดยไม่เรียก el.click()
-// ใช้กับปุ่ม toggle/one-shot ที่ click() ปกติยิงซ้ำ 2 ครั้ง (el.click + fireAt) แล้ว toggle กลับ/เด้งเปิดใหม่
+// คลิกแบบ pointer sequence ครั้งเดียว โดยไม่เรียก el.click()
+// ใช้กับปุ่มที่ต้องรับ pointerdown/up ก่อน click
 function pointerClick(el) {
     const r = el.getBoundingClientRect();
     fireAt(el, r.left + r.width / 2, r.top + r.height / 2);
@@ -686,10 +632,10 @@ function mediaCardFailureMessage(cardInfo, status) {
     const message = extractFlowFailureReason(el);
 
     if (isUnusualActivityFailure(message)) {
-        return `Google Flow ตรวจพบพฤติกรรมผิดปกติ (Unusual Activity): ${message || "We noticed some unusual activity"} (คำแนะนำ: ลบ Cookies & Site Data ของ labs.google แล้วรีเฟรชหน้าเว็บ)`;
+        return unusualActivityStopMessage(message);
     }
     if (isAudioGenerationFailure(message)) {
-        return `Google Flow สร้างผลลัพธ์ไม่สำเร็จ: ${message} (คำแนะนำ: ลบ Cookies & Site Data ของ labs.google แล้วรีเฟรชหน้าเว็บ)`;
+        return `Google Flow สร้างผลลัพธ์ไม่สำเร็จ: ${message}`;
     }
     if (/prominent people/i.test(message)) {
         return `Google Flow ปฏิเสธ prompt เพราะอาจเกี่ยวข้องกับบุคคลสาธารณะ: ${message}`;
@@ -702,19 +648,13 @@ function isProminentPeoplePolicyFailure(message) {
     return /prominent people|generating prominent people/i.test(String(message || ""));
 }
 function isUnusualActivityFailure(message) {
-    return /unusual activity|unusual_activity|help center/i.test(String(message || ""));
+    return /we noticed some unusual activity|unusual[ _-]activity/i.test(String(message || ""));
+}
+function unusualActivityStopMessage(message = "") {
+    return `Google Flow ตรวจพบพฤติกรรมผิดปกติ (Unusual Activity): ${message || "We noticed some unusual activity"} — ระบบหยุดอัตโนมัติเพื่อไม่ส่งคำขอซ้ำ กรุณาตรวจหน้า Flow และรอให้ข้อจำกัดคลายก่อนเริ่มงานใหม่`;
 }
 function isAudioGenerationFailure(message) {
     return /audio generation failed|please try a different prompt|silent videos/i.test(String(message || ""));
-}
-async function clearFlowStateForRecovery() {
-    const response = await chrome.runtime.sendMessage({
-        type: "CLEAR_SITE_DATA",
-        payload: { reload: false }
-    }).catch(() => null);
-    if (!response?.ok) {
-        throw new Error(response?.error || "ล้างข้อมูล Google Flow สำหรับ Retry ไม่สำเร็จ");
-    }
 }
 function buildPeopleSafePrompt(prompt) {
     const cleaned = String(prompt || "")
@@ -776,33 +716,14 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
     }
 
     if (isUnusualActivityFailure(failureReason)) {
-        log(`⚡ Flow แจ้งเตือน Unusual Activity → ล้าง Site Data & Cookies และเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติทันที (${attempt}/${maxAttempts})...`);
-        try {
-            localStorage.clear();
-            sessionStorage.clear();
-            if (window.indexedDB && indexedDB.databases) {
-                indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
-            }
-        } catch(e) {}
-        await clearFlowStateForRecovery();
-        await sleep(1500);
-        return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
-            unusualFallback: true,
-            failureReason
-        });
+        const error = unusualActivityStopMessage(failureReason);
+        log(`⛔ ${error}`);
+        return { started: false, error };
     }
 
     if (isAudioGenerationFailure(failureReason)) {
-        log(`⚡ Flow แจ้งเตือน Audio Generation Failed → ล้าง Site Data & Cookies และเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติทันที (${attempt}/${maxAttempts})...`);
-        try {
-            localStorage.clear();
-            sessionStorage.clear();
-            if (window.indexedDB && indexedDB.databases) {
-                indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
-            }
-        } catch(e) {}
-        await clearFlowStateForRecovery();
-        await sleep(1500);
+        log(`Flow แจ้ง Audio Generation Failed → พักก่อน Retry (${attempt}/${maxAttempts})...`);
+        await sleepStop(5000 + Math.random() * 3000);
         return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
             failureReason
         });
@@ -833,16 +754,8 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
         await humanClick(currentButton);
     }
 
-    log("⚠️ กด Retry บนการ์ดแล้วไม่ตอบสนอง → ดำเนินการล้าง Site Data & Cookies และเริ่มสร้างใหม่...");
-    try {
-        localStorage.clear();
-        sessionStorage.clear();
-        if (window.indexedDB && indexedDB.databases) {
-            indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
-        }
-    } catch(e) {}
-    await clearFlowStateForRecovery();
-    await sleep(1500);
+    log("⚠️ กด Retry บนการ์ดแล้วไม่ตอบสนอง → พักก่อนสร้างคำขอเดิมใหม่หนึ่งครั้ง...");
+    await sleepStop(5000 + Math.random() * 3000);
     return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
         failureReason
     });
@@ -1108,20 +1021,6 @@ async function switchToUploadedTab() {
     if (btn) { await humanClick(btn); log("✅ สลับไป Uploaded tab"); await sleep(1000); }
 }
 
-async function refreshMediaList() {
-    log("🔄 รีเฟรชรายการสื่อ (คลิกสลับหมวดหมู่)...");
-    const uploadsBtn = byText(["Uploads", "อัปโหลด"]);
-    const allMediaBtn = byText(["All Media", "สื่อทั้งหมด"]);
-    if (uploadsBtn) {
-        click(uploadsBtn);
-        await sleep(800);
-    }
-    if (allMediaBtn) {
-        click(allMediaBtn);
-        await sleep(800);
-    }
-}
-
 // ── 3. uploadImages ──────────────────────────────────────────
 async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
     await closeFlowPanels({ required: true });
@@ -1194,9 +1093,8 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
         await sleep(1500 + Math.random() * 1500);
 
         // รอจนกระทั่งรูปนี้อัปโหลดเสร็จและพร้อมใช้งาน
-        const secs = Math.max(400, Math.ceil(waitMs / 1000));
+        const secs = Math.max(30, Math.min(300, Math.ceil(waitMs / 1000)));
         let imageReady = false;
-        let elapsed = 0;
         
         for (let s = secs; s > 0; s--) {
             if (stopRequested) return tiles;
@@ -1215,12 +1113,9 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
                 break;
             }
             
-            elapsed++;
-            if (elapsed > 0 && elapsed % 8 === 0) {
-                await refreshMediaList();
-            } else {
-                await sleep(1000);
-            }
+            // Flow อัปเดตรายการสื่อผ่าน React อยู่แล้ว จึง poll DOM เฉยๆ
+            // ไม่คลิกสลับแท็บทุก 8 วินาที ซึ่งรบกวน UI และสร้างคำสั่งซ้ำโดยไม่จำเป็น
+            await sleep(1000);
         }
 
         if (!imageReady) {
@@ -2284,14 +2179,6 @@ async function waitForResult(phase, options = {}) {
     while (Date.now() < end) {
         if (stopRequested) return { tileId: null, mediaUrl: "" };
 
-        // เลียนแบบคนขยับเมาส์/เลื่อนจอเล็กลงระหว่างรอการเจนของ Flow
-        if (Math.random() < 0.12) { // โอกาสประมาณ 12% ในการรันแต่ละลูป (~8 วินาทีต่อครั้ง)
-            if (Math.random() > 0.5) {
-                await wiggleMouse();
-            } else {
-                await nudgeScroll();
-            }
-        }
         const newCards = getMediaCards()
             .filter(card => card.key && !preGenMediaKeys.has(card.key))
             .map(card => ({ card, status: mediaCardStatus(card) }));
@@ -2361,19 +2248,12 @@ async function waitForResult(phase, options = {}) {
             const failureAge = Date.now() - failureSeenAt;
             const policyFailure = isProminentPeoplePolicyFailure(pendingFailure);
             const unusualFailure = isUnusualActivityFailure(pendingFailure);
-            const audioFailure = isAudioGenerationFailure(pendingFailure);
-
-            if (unusualFailure || audioFailure) {
-                log(`⚡ ตรวจพบ Failed ชั่วคราว (${unusualFailure ? "Unusual Activity" : "Audio Generation Failed"}) → ล้างแคช/คุกกี้ และเริ่มใหม่ทันทีโดยไม่รอนับถอยหลัง!`);
-                try {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    if (window.indexedDB && indexedDB.databases) {
-                        indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
-                    }
-                } catch(e) {}
-                await clearFlowStateForRecovery();
-            } else if (!policyFailure && failureAge < failureGraceMs) {
+            if (unusualFailure) {
+                // นี่เป็นข้อจำกัดจากบริการ ไม่ใช่ transient UI failure การล้าง storage
+                // แล้วส่งคำขอเดิมซ้ำทันทีทำให้ session เสียและอาจเพิ่มคำขอที่ถูกปฏิเสธ
+                throw new Error(unusualActivityStopMessage(pendingFailure));
+            }
+            if (!policyFailure && failureAge < failureGraceMs) {
                 log(`Flow แสดง Failed ชั่วคราว รอผลลัพธ์สำเร็จอีก ${Math.ceil((failureGraceMs - failureAge) / 1000)}s...`);
                 await sleep(1000);
                 continue;
@@ -2510,7 +2390,7 @@ async function loadSettings() {
         const r = await chrome.runtime.sendMessage({ type: "GET_FLOW_SETTINGS" });
         if (r && !r.error) return {
             ...r,
-            uploadWaitSec: Math.max(Number(r.uploadWaitSec) || 0, 120)
+            uploadWaitSec: Math.max(30, Math.min(300, Number(r.uploadWaitSec) || 120))
         };
     } catch { }
     return { videoModel: "veo-3.1-lite-low-priority", imageModel: "nano-banana-pro", autoPortrait: true, uploadWaitSec: 120 };
@@ -2587,18 +2467,9 @@ async function runPipeline(payload, runOptions = {}) {
                     throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
                 }
 
-                // บันทึกสถานะเพื่อรีเฟรชหน้าเว็บ 1 ครั้งตามความต้องการของผู้ใช้ เพื่อความสม่ำเสมอของสถานะหน้าเพจ Google Flow
-                const stateToSave = {
-                    jobId,
-                    payload: { phase, prompt, imageUrl, options },
-                    step: "AFTER_UPLOAD",
-                    uploadedTiles: uploadedTiles.map(t => ({ key: t.key, tileId: t.tileId || t.key, mediaUrl: t.mediaUrl, href: t.href }))
-                };
-                await chrome.storage.local.set({ flowActiveJobResume: stateToSave });
-                log("🔄 อัปโหลดเสร็จสิ้นและแสดงรูปภาพชัดเจนแล้ว! รอ 4 วินาทีเพื่อให้คุณตรวจสอบก่อนทำการรีเฟรชหน้าเว็บ...");
-                await sleep(4000);
-                window.location.reload();
-                return new Promise(() => {}); // หยุดเธรดเพื่อรอการรีเฟรช
+                // การ์ดถูกตรวจว่า render พร้อมแล้ว จึงทำขั้นตอนต่อใน session เดิม
+                // ไม่ reload ซ้ำ เพราะทำลาย state และเพิ่ม navigation ที่ไม่จำเป็นทุกงาน
+                log("✅ อัปโหลดเสร็จและ media card พร้อมใช้งานแล้ว");
             }
         }
 
@@ -2993,14 +2864,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         const data = await chrome.storage.local.get("flowActiveJobResume");
         const state = data?.flowActiveJobResume;
         if (state && state.jobId) {
-            if (state.step === "AFTER_UPLOAD") {
-                log("🔄 รีเฟรชรอบที่ 1 สำเร็จ! กำลังเริ่มรีเฟรชรอบที่ 2 เพื่อความเสถียรสูงสุด...");
-                state.step = "AFTER_FIRST_REFRESH";
-                await chrome.storage.local.set({ flowActiveJobResume: state });
-                await sleep(2000);
-                window.location.reload();
-            } else if (state.step === "AFTER_FIRST_REFRESH") {
-                log("🔄 รีเฟรชครบ 2 รอบแล้ว! รอสักครู่ให้ข้อมูลโหลดเสร็จก่อนเริ่มดำเนินการกรอกข้อความต่อไป...");
+            if (state.step === "AFTER_UPLOAD" || state.step === "AFTER_FIRST_REFRESH") {
+                log("🔄 พบงานจากเวอร์ชันเดิมหลังรีเฟรช กำลังดำเนินการต่อโดยไม่รีโหลดซ้ำ...");
                 await chrome.storage.local.remove("flowActiveJobResume");
                 // รอให้หน้าเว็บและองค์ประกอบต่างๆ โหลดเสร็จสิ้นสมบูรณ์
                 await sleep(4500);

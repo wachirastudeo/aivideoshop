@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const toggle = document.getElementById('autoToggle');
   const manualBtn = document.getElementById('manualClearBtn');
 
-  const { autoClearEnabled = true } = await chrome.storage.local.get("autoClearEnabled");
+  const { autoClearEnabled = false } = await chrome.storage.local.get("autoClearEnabled");
   toggle.checked = autoClearEnabled;
 
   toggle.addEventListener('change', async () => {

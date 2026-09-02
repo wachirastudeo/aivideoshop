@@ -1,24 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "Labs.google Auto-Clear Fail & Countdown",
+  "name": "Labs.google Activity Monitor",
   "version": "1.0.0",
-  "description": "ตรวจจับ Fail ชั่วคราวบน labs.google แล้วล้างแคช คุกกี้ และรีเฟรชให้อัตโนมัติทันที",
+  "description": "ตรวจจับข้อผิดพลาดบน labs.google และแจ้งเตือนโดยไม่ส่งคำขอซ้ำอัตโนมัติ",
   "permissions": [
     "storage",
-    "cookies",
     "browsingData",
     "tabs"
   ],
   "host_permissions": [
-    "*://labs.google/*",
-    "*://*.google.com/*"
+    "https://labs.google/*",
+    "https://labs.google.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["*://labs.google/*"],
+      "matches": ["https://labs.google/*", "https://labs.google.com/*"],
       "js": ["content.js"],
       "run_at": "document_end"
     }

@@ -20,8 +20,13 @@ const RUNNING_STATUSES = new Set(["image_generating", "video_generating", "flow1
 const POST_RETRY_ATTEMPTS = 2;
 const POST_RETRY_DELAY_MS = 60000;
 const FLOW_LOGIN_RETRY_MS = 5000;
-const FLOW_TIMEOUT_RELOAD_WAIT_MS = 15000; // รอหลัง reload flow ก่อน retry
+const FLOW_TIMEOUT_RELOAD_WAIT_MS = 60000; // พักก่อน retry เพื่อลดการส่งคำขอติดกัน
 const FLOW_TIMEOUT_MAX_RETRY = 2;          // จำนวนครั้งสูงสุดที่จะ retry เมื่อ timeout
+const FLOW_ITEM_COOLDOWN_MIN_MS = 30000;
+const FLOW_ITEM_COOLDOWN_MAX_MS = 60000;
+const FLOW_BREAK_EVERY_ITEMS = 5;
+const FLOW_BREAK_MIN_MS = 180000;
+const FLOW_BREAK_MAX_MS = 300000;
 
 let helpers = {};
 let settings = getDefaultSettings();
@@ -989,16 +994,16 @@ async function processQueue() {
       if (i < productQueue.length - 1) {
         const hasNextPending = productQueue.slice(i + 1).some(p => p.status !== "done");
         if (hasNextPending) {
-          if (processedCount > 0 && processedCount % 10 === 0) {
-            const breakSeconds = 180 + Math.floor(Math.random() * 61); // สุ่ม 180 - 240 วินาที (3-4 นาที)
+          if (processedCount > 0 && processedCount % FLOW_BREAK_EVERY_ITEMS === 0) {
+            const breakSeconds = Math.round(randomBetween(FLOW_BREAK_MIN_MS, FLOW_BREAK_MAX_MS) / 1000);
             const minutesFormatted = (breakSeconds / 60).toFixed(1);
             helpers.showStatus(`ทำรายการครบ ${processedCount} รายการแล้ว พักเบรก ${minutesFormatted} นาทีเพื่อป้องกันการโดนจำกัดสิทธิ์...`, "info");
             helpers.logActivity?.(`พักเบรก ${minutesFormatted} นาที (${breakSeconds} วินาที) เนื่องจากทำรายการครบ ${processedCount} รายการ...`, "info");
             await interruptibleDelay(breakSeconds * 1000);
           } else {
-            const delaySeconds = 4 + Math.floor(Math.random() * 3); // สุ่ม 4 - 6 วินาที (เฉลี่ย 5 วินาที)
-            helpers.showStatus(`รอจังหวะแบบสุ่ม ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");
-            helpers.logActivity?.(`รอหน่วงเวลาระหว่างรายการชิ้นถัดไป ${delaySeconds} วินาที...`, "info");
+            const delaySeconds = Math.round(randomBetween(FLOW_ITEM_COOLDOWN_MIN_MS, FLOW_ITEM_COOLDOWN_MAX_MS) / 1000);
+            helpers.showStatus(`พัก ${delaySeconds} วินาทีก่อนเริ่มสินค้าชิ้นถัดไป...`, "info");
+            helpers.logActivity?.(`พักระหว่างรายการ ${delaySeconds} วินาทีเพื่อลดคำขอต่อเนื่อง...`, "info");
             await interruptibleDelay(delaySeconds * 1000);
           }
         }
@@ -1085,7 +1090,7 @@ async function openGoogleFlowWithLoginResume(phase, prompt, imageUrl, options, p
           "warning"
         );
         helpers.logActivity?.(
-          `สินค้า ${index + 1}: Google Flow timeout → ล้างแคชและ reload หน้า แล้วลองใหม่ (${timeoutRetryCount}/${FLOW_TIMEOUT_MAX_RETRY})`,
+          `สินค้า ${index + 1}: Google Flow timeout → พัก 60 วินาทีแล้วลองใหม่โดยคง session เดิม (${timeoutRetryCount}/${FLOW_TIMEOUT_MAX_RETRY})`,
           "warning"
         );
         // รีเซ็ต status กลับไปเริ่มต้นของรายการนี้ (ล้าง approved image ออกเพื่อเจนใหม่ทั้งหมดจากขั้นตอนแรก)
@@ -1095,12 +1100,8 @@ async function openGoogleFlowWithLoginResume(phase, prompt, imageUrl, options, p
         product.errorMessage = "";
         await persistState();
         renderQueue();
-        // ส่งคำสั่งล้าง site data + reload flow tab ผ่าน background
-        try {
-          await chrome.runtime.sendMessage({ type: "CLEAR_SITE_DATA" });
-        } catch (e) {
-          console.warn("[FlowTimeout] CLEAR_SITE_DATA warning:", e);
-        }
+        // อย่าล้าง storage/cookies เมื่อ timeout เพราะทำลาย session และการ retry
+        // ทันทีซ้ำๆ อาจเพิ่มภาระหรือทำให้บริการจำกัดการใช้งานมากขึ้น
         await interruptibleDelay(FLOW_TIMEOUT_RELOAD_WAIT_MS);
         continue; // วนลูปใหม่ → เรียก openGoogleFlow อีกครั้งสำหรับรายการนี้จากขั้นตอนแรก
       }
@@ -1139,6 +1140,10 @@ function delay(ms) {
   }
   const jitterFactor = finalMs >= 300 ? (0.75 + Math.random() * 0.50) : 1.0; // 0.75 to 1.25
   return new Promise(resolve => setTimeout(resolve, Math.round(finalMs * jitterFactor)));
+}
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
 }
 
 async function interruptibleDelay(ms, interval = 500) {

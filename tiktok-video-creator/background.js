@@ -92,63 +92,7 @@ async function routeMessage(message, sender) {
     case "TIKTOK_STUDIO_LOG":        console.log("TikTok Studio:", message.message); return { ok: true };
     case "TIKTOK_DONE":              return handleTikTokDone(message.payload);
     case "PIPELINE_LOG":             console.log("Pipeline:", message.payload); return { ok: true };
-    case "CLEAR_SITE_DATA":          return clearGoogleFlowSiteData(message.payload || {});
     default: throw new Error("ไม่รู้จักคำสั่งที่ส่งมา");
-  }
-}
-
-async function clearGoogleFlowSiteData({ reload = true } = {}) {
-  console.log("[Background] Clearing labs.google site data (preserving login)...");
-  try {
-    await new Promise((resolve, reject) => {
-      chrome.browsingData.remove(
-        {
-          origins: [
-            "https://labs.google",
-            "https://labs.google.com"
-          ]
-        },
-        {
-          cacheStorage: true,
-          cookies: false, // ไม่ลบคุกกี้ เพื่อไม่ให้หลุดล็อกอิน Google Account
-          fileSystems: true,
-          indexedDB: true,
-          localStorage: true,
-          serviceWorkers: true,
-          webSQL: true,
-          cache: true
-        },
-        () => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else {
-            resolve();
-          }
-        }
-      );
-    });
-    console.log("[Background] labs.google site data cleared successfully.");
-
-    if (reload) {
-      // รีเฟรชแท็บ Google Flow ทั้งหมดที่เปิดอยู่อัตโนมัติ
-      try {
-        const flowTabs = await queryFlowTabs();
-        for (const tab of flowTabs) {
-          if (tab.id) {
-            chrome.tabs.reload(tab.id);
-          }
-        }
-      } catch (e) {
-        console.warn("[Background] Reload tabs warning:", e);
-      }
-    } else {
-      console.log("[Background] Skipping Flow tab reload so the active pipeline can recover in-place.");
-    }
-
-    return { ok: true };
-  } catch (error) {
-    console.error("[Background] Failed to clear labs.google site data:", error);
-    return { ok: false, error: error.message };
   }
 }
 
@@ -512,7 +456,7 @@ async function getFlowSettings() {
     videoModel: settings.flow?.videoModel || "veo-3.1-lite-low-priority",
     imageModel: settings.flow?.imageModel || "nano-banana-pro",
     autoPortrait: settings.flow?.autoPortrait !== false,
-    uploadWaitSec: settings.flow?.uploadWaitSec ?? 8,
+    uploadWaitSec: settings.flow?.uploadWaitSec ?? 120,
     reuseProject: settings.flow?.reuseProject === true,
     imageCount: media.imageCount || 1,
     videoCount: media.videoCount || 1,

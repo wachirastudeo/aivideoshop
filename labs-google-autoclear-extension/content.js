@@ -1,82 +1,51 @@
 (function() {
   'use strict';
 
-  console.log("⚡ [Labs.google Auto-Clear Extension] Content script activated!");
+  console.log("⚠️ [Labs.google Activity Monitor] Content script activated");
 
   const errorKeywords = [
     "we noticed some unusual activity",
     "unusual activity",
-    "please visit the help center",
-    "failed",
-    "please wait",
     "try again in",
     "rate limit",
-    "quota exceeded",
-    "something went wrong"
+    "quota exceeded"
   ];
 
-  let isProcessing = false;
+  let lastDetectedSignature = "";
 
   async function detectAndClear() {
-    if (isProcessing) return;
-
-    // ตรวจสอบว่ามีสวิตช์ปิดการทำงานไว้ใน storage หรือไม่
-    const { autoClearEnabled = true } = await chrome.storage.local.get("autoClearEnabled");
+    // ปิดค่าเริ่มต้นไว้ก่อน ผู้ใช้ต้องเปิดตัวตรวจจับเองจาก popup
+    const { autoClearEnabled = false } = await chrome.storage.local.get("autoClearEnabled");
     if (!autoClearEnabled) return;
 
     const bodyText = document.body ? document.body.innerText.toLowerCase() : "";
-    let foundError = false;
+    let foundKeyword = "";
 
     for (const keyword of errorKeywords) {
       if (bodyText.includes(keyword)) {
-        foundError = true;
+        foundKeyword = keyword;
         break;
       }
     }
 
-    if (!foundError) return;
+    if (!foundKeyword) return;
+    const signature = `${location.pathname}:${foundKeyword}`;
+    if (signature === lastDetectedSignature) return;
+    lastDetectedSignature = signature;
 
-    isProcessing = true;
-    console.warn("⚠️ [Labs.google Auto-Clear] ตรวจพบการ์ด Fail/นับถอยหลัง! สั่งล้างแคชอัตโนมัติ...");
-
-    // 1. กดปุ่ม ลบการ์ด (🗑️) หรือ Retry (🔄) บนหน้าจอทันทีถ้าพบ
-    const buttons = document.querySelectorAll('button');
-    buttons.forEach(btn => {
-      const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
-      const text = btn.innerText.toLowerCase();
-      if (ariaLabel.includes('delete') || ariaLabel.includes('retry') || text.includes('retry')) {
-        try { btn.click(); } catch(e) {}
-      }
-    });
-
-    // 2. เคลียร์ DOM Storage ฝั่งหน้าเว็บ
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch(e) {}
-
-    if (window.indexedDB && indexedDB.databases) {
-      indexedDB.databases().then(dbs => {
-        dbs.forEach(db => {
-          try { indexedDB.deleteDatabase(db.name); } catch(e){}
-        });
-      });
-    }
-
-    // 3. แสดง Banner แจ้งเตือนสั้นๆ บนหน้าจอ
-    showNoticeBanner();
-
-    // 4. ส่งข้อความให้ Background Service Worker ล้าง Cookies
-    chrome.runtime.sendMessage({ action: "CLEAR_SITE_DATA" }, (response) => {
-      console.log("Response from background:", response);
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+    // แจ้งเตือนอย่างเดียว: ไม่กด Retry/Delete, ไม่ล้าง storage และไม่ reload
+    // โดยเฉพาะ Unusual Activity ต้องให้ผู้ใช้ตรวจสอบ ไม่ควรส่งคำขอเดิมซ้ำทันที
+    console.warn("⚠️ [Labs.google Monitor] ตรวจพบข้อผิดพลาด:", foundKeyword);
+    showNoticeBanner(foundKeyword);
+    await chrome.storage.local.set({
+      lastDetectedError: { keyword: foundKeyword, url: location.href, detectedAt: Date.now() }
     });
   }
 
-  function showNoticeBanner() {
+  function showNoticeBanner(keyword) {
+    document.getElementById("labs-google-monitor-banner")?.remove();
     const banner = document.createElement('div');
+    banner.id = "labs-google-monitor-banner";
     banner.style.position = 'fixed';
     banner.style.top = '15px';
     banner.style.left = '50%';
@@ -90,7 +59,7 @@
     banner.style.fontWeight = 'bold';
     banner.style.fontSize = '16px';
     banner.style.fontFamily = 'sans-serif';
-    banner.innerHTML = '⚡ [Extension] ตรวจพบ Fail! ล้างคุกกี้/แคช และรีเฟรชให้อัตโนมัติทันที';
+    banner.textContent = `⚠️ ตรวจพบ ${keyword} — หยุดอัตโนมัติไว้ก่อน โปรดตรวจหน้า Flow`;
     document.body.appendChild(banner);
   }
 
