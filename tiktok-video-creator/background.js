@@ -81,6 +81,9 @@ async function routeMessage(message, sender) {
     case "GET_FLOW_SETTINGS":        return getFlowSettings();
     case "FLOW_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
     case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender, { detachAfter: false });
+    case "FLOW_ATTACH_MEDIA_BY_NAME": return attachFlowMediaByAccessibleName(message.payload, sender);
+    case "FLOW_CLICK_ADD_TO_PROMPT": return clickFlowAddToPrompt(message.payload, sender);
+    case "FLOW_FIND_GENERATED_MEDIA": return findFlowGeneratedMedia(message.payload, sender);
     case "FLOW_DEBUGGER_ATTACH":     return ensureDebuggerAttached(sender?.tab?.id).then(() => ({ ok: true }));
     case "FLOW_DEBUGGER_DETACH":     return detachDebuggerTab(sender?.tab?.id);
     case "FLOW_PING":                return { pong: true };
@@ -206,6 +209,194 @@ function getBezierPoints(x0, y0, x3, y3, steps) {
     points.push({ x, y });
   }
   return points;
+}
+
+// Flow's current media grid is rendered in an encapsulated component. The
+// page content script can upload a file, but cannot query or click its tile.
+// CDP's accessibility tree crosses that boundary, so use it only for the
+// one stable UI operation needed here: file-name tile -> More options -> Add
+// to prompt. This keeps the rest of the pipeline in the normal content script.
+function axText(node) {
+  return String(node?.name?.value || node?.description?.value || "").trim();
+}
+
+async function getFlowAXTree(tabId) {
+  await ensureDebuggerAttached(tabId);
+  const result = await chrome.debugger.sendCommand({ tabId }, "Accessibility.getFullAXTree");
+  return result?.nodes || [];
+}
+
+async function clickAXNode(tabId, node) {
+  const { x, y } = await getAXNodeCenter(tabId, node);
+  const target = { tabId };
+  await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none" });
+  await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+  await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+}
+
+async function getAXNodeCenter(tabId, node) {
+  const backendNodeId = node?.backendDOMNodeId;
+  if (!backendNodeId) throw new Error("Flow accessibility node has no clickable DOM target");
+  const model = await chrome.debugger.sendCommand({ tabId }, "DOM.getBoxModel", { backendNodeId });
+  const quad = model?.model?.content || model?.model?.border;
+  if (!Array.isArray(quad) || quad.length < 8) throw new Error("Flow accessibility node has no visible bounds");
+  return {
+    x: Math.round((quad[0] + quad[2] + quad[4] + quad[6]) / 4),
+    y: Math.round((quad[1] + quad[3] + quad[5] + quad[7]) / 4)
+  };
+}
+
+async function attachFlowMediaByAccessibleName(payload, sender) {
+  const tabId = sender?.tab?.id;
+  const fileName = String(payload?.fileName || "").trim();
+  if (!tabId || !fileName) throw new Error("Missing Flow tab or uploaded filename");
+  const expected = fileName.toLowerCase();
+  const findNode = (nodes, predicate) => nodes.find(node => predicate(node, axText(node).toLowerCase(), String(node?.role?.value || "").toLowerCase()));
+
+  let nodes = await getFlowAXTree(tabId);
+  const tile = findNode(nodes, (node, label, role) => role === "button" && label === expected);
+  if (!tile) return { found: false, attached: false };
+
+  // A direct click on a current Flow tile opens its editor. Hovering exposes
+  // the tile's own overflow control without leaving the project canvas.
+  const tileCenter = await getAXNodeCenter(tabId, tile);
+  await chrome.debugger.sendCommand({ tabId }, "Input.dispatchMouseEvent", {
+    type: "mouseMoved", x: tileCenter.x, y: tileCenter.y, button: "none"
+  });
+  await delay(250);
+  nodes = await getFlowAXTree(tabId);
+  const candidates = nodes.filter(node => {
+    const label = axText(node).toLowerCase();
+    return String(node?.role?.value || "").toLowerCase().includes("button") && label === "more options";
+  });
+  const positioned = await Promise.all(candidates.map(async node => ({
+    node,
+    center: await getAXNodeCenter(tabId, node).catch(() => null)
+  })));
+  const moreOptions = positioned
+    .filter(item => item.center)
+    .sort((a, b) => {
+      const aDistance = Math.hypot(a.center.x - tileCenter.x, a.center.y - tileCenter.y);
+      const bDistance = Math.hypot(b.center.x - tileCenter.x, b.center.y - tileCenter.y);
+      return aDistance - bDistance;
+    })[0]?.node;
+  if (!moreOptions) return { found: true, attached: false, error: "Hovered upload tile but did not find its More options action" };
+
+  await clickAXNode(tabId, moreOptions);
+  await delay(150);
+  nodes = await getFlowAXTree(tabId);
+  const addToPrompt = findNode(nodes, (_node, label) => label === "add to prompt");
+  if (!addToPrompt) return { found: true, attached: false, error: "Opened upload menu but Add to prompt was unavailable" };
+
+  await clickAXNode(tabId, addToPrompt);
+  await delay(250);
+  return { found: true, attached: true, key: `ax:${fileName}`, label: fileName };
+}
+
+async function clickFlowAddToPrompt(payload, sender) {
+  const tabId = sender?.tab?.id;
+  if (!tabId) return { ok: false, error: "Missing Flow tab" };
+  await ensureDebuggerAttached(tabId);
+  const findNode = (nodes, predicate) => nodes.find(node => predicate(node, axText(node).toLowerCase(), String(node?.role?.value || "").toLowerCase()));
+  let nodes = await getFlowAXTree(tabId);
+  const addToPrompt = findNode(nodes, (_node, label) => {
+    const l = (label || "").toLowerCase();
+    return l === "add to prompt" || l.includes("add to prompt") || l.includes("use as input") || l.includes("เพิ่มไปยังพรอมต์");
+  });
+  if (addToPrompt) {
+    await clickAXNode(tabId, addToPrompt);
+    await delay(300);
+    return { ok: true, clicked: true };
+  }
+  return { ok: false, error: "Add to prompt not found in Flow AX tree" };
+}
+
+// Flow v2 keeps generated thumbnails inside the same encapsulated grid as
+// uploads. Expose the media URL through the flattened CDP DOM so the content
+// script can finish the pipeline without waiting forever on an empty DOM view.
+async function findFlowGeneratedMedia(payload, sender) {
+  const tabId = sender?.tab?.id;
+  if (!tabId) return { found: false };
+  await ensureDebuggerAttached(tabId);
+
+  // Flow often creates the video tile before it exposes the thumbnail in the
+  // page DOM. Moving over the AX thumbnail reveals the tile media/control
+  // subtree; the next content-script polling pass can then read the result.
+  // Do not return the poster as a video URL here.
+  if (payload?.phase === "video") {
+    try {
+      const axNodes = await getFlowAXTree(tabId);
+      const thumbnail = axNodes.find(node => /generated\s+video\s+thumbnail/i.test(axText(node)));
+      if (thumbnail) {
+        const { x, y } = await getAXNodeCenter(tabId, thumbnail);
+        await chrome.debugger.sendCommand({ tabId }, "Input.dispatchMouseEvent", {
+          type: "mouseMoved", x, y, button: "none"
+        });
+        return { found: false, revealedVideoTile: true };
+      }
+    } catch (error) {
+      console.warn("[Background] Unable to reveal Flow video thumbnail:", error?.message || error);
+    }
+  }
+
+  const result = await chrome.debugger.sendCommand({ tabId }, "DOM.getFlattenedDocument", { depth: -1, pierce: true });
+  const nodes = result?.nodes || [];
+  const urls = [];
+  for (const node of nodes) {
+    const name = String(node?.nodeName || '').toUpperCase();
+    if (name !== 'IMG' && name !== 'VIDEO') continue;
+    const attrs = node?.attributes || [];
+    for (let i = 0; i < attrs.length; i += 2) {
+      const attrName = String(attrs[i]).toLowerCase();
+      if (!/^(src|poster|href|data-src|data-url|style)$/.test(attrName)) continue;
+      const raw = String(attrs[i + 1] || '');
+      const candidates = attrName === 'style'
+        ? [...raw.matchAll(/url\(["']?([^"')]+)["']?\)/gi)].map(m => m[1])
+        : [raw];
+      for (const src of candidates) {
+        if (/^(https?:|blob:|data:)/i.test(src) && !/1\.jpg/i.test(src)) urls.push(src);
+      }
+    }
+  }
+  // The uploaded reference is filtered above. Flow may expose only one
+  // generated thumbnail (and may render it inside a closed component), so a
+  // single remaining media URL is sufficient evidence of a result.
+  const mediaUrl = urls.at(-1) || '';
+  if (mediaUrl) return { found: true, mediaUrl, key: `cdp:${mediaUrl}` };
+
+  // Flow renders result tiles inside nested shadow roots. Runtime.evaluate
+  // can traverse those roots and read the playable media source directly.
+  const evaluated = await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
+    awaitPromise: true,
+    returnByValue: true,
+    expression: `(() => {
+      const out = [];
+      const visit = root => {
+        for (const el of root.querySelectorAll?.('*') || []) {
+          if (el.matches?.('img,video')) {
+            const src = el.currentSrc || el.src || el.poster || el.querySelector?.('source')?.src || '';
+            if (/^(https?:|blob:|data:)/i.test(src) && !/1\\.jpg/i.test(src)) out.push(src);
+          }
+          if (el.shadowRoot) visit(el.shadowRoot);
+        }
+      };
+      visit(document);
+      return out;
+    })()`
+  }).catch(() => null);
+  const deepUrl = evaluated?.result?.value?.at?.(-1) || '';
+  if (deepUrl) return { found: true, mediaUrl: deepUrl, key: `cdp:${deepUrl}` };
+
+  // Editor views often render the asset through canvas/WebCodecs, leaving no
+  // img/video element. The CDN URL is still present in the page's resource
+  // timing buffer; use the newest media-looking request as the handoff URL.
+  const perf = await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
+    returnByValue: true,
+    expression: `performance.getEntriesByType('resource').map(e => e.name).filter(u => /(?:mp4|webm|png|jpe?g|avif|webp|media|blob)/i.test(u) && !/1\\.jpg/i.test(u)).slice(-20)`
+  }).catch(() => null);
+  const perfUrls = perf?.result?.value || [];
+  const perfUrl = perfUrls.at(-1) || '';
+  return perfUrl ? { found: true, mediaUrl: perfUrl, key: `cdp:${perfUrl}` } : { found: false };
 }
 
 async function clickPointWithDebugger(payload, sender, options = {}) {

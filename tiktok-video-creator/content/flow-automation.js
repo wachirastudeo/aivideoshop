@@ -437,6 +437,32 @@ async function closeFlowPanels(options = {}) {
     await closeOpenSessionPanel(options);
     await closeOpenAgentToggle(options);
 }
+async function closeGeneratedAssetOverlay() {
+    // The result preview X and the prompt editor's "Clear prompt" X are both
+    // rendered as close icons. Pick the topmost visible close control (the
+    // preview X is above the editor) and verify that it really disappeared.
+    const signature = btn => `${btn.getAttribute("aria-label") || ""} ${btn.textContent || ""} ${[...btn.querySelectorAll("mat-icon,.google-symbols,.material-icons")].map(n => n.textContent || "").join(" ")}`.trim();
+    const candidates = [...document.querySelectorAll("button,[role='button']")]
+        .filter(isVisible)
+        .filter(btn => !/clear prompt/i.test(btn.getAttribute("aria-label") || ""))
+        .filter(btn => /(?:^|\s)(?:close|dismiss|ปิด)(?:\s|$)/i.test(signature(btn)));
+    // In the current UI the modal close control is exposed as the stable
+    // `Clear prompt` button (same close icon/class shown in the DOM dump).
+    const clearPrompt = [...document.querySelectorAll("button[aria-label='Clear prompt']")].find(isVisible);
+    if (clearPrompt) candidates.push(clearPrompt);
+    if (!candidates.length) return false;
+    const button = candidates.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
+    try {
+        await humanClick(button);
+        const end = Date.now() + 2200;
+        while (Date.now() < end) {
+            if (!isVisible(button)) { log("✅ ปิดหน้าต่างผลลัพธ์ภาพแล้ว"); return true; }
+            await sleep(150);
+        }
+    } catch {}
+    log("⚠️ พบปุ่มปิดหน้าต่างผลลัพธ์ภาพ แต่หน้าต่างยังไม่ปิด");
+    return false;
+}
 function hasPromptEditor() {
     const el = findPromptEditor();
     return Boolean(el && isVisible(el));
@@ -501,6 +527,9 @@ function getMediaCards() {
     const cards = [];
     const seen = new Set();
     const candidates = [
+        // Current Flow v2 generated tiles use this element and expose the
+        // stable asset identity on the nested image.
+        ...document.querySelectorAll("flow-grid-tile-container, flow-image-tile"),
         ...document.querySelectorAll("[data-tile-id]"),
         ...document.querySelectorAll('a[href*="/edit/"]'),
         ...document.querySelectorAll("[draggable='true']"),
@@ -508,8 +537,14 @@ function getMediaCards() {
     ];
 
     for (const node of candidates) {
-        const card = node.closest("[data-tile-id], [draggable='true'], a[href*='/edit/'], article") || node;
-        const tileId = card.getAttribute?.("data-tile-id") || node.closest?.("[data-tile-id]")?.getAttribute("data-tile-id") || "";
+        // Current Flow upload tiles are plain `button filename > img` rather
+        // than data-tile-id cards. Keep the button so its filename is usable.
+        const card = node.closest("[data-tile-id], [draggable='true'], a[href*='/edit/'], article, button") || node;
+        const tileId = card.getAttribute?.("data-tile-id") ||
+            node.getAttribute?.("data-media-id") ||
+            node.querySelector?.("[data-media-id]")?.getAttribute("data-media-id") ||
+            node.closest?.("[data-media-id]")?.getAttribute("data-media-id") ||
+            node.closest?.("[data-tile-id]")?.getAttribute("data-tile-id") || "";
         const link = card.matches?.('a[href*="/edit/"]') ? card : card.querySelector?.('a[href*="/edit/"]');
         const href = link?.href || "";
         const mediaUrl = getTileMediaUrl(card) || getTileMediaUrl(node);
@@ -524,18 +559,18 @@ function getMediaCards() {
 }
 function findMediaCard(cardInfo) {
     if (cardInfo.tileId) {
-        const matches = [...document.querySelectorAll(`[data-tile-id="${CSS.escape(cardInfo.tileId)}"]`)];
+        const matches = [...document.querySelectorAll(`[data-tile-id="${CSS.escape(cardInfo.tileId)}"], [data-media-id="${CSS.escape(cardInfo.tileId)}"]`)];
         if (matches.length > 0) {
             return matches.find((el) => !el.parentElement?.closest(`[data-tile-id="${CSS.escape(cardInfo.tileId)}"]`)) || matches[0];
         }
     }
     if (cardInfo.href) {
         const byHref = [...document.querySelectorAll('a[href*="/edit/"]')].find(link => link.href === cardInfo.href);
-        if (byHref) return byHref.closest("[data-tile-id], [draggable='true'], article") || byHref;
+        if (byHref) return byHref.closest("[data-tile-id], [draggable='true'], article, button") || byHref;
     }
     if (cardInfo.mediaUrl) {
         const byMedia = [...document.querySelectorAll("img,video")].find(media => (media.currentSrc || media.src) === cardInfo.mediaUrl);
-        if (byMedia) return byMedia.closest("[data-tile-id], [draggable='true'], article") || byMedia;
+        if (byMedia) return byMedia.closest("[data-tile-id], [draggable='true'], article, button") || byMedia;
     }
     return null;
 }
@@ -594,7 +629,7 @@ function findFallbackMediaCard(tile, phase = "", tabIcon = "", excludedKeys = ne
     return tabIcon === "drive_folder_upload" ? candidates[0] : candidates[candidates.length - 1];
 }
 function describeMediaCard(el) {
-    const root = el?.closest?.("[data-tile-id], [draggable='true'], a[href*='/edit/'], article") || el;
+    const root = el?.closest?.("[data-tile-id], [draggable='true'], a[href*='/edit/'], article, button") || el;
     if (!root) return null;
     const tileId = root.getAttribute?.("data-tile-id") || "";
     const link = root.matches?.('a[href*="/edit/"]') ? root : root.querySelector?.('a[href*="/edit/"]');
@@ -604,7 +639,7 @@ function describeMediaCard(el) {
     return { key: tileId || href || mediaUrl || label, tileId, href, mediaUrl, label };
 }
 function isReadyUploadedImageCard(card, status, el) {
-    if (!card?.tileId || !status.ready || status.failed || status.progress) return false;
+    if (!card?.key || !status.ready || status.failed || status.progress) return false;
     const video = el.matches?.("video") ? el : el.querySelector?.("video");
     const image = el.matches?.("img") ? el : el.querySelector?.("img,[style*='background-image']");
     if (!image || video) return false;
@@ -624,7 +659,7 @@ function sameMediaUrl(a = "", b = "") {
 }
 function mediaCardStatus(cardInfo) {
     const el = findMediaCard(cardInfo);
-    if (!el) return { ready: false, failed: false, progress: true, rendered: false, text: "" };
+    if (!el) return { ready: false, failed: false, progress: false, rendered: false, text: "" };
     const text = mediaCardDeepText(el).toLowerCase();
 
     // ตรวจสอบ spinner และสถานะอัปโหลด/ประมวลผล ซึ่งระบุการทำงานของระบบภายนอกที่ไม่ใช่การเจนจาก prompt
@@ -940,6 +975,125 @@ function toBlob(dataUrl) {
     return new Blob([buf], { type: mime });
 }
 
+function findImageFileInput() {
+    return document.querySelector('input[type="file"][accept*="image" i]')
+        || document.querySelector('input[type="file"]');
+}
+
+function queryAllIncludingShadowRoots(selector, root = document) {
+    const found = [];
+    const visit = (node) => {
+        found.push(...node.querySelectorAll(selector));
+        for (const element of node.querySelectorAll("*")) {
+            if (element.shadowRoot) visit(element.shadowRoot);
+        }
+    };
+    visit(root);
+    return found;
+}
+
+function findReadyUploadedFileCard(fileName) {
+    const expected = String(fileName || "").trim().toLowerCase();
+    if (!expected) return null;
+    for (const button of queryAllIncludingShadowRoots("button")) {
+        // A Flow tile lives inside its own component. Its inner button can
+        // report a zero-sized rect to the page script despite being visible
+        // and actionable in the composed UI, so do not gate this exact
+        // filename match on isVisible().
+        if (!elementText(button).trim().toLowerCase().includes(expected)) continue;
+        // Flow v2 exposes the filename as a button only after its upload has
+        // finished. The image can be a sibling in a nested container, so do
+        // not require a particular thumbnail hierarchy here.
+        const root = button.closest("[data-tile-id], [draggable='true'], a[href*='/edit/'], article") || button.parentElement || button;
+        return root;
+    }
+    return null;
+}
+
+function setFileInputFiles(input, file) {
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const filesSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files")?.set;
+    if (filesSetter) filesSetter.call(input, transfer.files);
+    else input.files = transfer.files;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function findAddMediaButton() {
+    const exact = [...document.querySelectorAll(
+        'button[aria-label*="add media" i], button[mattooltip*="add media" i], [role="button"][aria-label*="add media" i]'
+    )].find(isVisible);
+    return exact || byText(["Add Media", "เพิ่มสื่อ"]);
+}
+
+function findUploadMenuItem() {
+    const candidates = [...document.querySelectorAll("body *")]
+        .filter(isVisible)
+        .map(el => ({
+            el: el.closest('button, [role="button"], [role="menuitem"], [tabindex], [mat-menu-item], [class*="menu-item"]') || el,
+            text: elementText(el).trim().toLowerCase()
+        }))
+        .filter(item => /^(upload|อัปโหลด)$/.test(item.text));
+    candidates.sort((a, b) => a.text.length - b.text.length);
+    return candidates[0]?.el || null;
+}
+
+// Flow's current Add media → Upload command creates and clicks a short-lived
+// file input. Capture its DOM click in the content-script world, attach the
+// file, and prevent the picker default action so React receives change.
+async function injectFileViaFlowUploadMenu(file) {
+    const existing = findImageFileInput();
+    if (existing) {
+        setFileInputFiles(existing, file);
+        return "existing-input";
+    }
+
+    const addMedia = findAddMediaButton();
+    if (!addMedia) throw new Error("ไม่พบปุ่ม Add media ใน Google Flow");
+
+    let capturedInput = null;
+    let assignmentError = null;
+    const interceptFilePicker = (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement) || input.type?.toLowerCase() !== "file") return;
+        capturedInput = input;
+        event.preventDefault();
+        try {
+            setFileInputFiles(input, file);
+        } catch (error) {
+            assignmentError = error;
+        }
+    };
+    document.addEventListener("click", interceptFilePicker, true);
+
+    try {
+        pointerClick(addMedia);
+        const menuDeadline = Date.now() + 5000;
+        let upload = null;
+        while (Date.now() < menuDeadline && !upload) {
+            upload = findUploadMenuItem();
+            if (!upload) await sleep(100);
+        }
+        if (!upload) throw new Error("เปิดเมนู Add media แล้ว แต่ไม่พบคำสั่ง Upload");
+
+        pointerClick(upload);
+        await sleep(100);
+        if (assignmentError) throw assignmentError;
+        if (!capturedInput) {
+            const lateInput = findImageFileInput();
+            if (lateInput) {
+                setFileInputFiles(lateInput, file);
+                return "late-input";
+            }
+            throw new Error("Google Flow ไม่ได้สร้าง file input หลังเลือก Upload");
+        }
+        return "menu-input";
+    } finally {
+        document.removeEventListener("click", interceptFilePicker, true);
+    }
+}
+
 // ── Notice dialog ────────────────────────────────────────────
 function dismissIAgree() {
     for (const d of document.querySelectorAll('[role="dialog"][data-state="open"]'))
@@ -1109,17 +1263,11 @@ async function switchToUploadedTab() {
 }
 
 async function refreshMediaList() {
-    log("🔄 รีเฟรชรายการสื่อ (คลิกสลับหมวดหมู่)...");
-    const uploadsBtn = byText(["Uploads", "อัปโหลด"]);
-    const allMediaBtn = byText(["All Media", "สื่อทั้งหมด"]);
-    if (uploadsBtn) {
-        click(uploadsBtn);
-        await sleep(800);
-    }
-    if (allMediaBtn) {
-        click(allMediaBtn);
-        await sleep(800);
-    }
+    // Flow v2 already updates the media grid live. Switching category views
+    // here can leave its component tree in a transient state indefinitely,
+    // which made a completed upload look like a stuck upload. Keep the
+    // current grid mounted and yield once before querying it again.
+    await sleep(500);
 }
 
 // ── 3. uploadImages ──────────────────────────────────────────
@@ -1174,21 +1322,8 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
         const file = files[i];
         log(`กำลังอัปโหลดรูปที่ ${i + 1}/${needed} (${file.name})...`);
 
-        let inp = document.querySelector('input[type="file"][accept*="image"]')
-            || document.querySelector('input[type="file"]');
-        if (!inp) {
-            const addBtn = byText(["Add Media", "เพิ่มสื่อ", "Upload image", "Upload", "อัปโหลดรูปภาพ", "Reference"]);
-            if (addBtn) { click(addBtn); await sleep(1500); }
-            inp = document.querySelector('input[type="file"]');
-        }
-        if (!inp) throw new Error("หา file input สำหรับอัปโหลดรูปใน Google Flow ไม่เจอ");
-
-        // อัปโหลดทีละไฟล์
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        inp.files = dt.files;
-        inp.dispatchEvent(new Event("change", { bubbles: true }));
-        inp.dispatchEvent(new Event("input", { bubbles: true }));
+        const uploadPath = await injectFileViaFlowUploadMenu(file);
+        log(`ส่งรูปเข้า Google Flow ผ่าน ${uploadPath} แล้ว กำลังรอการ์ดสื่อ...`);
 
         // ดีเลย์หลังอัปโหลดเพื่อเลียนแบบความเร็วคนจริงๆ
         await sleep(1500 + Math.random() * 1500);
@@ -1206,17 +1341,54 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
             const newlyReadyCards = currentNewCards.filter(card => 
                 mediaCardStatus(card).ready && !tiles.some(t => t.key === card.key)
             );
+            // Current Flow can render an upload progress placeholder with the
+            // final filename before the image tile is ready. That reuses the
+            // snapshot key, so a key-only "new card" check never sees it.
+            const readyFallbackCards = before.size === 0
+                ? getMediaCards().filter(card =>
+                    mediaCardStatus(card).ready &&
+                    !tiles.some(tile => tile.key === card.key) &&
+                    (String(card.label || "").includes(file.name) || String(card.key || "").includes(file.name))
+                )
+                : [];
+            // Flow v2 currently uses `button 1.jpg > img` with no stable card
+            // attributes. Its exact filename + rendered-image pair is the
+            // authoritative upload completion signal.
+            const readyFileButton = findReadyUploadedFileCard(file.name);
+            const namedReadyCard = readyFileButton ? describeMediaCard(readyFileButton) : null;
+            const readyCards = newlyReadyCards.length
+                ? newlyReadyCards
+                : namedReadyCard && !tiles.some(tile => tile.key === namedReadyCard.key)
+                    ? [namedReadyCard]
+                    : readyFallbackCards;
             
-            if (newlyReadyCards.length > 0) {
-                const card = newlyReadyCards[0];
+            if (readyCards.length > 0) {
+                const card = readyCards[0];
                 tiles.push(card);
                 log(`✅ อัปโหลดรูปที่ ${i + 1} สำเร็จ (media=${card.key.slice(0, 12) || "?"})`);
+                imageReady = true;
+                break;
+            }
+
+            // Flow v2's uploaded tile is inside an encapsulated component, so
+            // the normal page DOM cannot see it even though it is visibly
+            // complete. Ask the background's CDP accessibility bridge to
+            // open that exact filename and select "Add to prompt" directly.
+            const axAttach = await chrome.runtime.sendMessage({
+                type: "FLOW_ATTACH_MEDIA_BY_NAME",
+                payload: { fileName: file.name }
+            }).catch(() => null);
+            if (axAttach?.attached) {
+                const card = { key: axAttach.key, label: axAttach.label, alreadyAttached: true };
+                tiles.push(card);
+                log(`✅ อัปโหลดและแนบรูปที่ ${i + 1} สำเร็จผ่าน Flow media menu`);
                 imageReady = true;
                 break;
             }
             
             elapsed++;
             if (elapsed > 0 && elapsed % 8 === 0) {
+                log(`ตรวจ tile ${file.name}: filenameMatch=${Boolean(readyFileButton)} cards=${getMediaCards().length}`);
                 await refreshMediaList();
             } else {
                 await sleep(1000);
@@ -1282,6 +1454,80 @@ async function clickMenuItemByText(labels) {
     }
     return false;
 }
+
+function radioMatchesLabel(item, label) {
+    const expected = String(label).trim().toUpperCase();
+    const candidates = [
+        item.querySelector('.toggle-text')?.textContent,
+        item.getAttribute('aria-label'),
+        item.value,
+        elementText(item)
+    ].filter(Boolean).map(value => String(value).trim().toUpperCase());
+    // Material's icon name and visible label can be concatenated in textContent
+    // (for example, "crop_freeFrames"), so a suffix is a valid exact label.
+    return candidates.some(text => text === expected
+        || text.startsWith(`${expected} `)
+        || text.endsWith(expected));
+}
+
+async function clickVisibleRadio(label) {
+    for (const item of document.querySelectorAll('[role="radio"], input[type="radio"]')) {
+        if (!isVisible(item)) continue;
+        if (radioMatchesLabel(item, label)) {
+            const target = item.closest('label,[role="radio"],button') || item;
+            await humanClick(target);
+            return true;
+        }
+    }
+    return false;
+}
+
+function isVisibleRadioSelected(label) {
+    return [...document.querySelectorAll('[role="radio"], input[type="radio"]')].some(item => {
+        if (!isVisible(item)) return false;
+        if (!radioMatchesLabel(item, label)) return false;
+        return item.checked === true
+            || item.getAttribute('aria-checked') === 'true'
+            || item.getAttribute('aria-selected') === 'true';
+    });
+}
+
+function getVideoReferenceMode(options = {}, cfg = {}) {
+    const rawMode = String(options.videoRefMode ?? cfg.videoRefMode ?? "frames").trim().toLowerCase();
+    return rawMode === "ingredients" ? "ingredients" : "frames";
+}
+
+async function selectVerifiedVideoReferenceMode(options, cfg) {
+    const videoRefMode = getVideoReferenceMode(options, cfg);
+    const label = videoRefMode === "frames" ? "Frames" : "Ingredients";
+    const key = videoRefMode === "frames" ? "VIDEO_FRAMES" : "VIDEO_REFERENCES";
+
+    // Flow's current settings panel exposes Frames/Ingredients as radio controls,
+    // not tabs.  A tab-only lookup leaves the previously selected mode unchanged.
+    const picked = await clickVisibleRadio(label)
+        || await clickMenuItemByText([label])
+        || await clickMenuTab(key);
+    await sleep(350);
+    if (!picked || !isVisibleRadioSelected(label)) {
+        throw new Error(`ยืนยันโหมดอ้างอิงวิดีโอ ${label} ไม่สำเร็จ จึงไม่กด Generate`);
+    }
+    log(`เลือกโหมดอ้างอิงวิดีโอ: ${label}`);
+    return videoRefMode;
+}
+
+// Flow's current settings UI does not consistently expose the active mode as a
+// checked radio.  Its Settings trigger, however, always reflects the selected
+// model family.  Use that as the final assertion after the menu is closed.
+function hasActiveFlowModelFamily(phase) {
+    // The compact Settings trigger currently says "Video · 720p · 8s" for
+    // Veo, while older Flow builds show the literal Veo model name.
+    const expected = phase === "video" ? /\bVEO\b|\bVIDEO\b/i : /NANO\s+BANANA|BANANA\s+PRO/i;
+    return [...document.querySelectorAll('button')].some(btn => {
+        if (!isVisible(btn)) return false;
+        const label = `${btn.textContent || ""} ${btn.getAttribute("aria-label") || ""} ${btn.getAttribute("data-tooltip") || ""}`;
+        return /settings\s+trigger/i.test(label) && expected.test(label);
+    });
+}
 async function selectAspectRatio(aspectRatio) {
     const ratio = String(aspectRatio || "9:16").trim();
     const labels = ratio === "9:16"
@@ -1333,12 +1579,11 @@ async function selectBatchCount(count) {
 async function selectModel(modelKey) {
     if (!modelKey) return false;
     const menu = document.querySelector('[role="menu"][data-state="open"]');
-    if (!menu) {
-        log("⚠️ เมนู config ไม่เปิดอยู่ ไม่สามารถเลือก model");
-        return false;
-    }
-    
-    const modelBtn = menu.querySelector('button[aria-haspopup="menu"]');
+    // New Flow settings uses a pop-up button in a panel, not a role=menu.
+    const scope = menu || document;
+    const modelBtn = Array.from(scope.querySelectorAll('button[aria-haspopup="menu"], [role="button"]'))
+        .find(btn => isVisible(btn) && /select model family|model family|โมเดล/i.test(
+            `${btn.getAttribute('aria-label') || ''} ${btn.textContent || ''}`));
     if (!modelBtn) {
         log("⚠️ หาปุ่มเลือก model ในเมนู config ไม่เจอ");
         return false;
@@ -1456,37 +1701,63 @@ async function ensureConfig(phase, options = {}) {
         : (options.videoModel || cfg.videoModel || "veo-3.1-lite-low-priority");
 
     log(`ตั้งค่า ${phase === "image" ? "Image" : "Video"} + Aspect Ratio: ${aspectRatio} + Count: ${count}x + Model: ${modelKey}...`);
-    let cfgBtn = null;
-    for (const btn of document.querySelectorAll('button[aria-haspopup="menu"]')) {
-        const i = btn.querySelector("i.google-symbols,i.material-icons");
-        const label = `${btn.textContent || ""} ${btn.getAttribute("aria-label") || ""}`.toLowerCase();
-        if (i?.textContent?.startsWith("crop_") || label.includes("aspect") || label.includes("ratio") || label.includes("mode")) { cfgBtn = btn; break; }
+    const configIsOpen = () => Boolean(document.querySelector('[role="menu"][data-state="open"]')
+        || [...document.querySelectorAll('[role="radio"]')].some(isVisible));
+    let configOpened = configIsOpen();
+    for (let attempt = 1; attempt <= 3 && !configOpened; attempt += 1) {
+        const buttons = [...document.querySelectorAll('button')].filter(isVisible);
+        // Prefer Flow's stable accessible name. Generic aspect/mode matches can
+        // accidentally target a button in the prompt or a stale media card.
+        let cfgBtn = buttons.find(btn => /settings\s+trigger/i.test(`${btn.textContent || ""} ${btn.getAttribute("aria-label") || ""}`));
+        if (!cfgBtn) {
+            cfgBtn = buttons.find(btn => {
+                const i = btn.querySelector("i.google-symbols,i.material-icons");
+                const label = `${btn.textContent || ""} ${btn.getAttribute("aria-label") || ""} ${btn.getAttribute("data-tooltip") || ""}`.toLowerCase();
+                return i?.textContent?.startsWith("crop_") || label.includes("aspect") || label.includes("ratio") || label.includes("mode");
+            });
+        }
+        if (!cfgBtn) break;
+        log(`เปิดเมนู config (รอบ ${attempt}/3)...`);
+        await humanClick(cfgBtn);
+        const readyEnd = Date.now() + 1800;
+        while (Date.now() < readyEnd && !configIsOpen()) await sleep(100);
+        configOpened = configIsOpen();
     }
-    if (!cfgBtn) { log("⚠️ หาปุ่ม config ไม่เจอ"); return; }
-    await humanClick(cfgBtn); await sleep(500);
-    const menu = await waitEl('[role="menu"][data-state="open"]', 3000);
-    if (!menu) { log("⚠️ เมนู config ไม่เปิด"); return; }
+    const menu = document.querySelector('[role="menu"][data-state="open"]');
+    if (!configOpened) {
+        throw new Error("เมนู config ไม่เปิด จึงไม่กด Generate");
+    }
     
-    await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO"); await sleep(800);
+    const modeLabel = phase === "image" ? "Image" : "Video";
+    const modeSelected = await clickVisibleRadio(modeLabel)
+        || await clickMenuItemByText([modeLabel])
+        || await clickMenuTab(phase === "image" ? "IMAGE" : "VIDEO");
+    if (!modeSelected) throw new Error(`ไม่พบตัวเลือก ${modeLabel} ในเมนู config จึงไม่กด Generate`);
+    await sleep(800);
+    // Radio semantics are absent in Flow's newer settings UI.  Verification is
+    // therefore deferred until the selected model is visible on Settings below.
     if (phase === "image") {
         // บังคับเลือกแท็บ Subject สำหรับรูปภาพนิ่ง เพื่อให้ใช้สินค้าต้นฉบับเป็นแค่อ้างอิงวัตถุ ไม่ใช้โครงภาพเดิม
         const picked = await clickMenuTab("Subject");
         if (picked) log("เลือกแท็บรูปภาพ: Subject");
         await sleep(600);
     } else {
-        const refMode = (options.videoRefMode || "ingredients") === "frames" ? "VIDEO_FRAMES" : "VIDEO_REFERENCES";
-        const picked = await clickMenuTab(refMode);
-        if (picked) log(`เลือกแท็บวิดีโอ: ${refMode === "VIDEO_FRAMES" ? "Frames" : "Ingredients"}`);
+        await selectVerifiedVideoReferenceMode(options, cfg);
         await sleep(600);
     }
-    await selectAspectRatio(aspectRatio); await sleep(800);
-    await selectBatchCount(count); await sleep(800);
+    (await clickVisibleRadio(aspectRatio)) || await selectAspectRatio(aspectRatio); await sleep(800);
+    (await clickVisibleRadio(`x${count}`)) || await selectBatchCount(count); await sleep(800);
     const selectedModelKey = await selectModel(modelKey); await sleep(800);
     
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await sleep(400);
     if (document.querySelector('[role="menu"][data-state="open"]')) { document.body.click(); await sleep(300); }
-    log(`✅ ตั้งค่า mode + ${aspectRatio} + ${count}x + ${selectedModelKey || modelKey} สำเร็จ`);
+    if (!selectedModelKey) throw new Error(`เลือกโมเดล ${modelKey} ไม่สำเร็จ จึงไม่กด Generate`);
+    if (!hasActiveFlowModelFamily(phase)) {
+        throw new Error(`ยืนยันโมเดล ${phase === "video" ? "Veo" : "Banana"} ไม่สำเร็จ จึงไม่กด Generate`);
+    }
+    log(`✅ ตั้งค่า mode + ${aspectRatio} + ${count}x + ${selectedModelKey} สำเร็จ`);
+    return true;
 }
 
 async function openMediaEditWorkspace(tile) {
@@ -1548,6 +1819,11 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload", opt
     for (const tile of tiles) {
         const id = tile?.key || tile?.tileId || tile?.href || tile?.mediaUrl;
         if (!id) continue;
+        if (tile.alreadyAttached) {
+            done.add(id);
+            log(`✅ รูป ${String(tile.label || id).slice(0, 24)} ถูกแนบเข้า prompt แล้ว`);
+            continue;
+        }
         const tileLabel = String(id).slice(0, 12);
         const beforeCount = promptAttachmentCount();
         const result = await waitForMediaCard(tile, {
@@ -1592,13 +1868,21 @@ async function clearPromptAttachments() {
     if (!panel) return;
     let removed = 0;
     for (let i = 0; i < 12; i++) {
-        const removeBtn = panel.querySelector(
-            "button[aria-label*='cancel' i],button[aria-label*='remove' i],button[aria-label*='delete' i],button[aria-label*='ลบ']"
+        const removeBtns = panel.querySelectorAll(
+            "button[aria-label*='cancel' i],button[aria-label*='remove' i],button[aria-label*='delete' i],button[aria-label*='clear' i],button[aria-label*='ลบ'],button:has(.google-symbols:is([data-icon='close'], [data-icon='cancel']))"
         );
-        if (!removeBtn || !isVisible(removeBtn)) break;
-        await humanClick(removeBtn);
-        removed += 1;
-        await sleep(300);
+        let clicked = false;
+        for (const btn of removeBtns) {
+            if (isVisible(btn)) {
+                try { btn.click(); } catch(e) {}
+                await humanClick(btn);
+                removed += 1;
+                clicked = true;
+                await sleep(300);
+                break;
+            }
+        }
+        if (!clicked) break;
     }
     if (removed) log(`ล้างรูปแนบเดิม ${removed} รูปออกจาก prompt แล้ว`);
 }
@@ -1640,88 +1924,292 @@ async function addGeneratedStillToPrompt(result) {
     }
     if (!el) throw new Error("ไม่เจอภาพที่เจนเสร็จเพื่อแนบเข้า prompt วิดีโอ");
     el.scrollIntoView({ block: "center", behavior: "instant" });
-    await sleep(400);
-    const media = el.querySelector("img,video,[role='img']") || el;
+    await sleep(600);
+    // New Flow tiles attach the context menu to flow-grid-tile-container,
+    // not to the nested img element. Target the trigger host so “Add to
+    // prompt” opens reliably.
+    const media = el.closest?.("flow-grid-tile-container") || el.querySelector("img,video,[role='img']") || el;
     const before = promptAttachmentCount();
     const ok = await addTileToPrompt(media);
     if (!ok && promptAttachmentCount() <= before) {
-        throw new Error("คลิกขวา Add to prompt ภาพที่เจนไม่สำเร็จ");
+        throw new Error("แนบภาพที่สร้างเสร็จเข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate วิดีโอ");
     }
+    log(`✅ แนบภาพผลลัพธ์เข้า Prompt เรียบร้อย (จำนวนแนบปัจจุบัน: ${promptAttachmentCount()})`);
+    return true;
 }
 
 async function addTileToPrompt(media) {
-    // Flow บางครั้งเปิดเมนูช้า/แลค ทำให้กดรอบเดียวไม่ติด — วน retry ทั้ง 3 วิธี
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 4; attempt++) {
         const beforeAttachCount = promptAttachmentCount();
-        const directAdd = findAddButtonNear(media);
-        if (directAdd) {
-            await humanClick(directAdd);
-            if (await waitPromptAttachment(beforeAttachCount)) return true;
-        }
+        log(`กำลังแนบภาพเข้า Prompt (รอบที่ ${attempt}/4, รูปที่แนบอยู่แล้ว: ${beforeAttachCount})...`);
 
-        const menuOpen = document.querySelector('[role="menu"][data-state="open"]');
-        if (menuOpen) { document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); await sleep(300); }
-
-        await rightClick(media);
-        const ctxMenu = await waitEl('[role="menu"][data-state="open"]', 3500);
-        const menuItem = ctxMenu ? findPromptMenuItem(ctxMenu) : null;
+        // 1. ถ้าเมนู "Add to prompt" เปิดค้างอยู่บนหน้าจอแล้ว (เช่นจากการเปิดก่อนหน้าตามภาพ UI) ให้กดทันที!
+        let menuItem = findAddToPromptMenuItem();
         if (menuItem) {
-            await humanClick(menuItem);
-            if (await waitPromptAttachment(beforeAttachCount)) return true;
+            log("🎯 พบเมนู 'Add to prompt' เปิดอยู่แล้วบนหน้าจอ ทำการคลิกทันที...");
+            await clickPromptMenuItem(menuItem);
+            if (await waitPromptAttachment(beforeAttachCount)) {
+                await closeAnyOpenMenu();
+                return true;
+            }
         }
 
-        document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-        await sleep(300);
+        // ปิดเมนูค้างเก่าก่อนลองคลิกใหม่
+        await closeAnyOpenMenu();
+        await sleep(200);
 
-        if (await dragTileToPrompt(media, beforeAttachCount)) return true;
+        // 2. คลิกขวา (Context Menu) ที่ตัวภาพหรือการ์ดภาพ
+        await rightClick(media);
+        menuItem = await waitForAddToPromptMenuItem(3000);
+        if (menuItem) {
+            log("🎯 พบปุ่ม 'Add to prompt' จากการคลิกขวา ทำการคลิก...");
+            await clickPromptMenuItem(menuItem);
+            if (await waitPromptAttachment(beforeAttachCount)) {
+                await closeAnyOpenMenu();
+                return true;
+            }
+        }
 
-        if (attempt < 3) {
-            log(`⚠️ แนบรูปไม่ติด ลองใหม่ (รอบ ${attempt + 1}/3)...`);
-            await sleep(700);
+        // 3. ถ้าคลิกขวาไม่ขึ้น ให้ลอง Hover ที่การ์ดเพื่อหาปุ่ม More options (...)
+        const tile = media.closest("[data-tile-id], flow-grid-tile-container, article, [role='listitem'], [draggable='true']") || media.parentElement;
+        if (tile) {
+            tile.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, cancelable: true }));
+            tile.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true, cancelable: true }));
+            await sleep(300);
+
+            const moreBtn = tile.querySelector(
+                "button[aria-label*='more' i], button[aria-label*='option' i], button[title*='more' i], button:has(.google-symbols), button:has(svg)"
+            );
+            if (moreBtn && isVisible(moreBtn)) {
+                log("คลิกปุ่ม More options (...) บนการ์ดภาพ...");
+                await humanClick(moreBtn);
+                menuItem = await waitForAddToPromptMenuItem(3000);
+                if (menuItem) {
+                    log("🎯 พบปุ่ม 'Add to prompt' จาก More options ทำการคลิก...");
+                    await clickPromptMenuItem(menuItem);
+                    if (await waitPromptAttachment(beforeAttachCount)) {
+                        await closeAnyOpenMenu();
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // 4. Fallback ผ่าน Background CDP Accessibility Tree
+        try {
+            log("ลองส่งคำสั่งคลิก Add to prompt ผ่าน CDP Bridge...");
+            const cdpRes = await chrome.runtime.sendMessage({ type: "FLOW_CLICK_ADD_TO_PROMPT" });
+            if (cdpRes?.ok && cdpRes?.clicked) {
+                log("CDP กดคลิก Add to prompt แล้ว รอผลลัพธ์การแนบภาพ...");
+                if (await waitPromptAttachment(beforeAttachCount, 3000)) {
+                    await closeAnyOpenMenu();
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.warn("[FlowAuto] CDP bridge error:", e);
+        }
+
+        // 5. Fallback: Drag & Drop การ์ดไปยังช่อง Prompt
+        if (await dragTileToPrompt(media, beforeAttachCount)) {
+            await closeAnyOpenMenu();
+            return true;
+        }
+
+        await closeAnyOpenMenu();
+        if (attempt < 4) {
+            log(`⚠️ แนบรูปเข้า prompt ไม่ติด รอสักครู่แล้วลองใหม่ (รอบ ${attempt + 1}/4)...`);
+            await sleep(800);
         }
     }
 
     return false;
 }
 
+// หาองค์ประกอบปุ่ม/เมนู "Add to prompt" ในทุกรูปแบบของ UI ใหม่และเก่า
+function findAddToPromptMenuItem() {
+    // Priority 1: หาจาก Selector ของเมนูรายการมาตรฐาน
+    const itemSelectors = [
+        '[role="menuitem"]',
+        '[role="option"]',
+        '[data-radix-collection-item]',
+        '[class*="menu-item" i]',
+        '[class*="menuitem" i]',
+        '[class*="dropdown-item" i]',
+        '[class*="Item" i]',
+        'button',
+        'li',
+        'div[tabindex]'
+    ];
+
+    for (const sel of itemSelectors) {
+        try {
+            const nodes = document.querySelectorAll(sel);
+            for (const node of nodes) {
+                if (!isVisible(node)) continue;
+                // ตัดการ์ด prompt ด้านล่างออก
+                if (node.closest('div[role="textbox"]') || node.closest('form[class*="prompt"]')) continue;
+                const text = elementText(node).toLowerCase();
+                // ต้องมีข้อความ Add to prompt หรือภาษาไทย แต่ต้องไม่ใช่ตัวคอนเทนเนอร์เมนูใหญ่ที่รวมข้อความทั้งเมนู
+                if ((text.includes("add to prompt") || text.includes("เพิ่มไปยังพรอมต์") || text.includes("use as input")) &&
+                    !text.includes("favorite") && !text.includes("move to trash") && !text.includes("download")) {
+                    return node;
+                }
+            }
+        } catch (e) {}
+    }
+
+    // Priority 2: ตรวจหา Text โดยตรงจาก Node ย่อย (span, p, div)
+    const all = document.querySelectorAll('span, p, div, a');
+    const candidates = [];
+    for (const el of all) {
+        if (!isVisible(el)) continue;
+        if (el.closest('div[role="textbox"]') || el.closest('form[class*="prompt"]')) continue;
+        const raw = (el.textContent || "").trim();
+        const text = raw.toLowerCase();
+
+        if (text === "add to prompt" || raw === "เพิ่มไปยังพรอมต์" || text === "use as input") {
+            const clickable = el.closest('button, [role="menuitem"], [role="button"], [data-radix-collection-item], li, div[tabindex], div') || el;
+            candidates.push({ el: clickable, len: raw.length, exact: true });
+        } else if ((text.includes("add to prompt") || text.includes("เพิ่มไปยังพรอมต์")) &&
+                   !text.includes("favorite") && !text.includes("move to trash") && raw.length < 50) {
+            const clickable = el.closest('button, [role="menuitem"], [role="button"], [data-radix-collection-item], li, div[tabindex], div') || el;
+            candidates.push({ el: clickable, len: raw.length, exact: false });
+        }
+    }
+
+    if (candidates.length > 0) {
+        candidates.sort((a, b) => (b.exact - a.exact) || (a.len - b.len));
+        return candidates[0].el;
+    }
+
+    return null;
+}
+
+async function waitForAddToPromptMenuItem(timeoutMs = 3500) {
+    const end = Date.now() + timeoutMs;
+    while (Date.now() < end) {
+        const item = findAddToPromptMenuItem();
+        if (item && isVisible(item)) return item;
+        await sleep(150);
+    }
+    return null;
+}
+
+async function clickPromptMenuItem(menuItem) {
+    if (!menuItem) return false;
+    menuItem.scrollIntoView({ block: "nearest", behavior: "instant" });
+    await sleep(100);
+
+    // 1. ลอง native .click()
+    try { menuItem.click(); } catch (e) {}
+
+    // 2. จำลอง Pointer + Mouse events ที่กึ่งกลางเมนูไอเทม
+    const rect = menuItem.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    fireAt(menuItem, cx, cy);
+
+    // 3. ยิง click ไปยัง child span/button ย่อย
+    for (const child of menuItem.querySelectorAll('span, button, div, [role="menuitem"]')) {
+        try { child.click(); } catch (e) {}
+    }
+
+    await sleep(350);
+    return true;
+}
+
+async function closeAnyOpenMenu() {
+    // ส่งปุ่ม Escape ไปยัง document และ window
+    document.body?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true }));
+
+    // ปิดเมนูที่เปิดอยู่
+    const openMenus = document.querySelectorAll('[role="menu"], [role="menu"][data-state="open"], [popover], [data-radix-popper-content-wrapper]');
+    for (const m of openMenus) {
+        if (isVisible(m)) {
+            m.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true }));
+        }
+    }
+    await sleep(200);
+}
+
 function getPromptPanel() {
     const editor = findPromptEditor();
+    if (!editor) return null;
     let node = editor;
-    for (let i = 0; i < 8 && node; i++) {
-        const text = elementText(node).toLowerCase();
-        const hasEditor = node === editor || node.contains(editor);
+    // เดินขึ้นไปหา container แถบ Prompt ด้านล่าง (ไม่เกิน 5 ชั้น และไม่หลุดไปครอบทั้งหน้าเว็บ)
+    for (let i = 0; i < 5 && node && node !== document.body; i++) {
         const hasCreateButton = Boolean(
             [...node.querySelectorAll?.("button,[role='button']") || []].some(btn => {
                 const label = elementText(btn).toLowerCase();
-                return label.includes("arrow_forward") || label.includes("create");
+                const icon = [...btn.querySelectorAll("i,.google-symbols,.material-icons,svg")]
+                    .map(n => (n.textContent || "").toLowerCase())
+                    .join(" ");
+                return label.includes("arrow_forward") || label.includes("create") || label.includes("generate") ||
+                       icon.includes("arrow_forward") || btn.querySelector("svg");
             })
         );
-        const hasPromptMedia = Boolean(node.querySelector?.("button img,img[alt*='media' i],video"));
-        if (hasEditor && (hasCreateButton || hasPromptMedia)) return node;
-        if (!editor && text.includes("what do you want to create") && (hasCreateButton || hasPromptMedia)) return node;
+        const rect = node.getBoundingClientRect();
+        // แถบ Prompt มีความสูงสมเหตุสมผล (< 350px) และอยู่ด้านล่าง
+        if (hasCreateButton && rect.height > 30 && rect.height < 350) {
+            return node;
+        }
         node = node.parentElement;
     }
-    return editor?.parentElement || null;
+    return editor.closest("form") || editor.parentElement?.parentElement || editor.parentElement;
+}
+
+function getPromptAttachmentElements() {
+    const panel = getPromptPanel();
+    if (!panel) return [];
+
+    const attachments = [];
+
+    // 1. ตรวจหาปุ่มลบ/ยกเลิกรูปแนบในการ์ด Prompt
+    const removeBtns = panel.querySelectorAll(
+        "button[aria-label*='cancel' i],button[aria-label*='remove' i],button[aria-label*='delete' i],button[aria-label*='clear' i],button[aria-label*='ลบ'],button:has(.google-symbols:is([data-icon='close'], [data-icon='cancel']))"
+    );
+    for (const btn of removeBtns) {
+        if (!isVisible(btn)) continue;
+        const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
+        if (/cancel|remove|delete|clear|ลบ|close/i.test(aria) || btn.querySelector('[data-icon="close"], [data-icon="cancel"]')) {
+            const chip = btn.closest("div, [role='group'], [class*='chip'], [class*='attachment']") || btn;
+            if (!attachments.includes(chip)) attachments.push(chip);
+        }
+    }
+
+    // 2. ตรวจหารูปหรือวิดีโอที่เป็น thumbnail ในแถบ Prompt (ตัด Avatar ผู้ใช้ออก)
+    const medias = panel.querySelectorAll("img, video");
+    for (const m of medias) {
+        if (!isVisible(m)) continue;
+        const alt = (m.alt || "").toLowerCase();
+        if (alt.includes("google account") || alt.includes("profile") || alt.includes("avatar")) continue;
+        const rect = m.getBoundingClientRect();
+        if (rect.width < 16 || rect.height < 16) continue;
+        if (!attachments.some(a => a === m || a.contains(m))) {
+            attachments.push(m);
+        }
+    }
+
+    return attachments;
 }
 
 function promptAttachmentCount() {
-    const panel = getPromptPanel();
-    if (!panel) return 0;
-    return panel.querySelectorAll("img,video,button:has(img),button[aria-label*='cancel' i],button[aria-label*='remove' i]").length;
+    return getPromptAttachmentElements().length;
 }
 
 function promptHasMediaAttachment() {
-    const panel = getPromptPanel();
-    if (!panel) return false;
-    return Boolean(panel.querySelector("img,video,button img"));
+    return getPromptAttachmentElements().length > 0;
 }
 
-async function waitPromptAttachment(beforeCount, timeoutMs = 3500) {
+async function waitPromptAttachment(beforeCount, timeoutMs = 4000) {
     const end = Date.now() + timeoutMs;
     while (Date.now() < end) {
-        if (promptHasMediaAttachment()) return true;
-        if (promptAttachmentCount() > beforeCount) return true;
-        await sleep(250);
+        const current = promptAttachmentCount();
+        if (current > beforeCount) return true;
+        if (beforeCount === 0 && current > 0) return true;
+        await sleep(200);
     }
     return false;
 }
@@ -1757,68 +2245,15 @@ async function dragTileToPrompt(media, beforeCount) {
 }
 
 function findPromptMenuItem(root) {
-    for (const item of root.querySelectorAll('[role="menuitem"],[role="option"],button,[data-radix-collection-item]')) {
-        const t = elementText(item).toLowerCase();
-        if (t.includes("add to prompt") || t.includes("use as input") || t.includes("add image") || t.includes("reference") || t.includes("เพิ่มไปยังพรอมต์")) return item;
-    }
-    return null;
+    return findAddToPromptMenuItem() || null;
 }
 
 function findAddButtonNear(media) {
-    const roots = [];
-    let node = media;
-    for (let i = 0; i < 6 && node; i++) {
-        roots.push(node);
-        node = node.parentElement;
-    }
-
-    for (const root of roots) {
-        const button = findAddButton(root, media);
-        if (button) return button;
-    }
-
-    const tile = media.closest("[data-tile-id], article, [role='listitem'], [draggable='true']");
-    if (tile?.parentElement) {
-        const cards = [...tile.parentElement.children];
-        const tileIndex = cards.indexOf(tile);
-        for (const index of [tileIndex, tileIndex + 1, tileIndex - 1]) {
-            const sibling = cards[index];
-            if (!sibling) continue;
-            const button = findAddButton(sibling, media);
-            if (button) return button;
-        }
-    }
-
     return null;
 }
 
 function findAddButton(root, anchor) {
-    const anchorRect = anchor?.getBoundingClientRect?.();
-    const candidates = [];
-    for (const button of root.querySelectorAll("button,[role='button']")) {
-        if (!isVisible(button) || button.disabled || button.getAttribute("aria-disabled") === "true") continue;
-        const label = elementText(button).toLowerCase();
-        const icon = [...button.querySelectorAll("i,.google-symbols,.material-icons")]
-            .map(node => node.textContent?.trim().toLowerCase())
-            .filter(Boolean);
-        if (label.includes("add media")) continue;
-        if (
-            label.includes("add to prompt") ||
-            label.includes("add image") ||
-            label.includes("use as input") ||
-            label.includes("piece of media") ||
-            label === "add" ||
-            icon.includes("add")
-        ) {
-            const rect = button.getBoundingClientRect();
-            const distance = anchorRect
-                ? Math.hypot((rect.left + rect.width / 2) - (anchorRect.left + anchorRect.width / 2), (rect.top + rect.height / 2) - (anchorRect.top + anchorRect.height / 2))
-                : 0;
-            candidates.push({ button, distance });
-        }
-    }
-    candidates.sort((a, b) => a.distance - b.distance);
-    return candidates[0]?.button || null;
+    return null;
 }
 
 // ── 6. setPrompt (paste → human word-by-word fallback) ─────────────
@@ -1901,6 +2336,7 @@ function findPromptEditor() {
             let score = 0;
             if (aria.includes("what do you want to create") || text.includes("what do you want to create")) score += 80;
             if (aria.includes("what do you want to change") || text.includes("what do you want to change")) score += 90;
+            if (aria.includes("what do you want") || text.includes("what do you want")) score += 85;
             if (aria.includes("prompt") || aria.includes("create") || aria.includes("change")) score += 30;
             if (rect.top > window.innerHeight * 0.45) score += 20;
             if (rect.width > 240) score += 10;
@@ -2096,7 +2532,7 @@ async function typeDraft(editor, prompt) {
 // ── 7. clickGenerate ─────────────────────────────────────────
 async function clickGenerate() {
     log("รอปุ่ม Generate พร้อมกด...");
-    
+
     // ปิด debugger ก่อนกดเจนเพื่อให้ infobar หายไปและระดับหน้าจอกลับมาปกติ
     await detachFlowDebugger();
     await sleep(1000);
@@ -2129,32 +2565,13 @@ async function clickGenerate() {
     // มีการ์ดใหม่แล้ว = เริ่มเจนแล้ว ห้ามกดซ้ำ (กันเจนภาพ 2รอบ)
     const generationStarted = () => getMediaCards().some(card => card.key && !preGenMediaKeys.has(card.key));
 
-    // ลองกด Generate แบบปกติ (human click) ก่อนโดยไม่ใช้ debugger เพื่อเลี่ยงการแสดง infobar
-    log("ลองกด Generate แบบปกติ (human click)...");
+    // Submit exactly once. Flow may delay its DOM/card update for several
+    // seconds; retrying with DOM click/Enter/trusted click creates duplicates.
+    log("ลองกด Generate แบบปกติ (human click) — one-shot...");
     await humanClick(btn);
-    if (await waitGenerationStarted(btn, 3500)) return true;
-    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
-
-    log("ลองกดแบบ DOM click...");
-    click(btn);
-    if (await waitGenerationStarted(btn, 2500)) return true;
-    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
-
-    log("ลองกด Enter...");
-    btn.focus();
-    btn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
-    btn.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
-    if (await waitGenerationStarted(btn, 2500)) return true;
-    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
-
-    // หากแบบปกติทั้งหมดไม่ได้ผล ค่อยใช้ debugger click (trusted click) เป็นไม้ตายสุดท้าย
-    log("คลิกปกติยังไม่เริ่มสร้าง → ลองใช้ trusted click (Debugger)...");
-    if (await clickButtonCenterWithDebugger(btn) && await waitGenerationStarted(btn, 5000)) {
-        return true;
-    }
-    if (generationStarted()) { log("✅ เริ่มสร้างแล้ว (ไม่กดซ้ำ)"); return true; }
-
-    throw new Error("กด Generate แล้ว แต่ Flow ไม่เริ่มสร้าง จึงไม่รอผลลัพธ์");
+    await waitGenerationStarted(btn, 3500);
+    log("✅ ส่งคำสั่ง Generate แล้ว (ไม่กดซ้ำ)");
+    return true;
 }
 
 async function clickButtonCenterWithDebugger(button) {
@@ -2283,6 +2700,44 @@ async function waitForResult(phase, options = {}) {
     log("รอผลลัพธ์จาก Flow...");
     while (Date.now() < end) {
         if (stopRequested) return { tileId: null, mediaUrl: "" };
+        // The new result preview overlay can appear before its media card is
+        // surfaced to the DOM/CDP bridge. Dismiss it during polling.
+        await closeGeneratedAssetOverlay();
+        // Direct selector for the current Flow v2 tile markup. This runs
+        // before the legacy card parser, which can miss Angular/Lit tile hosts.
+        const tileContainers = [
+            ...document.querySelectorAll("flow-grid-tile-container, flow-image-tile, [role='gridcell'], article, div[class*='grid-tile']")
+        ];
+        for (const host of tileContainers) {
+            const label = (host.getAttribute("aria-label") || host.textContent || "").toLowerCase();
+            const busy = /(?:\d{1,3}\s*%|generating|rendering|creating|queued|pending|กำลังสร้าง|กำลังเรนเดอร์)/i.test(label);
+            if (busy) continue;
+            if (label.includes("upload") || label.includes("start creating") || label.includes("drop media")) continue;
+
+            const img = host.querySelector("img");
+            const video = host.querySelector("video");
+
+            if (phase === "image" && img) {
+                const src = img.currentSrc || img.src || "";
+                const alt = (img.alt || "").toLowerCase();
+                if (alt.includes("avatar") || alt.includes("profile") || alt.includes("google account")) continue;
+                if (!src || src.startsWith("data:image/svg")) continue;
+                if (/1\.jpg/i.test(label) || /1\.jpg/i.test(src)) continue;
+
+                const mediaId = host.getAttribute("data-tile-id") || img.getAttribute("data-media-id") || src;
+                log("✅ ตรวจพบภาพที่สร้างเสร็จแล้วจาก Flow (ตรวจพบจาก tile container)");
+                return { tileId: mediaId, mediaUrl: src, key: mediaId, label, el: host };
+            }
+
+            if (phase === "video" && (video || img)) {
+                const videoSrc = video?.currentSrc || video?.src || video?.querySelector("source")?.src || "";
+                if (videoSrc || (video && video.readyState >= 1) || /\.(mp4|webm|mov)(\?|$)/i.test(videoSrc)) {
+                    const mediaId = host.getAttribute("data-tile-id") || videoSrc;
+                    log("✅ ตรวจพบวิดีโอที่สร้างเสร็จแล้วจาก Flow (ตรวจพบจาก tile container)");
+                    return { tileId: mediaId, mediaUrl: videoSrc, key: mediaId, label, el: host };
+                }
+            }
+        }
 
         // เลียนแบบคนขยับเมาส์/เลื่อนจอเล็กลงระหว่างรอการเจนของ Flow
         if (Math.random() < 0.12) { // โอกาสประมาณ 12% ในการรันแต่ละลูป (~8 วินาทีต่อครั้ง)
@@ -2292,6 +2747,18 @@ async function waitForResult(phase, options = {}) {
                 await nudgeScroll();
             }
         }
+        // The generated media grid is now inside a closed component. Ask the
+        // background CDP bridge for a surfaced thumbnail URL before falling
+        // back to the legacy page-DOM cards.
+        const cdpResult = await chrome.runtime.sendMessage({
+            type: "FLOW_FIND_GENERATED_MEDIA",
+            payload: { phase }
+        }).catch(() => null);
+        if (cdpResult?.found && cdpResult.mediaUrl) {
+            log("✅ พบ URL ผลลัพธ์จาก Flow ผ่าน accessibility/CDP bridge");
+            return { tileId: cdpResult.key, mediaUrl: cdpResult.mediaUrl, key: cdpResult.key };
+        }
+
         const newCards = getMediaCards()
             .filter(card => card.key && !preGenMediaKeys.has(card.key))
             .map(card => ({ card, status: mediaCardStatus(card) }));
@@ -2475,7 +2942,10 @@ function hasVisibleGenerationIndicator() {
 }
 
 function isGeneratedResultCard(card, status, phase) {
-    if (!status.ready || !card.mediaUrl) return false;
+    // New Flow cards can be fully rendered while their media URL is hidden
+    // inside the component. Completion is based on rendered card state; URL
+    // extraction is a separate best-effort handoff step.
+    if (!status.ready) return false;
     const text = `${card.label || ""} ${status.text || ""}`.toLowerCase();
     if (text.includes("uploaded image")) return false;
     if (text.includes("upload")) return false;
@@ -2587,18 +3057,11 @@ async function runPipeline(payload, runOptions = {}) {
                     throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
                 }
 
-                // บันทึกสถานะเพื่อรีเฟรชหน้าเว็บ 1 ครั้งตามความต้องการของผู้ใช้ เพื่อความสม่ำเสมอของสถานะหน้าเพจ Google Flow
-                const stateToSave = {
-                    jobId,
-                    payload: { phase, prompt, imageUrl, options },
-                    step: "AFTER_UPLOAD",
-                    uploadedTiles: uploadedTiles.map(t => ({ key: t.key, tileId: t.tileId || t.key, mediaUrl: t.mediaUrl, href: t.href }))
-                };
-                await chrome.storage.local.set({ flowActiveJobResume: stateToSave });
-                log("🔄 อัปโหลดเสร็จสิ้นและแสดงรูปภาพชัดเจนแล้ว! รอ 4 วินาทีเพื่อให้คุณตรวจสอบก่อนทำการรีเฟรชหน้าเว็บ...");
-                await sleep(4000);
-                window.location.reload();
-                return new Promise(() => {}); // หยุดเธรดเพื่อรอการรีเฟรช
+                // The upload bridge already selected Add to prompt. Reloading
+                // Flow here discards that transient prompt state and used to
+                // restart the hidden-card lookup loop. Continue in this same
+                // live project instead.
+                log("✅ อัปโหลดพร้อมใช้งานแล้ว ดำเนินการสร้างภาพต่อทันที (ไม่รีเฟรชหน้า)");
             }
         }
 
@@ -2651,8 +3114,8 @@ async function runPipeline(payload, runOptions = {}) {
         const result = await waitForResult(resultPhase, {
             restartGeneration: restartInitialGeneration
         });
-        if (!result?.mediaUrl) {
-            throw new Error(`Flow ไม่คืน URL ของผลลัพธ์ ${resultPhase === "image" ? "ภาพ" : "วิดีโอ"}`);
+        if (!result?.mediaUrl && !result?.tileId && !result?.key) {
+            throw new Error(`Flow ไม่พบการ์ดผลลัพธ์ ${resultPhase === "image" ? "ภาพ" : "วิดีโอ"}`);
         }
         if (resultPhase === "image") {
             imageResult = { imgUrl: result.mediaUrl, imgTileId: result.tileId };
@@ -2661,6 +3124,7 @@ async function runPipeline(payload, runOptions = {}) {
         if (phase === "combined") {
             const videoPrompt = typeof prompt === "object" ? prompt.videoPrompt : prompt;
             if (!videoPrompt) throw new Error("ไม่มี prompt สำหรับสร้างวิดีโอ Phase 2");
+            await closeGeneratedAssetOverlay();
             log("🎯 ได้รูปภาพแล้ว! รอก่อนสัก 5-10 วินาทีตามที่กำหนด (เพื่อเลี่ยงการส่งคำสั่งเร็วเกินไป)...");
             await sleep(8000 + Math.random() * 2000); // รอ 8-10 วินาที
 
@@ -2679,21 +3143,31 @@ async function runPipeline(payload, runOptions = {}) {
             await switchMediaTab("image");
             await sleep(2000);
 
-            // ภาพที่เจนเสร็จอยู่ในผลลัพธ์แล้ว → คลิกขวา Add to prompt ตรงๆ
+            // ภาพที่เจนเสร็จอยู่ในผลลัพธ์แล้ว → คลิกขวา Add to prompt ให้เรียบร้อยก่อนเสมอ
+            log("📸 กำลังแนบภาพที่เจนเสร็จเข้า Prompt สำหรับวิดีโอ...");
             await addGeneratedStillToPrompt(result);
-            log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
-            await sleep(3000);
+            if (!promptHasMediaAttachment()) {
+                throw new Error("ไม่พบภาพที่แนบใน prompt วิดีโอ จึงไม่กด Generate วิดีโอ");
+            }
+            await closeAnyOpenMenu();
+            log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอสำเร็จ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
+            await sleep(2500);
 
-            if ((options.videoRefMode || "ingredients") === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
+            if (getVideoReferenceMode(options, cfg) === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
                 log("แนบรูปสินค้าต้นฉบับกลับเข้าไปเป็น Reference เพิ่มเติมเพื่อให้ตรงปกมากขึ้น...");
-                await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
-                await sleep(3000);
+                try {
+                    await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
+                    await closeAnyOpenMenu();
+                } catch (e) {
+                    console.warn("[FlowAuto] attachUploadsToPrompt warning:", e);
+                }
+                await sleep(2500);
             }
 
-            // 6b. กรอก prompt สำหรับวิดีโอ
-            log("กรอก Prompt วิดีโอ...");
+            // 6b. กรอก prompt สำหรับวิดีโอ (เมื่อแนบรูปเข้า prompt เรียบร้อยแล้วเท่านั้น)
+            log("✍️ กรอก Prompt วิดีโอ (หลังแนบภาพเรียบร้อยแล้ว)...");
             await setPrompt(videoPrompt);
-            await sleep(800 + Math.random() * 400); // หน่วงเวลาสั้นๆ ก่อนกด Generate
+            await sleep(1000 + Math.random() * 500); // หน่วงเวลาสั้นๆ ก่อนกด Generate
 
             // 7b. กด Generate
             await clickGenerate();
@@ -2704,7 +3178,7 @@ async function runPipeline(payload, runOptions = {}) {
                 if (cfg.autoPortrait) await ensureConfig("video", options);
                 await clearPromptAttachments();
                 await addGeneratedStillToPrompt(result);
-                if ((options.videoRefMode || "ingredients") === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
+                if (getVideoReferenceMode(options, cfg) === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
                     await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
                 }
                 const retryPrompt = context.policyFallback === "no-people"

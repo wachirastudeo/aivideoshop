@@ -927,7 +927,10 @@ async function processQueue() {
         product.flowImageTileId = result?.imgTileId || product.flowImageTileId || "";
         product.videoUrl = result?.resultUrl || product.videoUrl || "";
         product.flowVideoTileId = result?.tileId || product.flowVideoTileId || "";
-        product.status = product.videoUrl ? "video_generating" : "done";
+        // A combined run may preserve its Phase 1 output when Phase 2 fails.
+        // Keep that item resumable from the approved image; only a real video
+        // URL means the whole pipeline is done.
+        product.status = product.videoUrl ? "done" : "image_done";
       }
       await persistState();
       renderQueue();
@@ -1075,6 +1078,11 @@ async function openGoogleFlowWithLoginResume(phase, prompt, imageUrl, options, p
       return await runInterruptibly(() => openGoogleFlow(phase, prompt, imageUrl, options));
     } catch (error) {
       if (isFlowTimeoutError(error)) {
+        // A combined job can time out only while Phase 2 is being detected,
+        // after Flow has already produced a valid Phase 1 still. Never wipe
+        // that still and restart the whole combined job; surface it so the
+        // caller preserves image_done and can resume video-only.
+        if (error?.imgUrl) throw error;
         // หมดเวลา 15 นาที → รีหน้า Flow แล้ว retry รายการนี้ใหม่ตั้งแต่ต้น
         timeoutRetryCount++;
         if (timeoutRetryCount > FLOW_TIMEOUT_MAX_RETRY) {
