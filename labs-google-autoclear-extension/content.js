@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  console.log("⚡ [Labs.google Auto-Clear Extension] Content script activated!");
+  console.log("⚡ [Google Flow Auto-Clear Extension] Content script activated!");
 
   const errorKeywords = [
     "we noticed some unusual activity",
@@ -37,7 +37,7 @@
     if (!foundError) return;
 
     isProcessing = true;
-    console.warn("⚠️ [Labs.google Auto-Clear] ตรวจพบการ์ด Fail/นับถอยหลัง! สั่งล้างแคชอัตโนมัติ...");
+    console.warn("⚠️ [Google Flow Auto-Clear] ตรวจพบการ์ด Fail/นับถอยหลัง! สั่งล้างแคชอัตโนมัติ...");
 
     // 1. กดปุ่ม ลบการ์ด (🗑️) หรือ Retry (🔄) บนหน้าจอทันทีถ้าพบ
     const buttons = document.querySelectorAll('button');

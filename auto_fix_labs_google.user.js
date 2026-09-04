@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         Labs.google Auto-Clear on Image & Video Fail
+// @name         Google Flow Auto-Clear on Image & Video Fail
 // @namespace    http://tampermonkey.net/
 // @version      1.1
 // @description  อัตโนมัติตรวจจับ Fail (We noticed some unusual activity) ทั้งภาพและวิดีโอ แล้วล้างแคช + กดปุ่ม Retry/Delete ให้อัตโนมัติทันที
 // @author       Antigravity AI
-// @match        https://labs.google/*
+// @match        https://flow.google.com/*
 // @grant        none
 // ==UserScript==
 

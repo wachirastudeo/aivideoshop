@@ -14,7 +14,7 @@
 Project นี้คือ Chrome Extension ชื่อ "TikTok Video Creator"
 เป้าหมาย: ช่วย TikTok seller สร้างวิดีโอขายสินค้าได้เร็ว โดย
 1. ดึงสินค้าจาก TikTok Showcase ของตัวเอง
-2. ส่งข้อมูลสินค้าไป generate วิดีโอที่ Google Flow (labs.google/fx/tools/flow)
+2. ส่งข้อมูลสินค้าไป generate วิดีโอที่ Google Flow (flow.google.com)
 3. โพสต์วิดีโอลง TikTok พร้อมปักตะกร้า หรือ download ไว้ในเครื่อง
 
 Extension จะแสดงเป็น side panel เล็กๆ ด้านขวาของ browser
@@ -73,7 +73,7 @@ permissions:
 host_permissions:
   - https://shop.tiktok.com/*
   - https://open.tiktokapis.com/*
-  - https://labs.google/*
+  - https://flow.google.com/*
   - https://api.anthropic.com/*   (ถ้าจะใช้ Claude วิเคราะห์ภาพ)
 
 side_panel:
@@ -299,7 +299,7 @@ Pacing: [pacing ที่เลือก]."
 ### 3E — Prompt Builder + Google Flow (2 Phase)
 
 ```
-Flow ทั้งหมดมี 2 phase โดยทั้งคู่ใช้ https://labs.google/fx/tools/flow
+Flow ทั้งหมดมี 2 phase โดยทั้งคู่ใช้ https://flow.google.com/
 
 ─────────────────────────────────────────────────
 PHASE 1 — สร้างภาพสินค้าใหม่ให้สวยก่อน
@@ -326,7 +326,7 @@ Suitable for [targetGroup] audience.
 Key visual: [highlights ของสินค้า]."
 
 google-flow.js — Phase 1:
-1. เปิด tab ใหม่ไปที่ https://labs.google/fx/tools/flow
+1. เปิด tab ใหม่ไปที่ https://flow.google.com/
 2. รอหน้าโหลด (waitForElement ของ input field)
 3. inject ภาพสินค้าดั้งเดิมเป็น reference image
 4. inject image prompt ลงใน prompt field

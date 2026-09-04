@@ -13,7 +13,7 @@
 
 const POLL = 500;
 const MAX_WAIT = 30000;
-const FLOW_HOME = "https://labs.google/fx/tools/flow";
+const FLOW_HOME = "https://flow.google.com/";
 
 const PROMPT_SELECTORS = [
     'div[role="textbox"][contenteditable="true"][data-slate-editor="true"]',
@@ -480,8 +480,8 @@ function waitEl(sel, ms = MAX_WAIT) {
         }, POLL);
     });
 }
-function isProjectUrl(href) { return /\/fx(?:\/[a-z]{2})?\/tools\/flow\/project/i.test(href); }
-function isHomeUrl(href) { return /\/fx(?:\/[a-z]{2})?\/tools\/flow\/?$/i.test(href); }
+function isProjectUrl(href) { return /^https:\/\/flow\.google\.com\/(?:u\/\d+\/)?project(?:\/|$)/i.test(href); }
+function isHomeUrl(href) { return /^https:\/\/flow\.google\.com\/(?:u\/\d+\/)?(?:[?#].*)?$/i.test(href); }
 function waitProjectUrl(ms = MAX_WAIT) {
     return new Promise(res => {
         if (isProjectUrl(location.href)) return res(true);
@@ -686,10 +686,10 @@ function mediaCardFailureMessage(cardInfo, status) {
     const message = extractFlowFailureReason(el);
 
     if (isUnusualActivityFailure(message)) {
-        return `Google Flow ตรวจพบพฤติกรรมผิดปกติ (Unusual Activity): ${message || "We noticed some unusual activity"} (คำแนะนำ: ลบ Cookies & Site Data ของ labs.google แล้วรีเฟรชหน้าเว็บ)`;
+        return `Google Flow ตรวจพบพฤติกรรมผิดปกติ (Unusual Activity): ${message || "We noticed some unusual activity"} (คำแนะนำ: ลบ Cookies & Site Data ของ flow.google.com แล้วรีเฟรชหน้าเว็บ)`;
     }
     if (isAudioGenerationFailure(message)) {
-        return `Google Flow สร้างผลลัพธ์ไม่สำเร็จ: ${message} (คำแนะนำ: ลบ Cookies & Site Data ของ labs.google แล้วรีเฟรชหน้าเว็บ)`;
+        return `Google Flow สร้างผลลัพธ์ไม่สำเร็จ: ${message} (คำแนะนำ: ลบ Cookies & Site Data ของ flow.google.com แล้วรีเฟรชหน้าเว็บ)`;
     }
     if (/prominent people/i.test(message)) {
         return `Google Flow ปฏิเสธ prompt เพราะอาจเกี่ยวข้องกับบุคคลสาธารณะ: ${message}`;

@@ -98,14 +98,13 @@ async function routeMessage(message, sender) {
 }
 
 async function clearGoogleFlowSiteData({ reload = true } = {}) {
-  console.log("[Background] Clearing labs.google site data (preserving login)...");
+  console.log("[Background] Clearing flow.google.com site data (preserving login)...");
   try {
     await new Promise((resolve, reject) => {
       chrome.browsingData.remove(
         {
           origins: [
-            "https://labs.google",
-            "https://labs.google.com"
+            "https://flow.google.com"
           ]
         },
         {
@@ -127,7 +126,7 @@ async function clearGoogleFlowSiteData({ reload = true } = {}) {
         }
       );
     });
-    console.log("[Background] labs.google site data cleared successfully.");
+    console.log("[Background] flow.google.com site data cleared successfully.");
 
     if (reload) {
       // รีเฟรชแท็บ Google Flow ทั้งหมดที่เปิดอยู่อัตโนมัติ
@@ -147,7 +146,7 @@ async function clearGoogleFlowSiteData({ reload = true } = {}) {
 
     return { ok: true };
   } catch (error) {
-    console.error("[Background] Failed to clear labs.google site data:", error);
+    console.error("[Background] Failed to clear flow.google.com site data:", error);
     return { ok: false, error: error.message };
   }
 }
@@ -357,7 +356,7 @@ async function openGoogleFlow(payload) {
   const runVersion = flowStopVersion;
   const flowSettings = await getFlowSettings();
   const reuseProject = flowSettings.reuseProject === true;
-  const FLOW_URL = "https://labs.google/fx/tools/flow";
+  const FLOW_URL = "https://flow.google.com/";
   const existingTabs = await queryFlowTabs();
   let tab;
   let needNavigate = true;
@@ -474,7 +473,7 @@ async function handleFlowPipelineDone(payload = {}) {
 async function prepareFlowProject(tabId, { forceNew = false } = {}) {
   let current = await chrome.tabs.get(tabId);
   if (forceNew && isFlowProjectUrl(current.url || "")) {
-    await chrome.tabs.update(tabId, { url: "https://labs.google/fx/tools/flow" });
+    await chrome.tabs.update(tabId, { url: "https://flow.google.com/" });
     await waitForTabComplete(tabId);
     await ensureFlowContentScript(tabId);
     current = await chrome.tabs.get(tabId);
@@ -502,7 +501,7 @@ async function prepareFlowProject(tabId, { forceNew = false } = {}) {
 }
 
 function isFlowProjectUrl(url = "") {
-  return /\/fx(?:\/[a-z]{2})?\/tools\/flow\/project/i.test(url);
+  return /^https:\/\/flow\.google\.com\/(?:u\/\d+\/)?project(?:\/|$)/i.test(url);
 }
 
 async function getFlowSettings() {
@@ -555,10 +554,7 @@ async function stopTikTokStudioPipeline() {
 
 async function queryFlowTabs() {
   return [
-    ...(await chrome.tabs.query({ url: "*://labs.google/fx/tools/flow*" })),
-    ...(await chrome.tabs.query({ url: "*://labs.google/fx/*/tools/flow*" })),
-    ...(await chrome.tabs.query({ url: "*://labs.google.com/fx/tools/flow*" })),
-    ...(await chrome.tabs.query({ url: "*://labs.google.com/fx/*/tools/flow*" }))
+    ...(await chrome.tabs.query({ url: "https://flow.google.com/*" }))
   ].filter((candidate, index, list) => candidate.id && list.findIndex((item) => item.id === candidate.id) === index);
 }
 
