@@ -1467,7 +1467,7 @@ function getFlowProductImages(product = {}) {
     push(product.flowImageUrl);
   }
 
-  return out.slice(0, 6);
+  return out;
 }
 
 function getAnalysisProductImages(product = {}) {

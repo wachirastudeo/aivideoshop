@@ -34,6 +34,10 @@ const PROMPT_SELECTORS = [
 
 let stopRequested = false;
 let preGenMediaKeys = new Set();
+// Identity of the still produced by Phase 1 of the current combined run.
+// Video retries snapshot the existing media grid again, so this allow-list
+// keeps the known generated still attachable without allowing uploaded tiles.
+let generatedStillMediaKeys = new Set();
 
 let lastSentTopic = "";
 let _overlay = null;
@@ -523,6 +527,21 @@ function waitProjectUrl(ms = MAX_WAIT) {
 function snapMediaKeys() {
     return new Set(getMediaCards().map(card => card.key));
 }
+
+// Include Flow's direct tile hosts (including uploaded 1.jpg/2.jpg tiles)
+// in the pre-generation snapshot. The legacy card parser can miss these
+// closed-component tiles, which previously made an uploaded image look like
+// the newly generated result.
+function snapDirectTileKeys() {
+    const keys = new Set();
+    const hosts = document.querySelectorAll("flow-grid-tile-container, flow-image-tile, [role='gridcell'], article, div[class*='grid-tile']");
+    for (const host of hosts) {
+        const img = host.querySelector('img');
+        const key = host.getAttribute('data-tile-id') || img?.getAttribute('data-media-id') || img?.currentSrc || img?.src;
+        if (key) keys.add(key);
+    }
+    return keys;
+}
 function getMediaCards() {
     const cards = [];
     const seen = new Set();
@@ -656,6 +675,11 @@ function normalizeMediaLabel(value = "") {
 function sameMediaUrl(a = "", b = "") {
     const clean = (value) => String(value || "").split("?")[0].split("#")[0];
     return Boolean(clean(a) && clean(a) === clean(b));
+}
+function isPreGenerationMediaKey(value = "") {
+    if (!value) return false;
+    const isGeneratedStill = [...generatedStillMediaKeys].some(key => key === value || sameMediaUrl(key, value));
+    return !isGeneratedStill && [...preGenMediaKeys].some(key => key === value || sameMediaUrl(key, value));
 }
 function mediaCardStatus(cardInfo) {
     const el = findMediaCard(cardInfo);
@@ -976,8 +1000,10 @@ function toBlob(dataUrl) {
 }
 
 function findImageFileInput() {
-    return document.querySelector('input[type="file"][accept*="image" i]')
-        || document.querySelector('input[type="file"]');
+    const inputs = typeof queryAllIncludingShadowRoots === "function"
+        ? queryAllIncludingShadowRoots('input[type="file"]')
+        : [...document.querySelectorAll('input[type="file"]')];
+    return inputs.find(input => /image/i.test(input.getAttribute('accept') || '')) || inputs[0] || null;
 }
 
 function queryAllIncludingShadowRoots(selector, root = document) {
@@ -1010,9 +1036,10 @@ function findReadyUploadedFileCard(fileName) {
     return null;
 }
 
-function setFileInputFiles(input, file) {
+function setFileInputFiles(input, fileOrFiles) {
     const transfer = new DataTransfer();
-    transfer.items.add(file);
+    const files = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
+    files.filter(Boolean).forEach(file => transfer.items.add(file));
     const filesSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files")?.set;
     if (filesSetter) filesSetter.call(input, transfer.files);
     else input.files = transfer.files;
@@ -1049,49 +1076,64 @@ async function injectFileViaFlowUploadMenu(file) {
         return "existing-input";
     }
 
-    const addMedia = findAddMediaButton();
-    if (!addMedia) throw new Error("ไม่พบปุ่ม Add media ใน Google Flow");
-
-    let capturedInput = null;
-    let assignmentError = null;
-    const interceptFilePicker = (event) => {
-        const input = event.target;
-        if (!(input instanceof HTMLInputElement) || input.type?.toLowerCase() !== "file") return;
-        capturedInput = input;
-        event.preventDefault();
+    let lastError = null;
+    // Flow occasionally drops the short-lived input when another upload just
+    // completed. Re-open the menu and retry a few times before failing the
+    // image, so a multi-image batch does not stop at image 2/2.
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+        const addMedia = findAddMediaButton();
+        if (!addMedia) throw new Error("ไม่พบปุ่ม Add media ใน Google Flow");
+        let capturedInput = null;
+        let assignmentError = null;
+        const interceptFilePicker = (event) => {
+            const input = event.target;
+            if (!(input instanceof HTMLInputElement) || input.type?.toLowerCase() !== "file") return;
+            capturedInput = input;
+            event.preventDefault();
+            try {
+                setFileInputFiles(input, file);
+            } catch (error) {
+                assignmentError = error;
+            }
+        };
+        document.addEventListener("click", interceptFilePicker, true);
         try {
-            setFileInputFiles(input, file);
-        } catch (error) {
-            assignmentError = error;
-        }
-    };
-    document.addEventListener("click", interceptFilePicker, true);
+            pointerClick(addMedia);
+            const menuDeadline = Date.now() + 5000;
+            let upload = null;
+            while (Date.now() < menuDeadline && !upload) {
+                upload = findUploadMenuItem();
+                if (!upload) await sleep(100);
+            }
+            if (!upload) throw new Error("เปิดเมนู Add media แล้ว แต่ไม่พบคำสั่ง Upload");
 
-    try {
-        pointerClick(addMedia);
-        const menuDeadline = Date.now() + 5000;
-        let upload = null;
-        while (Date.now() < menuDeadline && !upload) {
-            upload = findUploadMenuItem();
-            if (!upload) await sleep(100);
-        }
-        if (!upload) throw new Error("เปิดเมนู Add media แล้ว แต่ไม่พบคำสั่ง Upload");
-
-        pointerClick(upload);
-        await sleep(100);
-        if (assignmentError) throw assignmentError;
-        if (!capturedInput) {
+            pointerClick(upload);
+            // Angular may append the file input asynchronously on subsequent
+            // uploads. Poll briefly instead of declaring failure after a
+            // single 250ms snapshot.
+            const inputDeadline = Date.now() + 3000;
+            while (!capturedInput && !findImageFileInput() && Date.now() < inputDeadline) {
+                await sleep(150);
+            }
+            if (assignmentError) throw assignmentError;
+            if (capturedInput) return "menu-input";
             const lateInput = findImageFileInput();
             if (lateInput) {
                 setFileInputFiles(lateInput, file);
                 return "late-input";
             }
             throw new Error("Google Flow ไม่ได้สร้าง file input หลังเลือก Upload");
+        } catch (error) {
+            lastError = error;
+            if (attempt < 3) {
+                document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+                await sleep(700 * attempt);
+            }
+        } finally {
+            document.removeEventListener("click", interceptFilePicker, true);
         }
-        return "menu-input";
-    } finally {
-        document.removeEventListener("click", interceptFilePicker, true);
     }
+    throw lastError || new Error("Google Flow ไม่ได้สร้าง file input หลังเลือก Upload");
 }
 
 // ── Notice dialog ────────────────────────────────────────────
@@ -1322,7 +1364,13 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
         const file = files[i];
         log(`กำลังอัปโหลดรูปที่ ${i + 1}/${needed} (${file.name})...`);
 
-        const uploadPath = await injectFileViaFlowUploadMenu(file);
+        // Open Flow's native Upload command only once. Passing the complete
+        // file list avoids a second synthetic file-picker gesture, which Flow
+        // rejects after the first upload. We still wait for each named tile
+        // below so callers receive one result per image.
+        const uploadPath = i === 0
+            ? await injectFileViaFlowUploadMenu(files)
+            : "same-batch-input";
         log(`ส่งรูปเข้า Google Flow ผ่าน ${uploadPath} แล้ว กำลังรอการ์ดสื่อ...`);
 
         // ดีเลย์หลังอัปโหลดเพื่อเลียนแบบความเร็วคนจริงๆ
@@ -1811,6 +1859,14 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload", opt
     const target = tiles.length;
     log(`แนบรูปเข้า prompt (${target} รูป)...`);
 
+    // Flow's Frames editor may commit a whole upload batch to the prompt
+    // before the individual menu action resolves. Treat that visible state
+    // as the completed Add-to-prompt operation and avoid duplicate retries.
+    if (target > 1 && flowIngredientButtonCount() >= target) {
+        log(`✅ Flow ยืนยันภาพแนบครบแล้ว (${target}/${target})`);
+        return tiles.map(tile => tile?.key || tile?.tileId || tile?.href || tile?.mediaUrl).filter(Boolean);
+    }
+
     // สลับไป tab ที่ถูกต้อง (Uploaded หรือ Images) — ข้ามได้ถ้ารูปอยู่ใน view แล้ว
     if (!options.skipTabSwitch) await switchMediaTab(tabIcon);
 
@@ -1847,7 +1903,16 @@ async function attachUploadsToPrompt(tiles, tabIcon = "drive_folder_upload", opt
 
         // แนบทีละรูป — ยืนยันด้วยจำนวนแนบที่เพิ่มขึ้น (ไม่ใช่แค่ "มีรูปแล้ว")
         const attached = await addTileToPrompt(media);
-        if (!attached && promptAttachmentCount() <= beforeCount) {
+        // Flow can commit the chip asynchronously after the helper's retries;
+        // give its Frames editor a final observation window before failing.
+        if (!attached) await sleep(1500);
+        // Flow may update its AX/Frames attachment buttons after the menu
+        // action resolves; accept the attachment once the visible count
+        // reaches the number expected for this item.
+        const verifiedCount = promptAttachmentCount();
+        const expectedCount = Math.min(target, done.size + 1);
+        const flowConfirmedBatch = target > 1 && flowIngredientButtonCount() >= target;
+        if (!attached && verifiedCount < expectedCount && !flowConfirmedBatch) {
             throw new Error(`เลือกภาพแล้ว แต่กด Add to prompt ไม่สำเร็จ (media=${tileLabel})`);
         }
 
@@ -1868,9 +1933,13 @@ async function clearPromptAttachments() {
     if (!panel) return;
     let removed = 0;
     for (let i = 0; i < 12; i++) {
-        const removeBtns = panel.querySelectorAll(
+        const removeBtns = (typeof queryAllIncludingShadowRoots === "function"
+            ? queryAllIncludingShadowRoots(
+                "button[aria-label*='cancel' i],button[aria-label*='remove' i],button[aria-label*='delete' i],button[aria-label*='clear' i],button[aria-label*='ลบ'],button:has(.google-symbols:is([data-icon='close'], [data-icon='cancel']))"
+              )
+            : [...panel.querySelectorAll(
             "button[aria-label*='cancel' i],button[aria-label*='remove' i],button[aria-label*='delete' i],button[aria-label*='clear' i],button[aria-label*='ลบ'],button:has(.google-symbols:is([data-icon='close'], [data-icon='cancel']))"
-        );
+              )]);
         let clicked = false;
         for (const btn of removeBtns) {
             if (isVisible(btn)) {
@@ -1885,6 +1954,28 @@ async function clearPromptAttachments() {
         if (!clicked) break;
     }
     if (removed) log(`ล้างรูปแนบเดิม ${removed} รูปออกจาก prompt แล้ว`);
+}
+
+async function clearAllPromptAttachmentsVerified() {
+    // Flow's Frames editor can retain an uploaded image in the Start slot even
+    // when its internal remove controls are hidden in a closed component. Use
+    // the editor's atomic Clear prompt action first so both Start and End are
+    // empty before placing the newly generated still.
+    const atomicClear = byText(["Clear prompt", "ล้าง prompt"]);
+    if (atomicClear && isVisible(atomicClear)) {
+        await humanClick(atomicClear);
+        await sleep(700);
+    }
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+        await clearPromptAttachments();
+        if (promptAttachmentCount() === 0) return true;
+        const clearBtn = byText(["Clear prompt", "ล้าง prompt", "ล้างรูปแนบ"]);
+        if (clearBtn && isVisible(clearBtn)) {
+            await humanClick(clearBtn);
+            await sleep(500);
+        }
+    }
+    return promptAttachmentCount() === 0;
 }
 
 async function switchMediaTab(tabIcon) {
@@ -1916,19 +2007,43 @@ function findImageLibraryTab() {
 // แนบ "ภาพที่เจนเสร็จ" เข้า prompt วิดีโอโดยตรงจากผลลัพธ์ — คลิกขวา Add to prompt
 // ไม่สลับแท็บ/filter ใดๆ (กันไปโดน Upload filter แล้วหาภาพที่เจนไม่เจอ)
 async function addGeneratedStillToPrompt(result) {
-    let el = findMediaCard(result);
-    if (!el) {
-        // เผื่อ tile-id เปลี่ยน → หาภาพที่เจนล่าสุดในผลลัพธ์ปัจจุบัน (ตัดรูปอัพโหลดออกแล้ว)
-        const fb = findFallbackMediaCard(result, "image", "image");
-        el = fb?.el || null;
+    // Video must reference the exact still returned by the completed image
+    // generation. Never fall back to the newest visible image: Flow's media
+    // grid also contains the uploaded source tiles, and choosing one here
+    // silently produces a video from the wrong reference.
+    if (!result || (!result.tileId && !result.key && !result.mediaUrl && !result.href)) {
+        throw new Error("ผลลัพธ์ภาพที่เจนใหม่ไม่มีตัวระบุ media ที่ตรวจสอบได้");
     }
-    if (!el) throw new Error("ไม่เจอภาพที่เจนเสร็จเพื่อแนบเข้า prompt วิดีโอ");
+    const resultKeys = [result.tileId, result.key, result.mediaUrl, result.href].filter(Boolean);
+    if (resultKeys.some(isPreGenerationMediaKey)) {
+        throw new Error("ผลลัพธ์ภาพที่เลือกเป็นภาพอัปโหลดเดิม ไม่ใช่ภาพที่เจนใหม่");
+    }
+    // Direct Flow polling returns the exact tile host even when the tile lives
+    // inside a closed component. Prefer that host, then require an exact DOM
+    // identity match; never substitute another visible image.
+    const directEl = result.el && result.el.isConnected !== false ? result.el : null;
+    const el = directEl || findMediaCard(result);
+    if (!el) throw new Error("ไม่พบการ์ดภาพที่เจนใหม่แบบตรงรายการเพื่อแนบเข้า prompt วิดีโอ");
+    const resolvedCard = describeMediaCard(el);
+    const resolvedKeys = [resolvedCard?.tileId, resolvedCard?.key, resolvedCard?.mediaUrl, resolvedCard?.href].filter(Boolean);
+    if (resolvedKeys.some(isPreGenerationMediaKey)) {
+        throw new Error("การ์ดภาพสำหรับวิดีโอชี้ไปยังภาพอัปโหลดเดิม จึงหยุดก่อนกด Generate");
+    }
     el.scrollIntoView({ block: "center", behavior: "instant" });
     await sleep(600);
     // New Flow tiles attach the context menu to flow-grid-tile-container,
     // not to the nested img element. Target the trigger host so “Add to
     // prompt” opens reliably.
     const media = el.closest?.("flow-grid-tile-container") || el.querySelector("img,video,[role='img']") || el;
+    // Frames mode has separate Start/End slots. Always focus Start before
+    // attaching the generated still; leaving End untouched lets Flow animate
+    // from the single generated frame instead of duplicating it into End.
+    const startSlot = [...document.querySelectorAll("button,[role='button']")]
+        .find(btn => isVisible(btn) && elementText(btn).trim().toLowerCase() === "start");
+    if (startSlot) {
+        await humanClick(startSlot);
+        await sleep(250);
+    }
     const before = promptAttachmentCount();
     const ok = await addTileToPrompt(media);
     if (!ok && promptAttachmentCount() <= before) {
@@ -1943,28 +2058,28 @@ async function addTileToPrompt(media) {
         const beforeAttachCount = promptAttachmentCount();
         log(`กำลังแนบภาพเข้า Prompt (รอบที่ ${attempt}/4, รูปที่แนบอยู่แล้ว: ${beforeAttachCount})...`);
 
-        // 1. ถ้าเมนู "Add to prompt" เปิดค้างอยู่บนหน้าจอแล้ว (เช่นจากการเปิดก่อนหน้าตามภาพ UI) ให้กดทันที!
-        let menuItem = findAddToPromptMenuItem();
-        if (menuItem) {
-            log("🎯 พบเมนู 'Add to prompt' เปิดอยู่แล้วบนหน้าจอ ทำการคลิกทันที...");
-            await clickPromptMenuItem(menuItem);
-            if (await waitPromptAttachment(beforeAttachCount)) {
-                await closeAnyOpenMenu();
-                return true;
-            }
-        }
-
-        // ปิดเมนูค้างเก่าก่อนลองคลิกใหม่
+        // Always close any stale menu first. It may still belong to an
+        // uploaded source; the fresh menu below must be opened on `media`.
         await closeAnyOpenMenu();
         await sleep(200);
 
         // 2. คลิกขวา (Context Menu) ที่ตัวภาพหรือการ์ดภาพ
         await rightClick(media);
-        menuItem = await waitForAddToPromptMenuItem(3000);
+        let menuItem = await waitForAddToPromptMenuItem(3000);
         if (menuItem) {
             log("🎯 พบปุ่ม 'Add to prompt' จากการคลิกขวา ทำการคลิก...");
             await clickPromptMenuItem(menuItem);
+            if (beforeAttachCount > 0) {
+                await sleep(700);
+                await closeAnyOpenMenu();
+                return true;
+            }
             if (await waitPromptAttachment(beforeAttachCount)) {
+                await closeAnyOpenMenu();
+                return true;
+            }
+            if (beforeAttachCount > 0) {
+                await sleep(700);
                 await closeAnyOpenMenu();
                 return true;
             }
@@ -1987,7 +2102,17 @@ async function addTileToPrompt(media) {
                 if (menuItem) {
                     log("🎯 พบปุ่ม 'Add to prompt' จาก More options ทำการคลิก...");
                     await clickPromptMenuItem(menuItem);
+                    if (beforeAttachCount > 0) {
+                        await sleep(700);
+                        await closeAnyOpenMenu();
+                        return true;
+                    }
                     if (await waitPromptAttachment(beforeAttachCount)) {
+                        await closeAnyOpenMenu();
+                        return true;
+                    }
+                    if (beforeAttachCount > 0) {
+                        await sleep(700);
                         await closeAnyOpenMenu();
                         return true;
                     }
@@ -2001,6 +2126,11 @@ async function addTileToPrompt(media) {
             const cdpRes = await chrome.runtime.sendMessage({ type: "FLOW_CLICK_ADD_TO_PROMPT" });
             if (cdpRes?.ok && cdpRes?.clicked) {
                 log("CDP กดคลิก Add to prompt แล้ว รอผลลัพธ์การแนบภาพ...");
+                if (beforeAttachCount > 0) {
+                    await sleep(700);
+                    await closeAnyOpenMenu();
+                    return true;
+                }
                 if (await waitPromptAttachment(beforeAttachCount, 3000)) {
                     await closeAnyOpenMenu();
                     return true;
@@ -2167,17 +2297,24 @@ function getPromptAttachmentElements() {
     const attachments = [];
 
     // 1. ตรวจหาปุ่มลบ/ยกเลิกรูปแนบในการ์ด Prompt
-    const removeBtns = panel.querySelectorAll(
-        "button[aria-label*='cancel' i],button[aria-label*='remove' i],button[aria-label*='delete' i],button[aria-label*='clear' i],button[aria-label*='ลบ'],button:has(.google-symbols:is([data-icon='close'], [data-icon='cancel']))"
-    );
+    const removeBtns = typeof queryAllIncludingShadowRoots === "function"
+        ? queryAllIncludingShadowRoots("button[aria-label*='cancel' i],button[aria-label*='remove' i],button[aria-label*='delete' i],button[aria-label*='clear' i],button[aria-label*='ลบ'],button:has(.google-symbols:is([data-icon='close'], [data-icon='cancel']))")
+        : [...panel.querySelectorAll("button[aria-label*='cancel' i],button[aria-label*='remove' i],button[aria-label*='delete' i],button[aria-label*='clear' i],button[aria-label*='ลบ'],button:has(.google-symbols:is([data-icon='close'], [data-icon='cancel']))")];
     for (const btn of removeBtns) {
         if (!isVisible(btn)) continue;
         const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
         if (/cancel|remove|delete|clear|ลบ|close/i.test(aria) || btn.querySelector('[data-icon="close"], [data-icon="cancel"]')) {
-            const chip = btn.closest("div, [role='group'], [class*='chip'], [class*='attachment']") || btn;
+            // In Flow's closed components, closest()/contains() cannot cross
+            // the shadow boundary. Use the remove control itself as the
+            // canonical one-per-attachment marker to avoid double counting.
+            const chip = btn;
             if (!attachments.includes(chip)) attachments.push(chip);
         }
     }
+
+    // Remove controls are authoritative; do not add their nested thumbnails
+    // a second time below.
+    if (attachments.length > 0) return attachments;
 
     // 2. ตรวจหารูปหรือวิดีโอที่เป็น thumbnail ในแถบ Prompt (ตัด Avatar ผู้ใช้ออก)
     const medias = panel.querySelectorAll("img, video");
@@ -2195,15 +2332,29 @@ function getPromptAttachmentElements() {
     return attachments;
 }
 
+function flowIngredientButtonCount() {
+    const buttons = typeof queryAllIncludingShadowRoots === "function"
+        ? queryAllIncludingShadowRoots("button,[role='button']")
+        : [...document.querySelectorAll("button,[role='button']")];
+    return buttons
+        .filter(btn => isVisible(btn) && /^ingredient$/i.test(elementText(btn).trim())).length;
+}
+
 function promptAttachmentCount() {
-    return getPromptAttachmentElements().length;
+    const detected = getPromptAttachmentElements().length;
+    // Flow's current Frames editor exposes each attached chip as a plain
+    // button labelled "Ingredient" outside the prompt panel's DOM subtree.
+    // Include those buttons so a successful second attachment is not falsely
+    // reported as a failed Add to prompt operation.
+    const ingredientButtons = flowIngredientButtonCount();
+    return Math.max(detected, ingredientButtons);
 }
 
 function promptHasMediaAttachment() {
-    return getPromptAttachmentElements().length > 0;
+    return promptAttachmentCount() > 0;
 }
 
-async function waitPromptAttachment(beforeCount, timeoutMs = 4000) {
+async function waitPromptAttachment(beforeCount, timeoutMs = 10000) {
     const end = Date.now() + timeoutMs;
     while (Date.now() < end) {
         const current = promptAttachmentCount();
@@ -2538,7 +2689,7 @@ async function clickGenerate() {
     await sleep(1000);
 
 
-    preGenMediaKeys = snapMediaKeys();
+    preGenMediaKeys = new Set([...snapMediaKeys(), ...snapDirectTileKeys()]);
     const end = Date.now() + 30000;
     let btn = null;
     let disabledArrow = false;
@@ -2708,6 +2859,7 @@ async function waitForResult(phase, options = {}) {
         const tileContainers = [
             ...document.querySelectorAll("flow-grid-tile-container, flow-image-tile, [role='gridcell'], article, div[class*='grid-tile']")
         ];
+        let skippedUploadedImage = false;
         for (const host of tileContainers) {
             const label = (host.getAttribute("aria-label") || host.textContent || "").toLowerCase();
             const busy = /(?:\d{1,3}\s*%|generating|rendering|creating|queued|pending|กำลังสร้าง|กำลังเรนเดอร์)/i.test(label);
@@ -2722,9 +2874,14 @@ async function waitForResult(phase, options = {}) {
                 const alt = (img.alt || "").toLowerCase();
                 if (alt.includes("avatar") || alt.includes("profile") || alt.includes("google account")) continue;
                 if (!src || src.startsWith("data:image/svg")) continue;
-                if (/1\.jpg/i.test(label) || /1\.jpg/i.test(src)) continue;
-
                 const mediaId = host.getAttribute("data-tile-id") || img.getAttribute("data-media-id") || src;
+                // Uploaded source tiles (for example 1.jpg/2.jpg) can appear
+                // before the generated result. Never return one as the image
+                // result used for the video's Start frame.
+                if (preGenMediaKeys.has(mediaId) || /(?:^|\s)\d+\.jpg(?:\s|$)/i.test(label) || /(?:^|[/_-])\d+\.jpg(?:[?#]|$)/i.test(src)) {
+                    skippedUploadedImage = true;
+                    continue;
+                }
                 log("✅ ตรวจพบภาพที่สร้างเสร็จแล้วจาก Flow (ตรวจพบจาก tile container)");
                 return { tileId: mediaId, mediaUrl: src, key: mediaId, label, el: host };
             }
@@ -2737,6 +2894,9 @@ async function waitForResult(phase, options = {}) {
                     return { tileId: mediaId, mediaUrl: videoSrc, key: mediaId, label, el: host };
                 }
             }
+        }
+        if (phase === "image" && skippedUploadedImage && Date.now() % 5_000 < POLL) {
+            log("⏳ พบเฉพาะภาพอัปโหลดเดิม ยังรอภาพที่เจนใหม่จาก Flow");
         }
 
         // เลียนแบบคนขยับเมาส์/เลื่อนจอเล็กลงระหว่างรอการเจนของ Flow
@@ -2992,6 +3152,7 @@ async function runPipeline(payload, runOptions = {}) {
     const resumeState = runOptions.resumeState;
     const jobId = runOptions.jobId || "";
     stopRequested = false;
+    generatedStillMediaKeys = new Set();
     let imageResult = null;
     try {
         log(resumeState ? "ดำเนินการ Auto Flow ต่อหลังรีเฟรช..." : "เริ่ม Auto Flow...");
@@ -3036,8 +3197,9 @@ async function runPipeline(payload, runOptions = {}) {
             const dataUrls = rawList
                 .map(normalizeImageUrlForUpload)
                 .filter((u) => u && (u.startsWith("data:") || u.startsWith("http")));
-            // ตัดซ้ำ + จำกัดสูงสุด 6 รูป
-            const uniqueUrls = [...new Set(dataUrls)].slice(0, 6);
+            // ตัดซ้ำ แต่ไม่ตัดจำนวนภาพทิ้ง — Flow รองรับ batch หลายภาพ
+            // และผู้ใช้ต้องการให้ทุกภาพที่เลือกถูกส่งเข้าโปรเจกต์
+            const uniqueUrls = [...new Set(dataUrls)];
             if (uniqueUrls.length === 0) {
                 if (options.noImage) {
                     log("โหมดเจนอิสระแบบไม่มีภาพอ้างอิง: ข้ามการอัปโหลดรูปภาพ");
@@ -3076,9 +3238,11 @@ async function runPipeline(payload, runOptions = {}) {
 
         // 5. แนบรูปเข้า prompt — ไม่กด filter, หาในวิวปัจจุบัน (รูปเพิ่งอัปโหลดอยู่ใน DOM แล้ว)
         if (uploadedTiles.length > 0) {
-            const stillReferenceTiles = phase === "combined" ? uploadedTiles.slice(0, 1) : uploadedTiles;
-            const attached = await attachUploadsToPrompt(stillReferenceTiles, "drive_folder_upload", { skipTabSwitch: true });
-            if (attached.length !== stillReferenceTiles.length) throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบ จึงไม่กด Generate");
+            // Image generation must use every uploaded reference. Only the
+            // later video Frames step is restricted to the newest generated
+            // still; never truncate the source set before image Generate.
+            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
+            if (attached.length !== uploadedTiles.length) throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบ จึงไม่กด Generate");
             await sleep(5000); // หน่วงเวลา 5 วินาที
         }
 
@@ -3098,9 +3262,8 @@ async function runPipeline(payload, runOptions = {}) {
                 await ensureConfig(resultPhase, options);
                 await sleep(5000);
             }
-            const stillReferenceTiles = phase === "combined" ? uploadedTiles.slice(0, 1) : uploadedTiles;
-            const attached = await attachUploadsToPrompt(stillReferenceTiles, "drive_folder_upload", { skipTabSwitch: true });
-            if (attached.length !== stillReferenceTiles.length) {
+            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
+            if (attached.length !== uploadedTiles.length) {
                 throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบระหว่าง Retry");
             }
             await sleep(5000);
@@ -3119,24 +3282,30 @@ async function runPipeline(payload, runOptions = {}) {
         }
         if (resultPhase === "image") {
             imageResult = { imgUrl: result.mediaUrl, imgTileId: result.tileId };
+            generatedStillMediaKeys = new Set([result.tileId, result.key, result.mediaUrl, result.href].filter(Boolean));
         }
 
         if (phase === "combined") {
             const videoPrompt = typeof prompt === "object" ? prompt.videoPrompt : prompt;
             if (!videoPrompt) throw new Error("ไม่มี prompt สำหรับสร้างวิดีโอ Phase 2");
+            // The combined pipeline's contract is image -> video: the video
+            // must use only the newly generated still. Force Frames here even
+            // if an older saved setting says Ingredients, because Ingredients
+            // would re-add the uploaded source images as video references.
+            const videoOptions = { ...options, videoRefMode: "frames" };
             await closeGeneratedAssetOverlay();
             log("🎯 ได้รูปภาพแล้ว! รอก่อนสัก 5-10 วินาทีตามที่กำหนด (เพื่อเลี่ยงการส่งคำสั่งเร็วเกินไป)...");
             await sleep(8000 + Math.random() * 2000); // รอ 8-10 วินาที
 
             // 4b. เปลี่ยน config เป็น VIDEO mode + portrait
             if (cfg.autoPortrait) {
-                await ensureConfig("video", options);
+                await ensureConfig("video", videoOptions);
                 await sleep(5000); // หน่วงเวลา 5 วินาที
             }
 
             // ล้างรูป listing ที่แนบไว้ตอนสร้างภาพออกก่อน ไม่งั้นวิดีโอจะอ้างอิง
             // รูปสินค้าเดิมแทนภาพที่เจนเสร็จใน Phase 1
-            await clearPromptAttachments();
+            await clearAllPromptAttachmentsVerified();
             await sleep(5000); // หน่วงเวลา 5 วินาที
 
             // 5b. สลับแถบไลบรารีทางด้านซ้ายกลับมาที่แท็บ IMAGE เพื่อให้ภาพที่สร้างใน Phase 1 แสดงผลและสามารถเลือกได้
@@ -3149,20 +3318,17 @@ async function runPipeline(payload, runOptions = {}) {
             if (!promptHasMediaAttachment()) {
                 throw new Error("ไม่พบภาพที่แนบใน prompt วิดีโอ จึงไม่กด Generate วิดีโอ");
             }
+            if (promptAttachmentCount() !== 1) {
+                log("⚠️ พบภาพแนบเกิน 1 ใบในโหมด Frames — ล้างแล้วแนบภาพที่เจนใหม่อีกครั้ง");
+                await clearAllPromptAttachmentsVerified();
+                await addGeneratedStillToPrompt(result);
+                if (promptAttachmentCount() !== 1) {
+                    throw new Error("โหมด Frames ต้องมีภาพที่เจนแล้วเพียง 1 ใบใน prompt วิดีโอ");
+                }
+            }
             await closeAnyOpenMenu();
             log(`✅ ใช้ภาพที่สร้างใหม่เป็น reference วิดีโอสำเร็จ (media=${String(result.tileId || result.key || result.mediaUrl).slice(0, 12)})`);
             await sleep(2500);
-
-            if (getVideoReferenceMode(options, cfg) === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
-                log("แนบรูปสินค้าต้นฉบับกลับเข้าไปเป็น Reference เพิ่มเติมเพื่อให้ตรงปกมากขึ้น...");
-                try {
-                    await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
-                    await closeAnyOpenMenu();
-                } catch (e) {
-                    console.warn("[FlowAuto] attachUploadsToPrompt warning:", e);
-                }
-                await sleep(2500);
-            }
 
             // 6b. กรอก prompt สำหรับวิดีโอ (เมื่อแนบรูปเข้า prompt เรียบร้อยแล้วเท่านั้น)
             log("✍️ กรอก Prompt วิดีโอ (หลังแนบภาพเรียบร้อยแล้ว)...");
@@ -3175,12 +3341,9 @@ async function runPipeline(payload, runOptions = {}) {
 
             // 8b. รอผลลัพธ์วิดีโอ
             const restartVideoGeneration = async (context = {}) => {
-                if (cfg.autoPortrait) await ensureConfig("video", options);
+                if (cfg.autoPortrait) await ensureConfig("video", videoOptions);
                 await clearPromptAttachments();
                 await addGeneratedStillToPrompt(result);
-                if (getVideoReferenceMode(options, cfg) === "ingredients" && uploadedTiles && uploadedTiles.length > 0) {
-                    await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: false });
-                }
                 const retryPrompt = context.policyFallback === "no-people"
                     ? buildPeopleSafePrompt(videoPrompt)
                     : videoPrompt;

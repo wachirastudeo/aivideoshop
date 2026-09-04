@@ -221,6 +221,20 @@ test("combined Flow never starts video generation without its generated still at
   );
 });
 
+test("image result polling snapshots direct Flow tiles so uploaded sources cannot be returned as generated output", async () => {
+  const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
+  assert.match(source, /function snapDirectTileKeys\(\)/);
+  assert.match(source, /preGenMediaKeys = new Set\(\[\.\.\.snapMediaKeys\(\), \.\.\.snapDirectTileKeys\(\)\]\)/);
+  assert.match(source, /Uploaded source tiles \(for example 1\.jpg\/2\.jpg\) can appear[\s\S]*before the generated result/);
+});
+
+test("combined image generation attaches every uploaded reference before Generate", async () => {
+  const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
+  assert.match(source, /attachUploadsToPrompt\(uploadedTiles, "drive_folder_upload", \{ skipTabSwitch: true \}\)/);
+  assert.match(source, /attached\.length !== uploadedTiles\.length/);
+  assert.match(source, /ingredientButtons/);
+});
+
 test("Flow verifies the active Veo model before it can generate video", async () => {
   const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
   assert.match(source, /function hasActiveFlowModelFamily\(phase\)/);
@@ -237,6 +251,37 @@ test("Flow selects and verifies the configured Frames reference mode before vide
   assert.match(source, /await clickVisibleRadio\(label\)/);
   assert.match(source, /!isVisibleRadioSelected\(label\)/);
   assert.match(source, /ยืนยันโหมดอ้างอิงวิดีโอ \$\{label\} ไม่สำเร็จ จึงไม่กด Generate/);
+});
+
+test("combined video attaches only the generated still before typing the video prompt", async () => {
+  const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
+  const attach = source.indexOf("await addGeneratedStillToPrompt(result);");
+  const prompt = source.indexOf('log("✍️ กรอก Prompt วิดีโอ', attach);
+  assert.ok(attach >= 0 && prompt > attach, "generated still must be attached before video prompt entry");
+  assert.match(source.slice(attach, prompt), /promptAttachmentCount\(\) !== 1/);
+});
+
+test("combined video forces Frames and never re-adds uploaded references", async () => {
+  const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
+  const combined = source.slice(source.indexOf('if (phase === "combined") {'));
+  assert.match(combined, /const videoOptions = \{ \.\.\.options, videoRefMode: "frames" \}/);
+  assert.doesNotMatch(combined.slice(0, combined.indexOf('// 6b. กรอก prompt')), /attachUploadsToPrompt\(uploadedTiles/);
+  assert.match(source, /function isPreGenerationMediaKey\(value = ""\)/);
+  assert.match(source, /resultKeys\.some\(isPreGenerationMediaKey\)/);
+  assert.match(source, /let generatedStillMediaKeys = new Set\(\)/);
+  assert.match(source, /generatedStillMediaKeys = new Set\(\[result\.tileId, result\.key, result\.mediaUrl, result\.href\]/);
+  assert.match(source, /Always close any stale menu first[\s\S]*let menuItem = await waitForAddToPromptMenuItem/);
+});
+
+test("multi-image upload retries Flow's transient file input", async () => {
+  const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
+  assert.match(source, /queryAllIncludingShadowRoots\('input\[type="file"\]'\)/);
+  assert.match(source, /for \(let attempt = 1; attempt <= 3; attempt \+= 1\)/);
+  assert.match(source, /const inputDeadline = Date\.now\(\) \+ 3000/);
+  assert.match(source, /injectFileViaFlowUploadMenu\(files\)/);
+  assert.match(source, /same-batch-input/);
+  assert.match(source, /Flow occasionally drops the short-lived input/);
+  assert.match(source, /Google Flow ไม่ได้สร้าง file input หลังเลือก Upload/);
 });
 
 test("video completion reveals Flow's lazy thumbnail before polling the media result", async () => {
