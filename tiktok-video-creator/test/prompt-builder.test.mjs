@@ -1285,7 +1285,16 @@ check("phone case image Auto uses a fictional Thai presenter", /Presenter: A fic
 check("phone case image locks printed artwork to the case coordinates", /CASE ARTWORK COORDINATE LOCK[\s\S]*relative to the case's top, bottom, left, right edges[\s\S]*camera cutout/i.test(caseAutoImg), caseAutoImg);
 check("phone case still uses the exact source product", /REFERENCE PRODUCT SOURCE[\s\S]*attached reference image as the exact source[\s\S]*Copy the visible case or case set 1:1/i.test(caseAutoImg), caseAutoImg);
 check("phone case still keeps the original shape and camera opening", /REFERENCE PRODUCT SOURCE[\s\S]*outer silhouette[\s\S]*camera opening/i.test(caseAutoImg), caseAutoImg);
+check("phone case still locks exact camera cutout geometry", /PHONE CASE STILL 1:1 GEOMETRY LOCK[\s\S]*lens-hole count, shape, size, spacing, orientation, and position[\s\S]*camera-island border thickness/i.test(caseAutoImg), caseAutoImg);
+check("phone case still locks exact side rails and edge construction", /PHONE CASE STILL 1:1 GEOMETRY LOCK[\s\S]*side-rail thickness, color, material[\s\S]*top and bottom edge construction/i.test(caseAutoImg), caseAutoImg);
+check("phone case still binds artwork coordinates to the physical shell", /indivisible source asset[\s\S]*artwork point fixed to its original coordinate[\s\S]*Do not recenter, scale, rotate, mirror, crop, repaint/i.test(caseAutoImg), caseAutoImg);
+check("phone case still requires exactly one visible hand", /MANDATORY ONE-HAND PHONE CASE HOLD[\s\S]*exactly one visible natural adult hand total[\s\S]*second hand must remain completely outside the frame/i.test(caseAutoImg), caseAutoImg);
 check("phone case still rejects a lookalike replacement", /FINAL PHONE CASE CHECK[\s\S]*same case from the original image[\s\S]*not a lookalike or generic replacement/i.test(caseAutoImg), caseAutoImg);
+const combinedCaseImg = buildImagePrompt(
+  { name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" },
+  { ...settings, presenter: "Auto", location: "Auto", flowGenMode: "combined" }
+);
+check("combined phone case still keeps the mandatory one-hand hold", /MANDATORY ONE-HAND PHONE CASE HOLD/i.test(combinedCaseImg) && !/no people or hands/i.test(combinedCaseImg), combinedCaseImg);
 const caseImagePresenter = caseAutoImg.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 const caseVideoPresenter = caseAutoVid.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 check("Auto still and video use the same presenter gender", caseImagePresenter === caseVideoPresenter, `${caseImagePresenter} vs ${caseVideoPresenter}`);
@@ -1378,6 +1387,7 @@ check("phone case video prevents pattern rotation and drift", /CASE ARTWORK COOR
 check("phone case keeps true size against full-size scene anchors", /REAL-WORLD PHONE SCALE LOCK[\s\S]*true smartphone size relative to a full-size hand, table, room, and furniture[\s\S]*fill half a table/i.test(phoneCaseVid), phoneCaseVid);
 check("complex phone case patterns copy from the clear reference", /COMPLEX PHONE CASE PATTERN REFERENCE LOCK[\s\S]*entire visible case-back artwork as one exact graphic layer[\s\S]*reference image overrides the product title/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case uses a natural one-hand grip", /NATURAL PHONE CASE HANDLING LOCK[\s\S]*relaxed ergonomic grip[\s\S]*thumb along one side[\s\S]*fingers naturally supporting/i.test(phoneCaseVid), phoneCaseVid);
+check("phone case video keeps the second hand outside every shot", /MANDATORY ONE-HAND PHONE CASE HOLD[\s\S]*every shot[\s\S]*second hand must remain completely outside the frame/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case keeps camera cutout aligned while held", /NATURAL PHONE CASE HANDLING LOCK[\s\S]*cover the camera cutout[\s\S]*camera opening.*aligned/i.test(phoneCaseVid), phoneCaseVid);
 
 const bagVid = buildVideoPrompt({ name: "กระเป๋าสะพายข้างหนังแท้สำหรับผู้หญิง" }, settings);
