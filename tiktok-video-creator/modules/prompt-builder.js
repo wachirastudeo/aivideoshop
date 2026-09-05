@@ -348,6 +348,7 @@ const NO_UNREQUESTED_ANIMALS_DIRECTION = "No animals unless explicitly selected.
 const PRODUCT_FIDELITY_DIRECTION = "STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product or product set EXACTLY as in the reference image. Preserve its exact shape, geometry, colors, texture, printed artwork, patterns, logos, labels, parts, visible count, and arrangement. Every included piece must remain 100% identical without modification or hallucination. Do NOT redesign, warp, deform, restyle, simplify, merge, omit, or modify the product/set. Do not add unrelated items or decorations. If no text is visibly present on the reference product, keep its surface completely blank; if text is unclear, treat it as absent. Never infer text from the title or surrounding image.";
 const STILL_PRODUCT_FIDELITY_DIRECTION = "STILL PRODUCT IDENTITY: Preserve its exact shape, proportions, support structure, materials, colors, patterns, visible logos, labels, and printed text from the reference image. Keep the product physically coherent and at realistic scale. Do not invent parts, remove parts, redesign it, or force a new geometry.";
 const STILL_IMAGE_VARIANT_PATTERN_LOCK = "STILL IMAGE — EXACT VARIANT & PATTERN LOCK: The uploaded reference is the exact product variant or product set to reproduce. Match every visible piece as one fixed surface map: preserve the same motif identity, count, spacing, orientation, scale, edge placement, asymmetry, color boundaries, and relationship to seams, corners, holes, and cutouts. Do not blend different variants, choose a similar pattern, complete hidden areas, mirror, simplify, or redraw the design. If any detail is unclear, keep it indistinct instead of guessing. Generate one coherent product scene/set only, preserving every included piece; change the background and lighting only.";
+const UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK = "HIGHEST PRIORITY — EDIT THE UPLOADED PRODUCT, DO NOT REGENERATE IT: Treat the uploaded reference as source material for a product-preserving image edit, never as loose visual inspiration. Isolate the exact physical product or product set and composite that same product identity into the new scene. Keep the entire product region unchanged: silhouette, dimensions, perspective, fill level, folds, creases, seams, strings, material texture, artwork, pattern, logo, label typography, printed text, colors, and the exact position and scale of every mark. Synthesize only the pixels outside the product boundary plus physically accurate contact shadow or reflection. Do not redraw, reconstruct, re-render, clean up, beautify, restyle, mirror, rotate, recolor, relabel, or replace the product with a similar-looking version. If a product detail is unclear, preserve it indistinctly exactly where it appears instead of guessing. The final product must be immediately recognizable as the same uploaded item, not a newly generated approximation.";
 const STILL_TEXT_INTEGRITY_DIRECTION = "STILL TEXT INTEGRITY: Preserve only text visibly printed on the product. If none is visible/readable, keep the surface blank; never infer text from the title or surrounding image.";
 const PRODUCT_TEXT_SCOPE_LOCK = "PRODUCT TEXT SCOPE: Product text only; ignore captions, prices, CTAs, badges, watermarks, UI, and background text.";
 const REFERENCE_PIXEL_ARTWORK_LOCK = "REFERENCE PIXEL ARTWORK LOCK: Preserve only the product's visible physical pattern, logo, label, color, seam, and texture. Ignore surrounding overlay text; do not invent, redraw, or infer details.";
@@ -602,7 +603,8 @@ const CHAIR_FIDELITY_DIRECTION = "CHAIR-SPECIFIC FIDELITY LOCK: Reproduce the ex
 const FURNITURE_SURFACE_TEXT_LOCK = "FURNITURE SURFACE TEXT LOCK: Add NO new writing, letters, numbers, fake logo, brand name, label, watermark, sticker, badge, or typography. If none is visible in the reference, the product surface MUST remain completely plain and blank. Preserve only a real logo or intentional product pattern visibly present in the reference, in the same location.";
 const HAMMOCK_FIDELITY_DIRECTION = "HAMMOCK STRUCTURE FIDELITY: Preserve the exact fabric bed shape, width, weave, colors, end ropes, loops, straps, knots, and spreader bars only when visible in the reference. Install those existing attachment parts naturally between two suitable supports without adding handles, rigid furniture legs, packaging, or extra structural parts.";
 
-const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION, NATURAL UNHURRIED TEMPO & ZERO REPETITION LOCK: Each scene in the video MUST have its own UNIQUE, DIFFERENT spoken sentence in Thai that flows naturally at a relaxed, unhurried human pace (do NOT rush or speak too fast). ABSOLUTELY FORBIDDEN: NEVER repeat, loop, echo, or re-say the sentence spoken in the previous scene. Scene 2 MUST speak a NEW, DIFFERENT sentence from Scene 1; Scene 3 MUST speak a NEW, DIFFERENT sentence from Scene 2. Maintain a continuous, natural progressive voiceover across all scenes without repeating any phrase or sentence.";
+const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION, NATURAL UNHURRIED TEMPO & ZERO REPETITION LOCK: Use short, natural Thai narration at a relaxed human pace. Scene 2 must use a new sentence that continues from Scene 1. Never repeat, loop, echo, or re-say a phrase or sentence.";
+const MULTI_SCENE_EXECUTION_LOCK = "MANDATORY TWO-SCENE EDIT: Render exactly 2 scenes in 8s, about 4s each, with one clean hard cut near 4s. Change angle/action once; keep the same product and presenter. No extra cuts, collage, split screen, morph, or repeated scene.";
 const VOICEOVER_DIRECTION = "Add a clear, natural Thai off-screen voiceover narration speaking at a comfortable, unhurried pace (no visible person). All spoken audio must be in Thai.";
 const REVIEW_VOICEOVER_STYLE_DIRECTION = "REVIEW WITH OVERDUB STYLE LOCK: This mode is a hands-on product-use review, not a talking-head intro. Open with a close-up of hands picking up, opening, holding, or using the product; the product and hands must dominate the first shot and the face must not be the opening subject. Use multiple practical angles and real interaction before any optional brief face shot. The presenter is a SILENT ACTOR only: must not speak to camera, mouth words, lip-sync, or move the lips at all while the Thai voiceover plays. Use the voice as a separate off-screen overdub. Keep any visible facial expression relaxed and closed-mouth.";
 const NO_WOW_DIRECTION = "STRICT WORD EXCLUSION: The Thai word \"ว้าว\" MUST NEVER appear in spoken dialogue, voiceover, subtitles, captions, or any newly generated on-screen text. Use natural product-specific wording instead. Preserve only text that physically exists on the product reference.";
@@ -956,6 +958,7 @@ function buildCompactPhoneCaseStillPrompt(productInfo = {}, productName, auto, s
     "Create one professional product advertisement still image in a vertical 9:16 frame. Single image only; no collage or split screen.",
     `Product: "${sourceName}".`,
     "REFERENCE PRODUCT SOURCE: Use the attached reference image as the exact source for the product only. Copy the visible case or case set 1:1; do not redraw, redesign, beautify, or generate a lookalike replacement.",
+    UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     "Preserve the exact visible count, outer silhouette, edge profile, proportions, material, color, printed pattern, logo, and camera opening. Change only the surrounding scene, hand, lighting, and background.",
     "CASE ARTWORK COORDINATE LOCK: Keep every pattern and printed detail fixed relative to the case's top, bottom, left, right edges, corners, and camera cutout; never shift, stretch, mirror, simplify, or recolor it.",
     "FINAL PHONE CASE CHECK: The result must be the same case from the original image, not a lookalike or generic replacement. Keep each visible case separate with the same count.",
@@ -1199,6 +1202,7 @@ export function buildImagePrompt(productInfo, settings = {}) {
 
   const promptParts = [
     !textEnabled ? (isCoffeeImageAd ? COFFEE_COMPACT_TEXT_LOCK : TEXT_FREE_DIRECTION) : "",
+    UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     STILL_REFERENCE_FIDELITY_PRIORITY,
     buildProductIdentityLock(productInfo),
     STILL_IMAGE_VARIANT_PATTERN_LOCK,
@@ -1404,6 +1408,7 @@ function buildCoffeeReferenceFirstStillPrompt(productText, productName, location
   return [
     `Create one vertical 9:16 product still for ${productName}.`,
     "REFERENCE-FIRST MODE: The uploaded image is the only visual source of truth. Keep the actual coffee pouch from that image unchanged; do not redraw or reconstruct it from the product name, category, memory, or generic coffee knowledge.",
+    UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     COFFEE_POUCH_ARTWORK_STABILITY_LOCK,
     "Preserve the exact pouch silhouette, seams, zipper, material, label artwork, Thai/English lettering, logo, illustrations, colors, layout, and printed details. If any detail is unclear, keep the visible reference detail rather than guessing.",
     "Do not replace the pouch with a similar package, alternate design, clean generic label, new wording, or another brand. Show exactly one pouch, fully closed, upright, and physically realistic.",
@@ -1426,6 +1431,7 @@ function buildBoxedReferenceStillPrompt(productInfo, productText, productName, l
   return [
     `Create one vertical 9:16 product still for ${productName}.`,
     "BOXED PRODUCT REFERENCE MODE: Use the uploaded product image as the sole source of truth for the product. Place that exact product inside a clean, open presentation box that fits its real physical size.",
+    UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     buildProductIdentityLock(productInfo),
     REFERENCE_PIXEL_ARTWORK_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
@@ -1948,9 +1954,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     sceneBreakdown = lines.join("\n");
   }
 
+  sceneBreakdown = limitToTwoVideoScenes(sceneBreakdown);
+
   promptParts.push(
-    `Use distinct scenes with hard cuts; split the ${durationSeconds}s evenly across the scenes below.`,
-    `STRICT LIMIT: The video must contain AT MOST 3 to 4 sequential scenes/shots. Do not generate too many scenes, cuts, or edits. Keep the storytelling simple and clean.`,
+    MULTI_SCENE_EXECUTION_LOCK,
     handsOnlyStyle ? HANDS_ONLY_VIDEO_STYLE_DIRECTION : "",
     isUnboxingHands ? UNBOXING_REVEAL_SEQUENCE : "",
     sceneBreakdown,
@@ -2175,6 +2182,7 @@ function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, 
       ? `Create one photorealistic vertical 9:16 lower-body garment showcase image featuring ${garmentName}.`
       : `Create one photorealistic vertical 9:16 fashion selfie image featuring ${garmentName}.`,
     fashionSelfieImageDirection(presenter, settings, productText),
+    UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     apparelPriority,
     apparelWearDirection,
     lowerBodyFraming ? LOWER_BODY_GARMENT_CONTINUITY_LOCK : FASHION_SELFIE_BODY_CONTINUITY_LOCK,
@@ -2247,6 +2255,7 @@ function buildFashionHangerImagePrompt(productInfo, productName, settings = {}, 
   return [
     `Create one photorealistic vertical 9:16 direct-to-camera fashion product presentation image featuring ${garmentName}.`,
     FASHION_HANGER_MODEL_DIRECTION,
+    UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     FASHION_HANGER_PRODUCT_ONLY_STYLE_LOCK,
     FASHION_HANGER_GARMENT_PAIR_DIRECTION,
     APPAREL_REFERENCE_PRIORITY,
@@ -2438,6 +2447,17 @@ function getMultiSceneDescription(videoStyle, productName, locationStr, mood, pr
         `- Scene 3 (CTA): A 3-second close-up hero shot focusing on ${productName} with clear and appealing presentation.`
       ].join("\n");
   }
+}
+
+function limitToTwoVideoScenes(sceneBreakdown = "") {
+  return String(sceneBreakdown)
+    .split("\n")
+    .filter((line) => !/^\s*- (?:Scene|Shot) [34]\b/i.test(line))
+    .join("\n")
+    .replace(/\b(?:three|four|3|4)\s+(?:clean\s+)?(?:sequential\s+)?(?:scenes?|shots?|beats?)\b/gi, "two sequential scenes")
+    .replace(/\bmultiple sequential scenes\b/gi, "two sequential scenes")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function compactPromptText(value, maxLength) {

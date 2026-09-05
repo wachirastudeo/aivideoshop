@@ -261,6 +261,25 @@ test("combined video attaches only the generated still before typing the video p
   assert.match(source.slice(attach, prompt), /promptAttachmentCount\(\) !== 1/);
 });
 
+test("generated still opens its own More menu before Add to prompt", async () => {
+  const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
+  const body = source.slice(source.indexOf("async function addGeneratedStillToPrompt(result) {") + "async function addGeneratedStillToPrompt(result) {".length, source.indexOf("\nasync function addTileToPrompt"));
+  const calls = [];
+  const el = { isConnected: true, scrollIntoView() {} };
+  const dependencies = {
+    isPreGenerationMediaKey: () => false,
+    findMediaCard: () => el,
+    describeMediaCard: () => ({ key: "generated" }),
+    sleep: async () => {},
+    addGeneratedStillViaMoreMenu: async card => { assert.equal(card, el); calls.push("more"); },
+    addGeneratedStillToStartSlot: async () => { throw new Error("Start picker must not open"); },
+    log: () => {}
+  };
+  const run = new Function(...Object.keys(dependencies), `return async function(result) {${body}`)(...Object.values(dependencies));
+  await run({ key: "generated", el });
+  assert.deepEqual(calls, ["more"]);
+});
+
 test("combined video forces Frames and never re-adds uploaded references", async () => {
   const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
   const combined = source.slice(source.indexOf('if (phase === "combined") {'));
@@ -288,4 +307,71 @@ test("video completion reveals Flow's lazy thumbnail before polling the media re
   const source = await readFile(new URL("../background.js", import.meta.url), "utf8");
   assert.match(source, /generated\\s\+video\\s\+thumbnail/i);
   assert.match(source, /revealedVideoTile: true/);
+});
+
+test("generated More menu ignores Favorite and Reuse and verifies exactly one attachment", async () => {
+  const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
+  const start = source.indexOf("async function addGeneratedStillViaMoreMenu(tile) {");
+  const end = source.indexOf("// Attach the exact generated tile", start);
+  const calls = [];
+  const buttons = ["Favorite", "Reuse prompt", "More options"].map(label => ({
+    getAttribute: name => name === "aria-label" ? label : "",
+    querySelectorAll: () => [],
+    label
+  }));
+  const tile = { getBoundingClientRect: () => ({ left: 100, top: 100, width: 100, height: 200 }) };
+  const menu = {};
+  let count = 0;
+  const deps = {
+    promptAttachmentCount: () => count,
+    closeAnyOpenMenu: async () => calls.push("close"),
+    MouseEvent: class {},
+    queryAllIncludingShadowRoots: (_, root) => { assert.equal(root, tile); return buttons; },
+    isVisible: () => calls.includes("hover"),
+    log: () => {},
+    chrome: { runtime: { sendMessage: async message => {
+      if (message.type === "FLOW_HOVER_POINT") {
+        assert.deepEqual(message.payload, { x: 150, y: 200 }); calls.push("hover");
+        return { ok: true, hovered: true };
+      }
+      return { ok: true };
+    } } },
+    elementText: button => button.label,
+    sleep: async () => {},
+    humanClick: async button => { assert.equal(button, buttons[2]); calls.push("more"); },
+    rightClick: async card => { assert.equal(card, tile); calls.push("right-click"); },
+    waitForAddToPromptMenuItem: async () => calls.includes("more") ? menu : null,
+    clickPromptMenuItem: async item => { assert.equal(item, menu); count = 1; calls.push("add"); },
+    waitPromptAttachment: async () => count > 0,
+    flowFrameSlotButton: label => label === "end" ? {} : null
+  };
+  const run = new Function(...Object.keys(deps), `${source.slice(start, end)}; return addGeneratedStillViaMoreMenu;`)(...Object.values(deps));
+  await run(tile);
+  assert.deepEqual(calls, ["close", "right-click", "close", "hover", "more", "add", "close"]);
+  await assert.rejects(run(tile), /Prompt วิดีโอยังมีภาพแนบเดิม/);
+  count = 0;
+  calls.length = 0;
+  deps.waitForAddToPromptMenuItem = async () => menu;
+  const direct = new Function(...Object.keys(deps), `${source.slice(start, end)}; return addGeneratedStillViaMoreMenu;`)(...Object.values(deps));
+  await direct(tile);
+  assert.deepEqual(calls, ["close", "right-click", "add", "close"]);
+  count = 0;
+  deps.clickPromptMenuItem = async () => { count = 2; };
+  const duplicate = new Function(...Object.keys(deps), `${source.slice(start, end)}; return addGeneratedStillViaMoreMenu;`)(...Object.values(deps));
+  await assert.rejects(duplicate(tile), /จึงไม่กด Generate วิดีโอ/);
+});
+
+test("Add to prompt dispatches once so Frames does not fill both Start and End", async () => {
+  const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
+  const start = source.indexOf("async function clickPromptMenuItem(menuItem) {");
+  const end = source.indexOf("async function closeAnyOpenMenu()", start);
+  let clicks = 0;
+  const item = {
+    scrollIntoView() {}, click() { clicks++; },
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 20 }),
+    querySelectorAll: () => [{ click() { clicks++; } }]
+  };
+  const run = new Function("sleep", "fireAt", `${source.slice(start, end)}; return clickPromptMenuItem;`)(async () => {}, () => clicks++);
+  await run(item);
+  assert.equal(clicks, 1);
 });

@@ -2004,8 +2004,133 @@ function findImageLibraryTab() {
     return null;
 }
 
-// แนบ "ภาพที่เจนเสร็จ" เข้า prompt วิดีโอโดยตรงจากผลลัพธ์ — คลิกขวา Add to prompt
-// ไม่สลับแท็บ/filter ใดๆ (กันไปโดน Upload filter แล้วหาภาพที่เจนไม่เจอ)
+function flowFrameSlotButton(label) {
+    const wanted = String(label || "").trim().toLowerCase();
+    const buttons = typeof queryAllIncludingShadowRoots === "function"
+        ? queryAllIncludingShadowRoots("button,[role='button']")
+        : [...document.querySelectorAll("button,[role='button']")];
+    return buttons.find(btn => {
+        if (!isVisible(btn)) return false;
+        const text = elementText(btn).trim().toLowerCase();
+        const aria = (btn.getAttribute("aria-label") || "").trim().toLowerCase();
+        return text === wanted || aria === wanted || aria === `${wanted} frame`;
+    }) || null;
+}
+
+function framePickerSearchInput() {
+    const root = framePickerRoot();
+    const fields = typeof queryAllIncludingShadowRoots === "function"
+        ? queryAllIncludingShadowRoots("input,textarea", root || document)
+        : [...(root || document).querySelectorAll("input,textarea")];
+    return fields.find(field => isVisible(field) && /search assets|ค้นหาสื่อ/i.test(
+        `${field.getAttribute("placeholder") || ""} ${field.getAttribute("aria-label") || ""}`
+    )) || null;
+}
+
+function framePickerRoot() {
+    const roots = typeof queryAllIncludingShadowRoots === "function"
+        ? queryAllIncludingShadowRoots("[role='dialog'],[aria-modal='true']")
+        : [...document.querySelectorAll("[role='dialog'],[aria-modal='true']")];
+    const match = roots.find(root => isVisible(root) && /select a frame image|เลือกภาพเฟรม/i.test(elementText(root)));
+    if (match) return match;
+    const heading = (typeof queryAllIncludingShadowRoots === "function"
+        ? queryAllIncludingShadowRoots("h1,h2,h3,[role='heading']")
+        : [...document.querySelectorAll("h1,h2,h3,[role='heading']")])
+        .find(node => isVisible(node) && /select a frame image|เลือกภาพเฟรม/i.test(elementText(node)));
+    let node = heading;
+    for (let i = 0; i < 6 && node; i += 1, node = node.parentElement) {
+        if (isVisible(node) && node.getBoundingClientRect().height > 180) return node;
+    }
+    return null;
+}
+
+function framePickerAddButton() {
+    const root = framePickerRoot();
+    const buttons = typeof queryAllIncludingShadowRoots === "function"
+        ? queryAllIncludingShadowRoots("button,[role='button']", root || document)
+        : [...(root || document).querySelectorAll("button,[role='button']")];
+    return buttons.find(btn => isVisible(btn) && /^(?:add to prompt|เพิ่มไปยังพรอมต์)$/i.test(elementText(btn).trim())) || null;
+}
+
+function setNativeTextValue(field, value) {
+    if (!field) return false;
+    const proto = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+    if (setter) setter.call(field, value);
+    else field.value = value;
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+}
+
+function framePickerShowsResult(result, label = "") {
+    const root = framePickerRoot() || document;
+    const keys = [result?.mediaUrl, result?.tileId, result?.key, result?.href].filter(Boolean).map(String);
+    const mediaNodes = typeof queryAllIncludingShadowRoots === "function"
+        ? queryAllIncludingShadowRoots("img,video", root)
+        : [...root.querySelectorAll("img,video")];
+    if (mediaNodes.some(node => {
+        const src = node.currentSrc || node.src || node.getAttribute("src") || "";
+        return src && keys.some(key => sameMediaUrl(src, key) || src.includes(key));
+    })) return true;
+    const pickerText = elementText(root).toLowerCase();
+    return Boolean(label && pickerText.includes(label.toLowerCase()));
+}
+
+async function addGeneratedStillViaMoreMenu(tile) {
+    if (promptAttachmentCount() !== 0) {
+        throw new Error("Prompt วิดีโอยังมีภาพแนบเดิม จึงไม่เพิ่มภาพใหม่");
+    }
+    await closeAnyOpenMenu();
+    await rightClick(tile);
+    let menuItem = await waitForAddToPromptMenuItem(2000);
+    if (!menuItem) {
+        await closeAnyOpenMenu();
+        const debuggerReady = await chrome.runtime.sendMessage({ type: "FLOW_DEBUGGER_ATTACH" });
+        if (!debuggerReady?.ok) throw new Error("เปิดการควบคุมเมาส์เพื่อ hover ภาพไม่สำเร็จ");
+        await sleep(800);
+        const bounds = tile.getBoundingClientRect();
+        const hover = await chrome.runtime.sendMessage({
+            type: "FLOW_HOVER_POINT",
+            payload: { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 }
+        });
+        if (!hover?.ok || !hover.hovered) throw new Error("Hover การ์ดภาพที่เจนใหม่ไม่สำเร็จ");
+        log("เลื่อนเมาส์บนภาพที่เจนใหม่ แล้วเปิด More (…) → Add to prompt");
+        let moreButton = null;
+        const deadline = Date.now() + 4000;
+        while (Date.now() < deadline && !moreButton) {
+            moreButton = queryAllIncludingShadowRoots("button,[role='button']", tile).find(button => {
+                if (!isVisible(button)) return false;
+                const label = elementText(button).trim();
+                return /^(?:more(?: options)?|more_horiz|more_vert|⋮|⋯|เพิ่มเติม)$/i.test(label) ||
+                    /^(?:more(?: options)?|เพิ่มเติม)$/i.test(button.getAttribute("aria-label") || "") ||
+                    /^(?:more(?: options)?|เพิ่มเติม)$/i.test(button.getAttribute("title") || "") ||
+                    [...button.querySelectorAll(".google-symbols,.material-symbols-outlined,i")]
+                        .some(icon => /^more_(?:horiz|vert)$/.test(icon.textContent.trim()));
+            });
+            if (!moreButton) await sleep(150);
+        }
+        if (!moreButton) throw new Error("ไม่พบปุ่ม More (…) บนการ์ดภาพที่เจนใหม่");
+        await humanClick(moreButton);
+        menuItem = await waitForAddToPromptMenuItem(3000);
+    }
+    if (!menuItem) {
+        await closeAnyOpenMenu();
+        throw new Error("ไม่พบ Add to prompt ในเมนู More ของภาพที่เจนใหม่");
+    }
+    await clickPromptMenuItem(menuItem);
+    const attached = await waitPromptAttachment(0, 6000);
+    await closeAnyOpenMenu();
+    if (!attached || promptAttachmentCount() !== 1) {
+        throw new Error("แนบภาพที่สร้างเสร็จเข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate วิดีโอ");
+    }
+    if (!flowFrameSlotButton("end")) {
+        throw new Error("ภาพถูกใส่ End ด้วย จึงหยุดก่อนกด Generate วิดีโอ");
+    }
+    return true;
+}
+
+// Attach the exact generated tile using its More (…) → Add to prompt menu.
 async function addGeneratedStillToPrompt(result) {
     // Video must reference the exact still returned by the completed image
     // generation. Never fall back to the newest visible image: Flow's media
@@ -2031,25 +2156,8 @@ async function addGeneratedStillToPrompt(result) {
     }
     el.scrollIntoView({ block: "center", behavior: "instant" });
     await sleep(600);
-    // New Flow tiles attach the context menu to flow-grid-tile-container,
-    // not to the nested img element. Target the trigger host so “Add to
-    // prompt” opens reliably.
-    const media = el.closest?.("flow-grid-tile-container") || el.querySelector("img,video,[role='img']") || el;
-    // Frames mode has separate Start/End slots. Always focus Start before
-    // attaching the generated still; leaving End untouched lets Flow animate
-    // from the single generated frame instead of duplicating it into End.
-    const startSlot = [...document.querySelectorAll("button,[role='button']")]
-        .find(btn => isVisible(btn) && elementText(btn).trim().toLowerCase() === "start");
-    if (startSlot) {
-        await humanClick(startSlot);
-        await sleep(250);
-    }
-    const before = promptAttachmentCount();
-    const ok = await addTileToPrompt(media);
-    if (!ok && promptAttachmentCount() <= before) {
-        throw new Error("แนบภาพที่สร้างเสร็จเข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate วิดีโอ");
-    }
-    log(`✅ แนบภาพผลลัพธ์เข้า Prompt เรียบร้อย (จำนวนแนบปัจจุบัน: ${promptAttachmentCount()})`);
+    await addGeneratedStillViaMoreMenu(el);
+    log("✅ ภาพที่เจนล่าสุดถูกใส่ใน Start แล้ว (End ยังว่าง)");
     return true;
 }
 
@@ -2231,20 +2339,9 @@ async function clickPromptMenuItem(menuItem) {
     menuItem.scrollIntoView({ block: "nearest", behavior: "instant" });
     await sleep(100);
 
-    // 1. ลอง native .click()
-    try { menuItem.click(); } catch (e) {}
-
-    // 2. จำลอง Pointer + Mouse events ที่กึ่งกลางเมนูไอเทม
-    const rect = menuItem.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    fireAt(menuItem, cx, cy);
-
-    // 3. ยิง click ไปยัง child span/button ย่อย
-    for (const child of menuItem.querySelectorAll('span, button, div, [role="menuitem"]')) {
-        try { child.click(); } catch (e) {}
-    }
-
+    // Dispatch exactly once. Multiple fallbacks here caused Flow Frames to
+    // consume the same image twice, filling both Start and End.
+    menuItem.click();
     await sleep(350);
     return true;
 }

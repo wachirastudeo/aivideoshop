@@ -80,6 +80,7 @@ async function routeMessage(message, sender) {
     case "POST_TO_TIKTOK":           return postToTikTok(message.payload);
     case "GET_FLOW_SETTINGS":        return getFlowSettings();
     case "FLOW_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
+    case "FLOW_HOVER_POINT":         return clickPointWithDebugger(message.payload, sender, { hoverOnly: true });
     case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender, { detachAfter: false });
     case "FLOW_ATTACH_MEDIA_BY_NAME": return attachFlowMediaByAccessibleName(message.payload, sender);
     case "FLOW_CLICK_ADD_TO_PROMPT": return clickFlowAddToPrompt(message.payload, sender);
@@ -447,6 +448,8 @@ async function clickPointWithDebugger(payload, sender, options = {}) {
       button: "none"
     });
     lastDebuggerPositions.set(tabId, { x, y });
+
+    if (options.hoverOnly) return { hovered: true };
 
     // คลิกเมาส์
     await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
