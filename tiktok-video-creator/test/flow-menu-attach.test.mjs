@@ -207,6 +207,16 @@ test("combined Flow preserves a completed image when video generation has no URL
   );
 });
 
+test("batch queue retries failed products in one additional round before finalizing", async () => {
+  const source = await readFile(new URL("../tabs/tab-video.js", import.meta.url), "utf8");
+  assert.match(source, /const QUEUE_MAX_ATTEMPTS = 2;/);
+  assert.match(source, /for \(let queueAttempt = 1; queueAttempt <= QUEUE_MAX_ATTEMPTS; queueAttempt \+= 1\)/);
+  assert.match(source, /if \(queueAttempt > 1 && !failedIndexes\.has\(i\)\) continue;/);
+  assert.match(source, /failedIndexes\.delete\(i\);/);
+  assert.match(source, /failedIndexes\.add\(i\);/);
+  assert.doesNotMatch(source, /หยุดทำงานคิว \(ไม่ข้ามรายการ\)/);
+});
+
 test("combined Flow never starts video generation without its generated still attached", async () => {
   const source = await readFile(new URL("../content/flow-automation.js", import.meta.url), "utf8");
   assert.match(
