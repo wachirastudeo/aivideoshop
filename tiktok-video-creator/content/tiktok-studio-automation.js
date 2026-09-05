@@ -579,6 +579,27 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   await sleep(150);
   editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: " " }));
   editor.dispatchEvent(new Event("change", { bubbles: true }));
+  await repairCaptionHashtags(editor);
+}
+
+// Read back the editable text: normalizing the payload cannot catch editor mutations.
+async function repairCaptionHashtags(editor) {
+  dismissCaptionSuggestion(editor);
+  await sleep(150);
+  const actual = editor.innerText || "";
+  const corrected = actual.replace(/#{2,}(?=[\p{L}\p{M}\p{N}_])/gu, "#");
+  if (corrected === actual) return;
+
+  editor.focus();
+  selectAllEditable(editor);
+  document.execCommand("insertText", false, corrected);
+  editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: corrected }));
+  editor.dispatchEvent(new Event("change", { bubbles: true }));
+  dismissCaptionSuggestion(editor);
+  await sleep(150);
+  if (/#{2,}(?=[\p{L}\p{M}\p{N}_])/u.test(editor.innerText || "")) {
+    throw new Error("Caption still contains repeated hashtag prefixes");
+  }
 }
 
 // ปิดกล่อง suggestion (hashtag/mention) ของ TikTok caption editor ด้วย Escape
@@ -1603,6 +1624,7 @@ async function fillCaption(caption, hashtags) {
 
   captionEl.dispatchEvent(new Event("input", { bubbles: true }));
   captionEl.dispatchEvent(new Event("change", { bubbles: true }));
+  await repairCaptionHashtags(captionEl);
 }
 
 async function clickSaveDraft() {
