@@ -604,7 +604,7 @@ const CHAIR_FIDELITY_DIRECTION = "CHAIR-SPECIFIC FIDELITY LOCK: Reproduce the ex
 const FURNITURE_SURFACE_TEXT_LOCK = "FURNITURE SURFACE TEXT LOCK: Add NO new writing, letters, numbers, fake logo, brand name, label, watermark, sticker, badge, or typography. If none is visible in the reference, the product surface MUST remain completely plain and blank. Preserve only a real logo or intentional product pattern visibly present in the reference, in the same location.";
 const HAMMOCK_FIDELITY_DIRECTION = "HAMMOCK STRUCTURE FIDELITY: Preserve the exact fabric bed shape, width, weave, colors, end ropes, loops, straps, knots, and spreader bars only when visible in the reference. Install those existing attachment parts naturally between two suitable supports without adding handles, rigid furniture legs, packaging, or extra structural parts.";
 
-const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION, NATURAL UNHURRIED TEMPO & ZERO REPETITION LOCK: Use short, natural Thai narration at a relaxed human pace. Scene 2 must use a new sentence that continues from Scene 1. Never repeat, loop, echo, or re-say a phrase or sentence.";
+const SPEECH_DIRECTION = "STRICT PROGRESSIVE SCENE NARRATION, NATURAL UNHURRIED TEMPO & ZERO REPETITION LOCK: Use short, natural Thai narration at a relaxed human pace. Finish the thought within the speech budget; no extra sentence per scene. Never repeat, loop, echo, or re-say a phrase or sentence.";
 const MULTI_SCENE_EXECUTION_LOCK = "MANDATORY TWO-SCENE EDIT: Render exactly 2 scenes in 8s, about 4s each, with one clean hard cut near 4s. Change angle/action once; keep the same product and presenter. No extra cuts, collage, split screen, morph, or repeated scene.";
 const VOICEOVER_DIRECTION = "Add a clear, natural Thai off-screen voiceover narration speaking at a comfortable, unhurried pace (no visible person). All spoken audio must be in Thai.";
 const REVIEW_VOICEOVER_STYLE_DIRECTION = "REVIEW WITH OVERDUB STYLE LOCK: This mode is a hands-on product-use review, not a talking-head intro. Open with a close-up of hands picking up, opening, holding, or using the product; the product and hands must dominate the first shot and the face must not be the opening subject. Use multiple practical angles and real interaction before any optional brief face shot. The presenter is a SILENT ACTOR only: must not speak to camera, mouth words, lip-sync, or move the lips at all while the Thai voiceover plays. Use the voice as a separate off-screen overdub. Keep any visible facial expression relaxed and closed-mouth.";
@@ -1612,7 +1612,22 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
   ].filter(Boolean).join("\n");
 }
 
+const NO_SPOKEN_GREETING_DIRECTION = 'SPOKEN DIALOGUE RULE: Never say "สวัสดี", "หวัดดี", "hello", or "hi" anywhere in dialogue or voiceover, including polite variants. Start directly with the product hook; no greeting or self-introduction.';
+
 export function buildVideoPrompt(productInfo, settings = {}) {
+  // Apply after every style builder so specialized early returns keep this rule.
+  const prompt = buildVideoPromptForStyle(productInfo, settings);
+  const duration = Number.parseInt(settings?.videoDuration, 10) || 8;
+  const speechEnd = Math.max(0, duration - 1);
+  const syllableBudget = Math.floor(Math.max(0, speechEnd - 0.5) * 3);
+  const audioRules = `${NO_SPOKEN_GREETING_DIRECTION}
+SPEECH TIMING: Plan one complete Thai thought, at most ${syllableBudget} spoken syllables total. Start by 0.5s; finish every sentence by ${speechEnd}s. Shorten details; never speed up, trail off, or start unfinished sentences. Final 1s: silent product hold. Overrides scene narration; music-only clips remain without speech.`;
+  const firstLineEnd = prompt.indexOf("\n");
+  if (firstLineEnd < 0) return `${prompt}\n${audioRules}`;
+  return `${prompt.slice(0, firstLineEnd)}\n${audioRules}${prompt.slice(firstLineEnd)}`;
+}
+
+function buildVideoPromptForStyle(productInfo, settings = {}) {
   const auto = resolveAutoSettings(productInfo, settings);
   const locationStr = ["fashion-selfie", "fashion-hanger-presenter"].includes(auto.videoStyle)
     ? resolveFashionSelfieLocation(productInfo, settings, auto)
@@ -1750,7 +1765,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
       : "Realistic small scale: Depict the product in its realistic small pocket-sized/hand-sized scale. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized relative to the presenter or surroundings.";
   }
 
-  const PROGRESSIVE_AUDIO_NARRATION_MANDATE = "AUDIO GUIDANCE: Keep Thai narration short, natural, and non-repetitive. Prefer a concise opening line, then let the model add only brief narration when it genuinely clarifies the product. Do not force a fixed script or a line in every scene.";
+  const PROGRESSIVE_AUDIO_NARRATION_MANDATE = "AUDIO GUIDANCE: Use one short, complete, natural Thai thought within the speech budget.";
 
   const promptParts = [
     `สร้างวิดีโอโฆษณารีวิวสินค้า ${productName} ความยาว ${durationSeconds} วินาที ในอัตราส่วนแนวตั้ง 9:16 (Create a ${durationSeconds}-second vertical 9:16 commercial product review video for ${productName}).`,
