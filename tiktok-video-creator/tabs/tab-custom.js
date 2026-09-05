@@ -1,6 +1,7 @@
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
 import { normalizeHashtags } from "../modules/prompt-builder.js";
+import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
 
 const CUSTOM_VISUAL_STYLES = [
   {
@@ -173,26 +174,9 @@ export async function initCustomTab(injectedHelpers) {
   if (stored.customCreatorPostAction) {
     setValue("custom-post-action", stored.customCreatorPostAction);
   }
-  let defaultDt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
-  defaultDt.setMinutes(Math.round(defaultDt.getMinutes() / 5) * 5);
-  defaultDt.setSeconds(0);
-  defaultDt.setMilliseconds(0);
-  const defaultY = defaultDt.getFullYear();
-  const defaultM = String(defaultDt.getMonth() + 1).padStart(2, "0");
-  const defaultD = String(defaultDt.getDate()).padStart(2, "0");
-  const defaultHh = String(defaultDt.getHours()).padStart(2, "0");
-  const defaultMm = String(defaultDt.getMinutes()).padStart(2, "0");
-
-  if (stored.customCreatorScheduleDate) {
-    setValue("custom-post-schedule-date", stored.customCreatorScheduleDate);
-  } else {
-    setValue("custom-post-schedule-date", `${defaultY}-${defaultM}-${defaultD}`);
-  }
-  if (stored.customCreatorScheduleTime) {
-    setValue("custom-post-schedule-time", stored.customCreatorScheduleTime);
-  } else {
-    setValue("custom-post-schedule-time", `${defaultHh}:${defaultMm}`);
-  }
+  const freshSchedule = getFreshScheduleDateTime();
+  setValue("custom-post-schedule-date", freshSchedule.date);
+  setValue("custom-post-schedule-time", freshSchedule.time);
 
   const customSettings = stored.customCreatorSettings || {};
   setValue("custom-flow-mode", customSettings.flowMode || "combined");

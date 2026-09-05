@@ -1,5 +1,6 @@
 import { buildCaption, normalizeHashtags } from "../modules/prompt-builder.js";
 import { generatePostCopy } from "../modules/image-analyzer.js";
+import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
 
 const DEFAULT_POST_SETTINGS = {
   captionTemplate: "{product_name}",
@@ -306,7 +307,7 @@ function fillForm(value) {
   setValue("post-default-mode", post.defaultMode);
   setValue("post-after-create-action", post.defaultMode);
   setValue("post-privacy", post.privacy);
-  setValue("post-schedule-time", post.scheduleTime);
+  setValue("post-schedule-time", getFreshScheduleDateTime().dateTime);
   setValue("post-schedule-interval", post.scheduleInterval ?? 10);
   setValue("post-location", post.location);
   setChecked("post-ai-generated", post.aiGenerated);

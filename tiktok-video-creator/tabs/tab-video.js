@@ -14,6 +14,7 @@ import {
 import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, publishVideo, scheduleVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
+import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
 
 const MOODS = ["Auto", "สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"];
 const RUNNING_STATUSES = new Set(["image_generating", "video_generating", "flow1", "flow2"]);
@@ -145,23 +146,9 @@ function fillGlobalFormFromState() {
   setValue("post-random-caption-hook", settings.postRandomCaptionHook);
   setValue("post-custom-product-name", settings.postCustomProductName);
 
-  let dt;
-  if (settings.postScheduleTime) {
-    dt = new Date(settings.postScheduleTime);
-    if (Number.isNaN(dt.getTime())) {
-      dt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
-      dt.setMinutes(Math.round(dt.getMinutes() / 5) * 5);
-      dt.setSeconds(0);
-      dt.setMilliseconds(0);
-    }
-  } else {
-    dt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
-    dt.setMinutes(Math.round(dt.getMinutes() / 5) * 5);
-    dt.setSeconds(0);
-    dt.setMilliseconds(0);
-  }
-  setValue("post-schedule-date", toInputDate(dt));
-  setValue("post-schedule-time", toInputTime(dt));
+  const freshSchedule = getFreshScheduleDateTime();
+  setValue("post-schedule-date", freshSchedule.date);
+  setValue("post-schedule-time", freshSchedule.time);
   setValue("post-schedule-interval", settings.postScheduleInterval || 10);
 
   syncVideoTextSettingsVisibility();
