@@ -14,9 +14,11 @@ import {
 import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, publishVideo, scheduleVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
+import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
 
 const MOODS = ["Auto", "สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"];
 const RUNNING_STATUSES = new Set(["image_generating", "video_generating", "flow1", "flow2"]);
+const QUEUE_MAX_ATTEMPTS = 2;
 const POST_RETRY_ATTEMPTS = 2;
 const POST_RETRY_DELAY_MS = 60000;
 const FLOW_LOGIN_RETRY_MS = 5000;
@@ -150,23 +152,9 @@ function fillGlobalFormFromState() {
   setValue("post-random-caption-hook", settings.postRandomCaptionHook);
   setValue("post-custom-product-name", settings.postCustomProductName);
 
-  let dt;
-  if (settings.postScheduleTime) {
-    dt = new Date(settings.postScheduleTime);
-    if (Number.isNaN(dt.getTime())) {
-      dt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
-      dt.setMinutes(Math.round(dt.getMinutes() / 5) * 5);
-      dt.setSeconds(0);
-      dt.setMilliseconds(0);
-    }
-  } else {
-    dt = new Date(Date.now() + 2 * 60 * 60 * 1000 + 5 * 60 * 1000);
-    dt.setMinutes(Math.round(dt.getMinutes() / 5) * 5);
-    dt.setSeconds(0);
-    dt.setMilliseconds(0);
-  }
-  setValue("post-schedule-date", toInputDate(dt));
-  setValue("post-schedule-time", toInputTime(dt));
+  const freshSchedule = getFreshScheduleDateTime();
+  setValue("post-schedule-date", freshSchedule.date);
+  setValue("post-schedule-time", freshSchedule.time);
   setValue("post-schedule-interval", settings.postScheduleInterval || 10);
 
   syncVideoTextSettingsVisibility();
@@ -851,10 +839,13 @@ async function processQueue() {
   let finalMessage = "";
   let finalLevel = "success";
   let scheduledCount = 0;
+  const failedIndexes = new Set();
 
   try {
+    for (let queueAttempt = 1; queueAttempt <= QUEUE_MAX_ATTEMPTS; queueAttempt += 1) {
     for (let i = 0; i < productQueue.length; i += 1) {
     if (stopRequested) break;
+    if (queueAttempt > 1 && !failedIndexes.has(i)) continue;
     const product = productQueue[i];
     if (product.status === "done") {
       helpers.logActivity?.(`สินค้า ${i + 1} (${product.name || "ไม่มีชื่อ"}): ข้ามการทำรายการเนื่องจากสถานะเป็น done แล้ว`, "info");
@@ -932,7 +923,10 @@ async function processQueue() {
         product.flowImageTileId = result?.imgTileId || product.flowImageTileId || "";
         product.videoUrl = result?.resultUrl || product.videoUrl || "";
         product.flowVideoTileId = result?.tileId || product.flowVideoTileId || "";
-        product.status = product.videoUrl ? "video_generating" : "done";
+        // A combined run may preserve its Phase 1 output when Phase 2 fails.
+        // Keep that item resumable from the approved image; only a real video
+        // URL means the whole pipeline is done.
+        product.status = product.videoUrl ? "done" : "image_done";
       }
       await persistState();
       renderQueue();
@@ -989,6 +983,7 @@ async function processQueue() {
         await persistState();
         renderQueue();
       }
+      failedIndexes.delete(i);
       processedCount += 1;
       // ถ้ามีสินค้าถัดไปในคิว ให้หน่วงเวลาสุ่ม หรือพักเบรกหากครบ 10 รายการ
       if (i < productQueue.length - 1) {
@@ -1016,7 +1011,7 @@ async function processQueue() {
         renderQueue();
         break;
       }
-      errorCount += 1;
+      failedIndexes.add(i);
       // กู้ภาพที่เจนเสร็จก่อนวิดีโอล้มเหลว เพื่อให้กดต่อวิดีโอได้โดยไม่ต้องเจนภาพใหม่
       if (err?.imgUrl) {
         product.approvedImage = err.imgUrl;
@@ -1027,13 +1022,24 @@ async function processQueue() {
       await persistState();
       renderQueue();
       helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
-      helpers.logActivity?.(`หยุดทำงานคิว (ไม่ข้ามรายการ) เนื่องจากเกิดข้อผิดพลาดที่สินค้า ${i + 1}: ${err.message}`, "error");
-      
-      stopRequested = true;
-      break;
+      const willRetry = queueAttempt < QUEUE_MAX_ATTEMPTS;
+      helpers.logActivity?.(
+        willRetry
+          ? `สินค้า ${i + 1} ล้มเหลวรอบแรก: ${err.message} — เก็บไว้ลองใหม่ในรอบ Retry`
+          : `สินค้า ${i + 1} ยังล้มเหลวหลัง Retry: ${err.message}`,
+        willRetry ? "warning" : "error"
+      );
     }
     }
 
+    if (stopRequested || failedIndexes.size === 0) break;
+    if (queueAttempt < QUEUE_MAX_ATTEMPTS) {
+      helpers.showStatus(`พบรายการ Failed ${failedIndexes.size} รายการ — เริ่ม Retry อีกรอบ...`, "warning");
+      helpers.logActivity?.(`เริ่มรอบ Retry สำหรับสินค้า Failed ${failedIndexes.size} รายการ`, "warning");
+    }
+    }
+
+    errorCount = failedIndexes.size;
     const wasStopped = stopRequested;
     finalMessage = wasStopped
       ? (errorCount > 0 ? "หยุดทำงานเนื่องจากมีข้อผิดพลาด" : "หยุดทำงานแล้ว")
@@ -1080,6 +1086,11 @@ async function openGoogleFlowWithLoginResume(phase, prompt, imageUrl, options, p
       return await runInterruptibly(() => openGoogleFlow(phase, prompt, imageUrl, options));
     } catch (error) {
       if (isFlowTimeoutError(error)) {
+        // A combined job can time out only while Phase 2 is being detected,
+        // after Flow has already produced a valid Phase 1 still. Never wipe
+        // that still and restart the whole combined job; surface it so the
+        // caller preserves image_done and can resume video-only.
+        if (error?.imgUrl) throw error;
         // หมดเวลา 15 นาที → รีหน้า Flow แล้ว retry รายการนี้ใหม่ตั้งแต่ต้น
         timeoutRetryCount++;
         if (timeoutRetryCount > FLOW_TIMEOUT_MAX_RETRY) {
@@ -1464,7 +1475,7 @@ function getFlowProductImages(product = {}) {
     push(product.flowImageUrl);
   }
 
-  return out.slice(0, 6);
+  return out;
 }
 
 function getAnalysisProductImages(product = {}) {

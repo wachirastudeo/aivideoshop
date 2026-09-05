@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  console.log("⚠️ [Labs.google Activity Monitor] Content script activated");
+  console.log("⚡ [Google Flow Auto-Clear Extension] Content script activated!");
 
   const errorKeywords = [
     "we noticed some unusual activity",
@@ -33,12 +33,42 @@
     if (signature === lastDetectedSignature) return;
     lastDetectedSignature = signature;
 
-    // แจ้งเตือนอย่างเดียว: ไม่กด Retry/Delete, ไม่ล้าง storage และไม่ reload
-    // โดยเฉพาะ Unusual Activity ต้องให้ผู้ใช้ตรวจสอบ ไม่ควรส่งคำขอเดิมซ้ำทันที
-    console.warn("⚠️ [Labs.google Monitor] ตรวจพบข้อผิดพลาด:", foundKeyword);
-    showNoticeBanner(foundKeyword);
-    await chrome.storage.local.set({
-      lastDetectedError: { keyword: foundKeyword, url: location.href, detectedAt: Date.now() }
+    isProcessing = true;
+    console.warn("⚠️ [Google Flow Auto-Clear] ตรวจพบการ์ด Fail/นับถอยหลัง! สั่งล้างแคชอัตโนมัติ...");
+
+    // 1. กดปุ่ม ลบการ์ด (🗑️) หรือ Retry (🔄) บนหน้าจอทันทีถ้าพบ
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => {
+      const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
+      const text = btn.innerText.toLowerCase();
+      if (ariaLabel.includes('delete') || ariaLabel.includes('retry') || text.includes('retry')) {
+        try { btn.click(); } catch(e) {}
+      }
+    });
+
+    // 2. เคลียร์ DOM Storage ฝั่งหน้าเว็บ
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch(e) {}
+
+    if (window.indexedDB && indexedDB.databases) {
+      indexedDB.databases().then(dbs => {
+        dbs.forEach(db => {
+          try { indexedDB.deleteDatabase(db.name); } catch(e){}
+        });
+      });
+    }
+
+    // 3. แสดง Banner แจ้งเตือนสั้นๆ บนหน้าจอ
+    showNoticeBanner();
+
+    // 4. ส่งข้อความให้ Background Service Worker ล้าง Cookies
+    chrome.runtime.sendMessage({ action: "CLEAR_SITE_DATA" }, (response) => {
+      console.log("Response from background:", response);
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     });
   }
 

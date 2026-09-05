@@ -3,9 +3,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "CLEAR_SITE_DATA") {
     (async () => {
       try {
-        // ล้าง cache, storage สำหรับ labs.google (ไม่ลบคุกกี้เพื่อรักษาสถานะ Login)
+        // ล้าง cache, storage สำหรับ flow.google.com (ไม่ลบคุกกี้เพื่อรักษาสถานะ Login)
         await chrome.browsingData.remove({
-          origins: ["https://labs.google"]
+          origins: ["https://flow.google.com"]
         }, {
           cookies: false,
           cache: true,
@@ -14,10 +14,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           localStorage: true
         });
 
-        console.log("⚡ [Background] Cleared browsingData for https://labs.google");
+        console.log("⚡ [Background] Cleared browsingData for https://flow.google.com");
 
-        // รีเฟรชแท็บ labs.google ที่เปิดอยู่
-        const tabs = await chrome.tabs.query({ url: "*://labs.google/*" });
+        // รีเฟรชแท็บ flow.google.com ที่เปิดอยู่
+        const tabs = await chrome.tabs.query({ url: "https://flow.google.com/*" });
         for (const tab of tabs) {
           if (tab.id) {
             chrome.tabs.reload(tab.id);

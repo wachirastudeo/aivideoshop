@@ -145,6 +145,11 @@ check(
   /motif identity, count, spacing, orientation, scale, edge placement, asymmetry/i.test(img),
   img
 );
+check(
+  "every still prompt treats the reference surface as an unchanged transfer",
+  /EDIT THE UPLOADED PRODUCT, DO NOT REGENERATE IT:[\s\S]*product-preserving image edit[\s\S]*Synthesize only the pixels outside the product boundary[\s\S]*same uploaded item/i.test(img),
+  img
+);
 check("reference image keeps product text but forbids added text", /Preserve only product text visible in the reference[\s\S]*product surface blank/i.test(img), img);
 check("reference image ignores surrounding image text", /PRODUCT TEXT SCOPE:[\s\S]*Product text only[\s\S]*background text/i.test(img), img);
 check("reference image keeps absent product text blank", /If none is visible\/readable[\s\S]*surface blank[\s\S]*never infer text from the title or surrounding image/i.test(img), img);
@@ -177,6 +182,11 @@ check(
   /Create one vertical 9:16 product still for coffee pouch bag/i.test(compactCoffeeStill)
     && /REFERENCE-FIRST MODE:[\s\S]*uploaded image is the only visual source of truth/i.test(compactCoffeeStill)
     && !/underwear/i.test(compactCoffeeStill),
+  compactCoffeeStill
+);
+check(
+  "combined coffee still uses the universal no-redraw surface lock",
+  /EDIT THE UPLOADED PRODUCT, DO NOT REGENERATE IT:[\s\S]*same uploaded item/i.test(compactCoffeeStill),
   compactCoffeeStill
 );
 check(
@@ -380,7 +390,7 @@ check("video prompt forbids adding or removing parts", /never add, remove/i.test
 check("image prompt isolates only the named product", /Extract and reproduce only the exact physical product|single product|one product/i.test(cabinetImage));
 check("image prompt rejects source-scene objects", /100% NEW SCENE & BACKGROUND|ignore the original background|ignoring its original background/i.test(cabinetImage));
 check("image prompt creates a new suitable background", /brand new|background that fits this product category/i.test(cabinetImage));
-check("video prompt is multi-scene", /multi-scene|distinct scenes/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
+check("video prompt uses two scenes", /TWO-SCENE EDIT/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
 check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabinetVideo) && !/Urban Street/i.test(cabinetVideo));
 check("image prompt stays concise", cabinetImage.length < 14000, `length=${cabinetImage.length}`);
 check("video prompt stays concise", cabinetVideo.length < 21000, `length=${cabinetVideo.length}`);
@@ -435,7 +445,7 @@ const generalReviewA = buildVideoPrompt({ name: "เครื่องชงก�
 const generalReviewB = buildVideoPrompt({ name: "เครื่องชงกาแฟรุ่น A", productId: "10000001" }, settings);
 check("default style is UGC/testimonial", settings.videoStyle === "testimonial");
 check("default video uses UGC testimonial structure", /UGC testimonial/i.test(generalReviewA));
-check("testimonial structure includes a recommendation scene", /Scene 3 \(Recommendation\)/i.test(generalReviewA));
+check("testimonial structure is limited to two scenes", /Scene 2 \(Feature Showcase\)/i.test(generalReviewA) && !/- Scene 3/i.test(generalReviewA));
 eq(
   "Auto reviewer is stable per product",
   generalReviewA.match(/Presenter: ([^\n.]+)/)?.[1],
@@ -663,7 +673,7 @@ check("hammock is identified as a camping hammock, not clothing", /camping hammo
 check("hammock is installed between natural supports", /already installed between two sturdy trees or on a proper hammock stand/i.test(hammockVideo), hammockVideo);
 check("hammock still uses hammock structure instead of packaging rules", /HAMMOCK STRUCTURE FIDELITY/i.test(hammockImage) && !/UNIVERSAL PRODUCT & PACKAGING LABEL FIDELITY LOCK/i.test(hammockImage), hammockImage);
 check("hammock still is attached and naturally occupied", /Install the hammock between two sturdy trees or on a proper hammock stand[\s\S]*reviewer sitting or reclining naturally/i.test(hammockImage), hammockImage);
-check("camping still prompts remove duplicated lock overload", campChairImage.length < 11000 && hammockImage.length < 11000, `chair=${campChairImage.length} hammock=${hammockImage.length}`);
+check("camping still prompts keep fidelity lock within a safe prompt size", campChairImage.length < 12000 && hammockImage.length < 12000, `chair=${campChairImage.length} hammock=${hammockImage.length}`);
 check("hammock is not forced into the wearable holding rule", !/WEARABLE PRODUCT CONTINUITY|STRICT ALWAYS-WORN RULE/i.test(hammockVideo), hammockVideo);
 check("hammock is not described as a small hand-sized item", !/small hand-sized|product is a small item/i.test(hammockVideo), hammockVideo);
 check("wearable products still keep continuity guidance", /WEARABLE PRODUCT CONTINUITY/i.test(buildVideoPrompt({ name: "เสื้อยืดผู้ชาย" }, settings)));
@@ -899,10 +909,10 @@ check("normalizeHashtags never outputs repeated hash prefixes", normalizeHashtag
 // --- omni-flash: multi-scene description ---
 const omniSettings = { ...settings, videoModel: "omni-flash", videoStyle: "sales" };
 const omniVid = buildVideoPrompt({ name: "เครื่องปั่นน้ำผลไม้", highlights: "" }, omniSettings);
-check("omni-flash video prompt requests multi-scene", /multi-scene|distinct scenes/i.test(omniVid), omniVid);
+check("omni-flash video prompt requests two scenes", /TWO-SCENE EDIT/i.test(omniVid), omniVid);
 check("omni-flash video prompt has Scene 1", /Scene 1/i.test(omniVid), omniVid);
 check("omni-flash video prompt has Scene 2", /Scene 2/i.test(omniVid), omniVid);
-check("omni-flash video prompt has Scene 3", /Scene 3/i.test(omniVid), omniVid);
+check("omni-flash video prompt is limited to Scene 1 and Scene 2", /Scene 2/i.test(omniVid) && !/- Scene 3/i.test(omniVid), omniVid);
 // --- random caption opener test ---
 const capRandom = buildCaption(prodA, { captionTemplate: "{product_name}", postRandomCaptionHook: true });
 const capNonRandom = buildCaption(prodA, { captionTemplate: "{product_name}", postRandomCaptionHook: false });
@@ -1009,7 +1019,7 @@ const handsOnlyStyleImage = buildImagePrompt(
 );
 check("hands-only style forces exactly one hand", /HANDS-ONLY VIDEO STYLE LOCK[\s\S]*Exactly one hand only/i.test(handsOnlyStyleVideo) && /GLOBAL SINGLE-HAND LOCK FOR THE ENTIRE HANDS-ONLY VIDEO/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
 check("hands-only style ignores the selected woman presenter", !/fictional adult Thai woman reviewer|adult Thai woman reviewer/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
-check("hands-only style uses a simple three-beat holding sequence", /Scene 1 \(Hold\)[\s\S]*Scene 2 \(Gentle Move\)[\s\S]*Scene 3 \(Finish\)/i.test(handsOnlyStyleVideo) && /Do not open, use, shake, swing, toss, repeatedly rotate/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
+check("hands-only style uses a simple two-scene holding sequence", /Scene 1 \(Hold\)[\s\S]*Scene 2 \(Gentle Move\)/i.test(handsOnlyStyleVideo) && !/- Scene 3/i.test(handsOnlyStyleVideo) && /Do not open, use, shake, swing, toss, repeatedly rotate/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
 check("hands-only style also reaches the combined still prompt with one hand", /realistic hands|first-person POV/i.test(handsOnlyStyleImage) && /FIRST-PERSON POV FACE EXCLUSION/i.test(handsOnlyStyleImage) && /STILL IMAGE SINGLE-HAND LOCK[\s\S]*exactly one natural human hand total/i.test(handsOnlyStyleImage), handsOnlyStyleImage);
 
 const legacyHandsOnlyAutoVideo = buildVideoPrompt(
@@ -1075,6 +1085,23 @@ const angryBearsCoffeeImage = buildImagePrompt({ name: "ANGRY BEARS COFFEE 100% 
 check("angry bears coffee image prompt includes coffee pouch fidelity", /STRICT COFFEE\/TEA POUCH & PRINTED LABEL FIDELITY LOCK/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
 check("angry bears coffee image prompt includes label exact copy mandate", /ABSOLUTE LABEL & COLOR FIDELITY MANDATE/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
 check("angry bears coffee image prompt includes exact color lock", /STRICT COLOR REPRODUCTION LOCK/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
+
+const multiSceneVideo = buildVideoPrompt(
+  { name: "5 กก ข้าวเหนียวเขี้ยวงู ตรานกกระเรียนทอง" },
+  { ...settings, videoStyle: "review", duration: 8 }
+);
+check(
+  "video prompt mandates two controlled scenes",
+  /MANDATORY TWO-SCENE EDIT:[\s\S]*exactly 2 scenes[\s\S]*hard cut near 4s[\s\S]*No extra cuts/i.test(multiSceneVideo),
+  multiSceneVideo
+);
+
+const phoneCaseStill = buildImagePrompt({ name: "เคสโทรศัพท์ลายดอกไม้ iPhone" }, settings);
+check(
+  "specialized phone-case still also uses the universal no-redraw surface lock",
+  /EDIT THE UPLOADED PRODUCT, DO NOT REGENERATE IT:[\s\S]*same uploaded item/i.test(phoneCaseStill),
+  phoneCaseStill
+);
 
 // --- liquid capacity and tabletop composition scale tests ---
 const serum100mlImage = buildImagePrompt(
@@ -1258,7 +1285,16 @@ check("phone case image Auto uses a fictional Thai presenter", /Presenter: A fic
 check("phone case image locks printed artwork to the case coordinates", /CASE ARTWORK COORDINATE LOCK[\s\S]*relative to the case's top, bottom, left, right edges[\s\S]*camera cutout/i.test(caseAutoImg), caseAutoImg);
 check("phone case still uses the exact source product", /REFERENCE PRODUCT SOURCE[\s\S]*attached reference image as the exact source[\s\S]*Copy the visible case or case set 1:1/i.test(caseAutoImg), caseAutoImg);
 check("phone case still keeps the original shape and camera opening", /REFERENCE PRODUCT SOURCE[\s\S]*outer silhouette[\s\S]*camera opening/i.test(caseAutoImg), caseAutoImg);
+check("phone case still locks exact camera cutout geometry", /PHONE CASE STILL 1:1 GEOMETRY LOCK[\s\S]*lens-hole count, shape, size, spacing, orientation, and position[\s\S]*camera-island border thickness/i.test(caseAutoImg), caseAutoImg);
+check("phone case still locks exact side rails and edge construction", /PHONE CASE STILL 1:1 GEOMETRY LOCK[\s\S]*side-rail thickness, color, material[\s\S]*top and bottom edge construction/i.test(caseAutoImg), caseAutoImg);
+check("phone case still binds artwork coordinates to the physical shell", /indivisible source asset[\s\S]*artwork point fixed to its original coordinate[\s\S]*Do not recenter, scale, rotate, mirror, crop, repaint/i.test(caseAutoImg), caseAutoImg);
+check("phone case still requires exactly one visible hand", /MANDATORY ONE-HAND PHONE CASE HOLD[\s\S]*exactly one visible natural adult hand total[\s\S]*second hand must remain completely outside the frame/i.test(caseAutoImg), caseAutoImg);
 check("phone case still rejects a lookalike replacement", /FINAL PHONE CASE CHECK[\s\S]*same case from the original image[\s\S]*not a lookalike or generic replacement/i.test(caseAutoImg), caseAutoImg);
+const combinedCaseImg = buildImagePrompt(
+  { name: "เคสไอโฟน 16 Pro Max ลายการ์ตูน" },
+  { ...settings, presenter: "Auto", location: "Auto", flowGenMode: "combined" }
+);
+check("combined phone case still keeps the mandatory one-hand hold", /MANDATORY ONE-HAND PHONE CASE HOLD/i.test(combinedCaseImg) && !/no people or hands/i.test(combinedCaseImg), combinedCaseImg);
 const caseImagePresenter = caseAutoImg.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 const caseVideoPresenter = caseAutoVid.match(/Presenter: A fictional adult Thai (?:woman|man) reviewer/i)?.[0] || "";
 check("Auto still and video use the same presenter gender", caseImagePresenter === caseVideoPresenter, `${caseImagePresenter} vs ${caseVideoPresenter}`);
@@ -1351,6 +1387,7 @@ check("phone case video prevents pattern rotation and drift", /CASE ARTWORK COOR
 check("phone case keeps true size against full-size scene anchors", /REAL-WORLD PHONE SCALE LOCK[\s\S]*true smartphone size relative to a full-size hand, table, room, and furniture[\s\S]*fill half a table/i.test(phoneCaseVid), phoneCaseVid);
 check("complex phone case patterns copy from the clear reference", /COMPLEX PHONE CASE PATTERN REFERENCE LOCK[\s\S]*entire visible case-back artwork as one exact graphic layer[\s\S]*reference image overrides the product title/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case uses a natural one-hand grip", /NATURAL PHONE CASE HANDLING LOCK[\s\S]*relaxed ergonomic grip[\s\S]*thumb along one side[\s\S]*fingers naturally supporting/i.test(phoneCaseVid), phoneCaseVid);
+check("phone case video keeps the second hand outside every shot", /MANDATORY ONE-HAND PHONE CASE HOLD[\s\S]*every shot[\s\S]*second hand must remain completely outside the frame/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case keeps camera cutout aligned while held", /NATURAL PHONE CASE HANDLING LOCK[\s\S]*cover the camera cutout[\s\S]*camera opening.*aligned/i.test(phoneCaseVid), phoneCaseVid);
 
 const bagVid = buildVideoPrompt({ name: "กระเป๋าสะพายข้างหนังแท้สำหรับผู้หญิง" }, settings);

@@ -7,7 +7,7 @@ def clear_and_reload_chrome_tabs():
         set foundCount to 0
         repeat with w in windows
             repeat with t in tabs of w
-                if URL of t contains "labs.google" then
+                if URL of t contains "flow.google.com" then
                     try
                         execute t javascript "localStorage.clear(); sessionStorage.clear(); if(window.indexedDB && indexedDB.databases){ indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name))); } location.reload();"
                         set foundCount to foundCount + 1
@@ -21,7 +21,7 @@ def clear_and_reload_chrome_tabs():
     try:
         result = subprocess.run(["osascript", "-e", applescript], capture_output=True, text=True)
         count = result.stdout.strip()
-        print(f"⚡ สั่งล้างแคชและรีเฟรชแท็บ labs.google บน Chrome แล้ว {count} แท็บ!")
+        print(f"⚡ สั่งล้างแคชและรีเฟรชแท็บ flow.google.com บน Chrome แล้ว {count} แท็บ!")
         return count
     except Exception as e:
         print(f"Error executing AppleScript: {e}")
