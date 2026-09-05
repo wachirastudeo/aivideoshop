@@ -270,7 +270,7 @@ function truncatePostCaption(value, maxLength = POST_CAPTION_MAX_LENGTH) {
 
 async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
   const apiKey = settings.geminiApiKey;
-  const productName = sanitizeText(productInfo.name);
+  const productName = sanitizeText(resolveFullProductNameForAi(productInfo));
   const firstImage = imageDataUrls[0] || "";
   const [, mediaType = "image/jpeg"] = firstImage.match(/^data:(.*?);base64,/) || [];
   const base64 = firstImage.replace(/^data:.*?;base64,/, "");
@@ -278,7 +278,7 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
   const prompt = [
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
-    "Use the title to identify which single object in the image is the product. Analyze only that named product object, not the whole image.",
+    "Analyze the image and source product title together. Use the title for product type, model, size and intended use, and the image for exact appearance, product/set count, colors and artwork. First check whether the title describes the visible product. If they conflict, describe the visible product without inventing the named object, and state the mismatch in promptAdvice. Analyze only the product or set, not the whole scene.",
     "Ignore the source background and every unrelated object, including room surfaces, furniture, decor, lamps, plants, pictures, rugs, windows, people, hands, and props. Do not describe them in structureAdvice or promptAdvice.",
     "TEXT SCOPE LOCK: Distinguish text physically printed, engraved, embossed, or permanently attached to the named product/its packaging from text merely placed around the product in the source image. Ignore all surrounding or overlaid text such as captions, slogans, feature callouts, price/discount badges, CTA banners, arrows, stickers, seller watermarks, marketplace UI, and text in the background or margins. That surrounding text is only image composition, not product information, and MUST NOT be copied into name, highlights, structureAdvice, promptAdvice, product labels, or product artwork.",
     "Treat the visible named product as the source of truth. The title may contain conflicting size/count variants and must never override visible product evidence.",
@@ -353,14 +353,14 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
 
 async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
   const apiKey = settings.openaiApiKey;
-  const productName = sanitizeText(productInfo.name);
+  const productName = sanitizeText(resolveFullProductNameForAi(productInfo));
   const firstImage = imageDataUrls[0] || "";
   const model = settings.openaiModel || DEFAULT_OPENAI_MODEL;
 
   const prompt = [
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
-    "Use the title to identify which single object in the image is the product. Analyze only that named product object, not the whole image.",
+    "Analyze the image and source product title together. Use the title for product type, model, size and intended use, and the image for exact appearance, product/set count, colors and artwork. First check whether the title describes the visible product. If they conflict, describe the visible product without inventing the named object, and state the mismatch in promptAdvice. Analyze only the product or set, not the whole scene.",
     "Ignore the source background and every unrelated object, including room surfaces, furniture, decor, lamps, plants, pictures, rugs, windows, people, hands, and props. Do not describe them in structureAdvice or promptAdvice.",
     "TEXT SCOPE LOCK: Distinguish text physically printed, engraved, embossed, or permanently attached to the named product/its packaging from text merely placed around the product in the source image. Ignore all surrounding or overlaid text such as captions, slogans, feature callouts, price/discount badges, CTA banners, arrows, stickers, seller watermarks, marketplace UI, and text in the background or margins. That surrounding text is only image composition, not product information, and MUST NOT be copied into name, highlights, structureAdvice, promptAdvice, product labels, or product artwork.",
     "Treat the visible named product as the source of truth. The title may contain conflicting size/count variants and must never override visible product evidence.",
@@ -577,7 +577,7 @@ function buildTitleBasedFallback(productInfo) {
       "• ใช้ภาพสินค้า close-up พร้อมแสงสะอาดเพื่อเพิ่มความน่าเชื่อถือ"
     ].join("\n"),
     targetGroup,
-    structureAdvice: "Use the product title to identify the product object. Visually count and preserve only that product's structural parts exactly. Keep the same drawers, shelves, tiers, doors, compartments, handles, legs, arrangement, and proportions; do not add or remove parts. Ignore conflicting count variants in the title.",
+    structureAdvice: "Title-only fallback; no image analysis has been performed. During generation, compare the attached image with the product title: use the title for identity, size and use, and preserve the visible product design. Visually count and preserve only that product's structural parts exactly. Keep the same drawers, shelves, tiers, doors, compartments, handles, legs, arrangement, and proportions; do not add or remove parts. Ignore conflicting count variants in the title.",
     promptAdvice: "Preserve only the named product's shape, proportions, colors, materials, hardware, labels, and printed text. All printed text, packaging details, and brand logos on the product must be rendered extremely sharp, clear, legible, and spelt correctly in both Thai and English. Discard the original background and every unrelated object, then create a new clean setting appropriate for the product category.",
     autoOptions: inferAutoOptionsFromProduct(productInfo)
   };

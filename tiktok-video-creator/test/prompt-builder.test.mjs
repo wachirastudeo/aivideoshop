@@ -179,7 +179,7 @@ const compactCoffeeStill = buildImagePrompt(
 );
 check(
   "combined coffee still uses reference-first mode",
-  /Create one vertical 9:16 product still for coffee pouch bag/i.test(compactCoffeeStill)
+  /Create one vertical 9:16 product still of the exact product or set visible in the attached image/i.test(compactCoffeeStill)
     && /REFERENCE-FIRST MODE:[\s\S]*uploaded image is the only visual source of truth/i.test(compactCoffeeStill)
     && !/underwear/i.test(compactCoffeeStill),
   compactCoffeeStill
@@ -195,9 +195,9 @@ check(
   `length=${compactCoffeeStill.length}`
 );
 check(
-  "combined coffee still enforces real pouch scale",
-  /PACKAGE SCALE FROM NAME \+ IMAGE:[\s\S]*package type and stated weight\/capacity[\s\S]*normal retail package size relative to the person's hand/i.test(compactCoffeeStill)
-    && /visible table space and background around it|small amount of the supporting table surface|never let the pouch fill the table/i.test(compactCoffeeStill),
+  "combined still derives scale from the reference",
+  /REALISTIC PRODUCT SCALE:[\s\S]*scale from the visible reference/i.test(compactCoffeeStill)
+    && /visible table space and background around the product|small amount of the supporting table surface|never let the pouch fill the table/i.test(compactCoffeeStill),
   compactCoffeeStill
 );
 check(
@@ -210,6 +210,21 @@ check(
   /natural eye-level product photograph[\s\S]*floor mostly out of frame[\s\S]*soft background blur/i.test(compactCoffeeStill),
   compactCoffeeStill
 );
+
+check(
+  "stale coffee metadata cannot force a pouch or a single item in reference-first stills",
+  compactCoffeeStill.startsWith("IMAGE ANALYSIS FIRST")
+    && /ignore incompatible shape, count, packaging, scale, and usage/i.test(compactCoffeeStill)
+    && !/actual coffee pouch|COFFEE\/TEA POUCH|exactly one pouch|sealed pouch form|for coffee pouch bag/i.test(compactCoffeeStill),
+  compactCoffeeStill
+);
+check("combined image keeps the actual source title", /PRODUCT TITLE CONTEXT: กาแฟโบราณ สูตรพิเศษ/.test(compactCoffeeStill), compactCoffeeStill);
+check("image and name have complementary roles", /Image defines appearance[\s\S]*title supplies type, model, size and use/.test(compactCoffeeStill), compactCoffeeStill);
+check("beautification preserves the original product", /Beautify lighting, background and composition; preserve the original product/.test(compactCoffeeStill), compactCoffeeStill);
+for (const videoStyle of ["review", "still-motion", "boxed-motion", "fashion-selfie", "fashion-hanger-presenter"]) {
+  const visualFirst = buildImagePrompt({ name: "Coffee", category: "coffee" }, { ...settings, videoStyle });
+  check(`image analysis priority precedes metadata for ${videoStyle}`, visualFirst.startsWith("IMAGE ANALYSIS FIRST") && /PRODUCT TITLE CONTEXT: Coffee/.test(visualFirst) && !/Use this explicit product name to determine what the item is/.test(visualFirst), visualFirst);
+}
 
 const nonCoffeePaperFoodContainer = buildImagePrompt(
   {
@@ -267,7 +282,7 @@ const hookDoesNotReplaceVisualIdentity = buildImagePrompt({
   originalName: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว",
   category: "แฟชั่น"
 }, settings);
-check("image identity uses the original product title instead of the edited hook", /PRODUCT NAME \/ CATEGORY LOCK:[^\n]*เสื้อเชิ้ตแขนยาวลายจุดสีขาว/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
+check("image metadata hint uses the original title without overriding the reference", /PRODUCT TITLE CONTEXT:[^\n]*เสื้อเชิ้ตแขนยาวลายจุดสีขาว/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
 check("image identity does not use the edited hook as the requested product", !/PRODUCT NAME \/ CATEGORY LOCK:[^\n]*แต่งตัวยากใช่ไหม/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
 check("apparel still image gives the garment reference priority", /APPAREL REFERENCE PRIORITY/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
 
@@ -1316,7 +1331,7 @@ check("clothing video does not request talking-head framing", !/talking head/i.t
 
 const clothingImg = buildImagePrompt({ name: "เสื้อเชิ้ตแขนยาว", category: "แฟชั่น" }, settings);
 check("clothing image prompt enforces front-facing shot distribution", /front shot|front-facing/i.test(clothingImg), clothingImg);
-check("clothing image uses the explicit product name as an identity lock", /PRODUCT NAME \/ CATEGORY LOCK[\s\S]*เสื้อเชิ้ตแขนยาว/i.test(clothingImg), clothingImg);
+check("clothing image uses the product title alongside the reference", /PRODUCT TITLE CONTEXT[\s\S]*เสื้อเชิ้ตแขนยาว/i.test(clothingImg), clothingImg);
 check("clothing image uses a generic fictional adult model", /HUMAN CAST:/i.test(clothingImg) && /APPAREL MODEL SAFETY/i.test(clothingImg), clothingImg);
 check("clothing prompts use the reference garment as the worn product", /APPAREL REFERENCE USE/i.test(clothingImg) && /APPAREL REFERENCE USE/i.test(clothingVid), clothingImg + clothingVid);
 check("clothing prompts do not treat garments as hand-sized objects", !/hand-sized|pocket-sized/i.test(clothingImg + clothingVid), clothingImg + clothingVid);
