@@ -1346,8 +1346,8 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
                 break;
             }
             
-            elapsed++;
-            if (elapsed > 0 && elapsed % 8 === 0) {
+            const pollCount = secs - s + 1;
+            if (pollCount % 8 === 0) {
                 log(`ตรวจ tile ${file.name}: filenameMatch=${Boolean(readyFileButton)} cards=${getMediaCards().length}`);
                 await refreshMediaList();
             } else {
