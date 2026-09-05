@@ -76,8 +76,14 @@ test("passive waits do not emit random idle mouse or scroll activity", () => {
   assert.doesNotMatch(source, /wiggleMouse|nudgeScroll|doWiggle|doScroll/);
 });
 
-test("upload polling does not click tabs or force a page reload", () => {
-  assert.doesNotMatch(source, /refreshMediaList/);
+test("upload polling does not click tabs or force a page reload", async () => {
+  const context = loadContentScript();
+  let waits = 0;
+  context.setTimeout = (fn) => { waits += 1; fn(); return 0; };
+  context.humanClick = async () => { assert.fail("upload polling must not click tabs"); };
+  context.click = () => { assert.fail("upload polling must not click"); };
+  await context.refreshMediaList();
+  assert.equal(waits, 1);
   assert.doesNotMatch(source, /window\.location\.reload\(\)/);
   assert.match(source, /Math\.max\(30, Math\.min\(300, Math\.ceil\(waitMs \/ 1000\)\)\)/);
 });

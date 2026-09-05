@@ -2908,14 +2908,6 @@ async function waitForResult(phase, options = {}) {
             log("⏳ พบเฉพาะภาพอัปโหลดเดิม ยังรอภาพที่เจนใหม่จาก Flow");
         }
 
-        // เลียนแบบคนขยับเมาส์/เลื่อนจอเล็กลงระหว่างรอการเจนของ Flow
-        if (Math.random() < 0.12) { // โอกาสประมาณ 12% ในการรันแต่ละลูป (~8 วินาทีต่อครั้ง)
-            if (Math.random() > 0.5) {
-                await wiggleMouse();
-            } else {
-                await nudgeScroll();
-            }
-        }
         // The generated media grid is now inside a closed component. Ask the
         // background CDP bridge for a surfaced thumbnail URL before falling
         // back to the legacy page-DOM cards.
