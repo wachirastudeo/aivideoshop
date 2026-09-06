@@ -491,7 +491,7 @@ const stillMotionSettings = {
 const stillMotionVideo = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
 const stillMotionImage = buildImagePrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
 check("still-motion mode uses a dedicated camera-only prompt", /STILL-IMAGE MOTION MODE/i.test(stillMotionVideo) && /CAMERA MOTION ONLY/i.test(stillMotionVideo), stillMotionVideo);
-check("still-motion mode uses multiple left-right and in-out camera angles", /MULTI-ANGLE/i.test(stillMotionVideo) && /front hero angle[\s\S]*left three-quarter angle[\s\S]*right three-quarter angle/i.test(stillMotionVideo) && /left-to-right/i.test(stillMotionVideo) && /push in and pull back/i.test(stillMotionVideo) && !/15–20° three-quarter angle/i.test(stillMotionVideo), stillMotionVideo);
+check("still-motion mode uses physical lateral dolly with parallax", /PHYSICAL LEFT-RIGHT DOLLY/i.test(stillMotionVideo) && /translate the camera to the right/i.test(stillMotionVideo) && /travel left along the same path/i.test(stillMotionVideo) && /foreground-background parallax/i.test(stillMotionVideo) && /No cuts or abrupt direction changes/i.test(stillMotionVideo) && !/MULTI-ANGLE|energetic visual variety|angle transitions/i.test(stillMotionVideo), stillMotionVideo);
 check("still-motion mode keeps the product stationary", /product stays completely still, rigid, and unchanged/i.test(stillMotionVideo) && /Do not rotate, slide, bounce, float, bend, resize, morph/i.test(stillMotionVideo), stillMotionVideo);
 check("still-motion mode forbids hands in video and still image", /CAMERA-ONLY \/ NO-HANDS LOCK/i.test(stillMotionVideo) && /CAMERA-ONLY \/ NO-HANDS LOCK/i.test(stillMotionImage) && /zero hands/i.test(stillMotionImage), `${stillMotionVideo}\n${stillMotionImage}`);
 check("still-motion mode has no review scene structure", !/- Scene 1|Scene 2|Scene 3|Presenter:/i.test(stillMotionVideo), stillMotionVideo);
@@ -1045,11 +1045,14 @@ check("legacy hands_only auto recommendation migrates to hands-only style", /HAN
 
 const vidPresenterUnboxingHands = buildVideoPrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
 const imgPresenterUnboxingHands = buildImagePrompt({ name: "ลิปสติก" }, { ...settings, presenter: "unboxing_hands" });
-check("unboxing still globally locks one hand", /STILL IMAGE SINGLE-HAND LOCK[\s\S]*Never render a second hand/i.test(imgPresenterUnboxingHands), imgPresenterUnboxingHands);
+check("unboxing still uses two hands without single-hand conflict", /UNBOXING TWO-HAND LOCK/i.test(imgPresenterUnboxingHands) && !/SINGLE-HAND LOCK/i.test(imgPresenterUnboxingHands), imgPresenterUnboxingHands);
 check("video prompt with unboxing_hands uses hands-only unboxing presenter mode", /STRICT HANDS-ONLY UNBOXING PRESENTER MODE/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("video prompt with unboxing_hands opens box and reveals product", /opening a shipping box|opening the product box/i.test(vidPresenterUnboxingHands) && /revealing the exact target product inside the box|reveals the exact product inside the box/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("video prompt with unboxing_hands strictly forbids face and full person", /No face, head, torso, full body/i.test(vidPresenterUnboxingHands) && /FIRST-PERSON POV FACE EXCLUSION|No full face/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
-check("unboxing video globally locks one hand across all scenes", /GLOBAL SINGLE-HAND LOCK FOR THE ENTIRE HANDS-ONLY VIDEO/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+check("unboxing video uses two hands without single-hand conflict", /UNBOXING TWO-HAND LOCK/i.test(vidPresenterUnboxingHands) && !/SINGLE-HAND LOCK/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+check("unboxing preserves source state and gives the revealed product most screen time", /never close an already-open box/i.test(vidPresenterUnboxingHands) && /remaining 60%/i.test(vidPresenterUnboxingHands) && /removed materials remain where placed/i.test(vidPresenterUnboxingHands) && !/Scene 3|Scene 4|hands lifting or presenting/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+check("unboxing source is a visible product photograph instead of video steps", /UNBOXING SOURCE FRAME/i.test(imgPresenterUnboxingHands) && /product visibly supported/i.test(imgPresenterUnboxingHands) && !/MANDATORY UNBOXING ACTION SEQUENCE/i.test(imgPresenterUnboxingHands), imgPresenterUnboxingHands);
+
 
 const childHandsImage = buildImagePrompt({ name: "จักรยานเด็ก" }, settings);
 const childHandsVideo = buildVideoPrompt({ name: "จักรยานเด็ก" }, settings);
@@ -1543,6 +1546,8 @@ const genericCaneVideo = buildVideoPrompt(
   { ...settings, location: "Auto", presenter: "Auto" }
 );
 check("generic cane does not inherit hiking-pole scene rules", !/forest hiking trail|mountain trailhead|trekking path|practical hiking outfit/i.test(genericCaneVideo), genericCaneVideo);
+
+check("unboxing lifts product out and places it beside the box", /lifting it fully clear of the box rim/i.test(vidPresenterUnboxingHands) && /Release only after it contacts the table/i.test(vidPresenterUnboxingHands) && /now-empty product cavity/i.test(vidPresenterUnboxingHands) && !/Keep the product supported in the open box|no forced lifting/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));

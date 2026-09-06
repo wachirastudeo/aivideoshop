@@ -52,8 +52,8 @@ export const VIDEO_STYLES = [
     emoji: "📦",
     name: "Unboxing",
     description: "แกะกล่อง สร้างความตื่นเต้น first impression",
-    shotPattern: "[โชว์กล่อง] → [แกะวัสดุกันกระแทก] → [เปิดเจอสินค้า] → [โชว์รายละเอียด]",
-    fragment: "unboxing video style, hands opening package, reveal moment with dramatic pause, close-up on product details, satisfying unwrapping, tissue paper, ASMR aesthetic"
+    shotPattern: "[เปิดฝากล่องอย่างนุ่มนวล] → [เผยสินค้าให้ชัด] → [ค้างภาพรายละเอียด]",
+    fragment: "premium tactile unboxing, deliberate easy lid opening, early product reveal, clean tabletop, soft directional light, realistic packaging continuity, sharp product detail, subtle synchronized packaging sounds beneath any selected narration"
   },
   {
     id: "before-after",
@@ -83,9 +83,9 @@ export const VIDEO_STYLES = [
     id: "still-motion",
     emoji: "📷",
     name: "ภาพนิ่ง + กล้อง",
-    description: "สินค้านิ่ง กล้องมือถือขยับซ้าย-ขวาเบาๆ ไม่รีวิว ไม่พูด",
-    shotPattern: "[ภาพสินค้าเดิม] → [แพนซ้าย-ขวาเบาๆ] → [เปลี่ยนมุมเล็กน้อย]",
-    fragment: "single still product image with subtle smartphone camera movement, natural handheld micro-motion, no presenter, no product handling, no review"
+    description: "สินค้านิ่ง กล้องดอลลี่ซ้าย–ขวาชัดเจน มีมิติ ไม่รีวิว ไม่พูด",
+    shotPattern: "[ภาพสินค้าเดิม] → [ดอลลี่ไปขวาอย่างนุ่มนวล] → [ดอลลี่กลับซ้ายและหยุดนุ่มๆ]",
+    fragment: "stationary product with smooth physical left-right camera dolly travel and visible foreground-background parallax, no presenter, no product handling, no review"
   },
   {
     id: "boxed-motion",
@@ -338,8 +338,10 @@ const HANDS_ONLY_GLOBAL_COUNT_LOCK = "GLOBAL SINGLE-HAND LOCK FOR THE ENTIRE HAN
 const HANDS_ONLY_STILL_COUNT_LOCK = "STILL IMAGE SINGLE-HAND LOCK: Show exactly one natural human hand total from one person, with exactly five correctly attached fingers. Never render a second hand, extra arm, duplicated hand, detached hand, or more than 5 fingers.";
 const SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION = "SINGLE-PRESENTER HAND ANATOMY: The one presenter has exactly 2 arms and at most 2 hands total, one left and one right, naturally attached to the same body. Never render a third hand, duplicated hand, extra arm, detached hand, or more than 5 fingers on either hand. Hands may be naturally hidden behind the body or outside the crop, but no additional hands may appear.";
 const MULTI_PERSON_HAND_ANATOMY_DIRECTION = "MULTI-PERSON HAND ANATOMY: Each human has exactly 2 arms and no more than 2 anatomically attached hands, one left and one right. Never give any person a third hand, duplicate a hand or arm, add detached or anonymous hands, or render more than 5 fingers on either hand.";
-const UNBOXING_HANDS_DIRECTION = "STRICT HANDS-ONLY UNBOXING PRESENTER MODE: First-person POV tabletop unboxing video. Show ONLY realistic human hands and forearms opening a shipping box or product box, lifting the lid/flaps, removing tissue paper/bubble wrap/protective insert, and revealing the exact target product inside the box. The product must become clearly visible after the box opens and remain the hero focus. No face, head, torso, full body, or on-screen presenter may appear at any time. Keep the scene natural, satisfying, tactile, and realistic, like a TikTok unboxing review shot from the presenter's point of view.";
-const UNBOXING_REVEAL_SEQUENCE = "MANDATORY UNBOXING ACTION SEQUENCE: Scene 1 shows a closed box/package on a table with only hands entering frame. Scene 2 shows the hands opening the box flaps/lid and gently removing protective packaging. Scene 3 reveals the exact product inside the box, fully visible and sharp. Scene 4 shows the hands lifting or presenting the product near the open box without covering logos, labels, printed artwork, or key product details. STRICTLY FORBIDDEN: do not show a face or full person, do not replace the product with generic packaging, do not leave the product hidden inside the box.";
+const UNBOXING_TWO_HAND_COUNT_LOCK = "UNBOXING TWO-HAND LOCK: Use exactly two consistent hands belonging to one person: one left and one right, each with five naturally attached fingers. Never add a third hand, duplicated limbs, detached hands, or another person. Keep both hands visible during opening and lifting; they may withdraw naturally after setting the product down.";
+const UNBOXING_HANDS_DIRECTION = "STRICT HANDS-ONLY UNBOXING PRESENTER MODE: First-person POV tabletop unboxing with two consistent realistic hands and forearms opening the product box and revealing the exact target product inside the box. Use a stable box with an easy, already-unsealed lid. One hand steadies the box while the other opens the lid. Then grip the exact product naturally, lift it fully clear of the box, and set it down beside the open box; use both hands to support its real weight when needed. Never lift by a loose lid or fragile decoration. No face, head, torso, full body, or on-screen presenter may appear at any time. Use a clean tabletop, soft directional light, controlled reflections, and sharp readable product artwork.";
+const UNBOXING_REVEAL_SEQUENCE = "MANDATORY UNBOXING ACTION SEQUENCE: Use two sequential full-frame scenes. Scene 1 (first 40%): Start from the source frame's actual lid and packaging state; never close an already-open box to restart. One hand steadies the box while the other gently opens the lid away from the camera and moves aside at most one existing loose protective layer, revealing the exact product inside the box by the end of this scene. Scene 2 (remaining 60%): Show the hands securely gripping the exact product, lifting it fully clear of the box rim in one continuous visible movement, and setting it upright or in its natural stable resting position on the table beside the open box. Support its actual weight with both hands as needed. Release only after it contacts the table; keep labels unobstructed. Keep the now-empty product cavity visible with the original insert remaining inside. After placement, the hands withdraw and the camera makes a small smooth push-in, then holds a steady hero composition for the final 20% of the clip. Match the box position, lid hinge, hand identity, product orientation, lighting, and removed packaging across the single cut. The lid stays attached if hinged; removed materials remain where placed. No teleporting objects, reappearing wrapping, extra fingers, invented accessories, floating lids, product passing through the box walls, duplicate products left inside, or face/full person. Keep the camera steady during opening; no simultaneous orbit. Packaging sounds must be subtle and synchronized, beneath any selected narration.";
+const UNBOXING_SOURCE_FRAME_DIRECTION = "UNBOXING SOURCE FRAME: Create one single full-frame photograph, not an action sequence or collage. Show the exact product visibly supported inside a fitted box with its easy lid already partly open, with one hand steadying the box and the other resting naturally at the lid edge. Preserve the reference product and packaging; if no outer box is shown, use a plain unbranded fitted outer box. No invented accessories or decorative filler. Leave room above the lid for a natural opening movement. Soft directional light, realistic contact shadows, clean background, and sharp product artwork.";
 const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE — FIRST-PERSON POV FACE EXCLUSION: Close-up or medium POV shot cropped below the neck or from a first-person angle. No full face, facial features, or head are visible in the frame.";
 const HANDS_ONLY_BACKGROUND_DIRECTION = "BACKGROUND AESTHETICS: The background must be a beautiful, warm, authentic modern setting (such as a cozy aesthetic cafe, stylish workspace, realistic indoor room, or natural outdoor path appropriate for the product) with a soft-focus shallow depth of field (cinematic bokeh blur). Keep the POV perspective, product, and interacting hands/feet/body parts in crisp, sharp focus.";
 const ANIMAL_PRESENTER_DIRECTION = "Show a friendly Thai reviewer standing together with a cute consistent pet animal (cat or dog as specified) in the frame interacting with or standing near the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
@@ -1066,10 +1068,12 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   if (productOnlyStill) {
     peopleDirection = NO_PEOPLE_DIRECTION;
   } else if (handsOnly) {
-    const stillHandCount = isUnboxingHands || handsOnlyStyle || auto.presenter === "hands_only"
+    const stillHandCount = isUnboxingHands
+      ? `\n${UNBOXING_TWO_HAND_COUNT_LOCK}`
+      : handsOnlyStyle || auto.presenter === "hands_only"
       ? `\n${HANDS_ONLY_STILL_COUNT_LOCK}`
       : "";
-    peopleDirection = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : (handsOnlyStyle || auto.presenter === "hands_only" ? HANDS_ONLY_SINGLE_HAND_DIRECTION : HANDS_DIRECTION)}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}`;
+    peopleDirection = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_SOURCE_FRAME_DIRECTION}` : (handsOnlyStyle || auto.presenter === "hands_only" ? HANDS_ONLY_SINGLE_HAND_DIRECTION : HANDS_DIRECTION)}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}`;
   } else if (isAnimal) {
     peopleDirection = `Pet Animal: A cute, friendly pet animal (${auto.presenter === "cat" ? "cat" : "dog"}) sitting next to or interacting naturally with the product in a bright, clean indoor setting. ${ANIMAL_PRESENTER_DIRECTION} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION}`;
   } else if (wearableCrop) {
@@ -1586,10 +1590,10 @@ function buildStillMotionVideoPrompt(productInfo, productName, locationStr, dura
     scaleDirection,
     `Place the product naturally in a realistic ${locationStr || "category-appropriate"} setting. Keep natural photography composition, true scale, visible but limited context, and realistic contact shadows. Do not make the product oversized or let it fill the table or frame.`,
     CAMERA_ONLY_NO_HANDS_DIRECTION,
-    PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION,
+    "CAMERA MOTION ONLY — PHYSICAL LEFT-RIGHT DOLLY: One continuous full-frame shot. Start from the source-image viewpoint. During the first half, physically translate the camera to the right on a level slider; during the second half, smoothly reverse and travel left along the same path. Use a clearly noticeable lateral travel of approximately 15–25% of the camera-to-product distance, reduced only to preserve the reference-visible surfaces. The viewer must feel the camera actually moving sideways: nearby surface details shift faster than the distant background, with visible foreground-background parallax. Keep the lens aimed gently toward the stationary product so it stays within the central frame, fully visible with breathing room. Use a fixed focal length and stable camera height; no pan-only rotation, digital image sliding, crop animation, zoom, orbit, or product rotation. Ease smoothly into travel, slow down before reversing, and settle gently for the final 10% of the clip. No cuts or abrupt direction changes.",
     "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, or busy scene action.",
     overlayDirection,
-    "Use energetic but controlled angle transitions: front hero → low left three-quarter → high right three-quarter → detail pull-back. No whip pan, violent shake, 360-degree orbit, dramatic effects, collage, or scene change that alters the product. Use upbeat but clean instrumental ambience or no audio."
+    "PREMIUM PRODUCT PHOTOGRAPHY: Preserve the source lighting and setting with soft directional light, controlled highlights, realistic contact shadows, and a gently blurred background. Keep the entire product and its artwork sharp; no focus hunting, flicker, exposure pumping, artificial light sweeps, or invented product surfaces. Keep the environment stationary; parallax comes only from physical camera translation. No whip pan, shake, collage, or scene replacement. Use clean instrumental ambience or no audio."
   ].filter(Boolean).join("\n");
 }
 
@@ -2121,7 +2125,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
-    let handsInstructions = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : (handsOnlyStyle || auto.presenter === "hands_only" ? HANDS_ONLY_SIMPLE_MOTION_DIRECTION : handsDir)}\n${HANDS_ONLY_FACE_EXCLUSION}\n${HANDS_ONLY_GLOBAL_COUNT_LOCK}`;
+    let handsInstructions = `${isUnboxingHands ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_REVEAL_SEQUENCE}` : (handsOnlyStyle || auto.presenter === "hands_only" ? HANDS_ONLY_SIMPLE_MOTION_DIRECTION : handsDir)}\n${HANDS_ONLY_FACE_EXCLUSION}\n${isUnboxingHands ? UNBOXING_TWO_HAND_COUNT_LOCK : HANDS_ONLY_GLOBAL_COUNT_LOCK}`;
     if (firstSceneNoPeople) {
       handsInstructions = `STRICT EXCEPTION FOR SCENE 1: Do not show hands or any human features in Scene 1. Hands are only allowed starting from Scene 2 onwards.\n${handsInstructions}`;
     }
@@ -2425,10 +2429,9 @@ function getMultiSceneDescription(videoStyle, productName, locationStr, mood, pr
 
     case "unboxing":
       return [
-        "This video must consist of multiple sequential scenes with clear cuts/transitions showing the unboxing process:",
-        `- Scene 1 (The Box): A 3-second shot of hands starting to open the packaging of ${productName}${loc}${moodStyle}.`,
-        `- Scene 2 (The Reveal): A 3-second satisfying reveal moment as the package is unwrapped/opened.`,
-        `- Scene 3 (Detail Showcase): A 2-second close-up showing the pristine product out of the box.`
+        "Use two connected unboxing scenes with one clean continuity cut. Preserve the same box, product, lighting, and removed packaging across both scenes; no resetting the lid or magically disappearing wrapping.",
+        `- Scene 1 (Open and Reveal, first 40%): Gently open the already-unsealed packaging of ${productName}${loc}${moodStyle}, continuing from the source image state. Move aside only existing loose wrapping and reveal the product clearly before the cut. Keep the camera steady and use simple deliberate hand movement.`,
+        `- Scene 2 (Hero Detail, remaining 60%): Use two consistent hands from one person to grip and lift the exact product fully clear of the box, then set it securely on the table beside the open box in a continuous visible movement. Keep the label unobstructed and the original cavity empty after removal; no duplicate product. Release only after stable contact with the table. Withdraw the hands, make a small smooth camera push-in, and hold a sharp hero composition for the final 20% of the clip. Soft directional light and controlled reflections reveal the real material without changing its color or artwork; no invented accessories or unsupported floating.`
       ].join("\n");
 
     case "before-after":
