@@ -835,14 +835,7 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
     }
 
     if (isUnusualActivityFailure(failureReason)) {
-        log(`⚡ Flow แจ้งเตือน Unusual Activity → ล้าง Site Data & Cookies และเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติทันที (${attempt}/${maxAttempts})...`);
-        try {
-            localStorage.clear();
-            sessionStorage.clear();
-            if (window.indexedDB && indexedDB.databases) {
-                indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
-            }
-        } catch(e) {}
+        log(`⚡ Flow แจ้งเตือน Unusual Activity → ล้างแคช Flow และเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติทันที (${attempt}/${maxAttempts})...`);
         await clearFlowStateForRecovery();
         await sleep(1500);
         return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
@@ -852,14 +845,7 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
     }
 
     if (isAudioGenerationFailure(failureReason)) {
-        log(`⚡ Flow แจ้งเตือน Audio Generation Failed → ล้าง Site Data & Cookies และเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติทันที (${attempt}/${maxAttempts})...`);
-        try {
-            localStorage.clear();
-            sessionStorage.clear();
-            if (window.indexedDB && indexedDB.databases) {
-                indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
-            }
-        } catch(e) {}
+        log(`⚡ Flow แจ้งเตือน Audio Generation Failed → ล้างแคช Flow และเริ่มสร้างรายการที่ Failed ใหม่อัตโนมัติทันที (${attempt}/${maxAttempts})...`);
         await clearFlowStateForRecovery();
         await sleep(1500);
         return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
@@ -892,14 +878,7 @@ async function retryFailedMediaCard(cardInfo, attempt, maxAttempts, restartGener
         await humanClick(currentButton);
     }
 
-    log("⚠️ กด Retry บนการ์ดแล้วไม่ตอบสนอง → ดำเนินการล้าง Site Data & Cookies และเริ่มสร้างใหม่...");
-    try {
-        localStorage.clear();
-        sessionStorage.clear();
-        if (window.indexedDB && indexedDB.databases) {
-            indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
-        }
-    } catch(e) {}
+    log("⚠️ กด Retry บนการ์ดแล้วไม่ตอบสนอง → ดำเนินการล้างแคช Flow และเริ่มสร้างใหม่...");
     await clearFlowStateForRecovery();
     await sleep(1500);
     return restartFailedGeneration(attempt, maxAttempts, restartGeneration, {
@@ -3088,14 +3067,7 @@ async function waitForResult(phase, options = {}) {
             const audioFailure = isAudioGenerationFailure(pendingFailure);
 
             if (unusualFailure || audioFailure) {
-                log(`⚡ ตรวจพบ Failed ชั่วคราว (${unusualFailure ? "Unusual Activity" : "Audio Generation Failed"}) → ล้างแคช/คุกกี้ และเริ่มใหม่ทันทีโดยไม่รอนับถอยหลัง!`);
-                try {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    if (window.indexedDB && indexedDB.databases) {
-                        indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name)));
-                    }
-                } catch(e) {}
+                log(`⚡ ตรวจพบ Failed ชั่วคราว (${unusualFailure ? "Unusual Activity" : "Audio Generation Failed"}) → ล้างแคช Flow และเริ่มใหม่ทันทีโดยไม่รอนับถอยหลัง!`);
                 await clearFlowStateForRecovery();
             } else if (!policyFailure && failureAge < failureGraceMs) {
                 log(`Flow แสดง Failed ชั่วคราว รอผลลัพธ์สำเร็จอีก ${Math.ceil((failureGraceMs - failureAge) / 1000)}s...`);

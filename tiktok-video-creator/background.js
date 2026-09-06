@@ -114,11 +114,11 @@ async function clearGoogleFlowSiteData({ reload = true } = {}) {
         {
           cacheStorage: true,
           cookies: false, // ไม่ลบคุกกี้ เพื่อไม่ให้หลุดล็อกอิน Google Account
-          fileSystems: true,
-          indexedDB: true,
-          localStorage: true,
-          serviceWorkers: true,
-          webSQL: true,
+          fileSystems: false,
+          indexedDB: false, // ไม่ลบ IndexedDB เพื่อรักษา Session/Token การล็อกอิน
+          localStorage: false, // ไม่ลบ LocalStorage เพื่อรักษา Token ล็อกอิน
+          serviceWorkers: false,
+          webSQL: false,
           cache: true
         },
         () => {
