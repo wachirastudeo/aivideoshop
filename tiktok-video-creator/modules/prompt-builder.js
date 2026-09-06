@@ -1618,6 +1618,8 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
 
 const NO_SPOKEN_GREETING_DIRECTION = 'SPOKEN DIALOGUE RULE: Never say "สวัสดี", "หวัดดี", "hello", or "hi" anywhere in dialogue or voiceover, including polite variants. Start directly with the product hook; no greeting or self-introduction.';
 
+export const THAI_VOICE_DIRECTION = "THAI VOICE: Native Thai only for ALL speech, dubbing and narration.";
+
 export function buildVideoPrompt(productInfo, settings = {}) {
   // Apply after every style builder so specialized early returns keep this rule.
   const prompt = buildVideoPromptForStyle(productInfo, settings);
@@ -1625,6 +1627,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const speechEnd = Math.max(0, duration - 1);
   const syllableBudget = Math.floor(Math.max(0, speechEnd - 0.5) * 3);
   const audioRules = `${NO_SPOKEN_GREETING_DIRECTION}
+${THAI_VOICE_DIRECTION}
 SPEECH TIMING: Plan one complete Thai thought, at most ${syllableBudget} spoken syllables total. Start by 0.5s; finish every sentence by ${speechEnd}s. Shorten details; never speed up, trail off, or start unfinished sentences. Final 1s: silent product hold. Overrides scene narration; music-only clips remain without speech.`;
   const firstLineEnd = prompt.indexOf("\n");
   if (firstLineEnd < 0) return `${prompt}\n${audioRules}`;

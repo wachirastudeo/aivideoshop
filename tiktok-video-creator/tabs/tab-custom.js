@@ -1,6 +1,6 @@
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
-import { normalizeHashtags } from "../modules/prompt-builder.js";
+import { normalizeHashtags, THAI_VOICE_DIRECTION } from "../modules/prompt-builder.js";
 import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
 
 const CUSTOM_VISUAL_STYLES = [
@@ -478,7 +478,7 @@ async function startPipeline() {
         ? ""
         : audioMode === "music_only"
           ? "AUDIO MODE — INSTRUMENTAL MUSIC ONLY: Use only clean instrumental background music. No spoken narration, voiceover, dialogue, presenter speech, singing, lip-sync, or other vocal audio."
-          : "AUDIO MODE — NATURAL VOICEOVER: Use concise, natural spoken narration when it fits the prompt. Keep the voice clear, relevant, and non-repetitive; do not add subtitles unless requested.";
+          : "AUDIO MODE — NATURAL THAI VOICEOVER: Use concise, natural Thai spoken narration with a native Thai-speaking voice. Keep the voice clear, relevant, and non-repetitive; do not add subtitles unless requested.";
 
       const captionProductContext = caption
         ? `PRODUCT IDENTITY FROM POST CAPTION: The product being generated is described by this caption: "${caption}". Use the explicit product name in the caption as product-category context. The caption is instruction context only and must not be rendered as visible text. If it identifies a shirt or top, generate a shirt or top; never replace it with underwear, lingerie, panties, briefs, or another unrelated garment.`
@@ -501,6 +501,10 @@ STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. The product must remain
       }
       if (selectedModelRefImageBase64) {
         finalPrompt = `${finalPrompt}\nMODEL REFERENCE SAFETY: Use the model reference only for pose, framing, outfit silhouette, garment fit, colors, and pattern. Generate a new generic fictional adult model; match only the clothing and pose, not the person.`;
+      }
+
+      if (phase !== "image") {
+        finalPrompt = `${finalPrompt}\n${THAI_VOICE_DIRECTION}`;
       }
 
       assertNotStopped();
