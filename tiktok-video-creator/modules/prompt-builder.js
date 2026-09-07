@@ -615,6 +615,8 @@ const SPEECH_PRODUCT_TITLE_EXCLUSION = "STRICT SPOKEN PRODUCT TITLE EXCLUSION: N
 
 const TEXT_FREE_DIRECTION = "HIGHEST PRIORITY — STRICT NO-TEXT RULE: Do not add text overlays, subtitles, captions, prices, banners, promotional copy, watermarks, CTAs, signs, labels, or text graphics anywhere. Preserve only product text visible in the reference. If none is visible/readable, keep the product surface blank; never infer text from the title or surrounding image.";
 
+const VIDEO_ZERO_SUBTITLES_AND_TEXT_LOCK = "STRICT VIDEO ZERO-TEXT & ZERO-SUBTITLES MANDATE: The video must be 100% free of on-screen text. ABSOLUTELY NO subtitles, NO captions, NO transcriptions of spoken Thai dialogue, NO floating text, NO lyric bars, and NO text graphics anywhere in any scene. Spoken Thai dialogue is audio-only.";
+
 const NO_ADDED_PATTERNS_OR_GRAPHICS_RULE = "⚠️ STRICT PLAIN PRODUCT LOCK: If the reference product is plain, blank, solid-colored, or lacks printed graphics/patterns, you MUST keep the generated product 100% PLAIN, BLANK, and CLEAN. Strictly FORBIDDEN: Do NOT invent, add, or draw any extra patterns, stripes, graphics, logos, prints, or decorations whatsoever.";
 const NO_HALLUCINATED_BRAND_LOGOS_RULE = "⚠️ ZERO HALLUCINATION MANDATE: Strictly FORBIDDEN to generate, invent, or place any brand names, text, typography, letters, emblems, or logos on the product surface if they do NOT exist in the original reference image. If the product is blank in the reference, it MUST remain completely blank. Do NOT add random brands, gibberish text, or fake logos.";
 const REFERENCE_BRAND_ONLY_LOCK = "STRICT REFERENCE BRAND-ONLY LOCK: Use only the brand name, logo, mascot, emblem, and printed marks visibly present on the uploaded product reference, with exact spelling, shape, position, and colors. Never guess, autocomplete, translate, replace, or invent branding from the title or category. Never add another manufacturer, retailer, marketplace, sponsor, competitor, or background logo. If the brand is unclear or not visible, leave the product unbranded. Exclude shop watermarks.";
@@ -1733,6 +1735,14 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   const styleObj = VIDEO_STYLES.find(s => s.id === sceneStyle);
   let styleFragment = styleObj ? styleObj.fragment : "";
 
+  if (!textEnabled && styleFragment) {
+    styleFragment = styleFragment
+      .replace(/\b(?:feature callout|text hook|bold promotion text|promotion text|text labels?|text overlays?|countdown timer graphic|graphic)\b[^,.;]*/gi, "")
+      .replace(/,\s*,/g, ",")
+      .replace(/^\s*,|,\s*$/g, "")
+      .trim();
+  }
+
   if (noPeople) {
     styleFragment = styleFragment
       .replace(/\b(?:a|an)\s+(?:trendy|stylish|young|adult|Thai|natural|professional|friendly|casual|cute|3D|stylized|\s)*(?:woman|man|person|presenter|reviewer|character|hands?)\b[^.;]*[.;]?/gi, "")
@@ -1828,7 +1838,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
     isWearable ? NO_PUTTING_ON_OR_TAKING_OFF_MANDATE : "",
     productActivityDirection,
     scaleInstruction,
-    specificScale,
+    categoryDirection && categoryDirection.includes(specificScale) ? "" : specificScale,
     PRODUCT_STRUCTURE_DIRECTION,
     categoryDirection,
     analysisDirection,
@@ -2009,7 +2019,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
       ? videoUserPhrase
         ? `MUST display this exact Thai text overlay, clearly legible and on-screen starting immediately from the very first second (first frame / Scene 1) and visible in every scene at ${compactPromptText(settings?.textPosition, 40) || "Auto"}: "${videoUserPhrase}". Render Thai script with perfect spelling, ensuring every consonant, vowel, and tone mark is in the correct vertical stack and perfectly placed. Style it as ${textStyleStr}. Include 1–2 small doodles (${doodles}). Do not block important parts of the product. The text must appear on top of active, moving video footage right from the start to serve as an automatic video cover (STRICTLY FORBIDDEN: do not render a frozen image, still photo, or static title card with text in the middle).`
         : `MUST display ONE short cute Thai text overlay (1–5 words, naturally matching this product) starting immediately from the very first second (first frame / Scene 1) and visible in every scene, clearly legible, at ${compactPromptText(settings?.textPosition, 40) || "Auto"}. Render Thai script with perfect spelling, ensuring every consonant, vowel, and tone mark is in the correct vertical stack and perfectly placed. Style it as ${textStyleStr}. Include 1–2 small doodles (${doodles}). Do not block important parts of the product. Choose wording that feels natural and matches the product's benefit. The text must appear on top of active, moving video footage right from the start to serve as an automatic video cover (STRICTLY FORBIDDEN: do not render a frozen image, still photo, or static title card with text in the middle).`
-      : TEXT_FREE_DIRECTION
+      : VIDEO_ZERO_SUBTITLES_AND_TEXT_LOCK
   );
 
   let handsDir = HANDS_DIRECTION;
@@ -2118,8 +2128,8 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   const speechDir = auto.audioMode === "music_only"
     ? MUSIC_ONLY_AUDIO_DIRECTION
     : isFullFaceCoveringProduct(productText)
-    ? `Spoken audio (Thai): Use a short, natural off-screen Thai voiceover when useful. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Keep the fabric over the mouth smooth, static, and fully covering the mouth while speaking. ${speechCore} Do not use subtitles, and ${voiceMatchEnd}`
-    : `Spoken audio (Thai): Generate concise, natural Thai narration where it helps the story. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. ${speechCore} Speaker should ${presentInstruction}. Do not use subtitles, and ${voiceMatchEnd}`;
+    ? `Spoken audio (Thai): Use a short, natural off-screen Thai voiceover when useful. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. STRICT FABRIC MOUTH-COVERING LOCK: Keep the fabric over the mouth smooth, static, and fully covering the mouth while speaking. ${speechCore} STRICT AUDIO-ONLY: Spoken Thai narration is audio-only; do not use subtitles, captions, transcriptions, burnt-in dialogue text, or on-screen lyrics. ${voiceMatchEnd}`
+    : `Spoken audio (Thai): Generate concise, natural Thai narration where it helps the story. ${openingHookDirection} Voice character: ${speakerIdentity} — ${matchVoiceRule}. ${speechCore} Speaker should ${presentInstruction}. STRICT AUDIO-ONLY: Spoken Thai narration is audio-only; do not use subtitles, captions, transcriptions, burnt-in dialogue text, or on-screen lyrics. ${voiceMatchEnd}`;
   const voiceoverDir = auto.audioMode === "music_only"
     ? MUSIC_ONLY_AUDIO_DIRECTION
     : (auto.presenter === "none" || auto.presenter === "hands_only" || auto.presenter === "unboxing_hands" || auto.presenter === "wearable_crop")
@@ -2269,7 +2279,7 @@ function resolveFashionHangerPresenter(productText, settings, autoPresenter, pro
 function fashionHangerAudioDirection(settings = {}) {
   return settings?.audioMode === "music_only"
     ? MUSIC_ONLY_AUDIO_DIRECTION
-    : "DIRECT-TO-CAMERA AUDIO: Use a natural, concise Thai product presentation delivered by the on-screen model while looking into the camera. Keep speech clear, relaxed, and synchronized with natural lip movement. Do not add subtitles, captions, or any invented product claims.";
+    : "DIRECT-TO-CAMERA AUDIO: Use a natural, concise Thai product presentation delivered by the on-screen model while looking into the camera. Keep speech clear, relaxed, and synchronized with natural lip movement. STRICT AUDIO-ONLY: Spoken Thai narration is audio-only. Do not add subtitles, captions, transcriptions, burnt-in dialogue text, or any invented product claims.";
 }
 
 function buildFashionHangerImagePrompt(productInfo, productName, settings = {}, presenter = "woman") {
@@ -2329,6 +2339,7 @@ function buildFashionHangerVideoPrompt(productInfo, productName, locationStr, du
     `FASHION HANGER BACKGROUND LOCK: Keep the same clean background direction throughout every scene: ${compactPromptText(locationStr, 180)}. Keep the model, worn garment, and hanging garment separated from the background with natural depth of field.`,
     APPAREL_VISIBILITY_DIRECTION,
     TEXT_FREE_DIRECTION,
+    VIDEO_ZERO_SUBTITLES_AND_TEXT_LOCK,
     "Use only subtle natural posture and hand movement. Keep the model's face visible, looking into the camera, and consistently fictional throughout the entire clip; keep the hanger stable and never let it obscure the face or worn garment.",
     fashionHangerAudioDirection(settings)
   ].filter(Boolean).join("\n");
@@ -2336,7 +2347,7 @@ function buildFashionHangerVideoPrompt(productInfo, productName, locationStr, du
 
 function buildFashionSelfieTextDirection(productInfo, settings = {}, isVideo = false) {
   const textEnabled = settings?.textEnabled === true || settings?.textEnabled === "true";
-  if (!textEnabled) return TEXT_FREE_DIRECTION;
+  if (!textEnabled) return isVideo ? `${TEXT_FREE_DIRECTION}\n${VIDEO_ZERO_SUBTITLES_AND_TEXT_LOCK}` : TEXT_FREE_DIRECTION;
 
   const configuredTexts = [settings?.clipText, settings?.promotionText]
     .map((value) => stripForbiddenVideoWords(sanitizeText(String(value || "").trim())))
@@ -2359,7 +2370,7 @@ function buildFashionSelfieTextDirection(productInfo, settings = {}, isVideo = f
 function autoAudioDirection(settings = {}) {
   return settings?.audioMode === "music_only"
     ? MUSIC_ONLY_AUDIO_DIRECTION
-    : "Use only a calm off-screen Thai voiceover if narration is needed; the on-screen model must never speak or move her mouth behind the phone.";
+    : "Use only a calm off-screen Thai voiceover if narration is needed; the on-screen model must never speak or move her mouth behind the phone. STRICT AUDIO-ONLY: Spoken narration is audio-only; do not add subtitles, captions, transcriptions, or on-screen text.";
 }
 
 function getMultiSceneDescription(videoStyle, productName, locationStr, mood, productText = "", handsOnlyMode = false) {

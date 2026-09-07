@@ -1070,6 +1070,13 @@ check("image prompt with text enabled but no clipText lets Flow choose text", /C
 const imgTextDisabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: false });
 check("image prompt with text disabled uses TEXT_FREE_DIRECTION", /STRICT NO-TEXT RULE/i.test(imgTextDisabled), imgTextDisabled);
 
+const vidTextDisabled = buildVideoPrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: false });
+check("video prompt with text disabled locks against subtitles and captions", /STRICT VIDEO ZERO-TEXT & ZERO-SUBTITLES MANDATE/i.test(vidTextDisabled) && /ABSOLUTELY NO subtitles, NO captions/i.test(vidTextDisabled), vidTextDisabled);
+check("video prompt spoken dialogue specifies strict audio-only", /STRICT AUDIO-ONLY: Spoken Thai narration is audio-only; do not use subtitles, captions/i.test(vidTextDisabled), vidTextDisabled);
+
+const vidFlashSaleDisabled = buildVideoPrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: false, videoStyle: "flash-sale" });
+check("video prompt with text disabled strips bold promotion text from style preset", !/bold promotion text/i.test(vidFlashSaleDisabled), vidFlashSaleDisabled);
+
 // --- small bag/coffee pouch scale tests ---
 const coffeeProduct = { name: "ถุงกาแฟ 250 กรัม" };
 const coffeeImage = buildImagePrompt(coffeeProduct, settings);
