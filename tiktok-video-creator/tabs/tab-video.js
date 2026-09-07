@@ -8,8 +8,7 @@ import {
   buildCaption,
   buildPostHashtags,
   normalizeHashtags,
-  truncateShopeeCaptionAndHashtags,
-  isPhoneCaseProduct
+  truncateShopeeCaptionAndHashtags
 } from "../modules/prompt-builder.js";
 import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
@@ -1249,10 +1248,8 @@ function buildFlowOptions(product = null) {
     modelRefImage: product?.modelRefImage || settings.modelRefImage || ""
   };
   if (product) {
-    const productText = `${product.originalName || ""} ${product.name || ""} ${product.category || ""}`;
     const referenceImages = getFlowProductImages(product);
-    // Phone-case artwork is variant-specific; multiple product/variant images can make Flow blend patterns.
-    opts.imageUrls = isPhoneCaseProduct(productText) ? referenceImages.slice(0, 1) : referenceImages;
+    opts.imageUrls = referenceImages;
   }
   return opts;
 }

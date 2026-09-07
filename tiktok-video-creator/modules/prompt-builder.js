@@ -343,7 +343,7 @@ const UNBOXING_HANDS_DIRECTION = "STRICT HANDS-ONLY UNBOXING PRESENTER MODE: Fir
 const UNBOXING_REVEAL_SEQUENCE = "MANDATORY UNBOXING ACTION SEQUENCE: Use two sequential full-frame scenes. Scene 1 (first 40%): Start from the source frame's actual lid and packaging state; never close an already-open box to restart. One hand steadies the box while the other gently opens the lid away from the camera and moves aside at most one existing loose protective layer, revealing the exact product inside the box by the end of this scene. Scene 2 (remaining 60%): Show the hands securely gripping the exact product, lifting it fully clear of the box rim in one continuous visible movement, and setting it upright or in its natural stable resting position on the table beside the open box. Support its actual weight with both hands as needed. Release only after it contacts the table; keep labels unobstructed. Keep the now-empty product cavity visible with the original insert remaining inside. After placement, the hands withdraw and the camera makes a small smooth push-in, then holds a steady hero composition for the final 20% of the clip. Match the box position, lid hinge, hand identity, product orientation, lighting, and removed packaging across the single cut. The lid stays attached if hinged; removed materials remain where placed. No teleporting objects, reappearing wrapping, extra fingers, invented accessories, floating lids, product passing through the box walls, duplicate products left inside, or face/full person. Keep the camera steady during opening; no simultaneous orbit. Packaging sounds must be subtle and synchronized, beneath any selected narration.";
 const UNBOXING_SOURCE_FRAME_DIRECTION = "UNBOXING SOURCE FRAME: Create one single full-frame photograph, not an action sequence or collage. Show the exact product visibly supported inside a fitted box with its easy lid already partly open, with one hand steadying the box and the other resting naturally at the lid edge. Preserve the reference product and packaging; if no outer box is shown, use a plain unbranded fitted outer box. No invented accessories or decorative filler. Leave room above the lid for a natural opening movement. Soft directional light, realistic contact shadows, clean background, and sharp product artwork.";
 const HANDS_ONLY_FACE_EXCLUSION = "STRICT RULE — FIRST-PERSON POV FACE EXCLUSION: Close-up or medium POV shot cropped below the neck or from a first-person angle. No full face, facial features, or head are visible in the frame.";
-const HANDS_ONLY_BACKGROUND_DIRECTION = "BACKGROUND AESTHETICS: The background must be a beautiful, warm, authentic modern setting (such as a cozy aesthetic cafe, stylish workspace, realistic indoor room, or natural outdoor path appropriate for the product) with a soft-focus shallow depth of field (cinematic bokeh blur). Keep the POV perspective, product, and interacting hands/feet/body parts in crisp, sharp focus.";
+const HANDS_ONLY_BACKGROUND_DIRECTION = "BACKGROUND AESTHETICS: The background must be a bright, clean, authentic modern setting (such as a stylish workspace, modern aesthetic room, bright cafe, or natural outdoor path appropriate for the product) with soft natural daylight, neutral white balance, and gentle shallow depth of field. Keep the POV perspective, product, and interacting hands in crisp, sharp focus with true-to-life colors and no heavy yellow or orange tint.";
 const ANIMAL_PRESENTER_DIRECTION = "Show a friendly Thai reviewer standing together with a cute consistent pet animal (cat or dog as specified) in the frame interacting with or standing near the product. The product must remain rigid, static, and completely unchanged; the animal must not damage, bite, or deform the product.";
 const NO_UNREQUESTED_ANIMALS_DIRECTION = "No animals unless explicitly selected.";
 
@@ -421,12 +421,12 @@ const SHOE_WEARABLE_CROP_IMAGE_DIRECTION = "SHOE WORN-ON-FEET CLOSE-UP MODE: Mat
 const SHOE_WEARABLE_CROP_VIDEO_DIRECTION = "SHOE WORN-ON-FEET VIDEO MODE: Keep the camera tightly framed on the exact footwear worn on natural feet and lower legs below mid-calf. The model remains seated on a chair, sofa edge, or bed for the entire clip, with both lower legs relaxed and both feet planted flat on the floor. Use close-up product-review angles inspired by a tasteful vertical smartphone shoe photo: seated top-down 3/4 hero, low side detail, and seated opposite 3/4 detail. No raised leg, floating foot, dangling foot, pointed-toe fashion pose, or leg lifted toward the camera. No identifiable person, face, head, torso, arms, hands, or full body. The shoes stay continuously worn, correctly fitted, and fully visible; never show putting them on, taking them off, walking away, or changing shoes. Use only subtle natural movement while the feet remain on the floor: a tiny ankle rotation, gentle weight shift, or relaxed toe movement. No exaggerated stepping, kicking, jumping, or dancing. Use off-screen Thai voiceover only.";
 const SHOE_WEARABLE_CROP_BACKGROUND_DIRECTION = "SHOE WORN-ON-FEET INDOOR BACKGROUND LOCK: Use a clean, aesthetically pleasing indoor floor in a cozy bedroom or living-room corner, with soft natural daylight, pale neutral/pastel tones, and shallow background blur. A restrained curtain, bed edge, or soft fabric detail may appear in the background, but never let props cover the footwear. ABSOLUTELY FORBIDDEN: outdoor street, driveway, grass, park, retail shoe store, shoe shelf, studio cyclorama, social-media UI, watermark, stickers, or added screenshot text.";
 
-const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model.";
+const SHOE_FIDELITY_DIRECTION = "For footwear, preserve the exact single-shoe/pair count, toe shape, sole thickness, lace pattern, and color blocking. Do not change the shoe model. Both shoes in a pair must have identical matching patterns, colors, and logos; never mix two different styles or invent new patterns.";
 const SHOE_PATTERN_COORDINATE_LOCK = "STRICT FOOTWEAR PATTERN COORDINATE LOCK: Copy the exact reference pattern as a fixed texture map across the toe box, heel, sole, and side panels. Preserve motif positions, orientation, colors, and left/right asymmetry. Do not redraw, mirror, rotate, simplify, recolor, or move it.";
 const SHOE_SCALE_DIRECTION = "STRICT FOOTWEAR SCALE & PLACEMENT LOCK: This is a real human shoe, not a giant prop or miniature toy. Preserve true foot-sized proportions and the exact single-shoe/pair count. Show it at realistic scale relative to a human foot, leg, hand, shoe box, floor, shelf, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge the shoe to furniture-scale, make it tiny, or place it in an unrelated oversized environment. Keep the shoe grounded on a realistic floor, shelf, or naturally worn on a foot.";
 const SHOE_STILL_PLACEMENT_DIRECTION = "REALISTIC FOOTWEAR STILL PLACEMENT LOCK: For a product-only shoe still, place the exact shoe or exact pair naturally on a level, stable surface appropriate to the selected background (outdoor pavement, concrete, or grass by default), with the sole touching the surface and a believable contact shadow. Preserve the reference's single-shoe or pair count; when a pair is shown, arrange it as a natural left/right pair at a slight three-quarter angle with aligned toe directions, realistic spacing, and no overlapping or interpenetrating shoes. Keep the full silhouette visible with breathing room. ABSOLUTELY FORBIDDEN: floating shoes, shoes standing vertically without support, tilted-on-edge placement, giant or miniature scale, duplicate shoes, or catalog-collage layouts.";
-const SHOE_PAIR_STILL_DIRECTION = "MANDATORY FOOTWEAR PAIR STILL COMPOSITION: Show BOTH shoes from the reference together in the same single full-frame still image: the left shoe and the right shoe must both be clearly visible, complete, and identifiable. Place them side by side as a natural pair on the same level surface, with both soles touching the surface, matching perspective, realistic spacing, and separate contact shadows. NEVER output only one shoe, crop away one shoe, hide one shoe behind the other, or split the pair into separate panels.";
-const SHOE_STILL_REFERENCE_LOCK = "FINAL SHOE REFERENCE CHECK: Treat the reference shoe design as immutable. Copy the exact shoe model, visible count, toe shape, sole thickness, lace pattern, logo, panels, and colors. STRICT FOOTWEAR PATTERN COORDINATE LOCK: Copy the pattern as a fixed texture map across the toe box, heel, sole, and side panels; preserve motif positions, orientation, colors, and left/right asymmetry. STRICT FOOTWEAR SCALE & PLACEMENT LOCK: Keep real foot-sized proportions and natural contact. Before output, compare every shoe with the reference and remove any invented stripe, logo, color, panel, or sole detail. Do not redraw, mirror, rotate, simplify, recolor, or move the design.";
+const SHOE_PAIR_STILL_DIRECTION = "MANDATORY FOOTWEAR PAIR STILL COMPOSITION: Show BOTH shoes from the reference together in the same single full-frame still image: the left shoe and the right shoe must both be clearly visible, complete, and identifiable. Place them side by side as a natural pair on the same level surface, with both soles touching the surface, matching perspective, realistic spacing, and separate contact shadows. STRICT MATCHING PAIR RULE: Both the left shoe and the right shoe MUST feature the exact same identical design, pattern, graphics, and logo from the reference. If the reference shows multiple designs or colorways, pick ONE single design from the reference and apply it identically to both shoes. NEVER make the left and right shoes different designs or different patterns. NEVER invent random text or logos (such as Dr. Walker or fake brands) not on the actual product. NEVER output only one shoe, crop away one shoe, hide one shoe behind the other, or split the pair into separate panels.";
+const SHOE_STILL_REFERENCE_LOCK = "FINAL SHOE REFERENCE CHECK: Treat the reference shoe design as immutable. Copy the exact shoe model, visible count, toe shape, sole thickness, lace pattern, logo, panels, and colors. STRICT FOOTWEAR PATTERN COORDINATE LOCK: Copy the pattern as a fixed texture map across the toe box, heel, sole, and side panels; preserve motif positions, orientation, colors, and left/right asymmetry. STRICT FOOTWEAR SCALE & PLACEMENT LOCK: Keep real foot-sized proportions and natural contact. IDENTICAL PAIR CHECK: Ensure both left and right shoes share the exact same identical pattern and graphics; do not mix mismatched designs across shoes or invent unrequested branding. Before output, compare every shoe with the reference and remove any invented stripe, logo, color, panel, or sole detail. Do not redraw, mirror, rotate, simplify, recolor, or move the design.";
 
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: Match the reference garment's type, cut, fit, length, neckline or waistband, sleeves or legs, fabric, color, print, logo, seams, pockets, and fasteners. Keep those visible design details consistent while allowing natural fabric drape and ordinary movement. Show the front design clearly and do not use a back-facing or 360-degree spin.";
 const FASHION_SELFIE_BODY_CONTINUITY_LOCK = "FASHION SELFIE COMPLETE BODY LOCK: Render exactly one anatomically complete adult model with one connected head, neck, shoulders, torso, hips, two arms, two hands, two legs, and two feet. Never erase, crop away, detach, duplicate, or deform the torso, shoulders, arms, hands, hips, legs, or feet. The phone covers only the face; it must never replace or hide the upper body. When full-body framing is required, keep the complete head-to-toe body visible and grounded in every frame.";
@@ -623,7 +623,7 @@ const ENGRAVED_EMBOSSED_FIDELITY_DIRECTION = "STRICT ENGRAVED, EMBOSSED & SURFAC
 
 const NO_GIBBERISH_TEXT_ON_PRODUCT_DIRECTION = "STRICT THAI LANGUAGE ONLY & ZERO GIBBERISH LOCK: All visible text overlays, packaging writing, captions, signs, and spoken dialogue MUST be in 100% correct, flawless Thai script ONLY (ข้อความภาษาไทยถูกต้องเท่านั้น). ABSOLUTELY FORBIDDEN: Do NOT write or render foreign scripts (Chinese, Japanese, Korean, Arabic, etc.), distorted gibberish symbols, or fake pseudo-letters anywhere on the product, background, or video frame.";
 
-const STRICT_SHOP_LOGO_EXCLUSION_RULE = "CRITICAL RULE — STRICTLY FORBIDDEN: Do NOT copy, replicate, draw, or include any shop logos, store branding watermarks, seller profile logos, platform badges, e-commerce icons, or corner watermarks visible in the reference photo. Extract ONLY the physical product object itself. Absolutely NO shop logos, NO store names, NO watermarks, NO seller stamps, and NO platform icons anywhere on the generated image or video.";
+const STRICT_SHOP_LOGO_EXCLUSION_RULE = "CRITICAL RULE — STRICTLY FORBIDDEN: Do NOT replicate shop logos, store watermarks, seller profile logos, platform badges, e-commerce icons, or corner stamps visible in reference. Extract ONLY the physical product object itself. NO shop logos, store names, seller stamps, or platform icons.";
 
 
 
@@ -946,19 +946,19 @@ function buildCompactPhoneCaseStillPrompt(productInfo = {}, productName, auto, s
     ),
     220
   );
-  const location = compactPromptText(auto.location || "Clean modern studio", 120);
+  const location = compactPromptText(auto.location || "Clean modern setting", 120);
   const handsOnly = ["hands_only", "unboxing_hands"].includes(auto.presenter) || settings?.presenter === "hands_only";
   const presenter = handsOnly
-    ? "HANDS-ONLY PRODUCT USE: Use a natural first-person close-up with exactly one visible hand and forearm holding the phone case; no second hand, face, or head."
+    ? "HANDS-ONLY PRODUCT USE: Use an authentic, candid first-person close-up with exactly one visible natural adult hand holding or showcasing the phone case in a relaxed, effortless, natural grip. Genuine human skin texture with subtle natural details; never stiff, robotic, or mannequin-like. No second hand, face, or head."
     : productOnlyStill
-    ? "ONE-HAND PRODUCT STILL: Show the phone case held by exactly one visible natural adult hand; keep the second hand, face, head, and body outside the frame."
-    : `THAI PRESENTER CAST: Presenter: A fictional adult Thai ${auto.presenter === "man" ? "man" : "woman"} reviewer holding the phone case with exactly one visible hand. Keep the second hand outside the frame and the product primary in a natural close or medium product-use frame.`;
+    ? "ONE-HAND PRODUCT STILL: Show the phone case held in a relaxed, candid, natural grip by exactly one visible natural adult hand; keep the second hand, face, head, and body outside the frame. Natural human skin texture with soft daylight, avoiding stiff mannequin poses or plastic CGI look."
+    : `THAI PRESENTER CAST: Presenter: A fictional adult Thai ${auto.presenter === "man" ? "man" : "woman"} reviewer holding the phone case in a natural, candid, relaxed lifestyle pose with exactly one visible hand. Keep the second hand outside the frame and the product primary in a natural close or medium product-use frame.`;
   const background = handsOnly
-    ? `BACKGROUND AESTHETICS: Use a beautiful, warm, realistic ${location} setting with soft-focus shallow depth of field and cinematic bokeh blur; keep the hands and product sharp.`
-    : `Place the unchanged product prominently on a clean surface in a realistic ${location} scene. Do not copy the reference background, people, pose, framing, or composition.`;
+    ? `BACKGROUND AESTHETICS & LIGHTING: A bright, authentic, realistic ${location} setting with soft diffused natural daylight and neutral white balance (5500K). Soft-focus shallow depth of field with gentle, even lighting and soft open shadows. Keep the hands and product in sharp, natural focus with true-to-life colors. STRICTLY FORBIDDEN: High contrast, harsh dark shadows, heavy yellow or orange lighting, warm amber tint, dark tungsten glow, or yellowed whites.`
+    : `BACKGROUND AESTHETICS: Place the unchanged product prominently on a clean surface in a bright, realistic ${location} scene with soft diffused daylight, gentle contrast, and clean, neutral white balance. Do not copy the reference background, people, pose, framing, or composition. STRICTLY FORBIDDEN: High contrast, harsh dark shadows, heavy yellow or orange tint, warm amber cast, or dark tungsten lighting.`;
 
   return [
-    "Create one professional product advertisement still image in a vertical 9:16 frame. Single image only; no collage or split screen.",
+    "SMARTPHONE CAMERA LENS PHOTO: Create an authentic, candid point-and-shoot smartphone photograph (shot on an iPhone / 26mm mobile camera lens) in a vertical 9:16 frame. Unposed UGC lifestyle snapshot. Single image only; no collage or split screen.",
     `Product: "${sourceName}".`,
     "REFERENCE PRODUCT SOURCE: Use the attached reference image as the exact source for the product only. Copy the visible case or case set 1:1; do not redraw, redesign, beautify, or generate a lookalike replacement.",
     UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
@@ -968,7 +968,9 @@ function buildCompactPhoneCaseStillPrompt(productInfo = {}, productName, auto, s
     background,
     presenter,
     PHONE_CASE_ONE_HAND_HOLD_LOCK,
-    "Use a relaxed ergonomic grip with believable scale and natural contact. Do not cover the camera opening or distort the case.",
+    "Use a completely relaxed, natural, ergonomic grip with believable scale and soft organic hand contact. Never pose stiffly or rigidly. Do not cover the camera opening or distort the case.",
+    "SOFT CONTRAST & MOBILE LENS REALISM: Soft, natural contrast with smooth, gentle tonal gradations. Open, soft shadows with plenty of detail — NO crushed blacks, NO harsh dark shadows, and NO aggressive contrast. Authentic mobile camera lens perspective with realistic subtle sensor falloff, not extreme telephoto DSLR blur. Genuine human skin pores and soft natural light wrap.",
+    "COLOR ACCURACY & NEUTRAL WHITE BALANCE: Preserve exact product colors matching the reference image. Clean 5500K neutral daylight, crisp whites, and true-to-life tones. STRICTLY FORBIDDEN: 3D render look, CGI plastic sheen, stiff robotic mannequin poses, heavy yellow/orange tint, dark amber cast, or oversaturated golden glow.",
     "No added text, captions, stickers, watermarks, shop logos, or graphics. Preserve only text physically printed on the product. Keep the product sharp, complete, realistic, and at true smartphone scale."
   ].join("\n");
 }
@@ -1060,7 +1062,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
 
   const isSingleMode = true; // FORCE SINGLE MODE ALWAYS: Prevents "4-panel grid" hallucination (ไม่ต้องตอนภาพ/แบ่งภาพ)
 
-  const intro = `Create one authentic full-frame smartphone photograph in a vertical 9:16 layout. Show ${productName} clearly at realistic scale, matching the reference. Use natural everyday lighting without artificial studio gloss or CGI styling.`;
+  const intro = `Create one authentic full-frame smartphone photograph in a vertical 9:16 layout. Show ${productName} clearly at realistic scale, matching the reference. Use natural smartphone camera lens lighting (26mm look), soft diffused daylight, low contrast, open shadows, and neutral white balance without artificial gloss or CGI styling.`;
 
   const isKids = shouldUseKidsScene(productText, auto, settings);
 
@@ -1163,7 +1165,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
         ? "Single full-frame vertical footwear-on-feet close-up: show both exact shoes worn naturally on feet and lower legs, with a relaxed pose and flattering 3/4 angle. No face, head, torso, arms, hands, or full body; no collage, split screen, or social-media screenshot UI."
         : isFootwear
         ? footwearStillCount === "pair"
-          ? "Single full-frame footwear pair product shot: show both the left and right shoes from the reference together on one level surface in a realistic 3/4 product angle, with both complete silhouettes visible, soles supported by the surface, natural spacing, and separate contact shadows. No one-shoe-only output, collage, split screen, floating shoe, unsupported vertical placement, duplicate shoe, or social-media screenshot UI."
+          ? "Single full-frame footwear pair product shot: show both the left and right shoes from the reference together on one level surface in a realistic 3/4 product angle, with both complete silhouettes visible, soles supported by the surface, natural spacing, and separate contact shadows. Both shoes must feature the exact same matching design, pattern, and colorway from the reference. No one-shoe-only output, mismatched designs, collage, split screen, floating shoe, unsupported vertical placement, duplicate shoe, or social-media screenshot UI."
           : "Single full-frame footwear product shot: show the exact single shoe from the reference naturally resting on a level surface in a realistic 3/4 product angle, with the complete silhouette visible, sole supported by the surface, and a believable contact shadow. No collage, split screen, floating shoe, unsupported vertical placement, duplicate shoe, or social-media screenshot UI."
         : isPhoneCaseProduct(productText)
         ? "Single full-frame phone-case product scene: reproduce the exact phone case or exact phone-case set shown in the reference. If multiple cases are visible, preserve every visible case as a separate object with the same count, color order, spacing, overlap, outer silhouette, camera opening, and artwork; do not collapse the set into one case or invent variants. No collage, split screen, generic replacement case, merged cases, omitted cases, or social-media screenshot UI."
@@ -1193,7 +1195,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   } else {
     scaleInstruction = isHeavy
       ? "Real scale."
-      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment, hands, or presenter in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
+      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment, hands, or presenter in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
   }
 
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
@@ -1207,7 +1209,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
     ? `APPAREL BACKGROUND: Show the exact reference garment naturally in a brand new, realistic ${locationSetting} setting with clean everyday lighting. Keep the garment as the clear focal point.`
     : handsOnly
     ? `${HANDS_ONLY_BACKGROUND_DIRECTION} Place the product in this category-appropriate setting: ${locationSetting}. Do not replace it with a generic cafe, desk, studio, or outdoor background unless that setting is appropriate for the exact product.`
-    : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: Place the unchanged product in a brand new, realistic ${locationSetting} scene suited to this product category. Use natural smartphone lighting, believable depth of field, and authentic textures; avoid CGI gloss and fake HDR.`;
+    : `NEW REALISTIC BACKGROUND SCENE & NATURAL ATMOSPHERE: Place the unchanged product in a brand new, realistic ${locationSetting} scene suited to this product category. Use authentic smartphone camera lens perspective (26mm mobile lens look), soft daylight, gentle low contrast, open shadows, and neutral white balance (5500K); strictly avoid CGI gloss, fake HDR, harsh dark shadows, or heavy yellow/orange tint.`;
   const stillBackgroundDirection = shoeWearableCrop
     ? (explicitLocationSelected
       ? `SHOE WORN-ON-FEET SELECTED LOCATION LOCK: Use exactly the user's selected ${locationSetting} background. Do not replace, reinterpret, or override this location.`
@@ -1423,7 +1425,7 @@ function buildCoffeeReferenceFirstStillPrompt(productText, productName, location
     "Preserve the observed product type, item count, silhouette, materials, colors, components, and printed artwork. Keep unclear marks as visible reference details rather than guessing. Do not add packaging, zippers, seams, handles, or lids unless visible on the actual product.",
     "REALISTIC PRODUCT SCALE: Infer proportions and scale from the visible reference and physical context. Do not use an incompatible product name or package weight to determine size. Leave visible table space and background around the product.",
     "HERO COMPOSITION DOES NOT MEAN OVERSIZED: Make the product visually important through sharp focus, clean contrast, and placement, not by enlarging it.",
-    `Change only the surrounding background to a clean ${locationSetting} setting. Use a natural eye-level product photograph with a medium-close composition, limited supporting table surface, floor mostly out of frame, and soft background blur. Preserve the reference-facing product angle. Do not add unrelated props or people.`,
+    `Change only the surrounding background to a clean ${locationSetting} setting. Use an authentic smartphone camera lens (26mm mobile lens look), natural eye-level product photograph with a medium-close composition, soft diffused daylight, neutral white balance, limited supporting table surface, floor mostly out of frame, and soft background blur. Preserve the reference-facing product angle. Do not add unrelated props or people.`,
     textEnabled
       ? "If an overlay is enabled, place it only in empty background space; never cover or rewrite product artwork."
       : "No added captions, slogans, logos, watermarks, or text overlays.",
@@ -1450,7 +1452,7 @@ function buildBoxedReferenceStillPrompt(productInfo, productText, productName, l
     BOXED_PRESENTATION_COMPOSITION_LOCK,
     "The box is the only newly added object: an open lid or open presentation box with a clean neutral interior and a realistic fitted insert/support if needed. Add no branding or text to the box. Keep the product fully visible and never let the box cover important details.",
     sizeDirection,
-    `Use a realistic ${locationSetting || "category-appropriate"} setting. Natural eye-level product photography, soft depth of field, limited table context, floor mostly out of frame, true scale, no oversized product and no giant box.`,
+    `Use a realistic ${locationSetting || "category-appropriate"} setting. Authentic eye-level smartphone camera lens photography (26mm mobile lens look), soft natural daylight, gentle low contrast, neutral white balance, limited table context, floor mostly out of frame, true scale, no oversized product and no giant box.`,
     "No presenter, hands, people, extra products, duplicate objects, busy props, collage, split screen, or product handling.",
     overlayDirection,
     "Single full-frame still image only. The product and box must be physically coherent, stable, and naturally placed.",
@@ -2291,7 +2293,7 @@ function buildFashionHangerImagePrompt(productInfo, productName, settings = {}, 
     FASHION_HANGER_BODY_CONTINUITY_LOCK,
     FULL_BODY_PRESENTER_DIRECTION,
     STRICT_MODEST_DRESS_CODE_MANDATE,
-    `Use a clean, beautiful, realistic ${compactPromptText(location, 180)} setting with natural smartphone lighting and the background secondary to the garments.`,
+    `Use a clean, beautiful, realistic ${compactPromptText(location, 180)} setting with authentic smartphone camera lens perspective (26mm mobile lens look), soft daylight, gentle low contrast, neutral white balance, and the background secondary to the garments.`,
     APPAREL_VISIBILITY_DIRECTION,
     PRODUCT_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
@@ -3024,10 +3026,10 @@ function inferRequiredProductLocation(productInfo = {}) {
   // 4. Coffee, Tea, Beverages & Phone Cases -> Cafe / Coffee Shop
   if (/(เคส|ไอโฟน|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|กาแฟ|เมล็ดกาแฟ|ผงกาแฟ|ชา|โกโก้|แก้วกาแฟ|เครื่องดื่ม|ถุงกาแฟ|phone case|phone cover|mobile case|mobile cover|coffee|tea|cafe|coffee shop|beverage)/i.test(text)) {
     return pickProductLocationVariant(productInfo, [
-      "Cafe / Coffee Shop: quiet wooden table beside a window",
-      "Cafe / Coffee Shop: clean coffee bar counter with soft natural light",
-      "Cafe / Coffee Shop: minimal corner with a softly blurred background",
-      "Cafe / Coffee Shop: small terrace table with calm daylight"
+      "Cafe / Coffee Shop: bright clean table beside a sunlit window with soft natural daylight",
+      "Cafe / Coffee Shop: clean modern counter with soft natural daylight and neutral tones",
+      "Cafe / Coffee Shop: minimal corner with bright soft daylight and neutral colors",
+      "Cafe / Coffee Shop: small terrace table with clear morning daylight"
     ], "cafe-food");
   }
 

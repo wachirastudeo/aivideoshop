@@ -1019,6 +1019,9 @@ function setFileInputFiles(input, fileOrFiles) {
     const transfer = new DataTransfer();
     const files = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
     files.filter(Boolean).forEach(file => transfer.items.add(file));
+    if (!input.multiple && files.length > 1) {
+        input.multiple = true;
+    }
     const filesSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files")?.set;
     if (filesSetter) filesSetter.call(input, transfer.files);
     else input.files = transfer.files;
@@ -1414,6 +1417,14 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
             }
             
             elapsed++;
+            if (i > 0 && elapsed === 12 && !imageReady) {
+                log(`⚠️ รูปที่ ${i + 1} (${file.name}) ยังไม่ปรากฏ กำลังลองเปิดเมนูเพื่ออัปโหลดซ้ำ...`);
+                try {
+                    await injectFileViaFlowUploadMenu([file]);
+                } catch (err) {
+                    console.warn("[UploadRetry] injectFileViaFlowUploadMenu fallback:", err);
+                }
+            }
             if (elapsed > 0 && elapsed % 8 === 0) {
                 log(`ตรวจ tile ${file.name}: filenameMatch=${Boolean(readyFileButton)} cards=${getMediaCards().length}`);
                 await refreshMediaList();
@@ -3254,15 +3265,11 @@ async function runPipeline(payload, runOptions = {}) {
             await clearPromptAttachments();
             await sleep(2000);
 
-            // 3. อัปโหลดรูป (รองรับหลายรูปจาก options.imageUrls สำหรับ Ingredients)
-            // ภาพนิ่ง/Subject ต้องแนบ reference หลักเพียงรูปเดียว; แต่ combined ต้อง
-            // อัปโหลดรูปอื่นไว้เพื่อแนบเป็น Ingredients ตอนต่อวิดีโอภายหลัง
-            const isImageOnlyPhase = phase === "image";
-            const rawList = isImageOnlyPhase
-                ? (imageUrl ? [imageUrl] : (Array.isArray(options.imageUrls) ? options.imageUrls.slice(0, 1) : []))
-                : ((Array.isArray(options.imageUrls) && options.imageUrls.length)
-                    ? options.imageUrls
-                    : (imageUrl ? [imageUrl] : []));
+            // 3. อัปโหลดรูป (รองรับหลายรูปจาก options.imageUrls)
+            // ส่งทุกรูปที่ผู้ใช้เลือกเข้าโปรเจกต์ Google Flow
+            const rawList = (Array.isArray(options.imageUrls) && options.imageUrls.length)
+                ? options.imageUrls
+                : (imageUrl ? [imageUrl] : []);
             const dataUrls = rawList
                 .map(normalizeImageUrlForUpload)
                 .filter((u) => u && (u.startsWith("data:") || u.startsWith("http")));
