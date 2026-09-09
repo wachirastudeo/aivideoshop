@@ -27,7 +27,9 @@ import {
   HIDDEN_VIDEO_STYLE_IDS,
   getSelectableVideoStyles,
   isMinimalistStudioLocation,
-  MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION
+  MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION,
+  isUnderwearOrIntimateProduct,
+  resolveAutoSettings
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -1760,20 +1762,23 @@ check("still-motion video prompt supports top view / elevated flat-lay perspecti
   /elevated 45° to 90° top-down flat-lay angle/i.test(stillMotionTestVideo)
 );
 
-check("still-motion video prompt enforces zero foreground obstruction and camera walk/orbit motion",
+check("still-motion video prompt enforces zero foreground obstruction and horizontal orbit motion",
   /STRICT ZERO FOREGROUND OBSTRUCTIONS/i.test(stillMotionTestVideo) &&
   /ห้ามมีสิ่งใดเลื่อนตัดหน้ากล้องเด็ดขาด/i.test(stillMotionTestVideo) &&
   /NO blurry wipes/i.test(stillMotionTestVideo) &&
-  /เดินเข้า-ออก/i.test(stillMotionTestVideo) &&
+  /เคลื่อนกล้อง Orbit ซ้ายขวาเลยจบ/i.test(stillMotionTestVideo) &&
   /แพนซ้ายขวาพร้อมหมุนโค้ง ล็อกสินค้าให้อยู่ตรงกลางจอเป๊ะๆ/i.test(stillMotionTestVideo)
 );
 
-check("still-motion video prompt automatically includes 45° orbit, playful zoom, and upbeat fun music by default",
+check("still-motion video prompt enforces 45° orbit, strictly forbids zoom effects, and includes upbeat fun music",
   /45° PRODUCT ORBIT SHOT/i.test(stillMotionTestVideo) &&
-  /PLAYFUL ZOOM IN & OUT/i.test(stillMotionTestVideo) &&
-  /ซูม in-out สนุกๆ/i.test(stillMotionTestVideo) &&
+  /STRICT ZERO ZOOM EFFECTS/i.test(stillMotionTestVideo) &&
+  /ไม่ต้องมีเอฟเฟกต์ซูมเด็ดขาด/i.test(stillMotionTestVideo) &&
   /UPBEAT FUN SOUNDTRACK/i.test(stillMotionTestVideo) &&
-  /เพลงสนุกๆ จังหวะสนุกสนาน/i.test(stillMotionTestVideo)
+  /เพลงสนุกๆ จังหวะสนุกสนาน/i.test(stillMotionTestVideo) &&
+  !/PLAYFUL ZOOM IN & OUT/i.test(stillMotionTestVideo) &&
+  !/ซูม in-out สนุกๆ/i.test(stillMotionTestVideo) &&
+  !/เดินเข้า-ออก/i.test(stillMotionTestVideo)
 );
 
 check("still-motion still image prompt enforces in-frame safe margin and top view",
@@ -2046,6 +2051,180 @@ const studioMinimalStillMotion = buildVideoPrompt(studioMinimalProduct, {
 
 check("studio minimal still-motion video includes MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION",
   studioMinimalStillMotion.includes("AESTHETIC MINIMALIST STUDIO SET — STRICTLY NO VISIBLE LIGHTS OR STUDIO RIGS")
+);
+
+// --- Zero surrounding props & flavor graphics isolation tests (เอาแค่สินค้า สิ่งประกอบฉากไม่ต้อง) ---
+const stillMotionPrompt = buildVideoPrompt(
+  { name: "กาแฟคั่วบด สูตรพิเศษ", category: "ซองกาแฟ" },
+  { ...settings, videoStyle: "still-motion" }
+);
+check("still-motion video enforces zero surrounding props mandate",
+  stillMotionPrompt.includes("STRICT HERO PRODUCT ONLY — ZERO SURROUNDING PROPS") &&
+  /เอาแค่สินค้าหลักเท่านั้น สิ่งประกอบฉากไม่ต้องมีเด็ดขาด/i.test(stillMotionPrompt) &&
+  /Strictly NO side bottles, NO glasses, NO ice buckets, NO cups, NO ribbons/i.test(stillMotionPrompt)
+);
+
+const boxedMotionPrompt = buildVideoPrompt(
+  { name: "กล่องเครื่องประดับหรู", category: "เครื่องประดับ" },
+  { ...settings, videoStyle: "boxed-motion" }
+);
+check("boxed-motion video enforces zero surrounding props mandate",
+  boxedMotionPrompt.includes("STRICT HERO PRODUCT ONLY — ZERO SURROUNDING PROPS") &&
+  /Strictly NO surrounding props or decorative clutter/i.test(boxedMotionPrompt)
+);
+
+const coffeeRefFirstStill = buildImagePrompt(
+  { name: "กาแฟพรีเมียม กลิ่นแชมเปญ", category: "ซองกาแฟ" },
+  { ...settings, flowGenMode: "combined", presenter: "Auto" }
+);
+check("coffee reference-first still includes strict zero surrounding props mandate",
+  coffeeRefFirstStill.includes("STRICT HERO PRODUCT ONLY — ZERO SURROUNDING PROPS") &&
+  /เอาแค่สินค้าหลักเท่านั้น สิ่งประกอบฉากไม่ต้องมีเด็ดขาด/i.test(coffeeRefFirstStill) &&
+  /Strictly NO side bottles, NO glasses, NO ice buckets/i.test(coffeeRefFirstStill)
+);
+
+const stillMotionStillImage = buildImagePrompt(
+  { name: "กาแฟพรีเมียม กลิ่นแชมเปญ", category: "ซองกาแฟ" },
+  { ...settings, videoStyle: "still-motion" }
+);
+check("still-motion still image prompt includes strict zero surrounding props mandate",
+  stillMotionStillImage.includes("STRICT HERO PRODUCT ONLY — ZERO SURROUNDING PROPS") &&
+  /เอาแค่สินค้าหลักเท่านั้น สิ่งประกอบฉากไม่ต้องมีเด็ดขาด/i.test(stillMotionStillImage)
+);
+
+check("standard still prompt rejects turning poster graphics into physical objects",
+  /champagne bottles, glasses, ice buckets, splashes/i.test(shoeImage) &&
+  /decorative props, and poster flavor graphics/i.test(shoeImage)
+);
+
+// --- Policy-Sensitive Intimate Apparel / Underwear Safety Tests ---
+// 1. Detection of intimate apparel vs non-intimate apparel
+check("isUnderwearOrIntimateProduct detects women panties", isUnderwearOrIntimateProduct("กางเกงในผู้หญิง ไร้ขอบ ผ้านุ่มพิเศษ"));
+check("isUnderwearOrIntimateProduct detects men boxers", isUnderwearOrIntimateProduct("กางเกงในชาย บ็อกเซอร์ ผ้ายืด"));
+check("isUnderwearOrIntimateProduct detects lace bra", isUnderwearOrIntimateProduct("บราลูกไม้ ไร้โครง เสื้อชั้นในสตรี"));
+check("isUnderwearOrIntimateProduct detects sports bra", isUnderwearOrIntimateProduct("สปอร์ตบรา ฟิตเนส กระชับทรง"));
+check("isUnderwearOrIntimateProduct detects thong / g-string", isUnderwearOrIntimateProduct("จีสตริง เซ็กซี่"));
+check("isUnderwearOrIntimateProduct detects bikini / swimwear", isUnderwearOrIntimateProduct("บิกินี่ วันพีช ชุดว่ายน้ำ"));
+check("isUnderwearOrIntimateProduct detects English lingerie / panties", isUnderwearOrIntimateProduct("women seamless panties pack"));
+check("isUnderwearOrIntimateProduct detects English boxer briefs", isUnderwearOrIntimateProduct("cotton boxer briefs for men"));
+
+// Negative detection checks (crucial false positive guards)
+check("isUnderwearOrIntimateProduct rejects traditional coffee (กาแฟโบราณ)", !isUnderwearOrIntimateProduct("กาแฟโบราณ เข้มข้น หอมกรุ่น"));
+check("isUnderwearOrIntimateProduct rejects regular jeans", !isUnderwearOrIntimateProduct("กางเกงยีนส์ ทรงกระบอก"));
+check("isUnderwearOrIntimateProduct rejects regular t-shirt", !isUnderwearOrIntimateProduct("เสื้อยืดคอกลม ผ้าคอตตอน"));
+check("isUnderwearOrIntimateProduct rejects regular dress", !isUnderwearOrIntimateProduct("ชุดเดรสยาว แฟชั่นเกาหลี"));
+
+// isClothingProduct must exclude intimate apparel to prevent on-body wear routing
+check("isClothingProduct excludes underwear", !isClothingProduct("กางเกงในผู้หญิง ไร้ขอบ"));
+check("isClothingProduct excludes bra", !isClothingProduct("บราลูกไม้ เสื้อใน"));
+check("isClothingProduct still detects normal t-shirt", isClothingProduct("เสื้อยืดคอกลม"));
+check("isClothingProduct still detects normal trousers", isClothingProduct("กางเกงสแล็ค"));
+
+// 2. resolveAutoSettings safety overrides: UGC/testimonial/lifestyle -> hands-only, presenter -> hands_only/none
+const underwearAuto = resolveAutoSettings(
+  { name: "กางเกงในผู้หญิง ไร้ขอบ ผ้านุ่มพิเศษ", category: "ชุดชั้นใน" },
+  { ...settings, videoStyle: "Auto", presenter: "Auto" }
+);
+check("underwear auto videoStyle resolves to hands-only", underwearAuto.videoStyle === "hands-only");
+check("underwear auto presenter avoids human body model", ["none", "hands_only"].includes(underwearAuto.presenter));
+
+const underwearForcedTestimonial = resolveAutoSettings(
+  { name: "กางเกงในผู้หญิง ไร้ขอบ", category: "ชุดชั้นใน" },
+  { ...settings, videoStyle: "testimonial", presenter: "woman" }
+);
+check("underwear forced testimonial is overridden to hands-only", underwearForcedTestimonial.videoStyle === "hands-only");
+check("underwear forced presenter avoids human body model", ["none", "hands_only"].includes(underwearForcedTestimonial.presenter));
+
+const menBoxerForcedLifestyle = resolveAutoSettings(
+  { name: "กางเกงในชาย บ็อกเซอร์ ผ้ายืด", category: "กางเกงในชาย" },
+  { ...settings, videoStyle: "lifestyle", presenter: "man" }
+);
+check("men boxers forced lifestyle is overridden to hands-only", menBoxerForcedLifestyle.videoStyle === "hands-only");
+check("men boxers presenter avoids human body model", ["none", "hands_only"].includes(menBoxerForcedLifestyle.presenter));
+
+// 3. buildVideoPrompt safety mandate: Strictly NO on-body wearing of underwear
+const underwearVideoPrompt = buildVideoPrompt(
+  { name: "กางเกงในผู้หญิง ไร้ขอบ ผ้านุ่มพิเศษ", category: "ชุดชั้นใน" },
+  { ...settings, videoStyle: "testimonial", presenter: "woman" }
+);
+check("underwear video prompt includes strict intimate apparel safety mandate",
+  underwearVideoPrompt.includes("INTIMATE APPAREL SAFETY LOCK") &&
+  underwearVideoPrompt.includes("STRICTLY NO-ON-BODY-WEARING") &&
+  underwearVideoPrompt.includes("Never render any human model, mannequin, or person wearing the underwear/lingerie on body")
+);
+check("underwear video prompt does not instruct model wearing bottom garment",
+  !underwearVideoPrompt.includes("sole visible bottom garment") &&
+  !underwearVideoPrompt.includes("model already wearing") &&
+  !underwearVideoPrompt.includes("wears the exact reference") &&
+  !underwearVideoPrompt.includes("acting as reviewer and model")
+);
+
+// 4. buildImagePrompt safety mandate for intimate apparel
+const underwearImagePrompt = buildImagePrompt(
+  { name: "กางเกงในผู้หญิง ไร้ขอบ ผ้านุ่มพิเศษ", category: "ชุดชั้นใน" },
+  { ...settings, flowGenMode: "combined", presenter: "Auto" }
+);
+check("underwear image prompt includes strict intimate apparel safety mandate",
+  underwearImagePrompt.includes("INTIMATE APPAREL SAFETY LOCK") &&
+  underwearImagePrompt.includes("STRICTLY NO-ON-BODY-WEARING") &&
+  underwearImagePrompt.includes("STRICT INTIMATE APPAREL & FABRIC FIDELITY LOCK")
+);
+check("underwear image prompt specifies flat-lay display",
+  underwearImagePrompt.includes("CLOTHING HANDS-ONLY FLAT-LAY STILL LOCK") &&
+  underwearImagePrompt.includes("neatly laid flat or placed down on a clean aesthetic surface")
+);
+
+// --- Still-Motion Mode: Zero Zoom Effects & Horizontal Orbit Left-Right Tests ---
+const stillMotionOrbitSettings = {
+  ...settings,
+  videoStyle: "still-motion",
+  cameraMovement: "Auto",
+  transition: "Auto"
+};
+const stillMotionOrbitVideo = buildVideoPrompt(
+  { name: "นาฬิกาข้อมือผู้ชาย หรูหรา", category: "นาฬิกา" },
+  stillMotionOrbitSettings
+);
+
+check("still-motion mode prompt contains zero zoom mandate",
+  stillMotionOrbitVideo.includes("STRICT ZERO ZOOM EFFECTS") &&
+  stillMotionOrbitVideo.includes("ไม่ต้องมีเอฟเฟกต์ซูมเด็ดขาด") &&
+  stillMotionOrbitVideo.includes("NO zoom in, NO zoom out, NO push in, NO pull back")
+);
+
+check("still-motion mode prompt contains horizontal orbit left-to-right mandate",
+  stillMotionOrbitVideo.includes("45° PRODUCT ORBIT SHOT & HORIZONTAL CURVED ARC") &&
+  stillMotionOrbitVideo.includes("เคลื่อนกล้อง Orbit ซ้ายขวาเลยจบ") &&
+  stillMotionOrbitVideo.includes("กล้องเคลื่อนที่หมุนโค้ง Orbit ซ้ายไปขวารอบสินค้าเทคเดียวจบ")
+);
+
+check("still-motion mode prompt has zero playful zoom, push in, or walk in/out",
+  !/PLAYFUL ZOOM IN & OUT/i.test(stillMotionOrbitVideo) &&
+  !/ซูม in-out สนุกๆ/i.test(stillMotionOrbitVideo) &&
+  !/เดินเข้า-ออก/i.test(stillMotionOrbitVideo) &&
+  !/walk-in\/out/i.test(stillMotionOrbitVideo)
+);
+
+const stillMotionAutoRes = resolveAutoSettings(
+  { name: "เซรั่มบำรุงผิวหน้า", category: "สกินแคร์" },
+  { ...settings, videoStyle: "still-motion", cameraMovement: "Playful Zoom In & Out", transition: "Zoom Transition" }
+);
+check("still-motion resolveAutoSettings overrides zoom cameraMovement to 45° Product Orbit Shot",
+  stillMotionAutoRes.cameraMovement === "45° Product Orbit Shot"
+);
+check("still-motion resolveAutoSettings overrides zoom transition to None",
+  stillMotionAutoRes.transition === "None"
+);
+
+// Even if user passed a zoom camera movement to buildVideoPrompt, still-motion discards it and enforces orbit
+const stillMotionForcedZoom = buildVideoPrompt(
+  { name: "กระเป๋าสะพายข้าง", category: "กระเป๋า" },
+  { ...settings, videoStyle: "still-motion", cameraMovement: "Slow Zoom In" }
+);
+check("still-motion video prompt ignores forced zoom cameraMovement and enforces horizontal orbit",
+  stillMotionForcedZoom.includes("STRICT ZERO ZOOM EFFECTS") &&
+  stillMotionForcedZoom.includes("เคลื่อนกล้อง Orbit ซ้ายขวาเลยจบ") &&
+  !/Slow Zoom In/i.test(stillMotionForcedZoom)
 );
 
 

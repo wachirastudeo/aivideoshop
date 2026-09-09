@@ -1,4 +1,4 @@
-import { buildCaption, buildPostHashtags, normalizeHashtags, sanitizeText, resolveCaptionProductName } from "./prompt-builder.js";
+import { buildCaption, buildPostHashtags, normalizeHashtags, sanitizeText, resolveCaptionProductName, isUnderwearOrIntimateProduct } from "./prompt-builder.js";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
@@ -279,6 +279,7 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
     "Analyze the image and source product title together. Use the title for product type, model, size and intended use, and the image for exact appearance, product/set count, colors and artwork. First check whether the title describes the visible product. If they conflict, describe the visible product without inventing the named object, and state the mismatch in promptAdvice. Analyze only the product or set, not the whole scene.",
+    "CRITICAL HERO PRODUCT ISOLATION — ZERO MARKETING PROPS OR FLAVOR GRAPHICS (เอาแค่สินค้า สิ่งประกอบฉากไม่ต้อง): In e-commerce product poster/ad images, sellers frequently surround the product with decorative flavor motifs, marketing props, or 2D graphics (such as champagne bottles, wine glasses, ice buckets, liquid splashes, floating coffee beans, fruit slices, flowers, ribbons, confetti, medals, or gift boxes). You MUST identify ONLY the SINGLE CORE COMMERCIAL PRODUCT being sold (e.g. the single coffee pouch, the supplement bottle, the serum bottle, the package) and COMPLETELY DISCARD all surrounding decorative props, secondary bottles, glasses, buckets, and splashes. Never describe these decorative props or flavor illustrations in name, highlights, structureAdvice, or promptAdvice. In structureAdvice and promptAdvice, state strictly: 'Single hero product packaging only; strictly forbid adding any surrounding decorative props, side bottles, glasses, cups, ice buckets, or secondary objects.'",
     "Ignore the source background and every unrelated object, including room surfaces, furniture, decor, lamps, plants, pictures, rugs, windows, people, hands, and props. Do not describe them in structureAdvice or promptAdvice.",
     "TEXT SCOPE LOCK: Distinguish text physically printed, engraved, embossed, or permanently attached to the named product/its packaging from text merely placed around the product in the source image. Ignore all surrounding or overlaid text such as captions, slogans, feature callouts, price/discount badges, CTA banners, arrows, stickers, seller watermarks, marketplace UI, and text in the background or margins. That surrounding text is only image composition, not product information, and MUST NOT be copied into name, highlights, structureAdvice, promptAdvice, product labels, or product artwork.",
     "Treat the visible named product as the source of truth. The title may contain conflicting size/count variants and must never override visible product evidence.",
@@ -294,6 +295,7 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
     "For overlayText, generate ONE ultra-short Thai phrase (maximum 5 Thai words, ≤20 characters) that describes the product's best benefit in a cute, catchy way. This will appear as on-screen text overlay on the video. Examples: ดีไซน์สวย, ใช้ง่ายมาก, คุ้มสุดๆ, น่ามีมาก.",
     "The recommended location must fit the product's realistic use, not a generic trendy scene. For example, cabinets, drawers, shelves, and indoor furniture belong in a clean appropriate interior, never an urban street.",
     "Recommend creative options for an 8-second vertical TikTok product video. CRITICAL PRESENTER RULE: Recommend presenter as 'dog' or 'cat' ONLY if the product is specifically for pets/animals. NEVER recommend 'dog' or 'cat' for human products, clothing, gadgets, home items, or generic products.",
+    "CRITICAL SENSITIVE INTIMATE APPAREL RULE (ชุดชั้นใน กางเกงใน บรา lingerie underwear): If the product is underwear, panties, bra, lingerie, boxers, swimwear, thong, or intimate apparel, you MUST NEVER recommend videoStyle as 'testimonial' or 'lifestyle', and NEVER recommend presenter as 'woman' or 'man' (strictly NO on-body wearing of underwear/lingerie to respect content policies). You MUST recommend videoStyle as 'hands-only' (tactile fabric showcase) or 'review', and presenter as 'none' (or 'hands_only'), with location as 'Studio Minimal' or 'Modern Living Room'. In promptAdvice, instruct strictly: 'Underwear/intimate apparel flat-lay or hanger product display only; strictly forbid any model wearing underwear on-body.'",
     'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5","Thai hook 6","Thai hook 7","Thai hook 8","Thai hook 9","Thai hook 10"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|hands-only|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|still-motion|boxed-motion|trending-hook","presenter":"none|woman|man|cartoon3d|living_product|dog|cat","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace|Fitness Studio","cameraMovement":"45° Product Orbit Shot|Playful Zoom In & Out|Top View Orbit & Walk|Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
   const parts = [{ text: prompt }];
@@ -362,6 +364,7 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
     "Analyze the image and source product title together. Use the title for product type, model, size and intended use, and the image for exact appearance, product/set count, colors and artwork. First check whether the title describes the visible product. If they conflict, describe the visible product without inventing the named object, and state the mismatch in promptAdvice. Analyze only the product or set, not the whole scene.",
+    "CRITICAL HERO PRODUCT ISOLATION — ZERO MARKETING PROPS OR FLAVOR GRAPHICS (เอาแค่สินค้า สิ่งประกอบฉากไม่ต้อง): In e-commerce product poster/ad images, sellers frequently surround the product with decorative flavor motifs, marketing props, or 2D graphics (such as champagne bottles, wine glasses, ice buckets, liquid splashes, floating coffee beans, fruit slices, flowers, ribbons, confetti, medals, or gift boxes). You MUST identify ONLY the SINGLE CORE COMMERCIAL PRODUCT being sold (e.g. the single coffee pouch, the supplement bottle, the serum bottle, the package) and COMPLETELY DISCARD all surrounding decorative props, secondary bottles, glasses, buckets, and splashes. Never describe these decorative props or flavor illustrations in name, highlights, structureAdvice, or promptAdvice. In structureAdvice and promptAdvice, state strictly: 'Single hero product packaging only; strictly forbid adding any surrounding decorative props, side bottles, glasses, cups, ice buckets, or secondary objects.'",
     "Ignore the source background and every unrelated object, including room surfaces, furniture, decor, lamps, plants, pictures, rugs, windows, people, hands, and props. Do not describe them in structureAdvice or promptAdvice.",
     "TEXT SCOPE LOCK: Distinguish text physically printed, engraved, embossed, or permanently attached to the named product/its packaging from text merely placed around the product in the source image. Ignore all surrounding or overlaid text such as captions, slogans, feature callouts, price/discount badges, CTA banners, arrows, stickers, seller watermarks, marketplace UI, and text in the background or margins. That surrounding text is only image composition, not product information, and MUST NOT be copied into name, highlights, structureAdvice, promptAdvice, product labels, or product artwork.",
     "Treat the visible named product as the source of truth. The title may contain conflicting size/count variants and must never override visible product evidence.",
@@ -377,6 +380,7 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
     "For overlayText, generate ONE ultra-short Thai phrase (maximum 5 Thai words, ≤20 characters) that describes the product's best benefit in a cute, catchy way. This will appear as on-screen text overlay on the video. Examples: ดีไซน์สวย, ใช้ง่ายมาก, คุ้มสุดๆ, น่ามีมาก.",
     "The recommended location must fit the product's realistic use, not a generic trendy scene. For example, cabinets, drawers, shelves, and indoor furniture belong in a clean appropriate interior, never an urban street.",
     "Recommend creative options for an 8-second vertical TikTok product video. CRITICAL PRESENTER RULE: Recommend presenter as 'dog' or 'cat' ONLY if the product is specifically for pets/animals. NEVER recommend 'dog' or 'cat' for human products, clothing, gadgets, home items, or generic products.",
+    "CRITICAL SENSITIVE INTIMATE APPAREL RULE (ชุดชั้นใน กางเกงใน บรา lingerie underwear): If the product is underwear, panties, bra, lingerie, boxers, swimwear, thong, or intimate apparel, you MUST NEVER recommend videoStyle as 'testimonial' or 'lifestyle', and NEVER recommend presenter as 'woman' or 'man' (strictly NO on-body wearing of underwear/lingerie to respect content policies). You MUST recommend videoStyle as 'hands-only' (tactile fabric showcase) or 'review', and presenter as 'none' (or 'hands_only'), with location as 'Studio Minimal' or 'Modern Living Room'. In promptAdvice, instruct strictly: 'Underwear/intimate apparel flat-lay or hanger product display only; strictly forbid any model wearing underwear on-body.'",
     'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5","Thai hook 6","Thai hook 7","Thai hook 8","Thai hook 9","Thai hook 10"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|hands-only|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|still-motion|boxed-motion|trending-hook","presenter":"none|woman|man|cartoon3d|living_product|dog|cat","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace|Fitness Studio","cameraMovement":"45° Product Orbit Shot|Playful Zoom In & Out|Top View Orbit & Walk|Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
 
@@ -597,13 +601,16 @@ function normalizeAutoOptions(value, productInfo = {}) {
   const inferred = inferAutoOptionsFromProduct(productInfo);
   const raw = value && typeof value === "object" ? value : {};
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
+  const isUnderwear = isUnderwearOrIntimateProduct(text);
   const isPetProduct = /(สัตว์|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|แมว|สุนัข|สัตว์เลี้ยง|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b|\banimal\b)/i.test(text);
   const explicitGender = detectExplicitGender(text);
   const campingProduct = isCampingOutdoorProduct(text);
   const legacyHandsOnly = raw.presenter === "hands_only";
 
   let presenter = pickAllowed(raw.presenter, ["none", "woman", "man", "cartoon3d", "living_product", "dog", "cat"], inferred.presenter);
-  if (explicitGender) {
+  if (isUnderwear) {
+    presenter = "none";
+  } else if (explicitGender) {
     presenter = explicitGender;
   } else if (campingProduct) {
     presenter = "man";
@@ -612,14 +619,30 @@ function normalizeAutoOptions(value, productInfo = {}) {
     presenter = (inferred.presenter === "dog" || inferred.presenter === "cat") ? "woman" : inferred.presenter;
   }
 
+  let videoStyle = legacyHandsOnly ? "hands-only" : pickAllowed(raw.videoStyle, ["sales", "review", "hands-only", "lifestyle", "flash-sale", "unboxing", "before-after", "testimonial", "cinematic", "still-motion", "boxed-motion", "trending-hook"], inferred.videoStyle);
+  if (isUnderwear && (videoStyle === "testimonial" || videoStyle === "lifestyle" || videoStyle === "fashion-selfie")) {
+    videoStyle = "hands-only";
+  }
+
+  let cameraMovement = pickAllowed(raw.cameraMovement, ["45° Product Orbit Shot", "Playful Zoom In & Out", "Orbit / 360°", "Top View Orbit & Walk", "Slider Same Angle", "Slider Same Angle & Fade", "Zoom & Angle Transition", "Slide & Rotate", "Top View Slide & Rotate", "Slow Zoom In", "Pan Left to Right", "Static/Still", "Handheld Shake", "Push In Fast"], inferred.cameraMovement);
+  let transition = pickAllowed(raw.transition, ["None", "Fade", "Cut ตรง", "Zoom Transition", "Swipe", "Whip Pan"], inferred.transition);
+  if (videoStyle === "still-motion") {
+    if (/zoom|push/i.test(cameraMovement)) {
+      cameraMovement = "45° Product Orbit Shot";
+    }
+    if (/zoom/i.test(transition)) {
+      transition = "None";
+    }
+  }
+
   return {
-    videoStyle: legacyHandsOnly ? "hands-only" : pickAllowed(raw.videoStyle, ["sales", "review", "hands-only", "lifestyle", "flash-sale", "unboxing", "before-after", "testimonial", "cinematic", "still-motion", "boxed-motion", "trending-hook"], inferred.videoStyle),
+    videoStyle,
     presenter,
     voiceTone: pickAllowed(raw.voiceTone, ["kind", "fun", "complain", "professional", "hype"], inferred.voiceTone),
     mood: pickAllowed(raw.mood, ["สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"], inferred.mood),
     location: pickAllowed(raw.location, ["Modern Living Room", "Studio Minimal", "Warehouse / Stockroom", "Urban Street", "Nature / Outdoor", "Luxury Showroom", "Cafe / Coffee Shop", "Office / Workspace", "Fitness Studio"], inferred.location),
-    cameraMovement: pickAllowed(raw.cameraMovement, ["45° Product Orbit Shot", "Playful Zoom In & Out", "Orbit / 360°", "Top View Orbit & Walk", "Slider Same Angle", "Slider Same Angle & Fade", "Zoom & Angle Transition", "Slide & Rotate", "Top View Slide & Rotate", "Slow Zoom In", "Pan Left to Right", "Static/Still", "Handheld Shake", "Push In Fast"], inferred.cameraMovement),
-    transition: pickAllowed(raw.transition, ["None", "Fade", "Cut ตรง", "Zoom Transition", "Swipe", "Whip Pan"], inferred.transition),
+    cameraMovement,
+    transition,
     reason: sanitizeText(raw.reason || inferred.reason)
   };
 }
@@ -656,6 +679,19 @@ function isCampingOutdoorProduct(text = "") {
 
 function inferAutoOptionsFromProduct(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
+
+  if (isUnderwearOrIntimateProduct(text)) {
+    return buildAutoOptions(
+      "hands-only",
+      "none",
+      "kind",
+      "มินิมัล",
+      "Studio Minimal",
+      "Slow Zoom In",
+      "Cut ตรง",
+      "สินค้ากลุ่มชุดชั้นใน/กางเกงในเป็นสินค้าอ่อนไหวตามนโยบายแพลตฟอร์ม ไม่ควรใช้พรีเซนเตอร์สวมใส่ แนะนำโชว์เนื้อผ้า ความยืดหยุ่น การตัดเย็บแบบมือถือจับ (hands-only) บนพื้นผิวเรียบสะอาด"
+    );
+  }
 
   if (isCampingOutdoorProduct(text)) {
     return buildAutoOptions(

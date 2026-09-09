@@ -83,9 +83,9 @@ export const VIDEO_STYLES = [
     id: "still-motion",
     emoji: "📷",
     name: "ภาพนิ่ง + กล้อง",
-    description: "สินค้านิ่ง ภาพสไลด์มุมเดิม ไม่เปลี่ยนซีน มีเอฟเฟกต์เฟด ล็อกกลางจอไม่หลุดเฟรม",
-    shotPattern: "[ภาพสไลด์มุมเดิม] → [เลื่อนกล้องสไลด์อย่างนุ่มนวล] → [เอฟเฟกต์เฟด ล็อกกลางจอเสมอ]",
-    fragment: "stationary product with smooth linear camera slider travel at a fixed unchanging camera angle, single continuous shot without scene cuts, seamless fade effect transition, keeping product strictly centered in frame, no presenter, no product handling, no review"
+    description: "สินค้านิ่ง เคลื่อนกล้อง Orbit ซ้ายขวาเทคเดียวจบ ไม่ซูม ล็อกกลางจอไม่หลุดเฟรม",
+    shotPattern: "[สินค้านิ่งกลางจอ] → [กล้อง Orbit หมุนซ้ายขวาอย่างนุ่มนวล] → [เทคเดียวจบ ไม่ซูม]",
+    fragment: "stationary product with smooth horizontal orbit camera pan from left to right around the centered product, single continuous take, strictly no zoom in or zoom out, no push in or pull back, keeping product strictly centered in frame, no presenter, no product handling, no review"
   },
   {
     id: "boxed-motion",
@@ -368,7 +368,7 @@ const UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK = "HIGHEST PRIORITY — EDIT THE
 const STILL_TEXT_INTEGRITY_DIRECTION = "STILL TEXT INTEGRITY: Preserve only text visibly printed on the product. If none is visible/readable, keep the surface blank; never infer text from the title or surrounding image.";
 const PRODUCT_TEXT_SCOPE_LOCK = "PRODUCT TEXT SCOPE: Product text only; ignore captions, prices, CTAs, badges, watermarks, UI, and background text.";
 const REFERENCE_PIXEL_ARTWORK_LOCK = "REFERENCE PIXEL ARTWORK LOCK: Preserve only the product's visible physical pattern, logo, label, color, seam, and texture. Ignore surrounding overlay text; do not invent, redraw, or infer details.";
-const REFERENCE_IMAGE_HIGHEST_PRIORITY = `REFERENCE PRODUCT IDENTITY ONLY: Extract and reproduce only the exact physical product or product set from the reference; do NOT reproduce the source photo as a whole. Discard source people, runners, pose, background, furniture, props, shadows, sky, horizon, lighting, camera angle, framing, layout, overlay text, UI, and watermark. Place the unchanged product/set in a 100% NEW SCENE & BACKGROUND with a new composition. Preserve exact shape, count, arrangement, materials, colors, patterns, logos, labels, and text; never redesign, merge, omit, duplicate, or invent product details. ${PRODUCT_TEXT_SCOPE_LOCK}`;
+const REFERENCE_IMAGE_HIGHEST_PRIORITY = "REFERENCE PRODUCT IDENTITY ONLY: Extract and reproduce only the exact physical product or product set from the reference; do NOT reproduce the source photo as a whole. Discard source people, runners, pose, background, furniture, shadows, lighting, camera angle, framing, layout, overlay text, UI, watermark, decorative props, and poster flavor graphics (champagne bottles, glasses, ice buckets, splashes). Place the unchanged product/set in a 100% NEW SCENE & BACKGROUND with a new composition. Preserve exact shape, count, arrangement, materials, colors, patterns, logos, labels, and text; never redesign, merge, omit, duplicate, or invent details. " + PRODUCT_TEXT_SCOPE_LOCK;
 const REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION = "REFERENCE VARIANT DISAMBIGUATION: If the reference is a screenshot, collage, comparison, or has multiple product appearances, use only the original product design. Do not combine alternate/generated variants. Preserve all repeated pieces that visibly belong to the same product set (such as a pair or bundle), while rejecting unrelated products and comparison panels.";
 const STILL_REFERENCE_FIDELITY_PRIORITY = "HIGHEST PRIORITY STILL REFERENCE FIDELITY: Reference controls only the product/set identity. Preserve exact shape, count, arrangement, geometry, materials, colors, visible packaging colors, pattern coordinates, logos, labels, and text. STRICT COLOR REPRODUCTION LOCK: Match every product color exactly. REFERENCE PIXEL ARTWORK LOCK: Preserve only the product's visible physical pattern, logo, label, color, seam, and texture; ignore surrounding overlay text. Do not copy the source people, pose, background, props, lighting, camera angle, framing, or layout; create a new composition. Never redesign, merge, omit, duplicate, or invent product details.";
 const APPAREL_REFERENCE_PRIORITY = "APPAREL REFERENCE PRIORITY: The attached reference image is the single source of truth for the garment. Preserve the exact garment type, silhouette, cut, length, neckline, sleeves, fit, fabric, colors, print, and visible construction. Do not let a sales hook, generic fashion wording, or presenter styling replace or redesign the garment.";
@@ -379,7 +379,13 @@ const LABEL_EXACT_COPY_MANDATE = "⚠️ ABSOLUTE LABEL & COLOR FIDELITY MANDATE
 
 const COLOR_EXACT_LOCK = "STRICT COLOR REPRODUCTION LOCK: Every color on the product — packaging background color, text ink color, logo color, pattern fill colors, gradient transitions — MUST match the reference image EXACTLY. FORBIDDEN: Do NOT warm up or cool down tones, do NOT darken or brighten any area, do NOT change saturation, do NOT substitute one color for another. The product's own surface colors must remain 100% identical to the reference regardless of the new background lighting.";
 
-const PRODUCT_ISOLATION_DIRECTION = "CRITICAL ISOLATION RULE — ISOLATE AND EXTRACT ONLY THE PRODUCT OR PRODUCT SET: You must cut out the requested product/set from the reference photo, ignoring its original background. Place the exact same product/set into a 100% NEW SCENE & BACKGROUND. STRICT RESTRICTION: Do NOT redraw, redesign, mutate, merge, omit, or alter the product/set's shape, logo, patterns, branding, colors, visible count, or arrangement. Transfer every included piece with pixel-faithful identity to the reference image.";
+export const STRICT_ZERO_SURROUNDING_PROPS_MANDATE =
+  "STRICT HERO PRODUCT ONLY — ZERO SURROUNDING PROPS & NO MARKETING GRAPHICS (เอาแค่สินค้าหลักเท่านั้น สิ่งประกอบฉากไม่ต้องมีเด็ดขาด): " +
+  "Depict ONLY the primary merchandise item being sold. Never turn decorative 2D marketing graphics, flavor symbols, poster illustrations, or promotional art " +
+  "(champagne bottles, wine glasses, ice buckets, liquid splashes, beans, fruit, flowers, ribbons) into physical 3D objects or props. " +
+  "The surface must contain NOTHING except the solitary hero product. Strictly NO side bottles, NO glasses, NO ice buckets, NO cups, NO ribbons, and NO decorative props.";
+
+const PRODUCT_ISOLATION_DIRECTION = "CRITICAL ISOLATION RULE — ISOLATE AND EXTRACT ONLY PRODUCT/SET: Cut out requested product/set from reference photo, ignoring original background, decorative props, and poster flavor graphics (champagne bottles, glasses, splashes). Place exact product/set into 100% NEW SCENE & BACKGROUND. STRICT RESTRICTION: Do NOT redraw, redesign, mutate, merge, omit, or alter shape, logo, patterns, branding, colors, count, or arrangement. Transfer every included piece with pixel-faithful identity.";
 
 const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangement of all product parts and included set pieces. Never add, remove, merge, omit, duplicate, or rearrange them.";
 
@@ -462,6 +468,14 @@ const NECK_SCARF_USAGE_LOCK = "STRICT SILK NECK SCARF USAGE LOCK: Treat this as 
 const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference image pixel-for-pixel. Do NOT shift, alter, tint, recolor, or replace original colors or graphics under any lighting or environment effect. Every color zone — background fill, text color, graphic element colors, border colors — must remain exactly as shown in the reference photo.";
 export const TIKTOK_CAPTION_SIGNATURE = "i love tiktok";
 
+export const INTIMATE_APPAREL_FIDELITY_DIRECTION = "STRICT INTIMATE APPAREL & FABRIC FIDELITY LOCK: The product is intimate apparel (underwear, panties, bra, or lingerie). Reproduce the exact fabric material, lace patterns, waistband elasticity, stitching, seams, and color faithfully from the reference image. STRICTLY NO-ON-BODY-WEARING: The product must be shown laid flat, folded, or held gently by hands on a clean neutral surface. Strictly forbid any human model wearing the underwear/lingerie on body.";
+export const INTIMATE_APPAREL_SAFETY_MANDATE = "INTIMATE APPAREL SAFETY LOCK: The product is intimate apparel/underwear/lingerie/panties/bra. STRICTLY NO-ON-BODY-WEARING: Never render any human model, mannequin, or person wearing the underwear/lingerie on body. Present the product laid flat or displayed neatly on a clean surface, with optional slender hands showcasing fabric stretch, softness, and seamless stitching.";
+
+export function isUnderwearOrIntimateProduct(text = "") {
+  const clean = String(text || "").toLowerCase();
+  return /(?:ชุดชั้นใน|กางเกงใน|(?<![โเแไใ])บรา(?!ซิล|วนี่|เดอร์|สเซอร์|งช์|เคน)|ยกทรง|เสื้อชั้นใน|เสื้อใน(?!ไทย|คลัง|สต็อก|สต็อค|ราคา|งบ|ร้าน)|บ็อกเซอร์|กางเกงบ็อกเซอร์|จีสตริง|บิกินี่|ชุดว่ายน้ำ|ซีทรู|แผ่นรัดหน้าท้อง|กางเกงสเตย์|สเตย์รัด|กางเกงซับใน|เสื้อซับใน|ชุดนอนไม่ได้นอน|ชุดนอนเซ็กซี่|สปอร์ตบรา|แผ่นแปะจุก|ที่แปะจุก|ซิลิโคนบรา|บราปีกนก|underwear|panties|panty|briefs|\bboxers?\b|lingerie|\bbras?\b|brassiere|bralette|thong|g-string|swimwear|bikini|monokini|corset|bustier|undergarments?|underpants|intimates?|shapewear|nipple\s*covers?|sticky\s*bra)/iu.test(clean);
+}
+
 export function isClothingProduct(text = "") {
   const clean = String(text || "").toLowerCase();
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(clean)) {
@@ -470,7 +484,10 @@ export function isClothingProduct(text = "") {
   if (isFurnitureProduct(clean)) {
     return false;
   }
-  return /(เสื้อ|กางเกง|กระโปรง|ชุด|เดรส|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|เสื้อผ้า|แฟชั่น|เข็มขัด|หมวก|ถุงเท้า|กางเกงยีนส์|ชุดเดรส|ชุดเซ็ท|ชุดกระโปรง|ผ้าพันคอ|ผ้าคลุม|clothing|clothes|apparel|dress|shirt|tshirt|tee|pants|trousers|jacket|hoodie|skirt|outfit|garment|fashion|\bwear\b|suit|coat|\btop\b|\bbottom\b)/i.test(clean);
+  if (isUnderwearOrIntimateProduct(clean)) {
+    return false;
+  }
+  return /(เสื้อ(?!ใน)|กางเกง(?!ใน)|กระโปรง|ชุด(?!ชั้นใน|ว่ายน้ำ)|เดรส|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|เสื้อผ้า|แฟชั่น|เข็มขัด|หมวก|ถุงเท้า|กางเกงยีนส์|ชุดเดรส|ชุดเซ็ท|ชุดกระโปรง|ผ้าพันคอ|ผ้าคลุม|clothing|clothes|apparel|dress|shirt|tshirt|tee|pants|trousers|jacket|hoodie|skirt|outfit|garment|fashion|\bwear\b|suit|coat|\btop\b|\bbottom\b)/i.test(clean);
 }
 
 function isRainwearProduct(text = "") {
@@ -485,6 +502,9 @@ function isNeckScarfProduct(text = "") {
 
 function getApparelWearDirection(text = "", selectedPresenter = "") {
   const clean = String(text || "").toLowerCase();
+  if (isUnderwearOrIntimateProduct(clean)) {
+    return "INTIMATE APPAREL SAFETY: Strictly no on-body wearing of underwear, lingerie, or panties. The product must be shown laid flat on a surface or displayed neatly without a person wearing it.";
+  }
   const gender = detectExplicitProductGender(clean) || (["woman", "man"].includes(selectedPresenter) ? selectedPresenter : "");
   const model = gender === "man" ? "adult male model" : gender === "woman" ? "adult female model" : "selected adult model";
 
@@ -495,10 +515,10 @@ function getApparelWearDirection(text = "", selectedPresenter = "") {
   if (/(เดรส|จั๊มสูท|ชุดหมี|dress|jumpsuit|romper|one.?piece)/i.test(clean)) {
     return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference one-piece garment once as intended. Let the model choose simple shoes and accessories naturally.`;
   }
-  if (/(กางเกง|กระโปรง|เลกกิ้ง|ยีนส์|ขาสั้น|ขาสามส่วน|pants|trousers|shorts|leggings|jeans|skirt|bottoms?)/i.test(clean)) {
+  if (/(กางเกง(?!ใน)|กระโปรง|เลกกิ้ง|ยีนส์|ขาสั้น|ขาสามส่วน|pants|trousers|shorts|leggings|jeans|skirt|bottoms?)/i.test(clean)) {
     return `APPAREL WEARING MODE: The ${model} naturally wears exactly one pair of the exact reference garment as the sole visible bottom garment. Let the model choose a simple matching top naturally. Do not add another pair of trousers, shorts, leggings, or a skirt over or under it.`;
   }
-  if (/(เสื้อ|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|shirt|tshirt|tee|top|jacket|hoodie|sweater|blouse|coat)/i.test(clean)) {
+  if (/(เสื้อ(?!ใน)|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|shirt|tshirt|tee|top|jacket|hoodie|sweater|blouse|coat)/i.test(clean)) {
     return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once as the sole visible featured top. Use a simple opaque, full-coverage matching bottom such as jeans, trousers, or a modest skirt. Do NOT show underwear, lingerie, panties, briefs, thongs, bikini bottoms, or any transparent lower garment. Do not add another top over the reference garment.`;
   }
   return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once in the normal way for that garment type. Let the model choose a simple complementary outfit naturally without layering a duplicate garment of the same type.`;
@@ -516,6 +536,9 @@ function getPresenterOutfitDirection(text = "", selectedPresenter = "") {
   const clean = String(text || "").toLowerCase();
   const model = selectedPresenter === "man" ? "male presenter" : "female or male presenter";
 
+  if (isUnderwearOrIntimateProduct(clean)) {
+    return "INTIMATE APPAREL PRESENTATION: Strictly forbid any model wearing the product on body. Present the intimate apparel resting on a clean surface or held neatly by hands to demonstrate fabric quality, softness, elasticity, and stitching.";
+  }
   if (isClothingProduct(clean)) {
     return getApparelWearDirection(clean, selectedPresenter);
   }
@@ -560,7 +583,7 @@ const COFFEE_SEALED_BEANS_POUCH_DIRECTION = "STRICT SEALED COFFEE POUCH IDENTITY
 const COFFEE_REFERENCE_VARIANT_LOCK = "COFFEE REFERENCE VARIANT LOCK: Use only the canonical pouch in the reference; ignore alternate/generated pouches, promotional panels, blue/yellow artwork, oversized mascots, and headlines. Preserve one consistent design: silhouette, color, logo, typography, and label layout.";
 const COFFEE_SINGLE_VARIANT_AD_LOCK = "COFFEE SINGLE-VARIANT AD LOCK: Roast words in the title are metadata; show only the exact reference pouch, not multiple roast variants, bags, colors, or a lineup.";
 const COFFEE_COMPACT_TEXT_LOCK = "NO TEXT OVERLAY: No added captions, slogans, CTA, watermark, logo, banner, or graphic text; only printed label/scene text already in the reference may remain.";
-const COFFEE_PROFESSIONAL_AD_DIRECTION = "PROFESSIONAL COFFEE PRODUCT AD: Minimal clean premium ad; exact pouch hero, fully visible on a clean surface, medium angle, soft daylight through a curtain, relevant context only. Respect the existing product scale rules: preserve the real physical size of a coffee pouch or hand-held item, with natural proportion relative to hands and surroundings; do not enlarge or shrink it. One product, one image; no collage, split screen, duplicate, alternate package, or unrelated props.";
+const COFFEE_PROFESSIONAL_AD_DIRECTION = "PROFESSIONAL COFFEE PRODUCT AD: Minimal clean premium ad; exact pouch hero, fully visible on clean surface, medium angle, soft daylight, relevant context only. Preserve real physical size. HERO POUCH ONLY — ZERO PROPS (เอาแค่ถุงกาแฟเท่านั้น สิ่งประกอบฉากไม่ต้อง): Strictly do NOT add champagne bottles, wine glasses, ice buckets, cups, beans, or decorative props. Treat poster illustrations strictly as 2D graphics; never generate physical bottles or glasses! One product, one image; no collage, duplicate, or props.";
 
 function isCoffeePowderProduct(text = "") {
   return /(กาแฟผง|ผงกาแฟ|กาแฟบด|กาแฟคั่วบด|coffee powder|ground coffee|ground beans)/i.test(String(text || "").toLowerCase());
@@ -666,21 +689,20 @@ const STRICT_PRODUCT_IDENTITY_RULE = "STRICT PRODUCT IDENTITY: Do not invent new
 
 const NO_PEOPLE_DIRECTION = "No people, faces, presenters, reviewers, or characters.";
 const CAMERA_ONLY_NO_HANDS_DIRECTION = "CAMERA-ONLY / NO-HANDS LOCK: The entire frame must contain zero hands, fingers, arms, people, presenters, reviewers, or human body parts. No hand may enter to hold, touch, adjust, lift, or present the product. The product is already placed and untouched; only the camera moves.";
-export const STILL_MOTION_IN_FRAME_LOCK = "🚨 CRITICAL IN-FRAME LOCK — ZERO OUT-OF-FRAME DRIFT (อย่าให้สินค้าหลุดออกจากจอหลัก / ห้ามหลุดเฟรมเด็ดขาด): The product must remain 100% inside the vertical 9:16 frame at all times throughout the entire video. Under NO circumstances should any part of the product drift off-screen, slip past the edges, or be cropped out during zoom in, zoom out, sliding, or angle transitions. The camera must continuously track and keep the product centered with at least a 15–25% safe margin/padding from all four borders (top, bottom, left, right). The entire product silhouette and all its details must stay completely visible, sharp, and centered from the first frame (0.0s) to the final frame.";
+export const STILL_MOTION_IN_FRAME_LOCK = "🚨 CRITICAL IN-FRAME LOCK — ZERO OUT-OF-FRAME DRIFT (อย่าให้สินค้าหลุดออกจากจอหลัก / ห้ามหลุดเฟรมเด็ดขาด): The product must remain 100% inside the vertical 9:16 frame at all times throughout the entire video. Under NO circumstances should any part of the product drift off-screen, slip past the edges, or be cropped out during horizontal orbit camera movement or lateral panning. The camera must continuously track and keep the product centered with at least a 15–25% safe margin/padding from all four borders (top, bottom, left, right). The entire product silhouette and all its details must stay completely visible, sharp, and centered from the first frame (0.0s) to the final frame.";
 export const CLEAR_FOREGROUND_UNOBSTRUCTED_LENS_LOCK = "🚨 STRICT ZERO FOREGROUND OBSTRUCTIONS & CLEAR LINE OF SIGHT (ห้ามมีสิ่งกีดขวางหรือวัตถุใดๆ เคลื่อนที่ตัดหน้ากล้องเด็ดขาด): The line of sight between the camera lens and the product must remain 100% crystal clear, completely open, and unobstructed at all times. Absolutely NO foreground objects, NO floating elements, NO blurry wipes, NO passing objects, NO foreground props, NO passing shadows, and NO occlusions cutting across or wiping in front of the camera lens.";
-export const STILL_MOTION_TOP_VIEW_DIRECTION = "TOP VIEW / ELEVATED FLAT-LAY PERSPECTIVE (เน้นมุมมองด้านบน Top View ได้ — ถ่ายลงมาตรงๆ ไม่มีอะไรบังหน้ากล้อง): Clean elevated 45° to 90° top-down flat-lay angle looking cleanly down at the product resting naturally on the surface. The camera glides, steps in/out, and rotates smoothly above the product while keeping the line of sight 100% unobstructed with zero foreground elements or blurry wipes cutting across the frame. The entire product remains strictly centered in the vertical 9:16 layout with generous margins (15–25%).";
-export const STILL_MOTION_DYNAMIC_CAMERA_DIRECTION = "CAMERA MOTION ONLY — CONTINUOUS FIXED-ANGLE SLIDER, ZERO SCENE CHANGES, NO TRANSITION EFFECTS (ภาพสไลด์เลื่อนกล้องมุมเดิม เทคเดียวต่อเนื่อง ไม่เปลี่ยนซีน และไม่มีเอฟเฟกต์เปลี่ยนซีน):\n" +
+export const STILL_MOTION_TOP_VIEW_DIRECTION = "TOP VIEW / ELEVATED FLAT-LAY PERSPECTIVE (เน้นมุมมองด้านบน Top View ได้ — ถ่ายลงมาตรงๆ ไม่มีอะไรบังหน้ากล้อง): Clean elevated 45° to 90° top-down flat-lay angle looking cleanly down at the product resting naturally on the surface. The camera glides and orbits smoothly in a horizontal arc around the product (strictly no zoom in or out) while keeping the line of sight 100% unobstructed with zero foreground elements or blurry wipes cutting across the frame. The entire product remains strictly centered in the vertical 9:16 layout with generous margins (15–25%).";
+export const STILL_MOTION_DYNAMIC_CAMERA_DIRECTION = "CAMERA MOTION ONLY — CONTINUOUS FIXED-ANGLE SLIDER, ZERO SCENE CHANGES, NO TRANSITION EFFECTS, ZERO ZOOM EFFECTS (ภาพสไลด์เลื่อนกล้องมุมเดิม เทคเดียวต่อเนื่อง ไม่เปลี่ยนซีน และไม่มีเอฟเฟกต์เปลี่ยนซีน — เคลื่อนกล้อง Orbit ซ้ายขวาเลยจบ ไม่ซูม):\n" +
   "- SINGLE CONTINUOUS SHOT (เทคเดียวต่อเนื่อง อย่าเปลี่ยนซีน / ไม่เปลี่ยนซีนเด็ดขาด): Film in ONE continuous single take from 0.0s to the final frame. Strictly forbidden: scene changes, scene cuts, hard cuts, jump cuts, multi-scene breakdowns, or cutaways.\n" +
   "- ELEVATED TOP-DOWN & 45° ORBIT PERSPECTIVE (ใช้มุมเดิมตลอดคลิป ไม่เปลี่ยนมุมมอง — ถ่ายจากด้านบน มองลงมาที่สินค้า / 45° Product Orbit Shot): Maintain the elevated 45° to 60° top-down camera angle looking cleanly down at the product resting naturally on the surface, as if a creator is holding the camera smoothly from above. Capture top, front, and side dimensions with cinematic depth and natural lighting. Do not switch between multiple camera angles, do not jump between perspectives.\n" +
-  "- 45° PRODUCT ORBIT SHOT & CURVED ARC (หมุนวนรอบสินค้ามุม 45° สไตล์โฆษณาพรีเมียม / Orbit Shot / Orbit Camera Move): The camera glides along a smooth motorized curved orbital arc revolving around the stationary product.\n" +
-  "- WALK IN & OUT / DOLLY (เดินเข้า-ออก): Smooth forward movement stepping closer to inspect fine product details and craftsmanship, followed by gently stepping back / pulling out to reveal the full product in frame.\n" +
-  "- PLAYFUL ZOOM IN & OUT (ซูม in-out สนุกๆ จังหวะเร้าใจ): Dynamic, lively, and energetic push-in and pull-back camera motion zooming in to highlight fine details and zooming out to full hero view with a fun, bouncy rhythm.\n" +
-  "- LATERAL LEFT & RIGHT (ภาพสไลด์ เลื่อนกล้องขนานอย่างนุ่มนวล ซ้าย-ขวา): Smooth, controlled horizontal tracking gliding left and right.\n" +
+  "- 45° PRODUCT ORBIT SHOT & HORIZONTAL CURVED ARC (หมุนวนรอบสินค้ามุม 45° สไตล์โฆษณาพรีเมียม / เคลื่อนกล้อง Orbit ซ้ายขวาเลยจบ): The camera glides along a smooth motorized curved horizontal orbital arc revolving smoothly around the stationary product from left to right (กล้องเคลื่อนที่หมุนโค้ง Orbit ซ้ายไปขวารอบสินค้าเทคเดียวจบ).\n" +
+  "- STRICT ZERO ZOOM EFFECTS (ไม่ต้องมีเอฟเฟกต์ซูมเด็ดขาด): Absolutely NO zoom effects — strictly NO zoom in, NO zoom out, NO push in, NO pull back, NO dolly forward/backward, and NO optical zooming. Maintain constant distance between lens and product at all times.\n" +
+  "- LATERAL LEFT & RIGHT (ภาพสไลด์ เลื่อนกล้องขนานอย่างนุ่มนวล ซ้าย-ขวา): Smooth, controlled horizontal tracking gliding left and right in an orbital arc.\n" +
   "- PAN & ROTATE WITH PRODUCT CENTERED (แพนซ้ายขวาพร้อมหมุนโค้ง ล็อกสินค้าให้อยู่ตรงกลางจอเป๊ะๆ): The camera pans left and right while rotating in a gentle, smooth orbital arc around the product, keeping its optical center locked onto the product (Point-of-Interest tracking). The product remains anchored dead-center in the vertical 9:16 frame with generous safe margins (15–25%) on all four sides; zero out-of-frame drift.\n" +
   "- STRICT ZERO FOREGROUND OBSTRUCTIONS (ห้ามมีสิ่งใดเลื่อนตัดหน้ากล้องเด็ดขาด — ไม่มีอะไรตัดหน้ากล้องแปลกๆ): The line of sight between the camera lens and the product must remain 100% open, crystal clear, and completely unobstructed. Absolutely NO foreground objects, NO floating elements, NO blurry wipes, NO passing props, and NO occlusions cutting across or wiping in front of the lens.\n" +
   "- UPBEAT FUN SOUNDTRACK (เพลงสนุกๆ จังหวะสนุกสนาน): Paired with upbeat, cheerful, and lively commercial instrumental background music with a catchy bounce and playful rhythm that elevates product appeal and matches the dynamic motion.\n" +
-  "- NO TRANSITION EFFECTS (ไม่มีเอฟเฟกต์เปลี่ยนซีน): Strictly NO transition effects — NO wipes, NO flashes, NO scene dissolves, NO fade-to-black, NO morphs, and NO graphic transitions. The camera moves in a pure, clean, seamless continuous glide without changing scenes.\n" +
-  "The camera moves dynamically with smooth slider travel, 45° product orbit, walk-in/out, playful zoom in-and-out, and panning orbit while the product remains anchored dead-center with generous safe margins (15–25%). Zero out-of-frame drift. Never let the video feel like a frozen still picture.";
+  "- NO TRANSITION EFFECTS & NO ZOOM EFFECTS (ไม่มีเอฟเฟกต์เปลี่ยนซีน และไม่ซูม): Strictly NO transition effects and NO zoom effects — NO zoom in, NO zoom out, NO wipes, NO flashes, NO scene dissolves, NO fade-to-black, NO morphs, and NO graphic transitions. The camera moves in a pure, clean, seamless continuous horizontal orbit arc without changing scenes.\n" +
+  "The camera moves dynamically with smooth horizontal 45° product orbit panning left-to-right (orbit ซ้ายขวาเลยจบ) with strictly zero zoom effects, while the product remains anchored dead-center with generous safe margins (15–25%). Zero out-of-frame drift. Never let the video feel like a frozen still picture.";
 const HANDS_ONLY_SIMPLE_MOTION_DIRECTION = "HANDS-ONLY SIMPLE HOLDING MOTION LOCK: Show only one person's natural hand and forearm (specifically a slender, natural adult female hand with delicate realistic proportions; strictly NOT oversized, NOT giant, NOT thick or bulky, perfectly proportioned to the product) holding the exact product. Use exactly one hand with exactly five correctly attached fingers; never show a second hand. Keep the product mostly steady, move it gently a short distance left and right, and make only one small natural partial turn to reveal its front and side. Do not open, use, shake, swing, toss, repeatedly rotate, place down, or perform a multi-step demonstration.";
 const HANDS_ONLY_VIDEO_STYLE_DIRECTION = "HANDS-ONLY VIDEO STYLE LOCK: The entire video must be filmed from a realistic first-person point of view showing exactly one person's slender, natural adult female hand and forearm (delicate, realistic proportions, never oversized, bulky, or masculine) interacting with the exact product. Exactly one hand only; no second hand, face, head, torso, full body, or second person may appear in any scene. Keep the action simple: hold the product steadily, move it slightly back and forth, and turn it only a little.";
 const HANDS_ONLY_CLOTHING_MOTION_DIRECTION = "CLOTHING HANDS-ONLY FLAT-LAY & HANDLING LOCK: For clothing and apparel items in hands-only POV, the garment must start neatly laid flat or placed down on a clean aesthetic surface (such as an aesthetic bed, wooden table, or flat display surface). Natural slender adult female hands (delicate feminine proportions, strictly NOT oversized, NOT giant, NOT thick or bulky; accurately proportioned) enter the frame to gently touch or smooth the fabric, and then pick up and lift the garment to showcase its fabric quality, texture, and front details. Do NOT render the clothing item floating in mid-air or held stiffly without surface support from the beginning. Start flat-lay on the surface first, then naturally pick up and inspect.";
@@ -1129,6 +1151,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   // generic scene text that may mention coffee/food as a use case.
   const isCoffeeImageAd = isCoffeeCategoryProduct(visualProductName);
   const isClothing = isClothingProduct(productText);
+  const isUnderwear = isUnderwearOrIntimateProduct(productText);
   // In Combined mode this still becomes the source frame for video. Keep
   // clothing reference designs untouched before the video presenter is added.
   const explicitChildPresenter = ["child", "older_child"].includes(settings?.presenter);
@@ -1137,7 +1160,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   const handsOnlyStyle = settings?.videoStyle === "hands-only";
   const handsOnlyPresenter = settings?.presenter === "hands_only" || auto.presenter === "hands_only";
   const isHandsOnlyActive = handsOnlyStyle || handsOnlyPresenter;
-  const productOnlyStill = stillMotionMode || boxedMotionMode || (!isHandsOnlyActive && settings?.flowGenMode === "combined" && (!explicitChildPresenter || isClothing));
+  const productOnlyStill = stillMotionMode || boxedMotionMode || (!isHandsOnlyActive && settings?.flowGenMode === "combined" && (!explicitChildPresenter || isClothing || isUnderwear));
   const autoPresenterProfile = !productOnlyStill && isAuto(settings.presenter)
     ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
     : "";
@@ -1160,7 +1183,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   const shoeWearableCrop = wearableCrop && isFootwear;
   const footwearStillCount = isFootwear && !shoeWearableCrop ? getFootwearStillCount(productInfo) : "";
   const noPeople = productOnlyStill || !(auto.presenter && auto.presenter !== "none");
-  const referenceCompositingDirection = isClothing
+  const referenceCompositingDirection = (isClothing || isUnderwear)
     ? (productOnlyStill ? REFERENCE_COMPOSITING_DIRECTION : (handsOnly ? APPAREL_HANDS_ONLY_REFERENCE_DIRECTION : APPAREL_REFERENCE_USE_DIRECTION))
     : noPeople
       ? REFERENCE_COMPOSITING_DIRECTION
@@ -1183,14 +1206,14 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   } else if (handsOnly) {
     const stillHandCount = isUnboxingHands
       ? `\n${UNBOXING_TWO_HAND_COUNT_LOCK}`
-      : isClothing
+      : (isClothing || isUnderwear)
       ? `\n${HANDS_ONLY_CLOTHING_STILL_COUNT_LOCK}`
       : handsOnlyStyle || auto.presenter === "hands_only"
       ? `\n${HANDS_ONLY_STILL_COUNT_LOCK}`
       : "";
     const handsPromptDirection = isUnboxingHands
       ? `${UNBOXING_HANDS_DIRECTION}\n${UNBOXING_SOURCE_FRAME_DIRECTION}`
-      : isClothing
+      : (isClothing || isUnderwear)
       ? HANDS_ONLY_CLOTHING_STILL_DIRECTION
       : (handsOnlyStyle || auto.presenter === "hands_only" ? HANDS_ONLY_SINGLE_HAND_DIRECTION : HANDS_DIRECTION);
     peopleDirection = `${handsPromptDirection}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}`;
@@ -1291,8 +1314,8 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
         ? "Single full-frame SCREENLESS wristband product shot: Depict the exact screenless fabric strap and metal clasp from the reference image in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity: exact strap weave texture, clasp, and colors. If the product in the reference has no screen, show NO screen; absolutely NO screen, NO display glass, NO watch face, NO Apple Watch body, and NO digital readout. No collage, split screen, phantom screens, or duplicate items."
         : isWatchOrWristbandProduct(productText)
         ? "Single full-frame watch/wristband product shot: Depict the exact wristwatch or wristband in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity: exact case/band silhouette, exact strap material, texture, clasp, and colors. If the product in the reference has no screen, show NO screen; if it has an analog dial or digital display, match it exactly. No collage, split screen, phantom screens, or duplicate items."
-        : isClothing
-        ? "Single full-frame front shot: Depict ONLY the front-facing view of the clothing item in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side."
+        : (isClothing || isUnderwear)
+        ? "Single full-frame front shot: Depict ONLY the front-facing view of the garment in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side."
         : "Single full-frame hero shot: Depict the product in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity, printed text, brand logo, and packaging artwork.")
     : (isClothing
         ? "Multi-angle 4-panel grid collage layout: A 4-panel split layout showing the clothing item from 4 clean front-facing perspectives (Panel 1: Full outfit view, Panel 2: Upper body close-up of collar/logo, Panel 3: Fabric texture detail, Panel 4: Lifestyle presentation). Maintain 100% identical garment cut, color, logo, and texture across all panels."
@@ -1301,7 +1324,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   let scaleInstruction = "";
   if (wearableCrop) {
     scaleInstruction = `Realistic wearable scale: Keep the exact item naturally proportioned to the relevant body part. Frame ${getWearableCropFrame(productText)}. Do not enlarge, shrink, or distort the wearable product.`;
-  } else if (isClothing) {
+  } else if (isClothing || isUnderwear) {
     scaleInstruction = APPAREL_SCALE_DIRECTION;
   } else if (handsOnly) {
     scaleInstruction = isHeavy
@@ -1328,7 +1351,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
     return buildCoffeeReferenceFirstStillPrompt(productText, productName, locationSetting, textEnabled);
   }
   const isMinStudio = isMinimalistStudioLocation(locationSetting);
-  const imageBackgroundDirection = isClothing
+  const imageBackgroundDirection = (isClothing || isUnderwear)
     ? `APPAREL BACKGROUND: Show the exact reference garment naturally in a brand new, realistic ${locationSetting} setting with clean everyday lighting. Keep the garment as the clear focal point.${isMinStudio ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""}`
     : handsOnly
     ? `${HANDS_ONLY_BACKGROUND_DIRECTION} Place the product in this category-appropriate setting: ${locationSetting}. Do not replace it with a generic cafe, desk, studio, or outdoor background unless that setting is appropriate for the exact product.${isMinStudio ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""}`
@@ -1351,18 +1374,20 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
     !textEnabled ? (isCoffeeImageAd ? COFFEE_COMPACT_TEXT_LOCK : TEXT_FREE_DIRECTION) : "",
     UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     STILL_REFERENCE_FIDELITY_PRIORITY,
+    (stillMotionMode || boxedMotionMode) ? STRICT_ZERO_SURROUNDING_PROPS_MANDATE : "",
     buildProductIdentityLock(productInfo),
     (isWatchOrWristbandProduct(productText) || isScreenless) ? categoryDirection : "",
     STILL_IMAGE_VARIANT_PATTERN_LOCK,
     isExplicitAdultPresenterSelection(settings) ? EXPLICIT_ADULT_PRESENTER_NO_CHILD_DIRECTION : "",
-    isClothing ? APPAREL_REFERENCE_PRIORITY : REFERENCE_IMAGE_HIGHEST_PRIORITY,
+    (isClothing || isUnderwear) ? APPAREL_REFERENCE_PRIORITY : REFERENCE_IMAGE_HIGHEST_PRIORITY,
     REFERENCE_BRAND_ONLY_LOCK,
     (stillMotionMode || boxedMotionMode) ? CAMERA_ONLY_NO_HANDS_DIRECTION : "",
     stillMotionMode ? STILL_MOTION_IN_FRAME_LOCK : "",
     stillMotionMode ? STILL_MOTION_TOP_VIEW_DIRECTION : "",
     isNeckScarfProduct(productText) ? NECK_SCARF_USAGE_LOCK : "",
     isPackagedCoffeeProduct(productText) ? REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION : "",
-    isClothing ? referenceCompositingDirection : "",
+    (isClothing || isUnderwear) ? referenceCompositingDirection : "",
+    isUnderwear ? INTIMATE_APPAREL_SAFETY_MANDATE : "",
     isRainwearProduct(productText) ? RAINWEAR_OUTDOOR_LOCATION_LOCK : "",
     shoeWearableCrop ? "" : FICTIONAL_CAST_DIRECTION,
     isClothing && !productOnlyStill && ["woman", "man"].includes(auto.presenter) ? INDEPENDENT_FICTIONAL_CAST_DIRECTION : "",
@@ -1378,7 +1403,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
     autoPresenterProfile,
     intro,
     hasEngravedPattern ? ENGRAVED_EMBOSSED_FIDELITY_DIRECTION : "",
-    isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION,
+    (isClothing || isUnderwear) ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION,
     scaleInstruction,
     shotDistribution,
     specificScale,
@@ -1477,6 +1502,9 @@ function isHikingPoleProduct(text = "") {
 
 function isWearableProduct(text = "") {
   const clean = String(text || "").toLowerCase();
+  if (isUnderwearOrIntimateProduct(clean)) {
+    return false;
+  }
   return isClothingProduct(clean)
     || /(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(clean)
     || isWatchOrWristbandProduct(clean)
@@ -1487,7 +1515,10 @@ function isWearableProduct(text = "") {
 
 function getWearableCropFrame(text = "") {
   const clean = String(text || "").toLowerCase();
-  if (/(กางเกง|กระโปรง|เลกกิ้ง|ยีนส์|ขาสั้น|ขาสามส่วน|pants|trousers|shorts|leggings|jeans|skirt|bottoms?)/i.test(clean)) {
+  if (isUnderwearOrIntimateProduct(clean)) {
+    return "product-only flat-lay or hands-only view on a clean surface";
+  }
+  if (/(กางเกง(?!ใน)|กระโปรง|เลกกิ้ง|ยีนส์|ขาสั้น|ขาสามส่วน|pants|trousers|shorts|leggings|jeans|skirt|bottoms?)/i.test(clean)) {
     return "waist-to-ankles lower-body crop, showing the exact pants or skirt and natural leg movement";
   }
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks?)/i.test(clean)) {
@@ -1554,10 +1585,11 @@ function buildCoffeeReferenceFirstStillPrompt(productText, productName, location
     "Create one vertical 9:16 product still of the exact product or set visible in the attached image.",
     "REFERENCE-FIRST MODE: The uploaded image is the only visual source of truth. Keep the actual visible product unchanged; do not reconstruct it from a product name, category, memory, or generic product knowledge.",
     UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
+    STRICT_ZERO_SURROUNDING_PROPS_MANDATE,
     "Preserve the observed product type, item count, silhouette, materials, colors, components, and printed artwork. Keep unclear marks as visible reference details rather than guessing. Do not add packaging, zippers, seams, handles, or lids unless visible on the actual product.",
     "REALISTIC PRODUCT SCALE: Infer proportions and scale from the visible reference and physical context. Do not use an incompatible product name or package weight to determine size. Leave visible table space and background around the product.",
     "HERO COMPOSITION DOES NOT MEAN OVERSIZED: Make the product visually important through sharp focus, clean contrast, and placement, not by enlarging it.",
-    `Change only the surrounding background to a clean ${locationSetting} setting.${isMinimalistStudioLocation(locationSetting) ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""} Use an authentic smartphone camera lens (26mm mobile lens look), natural eye-level product photograph with a medium-close composition, soft diffused daylight, neutral white balance, limited supporting table surface, floor mostly out of frame, and soft background blur. Preserve the reference-facing product angle. Do not add unrelated props or people.`,
+    `Change only the surrounding background to a clean ${locationSetting} setting.${isMinimalistStudioLocation(locationSetting) ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""} Use an authentic smartphone camera lens (26mm mobile lens look), natural eye-level product photograph with a medium-close composition, soft diffused daylight, neutral white balance, limited supporting table surface, floor mostly out of frame, and soft background blur. Preserve the reference-facing product angle. Do not add unrelated props, side bottles, glasses, ice buckets, or people.`,
     textEnabled
       ? "If an overlay is enabled, place it only in empty background space; never cover or rewrite product artwork."
       : "No added captions, slogans, logos, watermarks, or text overlays.",
@@ -1718,8 +1750,8 @@ function buildStillMotionVideoPrompt(productInfo, productName, locationStr, dura
     ? `Optional single Thai text overlay only: "${overlayText[0]}". Keep it in empty background space and never place it on the product label or surface.`
     : TEXT_FREE_DIRECTION;
   const scaleDirection = specificScale || "REALISTIC PRODUCT SCALE: Keep the product at its true physical size relative to the table, floor, hands, and surrounding environment. Do not enlarge it just because it is the hero.";
-  const transitionDirection = resolveTransitionDirection(settings?.transition || auto?.transition || "None");
-  const cameraMotionDirection = !isAuto(settings?.cameraMovement)
+  const transitionDirection = "NO TRANSITION EFFECTS & ZERO ZOOM EFFECTS (เทคเดียวต่อเนื่อง ไม่ซูม และไม่มีเอฟเฟกต์เปลี่ยนซีน): The entire video must be filmed in a single continuous uninterrupted take from start to finish. Strictly forbidden: zoom in, zoom out, camera push-in, camera pull-back, zoom transitions, scene cuts, hard cuts, jump cuts, multi-scene breakdowns, wipes, flashes, dissolves, fades, or any transition effects.";
+  const cameraMotionDirection = (!isAuto(settings?.cameraMovement) && !/zoom|push/i.test(settings.cameraMovement))
     ? resolveCameraMovementDirection(settings.cameraMovement)
     : STILL_MOTION_DYNAMIC_CAMERA_DIRECTION;
 
@@ -1729,17 +1761,18 @@ function buildStillMotionVideoPrompt(productInfo, productName, locationStr, dura
     buildProductIdentityLock(productInfo),
     REFERENCE_PIXEL_ARTWORK_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
+    STRICT_ZERO_SURROUNDING_PROPS_MANDATE,
     scaleDirection,
-    `Place the product naturally in a realistic ${locationStr || "category-appropriate"} setting.${isMinimalistStudioLocation(locationStr) ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""} Keep natural photography composition, true scale, visible but limited context, and realistic contact shadows. Do not make the product oversized or let it fill the table or frame.`,
+    `Place the product naturally in a realistic ${locationStr || "category-appropriate"} setting.${isMinimalistStudioLocation(locationStr) ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""} Keep natural photography composition, true scale, visible but limited context, and realistic contact shadows. Do not make the product oversized or let it fill the table or frame. Strictly NO side bottles, NO glasses, NO ice buckets, NO cups, NO ribbons, and NO decorative props.`,
     CAMERA_ONLY_NO_HANDS_DIRECTION,
     STILL_MOTION_IN_FRAME_LOCK,
     CLEAR_FOREGROUND_UNOBSTRUCTED_LENS_LOCK,
     transitionDirection,
     cameraMotionDirection,
     STILL_MOTION_TOP_VIEW_DIRECTION,
-    "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product itself. Do not let the product slide, drift, or slip out of the frame borders during camera movement. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, or busy scene action.",
+    "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product itself. Do not let the product slide, drift, or slip out of the frame borders during camera movement. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, or busy scene action. Absolutely NO side bottles, NO wine glasses, NO ice buckets, NO cups, NO ribbons, and NO secondary decorative props. Strictly NO zoom in, NO zoom out, NO push in, NO pull back, and NO zoom effects.",
     overlayDirection,
-    "PREMIUM PRODUCT PHOTOGRAPHY & DYNAMIC MOTION: Preserve the source lighting and setting with soft directional light, controlled highlights, realistic contact shadows, and a gently blurred background. Keep the entire product and its artwork sharp; no focus hunting, flicker, exposure pumping, artificial light sweeps, or invented product surfaces. Visual dynamism comes from physical camera translation, 45° product orbit shot, walk-in/out, playful zoom in-and-out, lateral tracking, and gentle orbital panning while keeping the product strictly centered. Strictly NO foreground objects, NO blurry wipes, NO occlusions cutting across the lens, NO whip pan, NO shake, NO collage, NO transition effects, and NO scene replacement. AUDIO SOUNDTRACK: Use upbeat, cheerful, and fun commercial instrumental background music (เพลงสนุกๆ จังหวะสดใส สนุกสนาน) with a catchy rhythm and bouncy tempo that syncs with the playful camera moves. No spoken narration or dialogue."
+    "PREMIUM PRODUCT PHOTOGRAPHY & SMOOTH HORIZONTAL ORBIT: Preserve the source lighting and setting with soft directional light, controlled highlights, realistic contact shadows, and a gently blurred background. Keep the entire product and its artwork sharp; no focus hunting, flicker, exposure pumping, artificial light sweeps, or invented product surfaces. Camera movement is purely a smooth horizontal curved orbit pan left-to-right revolving around the centered hero product (เคลื่อนกล้อง orbit ซ้ายขวาอย่างนุ่มนวลเทคเดียวจบ ไม่ซูม). Strictly NO zoom effects, NO zoom in, NO zoom out, NO push-in, NO pull-back, NO foreground objects, NO blurry wipes, NO occlusions cutting across the lens, NO whip pan, NO shake, NO collage, NO transition effects, and NO scene replacement. AUDIO SOUNDTRACK: Use upbeat, cheerful, and fun commercial instrumental background music (เพลงสนุกๆ จังหวะสดใส สนุกสนาน) with a catchy rhythm and bouncy tempo that syncs with the smooth horizontal orbit movement. No spoken narration or dialogue."
   ].filter(Boolean).join("\n");
 }
 
@@ -1755,12 +1788,13 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
     buildProductIdentityLock(productInfo),
     REFERENCE_PIXEL_ARTWORK_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
+    STRICT_ZERO_SURROUNDING_PROPS_MANDATE,
     BOXED_PRESENTATION_COMPOSITION_LOCK,
     scaleDirection,
-    `Keep the fitted open box and product at true scale in a realistic ${locationStr || "category-appropriate"} setting.${isMinimalistStudioLocation(locationStr) ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""} Keep only limited table context and almost no floor visible.`,
+    `Keep the fitted open box and product at true scale in a realistic ${locationStr || "category-appropriate"} setting.${isMinimalistStudioLocation(locationStr) ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""} Keep only limited table context and almost no floor visible. Strictly NO surrounding props or decorative clutter.`,
     CAMERA_ONLY_NO_HANDS_DIRECTION,
     PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION,
-    "STRICTLY FORBIDDEN: Do not move, rotate, slide, bounce, float, resize, morph, open, close, deform, or otherwise animate the product or box. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, busy props, fast cuts, macro zoom, 360-degree orbit, or scene changes.",
+    "STRICTLY FORBIDDEN: Do not move, rotate, slide, bounce, float, resize, morph, open, close, deform, or otherwise animate the product or box. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, busy props, fast cuts, macro zoom, 360-degree orbit, or scene changes. Absolutely NO side bottles, NO glasses, NO ice buckets, NO decorative prop clutter.",
     overlayDirection,
     "Use energetic but controlled angle transitions: front hero → low left three-quarter → high right three-quarter → detail pull-back. Use upbeat but clean instrumental ambience or no audio."
   ].filter(Boolean).join("\n");
@@ -1881,6 +1915,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   const isHeavy = weightCategory !== "light";
   const isImmobile = weightCategory === "immobile";
   const isClothing = isClothingProduct(productText);
+  const isUnderwear = isUnderwearOrIntimateProduct(productText);
   const isWearable = isWearableProduct(productText);
   const specificScale = getProductSpecificScaleInstruction(visualProductName);
   const productActivityDirection = getProductActivityDirection(productText, settings);
@@ -2178,7 +2213,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
       sceneBreakdown = sceneBreakdown.replace(/\bmodel\b/gi, "child");
     }
     sceneBreakdown += `\n(CLOTHING FRONT-ONLY RULE: ${isChildPresenter ? "The supervised child" : "The model/presenter"} must remain strictly front-facing in all scenes; do NOT turn around or show the back side of the clothing item, to prevent arm and hand distortion glitches.)`;
-  } else if (isClothing && handsOnly) {
+  } else if ((isClothing || isUnderwear) && handsOnly) {
     sceneBreakdown += "\n(CLOTHING HANDS-ONLY RULE: The clothing item must be placed down and laid flat on the surface first in Scene 1; slender female hands enter to touch, smooth, pick up, and inspect it. Never float or suspend the garment in mid-air from the beginning.)";
   }
 
@@ -2210,10 +2245,11 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   promptParts.push(
     MULTI_SCENE_EXECUTION_LOCK,
     transitionDirection,
-    handsOnlyStyle ? (isClothing ? HANDS_ONLY_CLOTHING_STYLE_DIRECTION : HANDS_ONLY_VIDEO_STYLE_DIRECTION) : "",
+    handsOnlyStyle ? ((isClothing || isUnderwear) ? HANDS_ONLY_CLOTHING_STYLE_DIRECTION : HANDS_ONLY_VIDEO_STYLE_DIRECTION) : "",
     isUnboxingHands ? UNBOXING_REVEAL_SEQUENCE : "",
     sceneBreakdown,
     isClothing && !wearableCrop && !noPeople && !handsOnly && !isAnimal ? APPAREL_PRESENTER_FRAME_CONTINUITY : "",
+    isUnderwear ? INTIMATE_APPAREL_SAFETY_MANDATE : "",
     (!isAuto(settings?.cameraMovement) || !noPeople)
       ? resolveCameraMovementDirection(auto.cameraMovement)
       : `${PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION} The camera movement should feel like a real handheld/tripod shot while the product remains physically stable.`
@@ -2603,6 +2639,15 @@ function getMultiSceneDescription(videoStyle, productName, locationStr, mood, pr
   const moodStyle = mood ? ` with ${mood} lighting` : "";
 
   if (handsOnlyMode || videoStyle === "hands-only") {
+    if (isUnderwearOrIntimateProduct(productText || productName)) {
+      return [
+        "This video must use a hands-only flat-lay and fabric tactile showcase with no visible face, head, or body:",
+        `- Scene 1 (Flat-lay Lay Flat): Show the exact ${productName} neatly laid flat on a clean minimalist surface${loc}${moodStyle}, with the full garment clearly visible and natural slender hands smoothing the soft fabric.`,
+        `- Scene 2 (Elasticity & Stitching Demo): Slender hands gently stretch the elastic waistband/hem and run fingers along the seamless stitching to demonstrate premium stretch, softness, and breathability.`,
+        `- Scene 3 (Finish): Slender hands gently fold or neatly present ${productName} resting on the clean surface, keeping its shape, colors, and waistband design fully visible.`,
+        "Strictly no on-body wearing. Always present laid flat or handled with hands on a clean surface."
+      ].join("\n");
+    }
     if (isClothingProduct(productText || productName)) {
       return [
         "This video must use a hands-only flat-lay and handling showcase with no visible face, head, or body:",
@@ -2642,6 +2687,14 @@ function getMultiSceneDescription(videoStyle, productName, locationStr, mood, pr
       ].join("\n");
 
     case "review":
+      if (isUnderwearOrIntimateProduct(productText || productName)) {
+        return [
+          "This video must showcase the intimate apparel product on a clean surface or hanger with no on-body wear:",
+          `- Scene 1 (Showcase): Clear front showcase of ${productName} neatly presented flat or on a clean display${loc}${moodStyle}.`,
+          `- Scene 2 (Detail Zoom): A close-up zoom on the fabric weave, elastic waistband, seamless stitching, and material breathability.`,
+          `- Scene 3 (Finish): A final scene showing the product neatly arranged and ready for use.`
+        ].join("\n");
+      }
       return [
         "This video must consist of multiple sequential scenes with clear cuts/transitions for a product review:",
         `- Scene 1 (Showcase): A 3-second 360-degree rotation showing ${productName} from all angles${loc}${moodStyle}.`,
@@ -2770,6 +2823,9 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
   }
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
     return `${SHOE_FIDELITY_DIRECTION}\n${SHOE_PATTERN_COORDINATE_LOCK}\n${SHOE_SCALE_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (isUnderwearOrIntimateProduct(text)) {
+    return `${INTIMATE_APPAREL_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (isClothingProduct(text)) {
     return `${isNeckScarfProduct(text) ? NECK_SCARF_USAGE_LOCK + "\n" : ""}${CLOTHING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
@@ -2984,7 +3040,7 @@ function stripStructuralVariantCounts(value) {
     .trim();
 }
 
-function resolveAutoSettings(productInfo = {}, settings = {}) {
+export function resolveAutoSettings(productInfo = {}, settings = {}) {
   const inferred = inferPromptAutoOptions(productInfo);
   const recommendedSource = productInfo.autoOptions && typeof productInfo.autoOptions === "object"
     ? productInfo.autoOptions
@@ -2997,21 +3053,39 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
   const productText = [productInfo.name, productInfo.originalName, productInfo.category, productInfo.highlights]
     .filter(Boolean)
     .join(" ");
+  const isUnderwear = isUnderwearOrIntimateProduct(productText);
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const outdoorOnlyProduct = footwear || isRainwearProduct(productText) || isOutdoorRideProduct(productText);
   const contextLockedProduct = outdoorOnlyProduct || Boolean(vehicleAccessoryContext);
   const isPetProduct = /(สัตว์เลี้ยง|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|แมว|สุนัข|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b|\banimal\b)/i.test(productText);
-  const autoPresenter = pickAutoReviewer(productInfo);
+  const autoPresenter = isUnderwear ? "none" : pickAutoReviewer(productInfo);
   const prefersMan = detectExplicitProductGender(productText) === "man"
     || isCampingOutdoorProduct(productText)
     || /(ช่าง|mechanic)/i.test(productText);
-  const safeAutoPresenter = (autoPresenter === "dog" || autoPresenter === "cat")
+  const safeAutoPresenter = isUnderwear
+    ? "none"
+    : (autoPresenter === "dog" || autoPresenter === "cat")
     ? "woman"
     : (autoPresenter === "hands_only" || autoPresenter === "none")
     ? (prefersMan ? "man" : "woman")
     : autoPresenter;
-  const videoStyle = isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle;
-  const presenter = isAuto(settings.presenter) ? safeAutoPresenter : settings.presenter;
+
+  let videoStyle = isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle;
+  // Underwear / intimate apparel policy protection:
+  // UGC testimonial, lifestyle, and selfie on-body wearing are strictly prohibited
+  if (isUnderwear) {
+    if (isAuto(settings.videoStyle) || videoStyle === "testimonial" || videoStyle === "lifestyle" || videoStyle === "fashion-selfie" || videoStyle === "fashion-hanger-presenter") {
+      videoStyle = "hands-only";
+    }
+  }
+
+  let presenter = isAuto(settings.presenter) ? safeAutoPresenter : settings.presenter;
+  if (isUnderwear) {
+    if (isAuto(settings.presenter) || presenter === "woman" || presenter === "man" || presenter === "child" || presenter === "older_child") {
+      presenter = videoStyle === "hands-only" ? "hands_only" : "none";
+    }
+  }
+
   return {
     videoStyle,
     // Auto always includes a real reviewer. People-free output is only allowed
@@ -3025,8 +3099,12 @@ function resolveAutoSettings(productInfo = {}, settings = {}) {
       ? (contextLockedProduct ? requiredLocation : (requiredLocation || recommended.location || inferred.location))
       : settings.location,
     customLocation: sanitizeText(settings.customLocation),
-    cameraMovement: isAuto(settings.cameraMovement) ? (footwear ? "Slow Zoom In" : (recommended.cameraMovement || inferred.cameraMovement)) : settings.cameraMovement,
-    transition: isAuto(settings.transition) ? (recommended.transition || inferred.transition) : settings.transition,
+    cameraMovement: (videoStyle === "still-motion" && (isAuto(settings.cameraMovement) || /zoom|push/i.test(settings.cameraMovement)))
+      ? "45° Product Orbit Shot"
+      : (isAuto(settings.cameraMovement) ? (footwear ? "Slow Zoom In" : (recommended.cameraMovement || inferred.cameraMovement)) : settings.cameraMovement),
+    transition: (videoStyle === "still-motion" && (isAuto(settings.transition) || /zoom/i.test(settings.transition)))
+      ? "None"
+      : (isAuto(settings.transition) ? (recommended.transition || inferred.transition) : settings.transition),
     reason: recommended.reason || inferred.reason || ""
   };
 }
@@ -3052,6 +3130,19 @@ function resolveBoxedPresentationLocation(productText = "", locationStr = "") {
 function inferPromptAutoOptions(productInfo = {}) {
   const text = `${productInfo.name || ""} ${productInfo.highlights || ""} ${productInfo.category || ""}`.toLowerCase();
   const vehicleAccessoryContext = getVehicleAccessoryContext(text);
+
+  if (isUnderwearOrIntimateProduct(text)) {
+    return promptAutoOptions(
+      "hands-only",
+      "none",
+      "kind",
+      "มินิมัล",
+      "Modern Living Room",
+      "Slow Zoom In",
+      "Cut ตรง",
+      "สินค้าชุดชั้นใน/กางเกงในเป็นสินค้าสุ่มเสี่ยงด้านนโยบายความปลอดภัย ต้องใช้โหมด hands-only โชว์ความยืดหยุ่น เนื้อผ้า และการตัดเย็บบนพื้นผิว ห้ามใช้พรีเซนเตอร์สวมใส่เด็ดขาด"
+    );
+  }
 
   if (vehicleAccessoryContext === "motorcycle") {
     return promptAutoOptions("review", "none", "professional", "Natural", "Outdoor Motorcycle Driveway or Roadside", "Slow Zoom In", "Cut ตรง", "Motorcycle accessory, shown on or beside a real motorcycle or scooter so its real-world use is unmistakable");
@@ -3396,6 +3487,7 @@ function pickAutoReviewer(productInfo = {}) {
   // AUTO PRESENTER RULE: Forbidden to pick child presenters (child/older_child).
   // If auto recommended presenter was a child, map to parent (father/mother) instead.
   const recommended = productInfo.autoOptions?.presenter;
+  if (isUnderwearOrIntimateProduct(productText)) return "hands_only";
   if (explicitGender) return explicitGender;
   if (isCampingOutdoorProduct(productText)) return "man";
   if (["woman", "man", "hands_only"].includes(recommended)) return recommended;
