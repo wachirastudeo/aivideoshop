@@ -94,7 +94,7 @@ export async function syncSelectedProductToVideoTab() {
 function bindGlobalEvents() {
   [
     "video-style", "presenter", "custom-presenter", "audio-mode", "voice-tone", "location", "custom-location", "product-activity",
-    "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement", "camera-framing",
+    "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement", "camera-framing", "transition",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action", "post-no-link",
     "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
     "first-scene-no-people"
@@ -132,6 +132,7 @@ function fillGlobalFormFromState() {
   setValue("text-style-font", settings.textStyleFont);
   setValue("camera-movement", settings.cameraMovement);
   setValue("camera-framing", settings.cameraFraming);
+  setValue("transition", settings.transition);
   setValue("product-activity", settings.productActivity);
   setValue("image-model", settings.imageModel);
   setValue("video-model", settings.videoModel);
@@ -182,6 +183,7 @@ function syncSettingsForm() {
     textStyleFont: getValue("text-style-font"),
     cameraMovement: getValue("camera-movement"),
     cameraFraming: getValue("camera-framing"),
+    transition: getValue("transition") || "Auto",
     productActivity: getValue("product-activity") || "Auto",
     imageModel: getValue("image-model"),
     videoModel: getValue("video-model"),
@@ -304,7 +306,7 @@ function normalizeSettings(value) {
     postRandomCaptionHook: value.postRandomCaptionHook !== undefined ? Boolean(value.postRandomCaptionHook) : true,
     postCustomProductName: (value.postCustomProductName || "").trim(),
     textStyleFont: value.textStyleFont || "handwriting",
-    cameraFraming: ["full_body", "lower_body", "half_body", "medium_shot", "close_up"].includes(value.cameraFraming) ? value.cameraFraming : "Auto",
+    cameraFraming: ["top_view", "full_body", "lower_body", "half_body", "medium_shot", "close_up"].includes(value.cameraFraming) ? value.cameraFraming : "Auto",
     postScheduleTime: value.postScheduleTime || "",
     postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10,
     modelRefImage: value.modelRefImage || ""

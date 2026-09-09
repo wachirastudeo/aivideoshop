@@ -15,12 +15,19 @@ import {
   truncateShopeeCaptionAndHashtags,
   isClothingProduct,
   isFurnitureProduct,
+  isWatchOrWristbandProduct,
+  isScreenlessWristbandProduct,
+  isWatchStrapProduct,
   buildCategoryFidelityDirection,
   resolveSpokenOpeningHook,
   stripForeignNonThaiScripts,
+  resolveTransitionDirection,
+  resolveCameraMovementDirection,
   VIDEO_STYLES,
   HIDDEN_VIDEO_STYLE_IDS,
-  getSelectableVideoStyles
+  getSelectableVideoStyles,
+  isMinimalistStudioLocation,
+  MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -491,7 +498,7 @@ const stillMotionSettings = {
 const stillMotionVideo = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
 const stillMotionImage = buildImagePrompt({ name: "แก้วน้ำเก็บความเย็น" }, stillMotionSettings);
 check("still-motion mode uses a dedicated camera-only prompt", /STILL-IMAGE MOTION MODE/i.test(stillMotionVideo) && /CAMERA MOTION ONLY/i.test(stillMotionVideo), stillMotionVideo);
-check("still-motion mode uses physical lateral dolly with parallax", /PHYSICAL LEFT-RIGHT DOLLY/i.test(stillMotionVideo) && /translate the camera to the right/i.test(stillMotionVideo) && /travel left along the same path/i.test(stillMotionVideo) && /foreground-background parallax/i.test(stillMotionVideo) && /No cuts or abrupt direction changes/i.test(stillMotionVideo) && !/MULTI-ANGLE|energetic visual variety|angle transitions/i.test(stillMotionVideo), stillMotionVideo);
+check("still-motion mode uses fixed-angle slider, zero scene cuts, and no transition effects", /CONTINUOUS FIXED-ANGLE SLIDER, ZERO SCENE CHANGES, NO TRANSITION EFFECTS/i.test(stillMotionVideo) && /อย่าเปลี่ยนซีน/i.test(stillMotionVideo) && /ใช้มุมเดิมตลอดคลิป ไม่เปลี่ยนมุมมอง/i.test(stillMotionVideo) && /ภาพสไลด์ เลื่อนกล้องขนานอย่างนุ่มนวล/i.test(stillMotionVideo) && /ไม่มีเอฟเฟกต์เปลี่ยนซีน/i.test(stillMotionVideo) && /Never let the video feel like a frozen still picture/i.test(stillMotionVideo), stillMotionVideo);
 check("still-motion mode keeps the product stationary", /product stays completely still, rigid, and unchanged/i.test(stillMotionVideo) && /Do not rotate, slide, bounce, float, bend, resize, morph/i.test(stillMotionVideo), stillMotionVideo);
 check("still-motion mode forbids hands in video and still image", /CAMERA-ONLY \/ NO-HANDS LOCK/i.test(stillMotionVideo) && /CAMERA-ONLY \/ NO-HANDS LOCK/i.test(stillMotionImage) && /zero hands/i.test(stillMotionImage), `${stillMotionVideo}\n${stillMotionImage}`);
 check("still-motion mode has no review scene structure", !/- Scene 1|Scene 2|Scene 3|Presenter:/i.test(stillMotionVideo), stillMotionVideo);
@@ -1052,6 +1059,34 @@ check("video prompt with unboxing_hands strictly forbids face and full person", 
 check("unboxing video uses two hands without single-hand conflict", /UNBOXING TWO-HAND LOCK/i.test(vidPresenterUnboxingHands) && !/SINGLE-HAND LOCK/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("unboxing preserves source state and gives the revealed product most screen time", /never close an already-open box/i.test(vidPresenterUnboxingHands) && /remaining 60%/i.test(vidPresenterUnboxingHands) && /removed materials remain where placed/i.test(vidPresenterUnboxingHands) && !/Scene 3|Scene 4|hands lifting or presenting/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 check("unboxing source is a visible product photograph instead of video steps", /UNBOXING SOURCE FRAME/i.test(imgPresenterUnboxingHands) && /product visibly supported/i.test(imgPresenterUnboxingHands) && !/MANDATORY UNBOXING ACTION SEQUENCE/i.test(imgPresenterUnboxingHands), imgPresenterUnboxingHands);
+check("video prompt with hands_only specifies slender female hand and realistic proportion", /slender.*female.*hand|adult female hand/i.test(vidPresenterHands) && /not oversized|delicate.*proportion/i.test(vidPresenterHands), vidPresenterHands);
+check("image prompt with hands_only specifies slender female hand and realistic proportion", /slender.*female.*hand|adult female hand/i.test(imgPresenterHands) && /not oversized|delicate/i.test(imgPresenterHands), imgPresenterHands);
+check("hands-only video style specifies slender female hand and forbids oversized hands", /slender.*natural adult female hand/i.test(handsOnlyStyleVideo) && /never oversized, bulky, or masculine/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
+check("unboxing hands presenter specifies slender female hands and forbids oversized hands", /slender, natural adult female hands/i.test(vidPresenterUnboxingHands) && /not oversized or bulky/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+
+// Clothing in hands-only mode: Lay flat on surface first, then hands pick up / inspect
+const clothingHandsOnlyVideo = buildVideoPrompt(
+  { name: "เสื้อยืดคอกลม โอเวอร์ไซส์", category: "เสื้อผ้าแฟชั่น" },
+  { ...settings, videoStyle: "hands-only" }
+);
+const clothingHandsOnlyImage = buildImagePrompt(
+  { name: "เสื้อยืดคอกลม โอเวอร์ไซส์", category: "เสื้อผ้าแฟชั่น" },
+  { ...settings, videoStyle: "hands-only" }
+);
+const clothingPresenterHandsVideo = buildVideoPrompt(
+  { name: "เสื้อยืดคอกลม โอเวอร์ไซส์", category: "เสื้อผ้าแฟชั่น" },
+  { ...settings, presenter: "hands_only" }
+);
+
+check("clothing hands-only video starts with garment laid flat first in Scene 1", /Scene 1 \(Flat-lay Lay Flat\)[\s\S]*neatly laid flat or placed down on a clean surface/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
+check("clothing hands-only video has slender female hands pick up and lift in Scene 2", /Scene 2 \(Pick Up & Lift\)[\s\S]*slender female hands gently pick up and lift/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
+check("clothing hands-only video forbids mid-air floating garments from start", /Never show the clothing item floating in mid-air|Never float or suspend the garment in mid-air/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
+check("clothing hands-only video includes clothing hands-only flat-lay & handling lock", /CLOTHING HANDS-ONLY FLAT-LAY & HANDLING LOCK/i.test(clothingHandsOnlyVideo) && /slender, natural adult female hands/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
+check("clothing hands-only video does not mention an on-screen model wearing the garment", !/The model\/presenter must remain strictly front-facing/i.test(clothingHandsOnlyVideo) && !/model already wearing/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
+check("clothing hands-only image uses flat-lay still lock with slender female hands", /CLOTHING HANDS-ONLY FLAT-LAY STILL LOCK[\s\S]*neatly laid flat or placed down[\s\S]*slender, natural adult female hands/i.test(clothingHandsOnlyImage), clothingHandsOnlyImage);
+check("clothing hands-only image does not include on-screen fit model direction", !/APPAREL MODEL SAFETY/i.test(clothingHandsOnlyImage) && !/fit model/i.test(clothingHandsOnlyImage), clothingHandsOnlyImage);
+check("clothing video with hands_only presenter also starts laid flat and then picks up", /Scene 1 \(Flat-lay Lay Flat\)[\s\S]*Scene 2 \(Pick Up & Lift\)/i.test(clothingPresenterHandsVideo), clothingPresenterHandsVideo);
+
 
 
 const childHandsImage = buildImagePrompt({ name: "จักรยานเด็ก" }, settings);
@@ -1555,6 +1590,464 @@ const genericCaneVideo = buildVideoPrompt(
 check("generic cane does not inherit hiking-pole scene rules", !/forest hiking trail|mountain trailhead|trekking path|practical hiking outfit/i.test(genericCaneVideo), genericCaneVideo);
 
 check("unboxing lifts product out and places it beside the box", /lifting it fully clear of the box rim/i.test(vidPresenterUnboxingHands) && /Release only after it contacts the table/i.test(vidPresenterUnboxingHands) && /now-empty product cavity/i.test(vidPresenterUnboxingHands) && !/Keep the product supported in the open box|no forced lifting/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
+
+// --- Watch & Wristband 1:1 Fidelity & Screenless Lock Tests ---
+check("detects watch and wristband products in Thai and English",
+  isWatchOrWristbandProduct("นาฬิกาข้อมือผู้ชาย สไตล์มินิมอล") &&
+  isWatchOrWristbandProduct("สายรัดข้อมือเพื่อสุขภาพ ซิลิโคน") &&
+  isWatchOrWristbandProduct("สายรัดข้อมือกันยุง สำหรับเด็ก") &&
+  isWatchOrWristbandProduct("สมาร์ทวอทช์ จอสัมผัส กันน้ำ") &&
+  isWatchOrWristbandProduct("สายนาฬิกา Apple Watch ซิลิโคน") &&
+  isWatchOrWristbandProduct("Whoop 4.0 fitness band") &&
+  isWatchOrWristbandProduct("smart band 8")
+);
+
+check("rejects non-watch products from watch detection",
+  !isWatchOrWristbandProduct("กระเป๋าสะพายข้าง ผู้หญิง") &&
+  !isWatchOrWristbandProduct("แก้วน้ำเก็บความเย็น") &&
+  !isWatchOrWristbandProduct("รองเท้าผ้าใบ")
+);
+
+check("detects screenless wristbands correctly",
+  isScreenlessWristbandProduct("สายรัดข้อมือเพื่อสุขภาพ ไม่มีจอ") &&
+  isScreenlessWristbandProduct("สายรัดข้อมือซิลิโคน") &&
+  isScreenlessWristbandProduct("สายรัดกันยุง") &&
+  isScreenlessWristbandProduct("Whoop 4.0 band") &&
+  !isScreenlessWristbandProduct("สมาร์ทวอทช์ จอ AMOLED") &&
+  !isScreenlessWristbandProduct("นาฬิกาข้อมือ หน้าปัดดำ")
+);
+
+check("detects standalone watch strap products",
+  isWatchStrapProduct("สายนาฬิกา Apple Watch") &&
+  isWatchStrapProduct("สายสมาร์ทวอทช์ 20mm") &&
+  !isWatchStrapProduct("นาฬิกาข้อมือ พร้อมสายหนัง")
+);
+
+const watchCategoryFidelity = buildCategoryFidelityDirection({ name: "นาฬิกาข้อมือผู้ชาย" });
+check("watch category fidelity uses WATCH_WRISTBAND_FIDELITY_DIRECTION",
+  /STRICT WATCH & WRISTBAND STRUCTURAL & DISPLAY FIDELITY LOCK/i.test(watchCategoryFidelity) &&
+  !/STRICT BAGS & ACCESSORIES/i.test(watchCategoryFidelity) &&
+  !/reproduce the bag/i.test(watchCategoryFidelity)
+);
+
+const screenlessFidelity = buildCategoryFidelityDirection({ name: "สายรัดข้อมือซิลิโคน ไม่มีจอ" });
+check("screenless wristband includes strict no-screen mandate in fidelity direction",
+  /STRICT WATCH & WRISTBAND STRUCTURAL & DISPLAY FIDELITY LOCK/i.test(screenlessFidelity) &&
+  /STRICT NO-SCREEN MANDATE/i.test(screenlessFidelity) &&
+  /NO digital screen, NO LCD\/OLED display, NO watch face/i.test(screenlessFidelity)
+);
+
+const screenlessWristbandImage = buildImagePrompt(
+  { name: "สายรัดข้อมือเพื่อสุขภาพ ซิลิโคน ไม่มีจอ" },
+  settings
+);
+check("screenless wristband image prompt enforces no-screen and scale locks",
+  /STRICT WATCH & WRISTBAND STRUCTURAL & DISPLAY FIDELITY LOCK/i.test(screenlessWristbandImage) &&
+  /SCREENLESS PRODUCTS \(สินค้าไม่มีจอ\)/i.test(screenlessWristbandImage) &&
+  /STRICT NO-SCREEN MANDATE/i.test(screenlessWristbandImage) &&
+  /STRICT WATCH & WRISTBAND WEARABLE SCALE LOCK/i.test(screenlessWristbandImage) &&
+  /Single full-frame (?:SCREENLESS wristband|watch\/wristband) product shot/i.test(screenlessWristbandImage) &&
+  /If the product in the reference has no screen, show NO screen/i.test(screenlessWristbandImage) &&
+  !/STRICT BAGS & ACCESSORIES/i.test(screenlessWristbandImage)
+);
+
+const analogWatchImage = buildImagePrompt(
+  { name: "นาฬิกาข้อมือผู้ชาย หน้าปัดเข็ม สายหนังแท้" },
+  settings
+);
+check("analog watch image prompt enforces analog dials and wrist scale",
+  /ANALOG WRISTWATCHES/i.test(analogWatchImage) &&
+  /Do NOT convert an analog watch into a digital smartwatch display/i.test(analogWatchImage) &&
+  /STRICT WATCH & WRISTBAND WEARABLE SCALE LOCK/i.test(analogWatchImage) &&
+  /Single full-frame watch\/wristband product shot/i.test(analogWatchImage)
+);
+
+const watchStrapImage = buildImagePrompt(
+  { name: "สายนาฬิกา Apple Watch ซิลิโคน 45mm" },
+  settings
+);
+check("watch strap image prompt identifies as watch strap band without phantom watch body",
+  /watch strap band/i.test(watchStrapImage) &&
+  /REPLACEMENT STRAPS \/ BANDS ALONE/i.test(watchStrapImage) &&
+  /do NOT invent or attach a phantom watch case/i.test(watchStrapImage)
+);
+
+const smartwatchImage = buildImagePrompt(
+  { name: "สมาร์ทวอทช์ หน้าจอ AMOLED โทรได้" },
+  settings
+);
+check("smartwatch image prompt enforces screen fidelity without fantasy UI",
+  /SMARTWATCHES \/ SMART BANDS WITH SCREENS/i.test(smartwatchImage) &&
+  /Do NOT invent fantasy interfaces/i.test(smartwatchImage) &&
+  /smartwatch/i.test(smartwatchImage)
+);
+
+const watchVideoPrompt = buildVideoPrompt(
+  { name: "สายรัดข้อมือสุขภาพ ซิลิโคน" },
+  settings
+);
+check("watch video prompt includes WATCH_WRISTBAND_FIDELITY_DIRECTION",
+  /STRICT WATCH & WRISTBAND STRUCTURAL & DISPLAY FIDELITY LOCK/i.test(watchVideoPrompt) &&
+  /SCREENLESS PRODUCTS/i.test(watchVideoPrompt)
+);
+
+const wearableWatchVideo = buildVideoPrompt(
+  { name: "นาฬิกาข้อมือผู้ชาย" },
+  { ...settings, presenter: "wearable_crop" }
+);
+check("wearable crop frames watches on wrist/forearm",
+  /wrist-and-hand or forearm crop/i.test(wearableWatchVideo),
+  wearableWatchVideo
+);
+
+const userLoopSmartbandProduct = {
+  name: "NEW! Smartband ใหม่! LOOP Curry สี limited ตรวจคลื่นไฟฟ้าหัวใจ (ECG)ตรวจความดันเลือด อัตราการเต้นหัวใจและอุณหภูมิร่างกายตลอด 24 ชม. กันน้ำ IPX8 ตัวเรือนโลหะ โหมดกีฬาหลากหลาย การดูแลแบบระยะไกล",
+  category: "นาฬิกาและแว่นตา"
+};
+const userLoopImagePrompt = buildImagePrompt(userLoopSmartbandProduct, settings);
+check("user loop smartband title detected as watch or wristband",
+  isWatchOrWristbandProduct(`${userLoopSmartbandProduct.name} ${userLoopSmartbandProduct.category}`)
+);
+check("user loop smartband title detected as screenless wristband even with watches category",
+  isScreenlessWristbandProduct(`${userLoopSmartbandProduct.name} ${userLoopSmartbandProduct.category}`)
+);
+check("user loop image prompt places SCREENLESS_TOP_PRIORITY_DIRECTIVE at the very start",
+  userLoopImagePrompt.startsWith("🚨 CRITICAL ZERO-HALLUCINATION MANDATE (สินค้าไม่มีจอ 100%")
+);
+check("user loop image prompt overrides marketing title buzzwords in title context",
+  /CRITICAL OVERRIDE: Despite marketing words like 'Smartband', 'ECG', 'ความดันเลือด', or 'ตัวเรือนโลหะ', this physical product has NO SCREEN/i.test(userLoopImagePrompt)
+);
+check("user loop image prompt uses Single full-frame SCREENLESS wristband product shot",
+  /Single full-frame SCREENLESS wristband product shot/i.test(userLoopImagePrompt)
+);
+check("user loop image prompt explicitly forbids Apple Watch casing and display glass",
+  /NO APPLE WATCH CASING/i.test(userLoopImagePrompt) &&
+  /Do NOT turn it into a smartwatch or Apple Watch/i.test(userLoopImagePrompt)
+);
+
+// --- Still-Motion + Camera Video: In-Frame Lock, Slide & Rotate, and Top View Tests ---
+const stillMotionWristbandProduct = {
+  name: "สายรัดข้อมือเพื่อสุขภาพ ซิลิโคน ไม่มีจอ",
+  category: "นาฬิกาและแว่นตา"
+};
+const stillMotionTestSettings = {
+  ...settings,
+  videoStyle: "still-motion",
+  flowGenMode: "combined",
+  presenter: "none"
+};
+const stillMotionTestVideo = buildVideoPrompt(stillMotionWristbandProduct, stillMotionTestSettings);
+const stillMotionTestImage = buildImagePrompt(stillMotionWristbandProduct, stillMotionTestSettings);
+
+check("still-motion video prompt enforces zero out-of-frame drift and in-frame lock",
+  /CRITICAL IN-FRAME LOCK — ZERO OUT-OF-FRAME DRIFT/i.test(stillMotionTestVideo) &&
+  /อย่าให้สินค้าหลุดออกจากจอหลัก/i.test(stillMotionTestVideo) &&
+  /100% inside the vertical 9:16 frame at all times/i.test(stillMotionTestVideo) &&
+  /Do not let the product slide, drift, or slip out of the frame borders/i.test(stillMotionTestVideo)
+);
+
+check("still-motion video prompt uses fixed-angle slider without scene changes or transition effects",
+  /ภาพสไลด์เลื่อนกล้องมุมเดิม เทคเดียวต่อเนื่อง ไม่เปลี่ยนซีน และไม่มีเอฟเฟกต์เปลี่ยนซีน/i.test(stillMotionTestVideo) &&
+  /CONTINUOUS FIXED-ANGLE SLIDER, ZERO SCENE CHANGES, NO TRANSITION EFFECTS/i.test(stillMotionTestVideo) &&
+  /อย่าเปลี่ยนซีน/i.test(stillMotionTestVideo) &&
+  /ใช้มุมเดิมตลอดคลิป ไม่เปลี่ยนมุมมอง/i.test(stillMotionTestVideo) &&
+  /product remains anchored dead-center/i.test(stillMotionTestVideo)
+);
+
+check("still-motion video prompt supports top view / elevated flat-lay perspective",
+  /TOP VIEW \/ ELEVATED FLAT-LAY PERSPECTIVE/i.test(stillMotionTestVideo) &&
+  /เน้นมุมมองด้านบน Top View/i.test(stillMotionTestVideo) &&
+  /elevated 45° to 90° top-down flat-lay angle/i.test(stillMotionTestVideo)
+);
+
+check("still-motion video prompt enforces zero foreground obstruction and camera walk/orbit motion",
+  /STRICT ZERO FOREGROUND OBSTRUCTIONS/i.test(stillMotionTestVideo) &&
+  /ห้ามมีสิ่งใดเลื่อนตัดหน้ากล้องเด็ดขาด/i.test(stillMotionTestVideo) &&
+  /NO blurry wipes/i.test(stillMotionTestVideo) &&
+  /เดินเข้า-ออก/i.test(stillMotionTestVideo) &&
+  /แพนซ้ายขวาพร้อมหมุนโค้ง ล็อกสินค้าให้อยู่ตรงกลางจอเป๊ะๆ/i.test(stillMotionTestVideo)
+);
+
+check("still-motion video prompt automatically includes 45° orbit, playful zoom, and upbeat fun music by default",
+  /45° PRODUCT ORBIT SHOT/i.test(stillMotionTestVideo) &&
+  /PLAYFUL ZOOM IN & OUT/i.test(stillMotionTestVideo) &&
+  /ซูม in-out สนุกๆ/i.test(stillMotionTestVideo) &&
+  /UPBEAT FUN SOUNDTRACK/i.test(stillMotionTestVideo) &&
+  /เพลงสนุกๆ จังหวะสนุกสนาน/i.test(stillMotionTestVideo)
+);
+
+check("still-motion still image prompt enforces in-frame safe margin and top view",
+  /CRITICAL IN-FRAME LOCK — ZERO OUT-OF-FRAME DRIFT/i.test(stillMotionTestImage) &&
+  /15–25% safe margin\/padding from all four borders/i.test(stillMotionTestImage) &&
+  /TOP VIEW \/ ELEVATED FLAT-LAY PERSPECTIVE/i.test(stillMotionTestImage)
+);
+
+const topViewFramingSettings = {
+  ...settings,
+  cameraFraming: "top_view",
+  presenter: "none"
+};
+const topViewFramingImage = buildImagePrompt({ name: "แก้วน้ำสแตนเลส" }, topViewFramingSettings);
+check("explicit top_view camera framing applies to still image without presenter",
+  /CAMERA FRAMING & ANGLE LOCK — TOP VIEW \/ FLAT LAY/i.test(topViewFramingImage) &&
+  /มุมมองด้านบน/i.test(topViewFramingImage) &&
+  /Overhead top-down camera angle/i.test(topViewFramingImage)
+);
+
+const slideRotateSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "woman",
+  cameraMovement: "Slide & Rotate"
+};
+const slideRotateVideo = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้า" }, slideRotateSettings);
+check("explicit Slide & Rotate camera movement applies in-frame lock to video prompt",
+  /SLIDE & ROTATE WITH IN-FRAME LOCK/i.test(slideRotateVideo) &&
+  /หมุนกล้องเลื่อนและหมุนรอบสินค้า/i.test(slideRotateVideo) &&
+  /Zero out-of-frame drift/i.test(slideRotateVideo)
+);
+
+const topViewMovementSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "woman",
+  cameraMovement: "Top View Slide & Rotate"
+};
+const topViewMovementVideo = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้า" }, topViewMovementSettings);
+check("explicit Top View Slide & Rotate camera movement applies overhead orbit to video prompt",
+  /TOP-VIEW SLIDE & ORBIT/i.test(topViewMovementVideo) &&
+  /หมุนกล้องเลื่อนและหมุนมุมมองด้านบน/i.test(topViewMovementVideo) &&
+  /Overhead perspective/i.test(topViewMovementVideo)
+);
+
+const topViewOrbitWalkSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "none",
+  cameraMovement: "Top View Orbit & Walk"
+};
+const topViewOrbitWalkVideo = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้า" }, topViewOrbitWalkSettings);
+check("explicit Top View Orbit & Walk camera movement applies top-down walk and orbit with center lock",
+  /ELEVATED TOP-DOWN WALK & ORBIT WITH ZERO FOREGROUND OBSTRUCTIONS/i.test(topViewOrbitWalkVideo) &&
+  /กล้องถ่ายจากด้านบน/i.test(topViewOrbitWalkVideo) &&
+  /STRICT ZERO FOREGROUND OBSTRUCTIONS/i.test(topViewOrbitWalkVideo) &&
+  /เดินเข้า/i.test(topViewOrbitWalkVideo) &&
+  /ล็อกสินค้า/i.test(topViewOrbitWalkVideo)
+);
+
+const orbit45Settings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "none",
+  cameraMovement: "45° Product Orbit Shot"
+};
+const orbit45Video = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้า" }, orbit45Settings);
+check("explicit 45° Product Orbit Shot camera movement applies 45-degree angle, motorized curved arc and center lock",
+  /45° PRODUCT ORBIT SHOT/i.test(orbit45Video) &&
+  /ELEVATED 45-DEGREE PERSPECTIVE/i.test(orbit45Video) &&
+  /SMOOTH MOTORIZED ORBITAL ARC/i.test(orbit45Video) &&
+  /OPTICAL POINT-OF-INTEREST \(POI\) CENTER LOCK/i.test(orbit45Video) &&
+  /STRICT ZERO FOREGROUND OBSTRUCTIONS/i.test(orbit45Video)
+);
+
+const playfulZoomSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "none",
+  cameraMovement: "Playful Zoom In & Out"
+};
+const playfulZoomVideo = buildVideoPrompt({ name: "ลิปสติก" }, playfulZoomSettings);
+check("explicit Playful Zoom In & Out camera movement applies rhythmic zoom and upbeat soundtrack",
+  /DYNAMIC PLAYFUL ZOOM IN & OUT/i.test(playfulZoomVideo) &&
+  /RHYTHMIC PUSH IN & PULL BACK/i.test(playfulZoomVideo) &&
+  /OPTICAL POI CENTER LOCK/i.test(playfulZoomVideo) &&
+  /STRICT ZERO FOREGROUND OBSTRUCTIONS/i.test(playfulZoomVideo) &&
+  /UPBEAT ENERGETIC SOUNDTRACK/i.test(playfulZoomVideo)
+);
+
+const funMusicSettings = {
+  ...settings,
+  audioMode: "music_fun"
+};
+const funMusicVideo = buildVideoPrompt({ name: "กระเป๋าสะพาย" }, funMusicSettings);
+check("explicit music_fun audio mode applies upbeat fun instrumental music direction",
+  /AUDIO MODE — INSTRUMENTAL MUSIC ONLY/i.test(funMusicVideo) &&
+  /UPBEAT FUN INSTRUMENTAL MUSIC/i.test(funMusicVideo) &&
+  /เพลงสนุกๆ จังหวะสดใส สนุกสนาน/i.test(funMusicVideo)
+);
+
+const zoomAngleMovementSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "woman",
+  cameraMovement: "Zoom & Angle Transition"
+};
+const zoomAngleMovementVideo = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้า" }, zoomAngleMovementSettings);
+check("explicit Zoom & Angle Transition camera movement applies dynamic zoom and angle shift to video prompt",
+  /ZOOM IN\/OUT & ANGLE TRANSITION/i.test(zoomAngleMovementVideo) &&
+  /ซูมเข้าออกและเปลี่ยนมุมมอง/i.test(zoomAngleMovementVideo) &&
+  /Smooth push in \(zoom in\)/i.test(zoomAngleMovementVideo) &&
+  /pull back \(zoom out\)/i.test(zoomAngleMovementVideo)
+);
+
+const sliderSameAngleSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "none",
+  cameraMovement: "Slider Same Angle"
+};
+const sliderSameAngleVideo = buildVideoPrompt({ name: "แหวนเงินแท้" }, sliderSameAngleSettings);
+check("explicit Slider Same Angle camera movement applies fixed angle slider with zero transitions",
+  /FIXED-ANGLE SLIDER — NO SCENE CHANGE & NO TRANSITIONS/i.test(sliderSameAngleVideo) &&
+  /ภาพสไลด์ เลื่อนกล้องมุมเดิม เทคเดียวไม่เปลี่ยนซีน ไม่มีเอฟเฟกต์เปลี่ยนฉาก/i.test(sliderSameAngleVideo) &&
+  /EXACT SAME camera angle/i.test(sliderSameAngleVideo) &&
+  /NO transition effects/i.test(sliderSameAngleVideo)
+);
+
+check("resolveTransitionDirection correctly resolves None and Fade",
+  /NO TRANSITION EFFECTS & ZERO SCENE CUTS/i.test(resolveTransitionDirection("None")) &&
+  /ไม่มีเอฟเฟกต์เปลี่ยนซีน/i.test(resolveTransitionDirection("None")) &&
+  /TRANSITION EFFECT — SEAMLESS FADE/i.test(resolveTransitionDirection("Fade")) &&
+  /เฟดข้ามภาพอย่างนุ่มนวล/i.test(resolveTransitionDirection("Fade"))
+);
+
+const fadeTransitionSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "woman",
+  transition: "Fade"
+};
+const fadeTransitionVideo = buildVideoPrompt({ name: "ลิปสติก" }, fadeTransitionSettings);
+check("explicit Fade transition adds fade direction to multi-scene video prompt",
+  /TRANSITION EFFECT — SEAMLESS FADE \/ CROSS-DISSOLVE/i.test(fadeTransitionVideo) &&
+  /เฟดข้ามภาพอย่างนุ่มนวล/i.test(fadeTransitionVideo)
+);
+
+const noneTransitionSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "woman",
+  transition: "None"
+};
+const noneTransitionVideo = buildVideoPrompt({ name: "ลิปสติก" }, noneTransitionSettings);
+check("explicit None transition adds zero scene cuts and no transitions to video prompt",
+  /NO TRANSITION EFFECTS & ZERO SCENE CUTS/i.test(noneTransitionVideo) &&
+  /ไม่มีเอฟเฟกต์เปลี่ยนซีน/i.test(noneTransitionVideo)
+);
+
+const sliderFadeSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "none",
+  cameraMovement: "Slider Same Angle & Fade"
+};
+const sliderFadeVideo = buildVideoPrompt({ name: "สร้อยคอทองคำ" }, sliderFadeSettings);
+check("explicit Slider Same Angle & Fade applies fixed angle slider with fade effect",
+  /FIXED-ANGLE SLIDER WITH FADE EFFECT/i.test(sliderFadeVideo) &&
+  /ภาพสไลด์ เลื่อนกล้องมุมเดิม ไม่เปลี่ยนซีน \+ เอฟเฟกต์เฟด/i.test(sliderFadeVideo) &&
+  /EXACT SAME camera angle/i.test(sliderFadeVideo)
+);
+
+const topViewFramingVideoSettings = {
+  ...settings,
+  videoStyle: "review",
+  presenter: "none",
+  cameraFraming: "top_view"
+};
+const topViewFramingVideo = buildVideoPrompt({ name: "คีย์บอร์ดไร้สาย" }, topViewFramingVideoSettings);
+check("cameraFraming top_view applies overhead angle and flat lay framing lock",
+  /CAMERA FRAMING & ANGLE LOCK — TOP VIEW \/ FLAT LAY/i.test(topViewFramingVideo) &&
+  /Overhead top-down camera angle/i.test(topViewFramingVideo)
+);
+
+const dressHandsOnlyVideo = buildVideoPrompt(
+  { name: "ชุดเดรสออกงาน แขนกุด", category: "เดรสแฟชั่น" },
+  { ...settings, videoStyle: "hands-only" }
+);
+check("dress in hands-only mode starts flat-lay first then picks up",
+  /Scene 1 \(Flat-lay Lay Flat\)[\s\S]*neatly laid flat or placed down/i.test(dressHandsOnlyVideo) &&
+  /Scene 2 \(Pick Up & Lift\)[\s\S]*slender female hands gently pick up and lift/i.test(dressHandsOnlyVideo)
+);
+
+const pantsHandsOnlyVideo = buildVideoPrompt(
+  { name: "กางเกงยีนส์ขายาว ทรงกระบอก", category: "กางเกง" },
+  { ...settings, videoStyle: "hands-only" }
+);
+check("pants in hands-only mode starts flat-lay first then picks up",
+  /Scene 1 \(Flat-lay Lay Flat\)[\s\S]*neatly laid flat or placed down/i.test(pantsHandsOnlyVideo) &&
+  /Scene 2 \(Pick Up & Lift\)[\s\S]*slender female hands gently pick up and lift/i.test(pantsHandsOnlyVideo)
+);
+
+// Minimalist Studio location tests — Aesthetic editorial set with ZERO visible lights / studio rigs
+check("isMinimalistStudioLocation identifies Studio Minimal variants",
+  isMinimalistStudioLocation("Studio Minimal") &&
+  isMinimalistStudioLocation("minimalist studio") &&
+  isMinimalistStudioLocation("สตูดิโอมินิมอล") &&
+  isMinimalistStudioLocation("สตูมินิมอล") &&
+  isMinimalistStudioLocation("Clean Modern Studio") &&
+  !isMinimalistStudioLocation("Modern Living Room") &&
+  !isMinimalistStudioLocation("Urban Street")
+);
+
+const studioMinimalProduct = {
+  name: "ขวดเซรั่มบำรุงผิวหน้า",
+  category: "สกินแคร์"
+};
+
+const studioMinimalVideo = buildVideoPrompt(studioMinimalProduct, {
+  ...settings,
+  location: "Studio Minimal"
+});
+
+check("studio minimal video prompt includes MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION",
+  studioMinimalVideo.includes("AESTHETIC MINIMALIST STUDIO SET — STRICTLY NO VISIBLE LIGHTS OR STUDIO RIGS")
+);
+
+check("studio minimal video prompt forbids softboxes, light stands, and studio lighting equipment",
+  /STRICT ZERO VISIBLE LIGHTS OR GEAR/i.test(studioMinimalVideo) &&
+  /NO softboxes, NO light stands/i.test(studioMinimalVideo) &&
+  /NO umbrella reflectors, NO ring lights/i.test(studioMinimalVideo) &&
+  /NO visible lamps, NO light bulbs/i.test(studioMinimalVideo)
+);
+
+check("studio minimal video scene beats specify clean backdrop and strictly no visible lights",
+  /in an aesthetic minimalist studio set \(clean architectural backdrop, strictly no visible studio lights or equipment\)/i.test(studioMinimalVideo)
+);
+
+const studioMinimalImage = buildImagePrompt(studioMinimalProduct, {
+  ...settings,
+  location: "Studio Minimal"
+});
+
+check("studio minimal image prompt includes MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION",
+  studioMinimalImage.includes("AESTHETIC MINIMALIST STUDIO SET — STRICTLY NO VISIBLE LIGHTS OR STUDIO RIGS")
+);
+
+check("studio minimal image prompt forbids lighting equipment and emphasizes editorial wabi-sabi/travertine aesthetic",
+  /NO softboxes, NO light stands/i.test(studioMinimalImage) &&
+  /travertine stone plinth|limewash plaster/i.test(studioMinimalImage)
+);
+
+const studioMinimalClothingVideo = buildVideoPrompt(
+  { name: "เสื้อเชิ้ตแขนยาว ผ้าลินิน", category: "เสื้อผ้าแฟชั่น" },
+  { ...settings, location: "Studio Minimal", videoStyle: "hands-only" }
+);
+
+check("studio minimal hands-only clothing video includes MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION",
+  studioMinimalClothingVideo.includes("AESTHETIC MINIMALIST STUDIO SET — STRICTLY NO VISIBLE LIGHTS OR STUDIO RIGS") &&
+  /in an aesthetic minimalist studio set \(clean architectural backdrop, strictly no visible studio lights or equipment\)/i.test(studioMinimalClothingVideo)
+);
+
+const studioMinimalStillMotion = buildVideoPrompt(studioMinimalProduct, {
+  ...settings,
+  location: "Studio Minimal",
+  videoStyle: "still-motion"
+});
+
+check("studio minimal still-motion video includes MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION",
+  studioMinimalStillMotion.includes("AESTHETIC MINIMALIST STUDIO SET — STRICTLY NO VISIBLE LIGHTS OR STUDIO RIGS")
+);
+
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));

@@ -125,7 +125,8 @@
                 <select id="presenter" class="select">
                   <option value="Auto">อัตโนมัติ</option>
                   <option value="none">ไม่มีคน</option>
-                  <option value="unboxing_hands">ผู้พรีเซนต์แกะกล่อง (เห็นเฉพาะมือ)</option>
+                  <option value="hands_only">เฉพาะมือจับ (มือผู้หญิง)</option>
+                  <option value="unboxing_hands">ผู้พรีเซนต์แกะกล่อง (เห็นเฉพาะมือผู้หญิง)</option>
                   <option value="woman">ผู้หญิง</option>
                   <option value="man">ผู้ชาย</option>
                   <option value="child">เด็กน่ารัก (Child, อนุบาล 4-6 ปี)</option>
@@ -154,6 +155,7 @@
                 <select id="audio-mode" class="select">
                   <option value="voiceover">เสียงคนพากย์</option>
                   <option value="music_only">ดนตรีประกอบอย่างเดียว</option>
+                  <option value="music_fun">เพลงสนุกๆ จังหวะสนุกสนาน (Upbeat Music)</option>
                 </select>
               </label>
             </div>
@@ -167,7 +169,7 @@
                 <select id="location" class="select">
                   <option value="Auto">อัตโนมัติ</option>
                   <option value="Modern Living Room">ห้องนั่งเล่นโมเดิร์น</option>
-                  <option value="Studio Minimal">สตูดิโอมินิมอล</option>
+                  <option value="Studio Minimal">สตูดิโอมินิมอล (ฉากสวย คลีนตา ไม่มีอุปกรณ์ไฟ)</option>
                   <option value="Warehouse / Stockroom">คลังสินค้า / ห้องสต็อก</option>
                   <option value="Urban Street">ถนนในเมือง</option>
                   <option value="Nature / Outdoor">ธรรมชาติ / กลางแจ้ง</option>
@@ -182,8 +184,16 @@
                 <span class="field__label">มุมกล้อง</span>
                 <select id="camera-movement" class="select">
                   <option value="Auto">อัตโนมัติ</option>
+                  <option value="45° Product Orbit Shot">45° Product Orbit Shot (หมุนวนรอบสินค้ามุม 45° สไตล์โฆษณาพรีเมียม)</option>
+                  <option value="Playful Zoom In & Out">ซูม In-Out สนุกๆ (จังหวะเร้าใจ พร้อมเพลงสนุกๆ)</option>
+                  <option value="Top View Orbit & Walk">ถ่ายจากด้านบน เดินเข้าออก-ซ้ายขวา-แพนหมุน (สินค้าอยู่ตรงกลาง ไม่มีอะไรบัง)</option>
+                  <option value="Orbit / 360°">หมุนรอบสินค้า 360° (Orbit Shot / Orbit Camera Move)</option>
+                  <option value="Slider Same Angle">ภาพสไลด์ มุมเดิมไม่เปลี่ยนซีน (ไม่มีเอฟเฟกต์ตัดซีน)</option>
+                  <option value="Slider Same Angle & Fade">ภาพสไลด์ มุมเดิมไม่เปลี่ยนซีน + เฟด</option>
+                  <option value="Zoom & Angle Transition">ซูมเข้าออก + เปลี่ยนมุม (กันภาพนิ่งเกินไป)</option>
+                  <option value="Slide & Rotate">เลื่อนและหมุน (ล็อกกลางจอไม่หลุดเฟรม)</option>
+                  <option value="Top View Slide & Rotate">Top View เลื่อนและหมุน (มุมมองด้านบน)</option>
                   <option value="Slow Zoom In">ซูมเข้าช้าๆ</option>
-                  <option value="Orbit / 360°">หมุนรอบสินค้า 360</option>
                   <option value="Pan Left to Right">แพนซ้ายไปขวา</option>
                   <option value="Static/Still">กล้องนิ่ง</option>
                   <option value="Handheld Shake">ถือกล้องถ่าย</option>
@@ -191,16 +201,30 @@
                 </select>
               </label>
               <label class="field">
+                <span class="field__label">การเปลี่ยนฉาก / เอฟเฟกต์</span>
+                <select id="transition" class="select">
+                  <option value="Auto">อัตโนมัติ</option>
+                  <option value="None">ไม่มีเอฟเฟกต์เปลี่ยนซีน (เทคเดียวต่อเนื่อง ไม่ตัดภาพ)</option>
+                  <option value="Fade">เอฟเฟกต์เฟด (Fade / Cross-Dissolve)</option>
+                  <option value="Cut">Cut ตรง (Instant Cut)</option>
+                  <option value="Zoom Transition">ซูมเปลี่ยนฉาก (Zoom Transition)</option>
+                  <option value="Swipe">เลื่อนเปลี่ยนฉาก (Swipe / Wipe)</option>
+                  <option value="Whip Pan">วิปแพนเร็ว (Whip Pan)</option>
+                </select>
+                <span class="field__hint">เลือก “ไม่มีเอฟเฟกต์เปลี่ยนซีน” เพื่อให้วิดีโอเป็นเทคเดียวต่อเนื่อง ไม่ตัดภาพ</span>
+              </label>
+              <label class="field">
                 <span class="field__label">ระยะกล้อง / การจัดเฟรม</span>
                 <select id="camera-framing" class="select">
                   <option value="Auto">อัตโนมัติ</option>
+                  <option value="top_view">Top View / Flat Lay (มุมมองด้านบน ท็อปวิว)</option>
                   <option value="full_body">เต็มตัว (หัวจรดเท้า)</option>
                   <option value="lower_body">ครึ่งตัวล่าง (เอวถึงเท้า)</option>
                   <option value="half_body">ครึ่งตัว (หัวถึงเอว)</option>
                   <option value="medium_shot">ระยะกลาง (หัวถึงอก)</option>
                   <option value="close_up">ใกล้ (ใบหน้าและสินค้า)</option>
                 </select>
-                <span class="field__hint">เลือก “ครึ่งตัวล่าง” เพื่อโชว์กางเกงหรือกระโปรงตั้งแต่เอวถึงเท้า</span>
+                <span class="field__hint">เลือก “Top View” สำหรับภาพมุมมองด้านบน หรือ “ครึ่งตัวล่าง” สำหรับกางเกง/กระโปรง</span>
               </label>
               <label class="field">
                 <span class="field__label">ลักษณะการใช้งานสินค้า</span>

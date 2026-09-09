@@ -59,6 +59,15 @@ chrome.action.onClicked.addListener(async (tab) => {
   await openCreatorTab();
 });
 
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tab?.url && tab.url.includes("flow.google.com")) {
+    const info = extractFlowUserInfo(tab.url);
+    if (info) {
+      chrome.storage.local.set({ flowUserInfo: info }).catch(() => {});
+    }
+  }
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   routeMessage(message, sender)
     .then((payload) => sendResponse({ ok: true, ...payload }))
@@ -546,16 +555,61 @@ async function openCreatorTab() {
   return { tabId: tab.id };
 }
 
+function extractFlowUserInfo(url = "") {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.includes("flow.google.com")) return null;
+    const uMatch = parsed.pathname.match(/^(\/u\/\d+)/);
+    const authUser = parsed.searchParams.get("authuser");
+    if (uMatch || authUser) {
+      return {
+        pathPrefix: uMatch ? uMatch[1] : "",
+        authUser: authUser || ""
+      };
+    }
+  } catch {}
+  return null;
+}
+
+function buildFlowHomeUrl(userInfo) {
+  const base = "https://flow.google.com";
+  const path = userInfo?.pathPrefix ? `${userInfo.pathPrefix}/` : "/";
+  const url = new URL(path, base);
+  if (userInfo?.authUser) {
+    url.searchParams.set("authuser", userInfo.authUser);
+  }
+  return url.toString();
+}
+
+async function resolveFlowHomeUrl(currentUrl = "") {
+  let userInfo = extractFlowUserInfo(currentUrl);
+  if (userInfo) {
+    try {
+      await chrome.storage.local.set({ flowUserInfo: userInfo });
+    } catch {}
+    return buildFlowHomeUrl(userInfo);
+  }
+
+  try {
+    const stored = await chrome.storage.local.get("flowUserInfo");
+    if (stored?.flowUserInfo?.pathPrefix || stored?.flowUserInfo?.authUser) {
+      return buildFlowHomeUrl(stored.flowUserInfo);
+    }
+  } catch {}
+
+  return "https://flow.google.com/";
+}
+
 async function openGoogleFlow(payload) {
   const runVersion = flowStopVersion;
   const flowSettings = await getFlowSettings();
   const reuseProject = flowSettings.reuseProject === true;
-  const FLOW_URL = "https://flow.google.com/";
   const existingTabs = await queryFlowTabs();
   let tab;
   let needNavigate = true;
   let needReload = false;
   const { settings = {} } = await chrome.storage.sync.get("settings");
+  const targetHomeUrl = await resolveFlowHomeUrl(existingTabs[0]?.url || "");
 
   if (existingTabs.length > 0) {
     tab = existingTabs[0];
@@ -572,7 +626,7 @@ async function openGoogleFlow(payload) {
       needReload = false;
     }
   } else {
-    tab = await chrome.tabs.create({ url: FLOW_URL, active: true });
+    tab = await chrome.tabs.create({ url: targetHomeUrl, active: true });
     try {
       await chrome.windows.update(tab.windowId, { focused: true });
     } catch { }
@@ -581,7 +635,7 @@ async function openGoogleFlow(payload) {
   }
 
   if (needNavigate) {
-    await chrome.tabs.update(tab.id, { url: FLOW_URL });
+    await chrome.tabs.update(tab.id, { url: targetHomeUrl });
     await waitForTabComplete(tab.id);
   } else if (needReload) {
     await chrome.tabs.reload(tab.id);
@@ -667,7 +721,8 @@ async function handleFlowPipelineDone(payload = {}) {
 async function prepareFlowProject(tabId, { forceNew = false } = {}) {
   let current = await chrome.tabs.get(tabId);
   if (forceNew && isFlowProjectUrl(current.url || "")) {
-    await chrome.tabs.update(tabId, { url: "https://flow.google.com/" });
+    const homeUrl = await resolveFlowHomeUrl(current.url || "");
+    await chrome.tabs.update(tabId, { url: homeUrl });
     await waitForTabComplete(tabId);
     await ensureFlowContentScript(tabId);
     current = await chrome.tabs.get(tabId);
@@ -695,7 +750,7 @@ async function prepareFlowProject(tabId, { forceNew = false } = {}) {
 }
 
 function isFlowProjectUrl(url = "") {
-  return /^https:\/\/flow\.google\.com\/(?:u\/\d+\/)?project(?:\/|$)/i.test(url);
+  return /^https:\/\/flow\.google\.com\/(?:u\/\d+\/)?project(?:\/|$|\?)/i.test(url);
 }
 
 async function getFlowSettings() {

@@ -1,6 +1,14 @@
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
-import { normalizeHashtags, THAI_VOICE_DIRECTION } from "../modules/prompt-builder.js";
+import {
+  normalizeHashtags,
+  THAI_VOICE_DIRECTION,
+  isWatchOrWristbandProduct,
+  isScreenlessWristbandProduct,
+  WATCH_WRISTBAND_FIDELITY_DIRECTION,
+  SCREENLESS_WRISTBAND_MANDATE,
+  SCREENLESS_TOP_PRIORITY_DIRECTIVE
+} from "../modules/prompt-builder.js";
 import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
 
 const CUSTOM_VISUAL_STYLES = [
@@ -476,7 +484,9 @@ async function startPipeline() {
       const styleFragment = styleObj ? styleObj.fragment : "";
       const audioDirection = flowMode === "image"
         ? ""
-        : audioMode === "music_only"
+        : audioMode === "music_fun"
+          ? "AUDIO MODE — UPBEAT FUN INSTRUMENTAL MUSIC: Use upbeat, lively, and energetic commercial background music with a catchy bounce. No spoken narration, voiceover, dialogue, presenter speech, singing, lip-sync, or other vocal audio."
+          : audioMode === "music_only"
           ? "AUDIO MODE — INSTRUMENTAL MUSIC ONLY: Use only clean instrumental background music. No spoken narration, voiceover, dialogue, presenter speech, singing, lip-sync, or other vocal audio."
           : "AUDIO MODE — NATURAL THAI VOICEOVER: Use concise, natural Thai spoken narration with a native Thai-speaking voice. Keep the voice clear, relevant, and non-repetitive; do not add subtitles unless requested.";
 
@@ -486,14 +496,22 @@ async function startPipeline() {
       const uploadedProductReferenceLock = selectedImageBase64
         ? "UPLOADED PRODUCT REFERENCE IS AUTHORITATIVE: The uploaded product image is the single source of truth for the exact item. Preserve its exact product type, silhouette, geometry, proportions, materials, colors, pattern, packaging, labels, and visible design. If the free-form prompt, caption, or visual style conflicts with the uploaded product image, follow the uploaded image and do not substitute, redesign, or replace the product. This lock is instruction context only and must not appear as visible text."
         : "";
-      let finalPrompt = [CUSTOM_SCENE_SCALE_LOCK, audioDirection, uploadedProductReferenceLock, prompt, captionProductContext].filter(Boolean).join("\n");
+      const fullCustomText = `${prompt} ${caption}`;
+      const isWatchOrBand = isWatchOrWristbandProduct(fullCustomText);
+      const isScreenless = isScreenlessWristbandProduct(fullCustomText);
+      const watchFidelity = isWatchOrBand
+        ? `\n${WATCH_WRISTBAND_FIDELITY_DIRECTION}${isScreenless ? `\n${SCREENLESS_TOP_PRIORITY_DIRECTIVE}\n${SCREENLESS_WRISTBAND_MANDATE}` : ""}`
+        : "";
+      const screenlessTop = isScreenless ? SCREENLESS_TOP_PRIORITY_DIRECTIVE : "";
+
+      let finalPrompt = [screenlessTop, CUSTOM_SCENE_SCALE_LOCK, audioDirection, uploadedProductReferenceLock, prompt, captionProductContext].filter(Boolean).join("\n");
       if (styleFragment) {
         finalPrompt = `${finalPrompt}\nVisual style: ${styleFragment}.`;
       }
       if (selectedImageBase64) {
         finalPrompt = `${finalPrompt}
 STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, logos, labels, and parts. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.
-APPAREL PERSON SAFETY: If the reference image shows clothing worn by a person, treat only the garment/outfit as the product. Preserve the garment design, fit, colors, pattern, and fabric details, but use a new generic fictional adult model if a person is needed.
+APPAREL PERSON SAFETY: If the reference image shows clothing worn by a person, treat only the garment/outfit as the product. Preserve the garment design, fit, colors, pattern, and fabric details, but use a new generic fictional adult model if a person is needed.${watchFidelity}
 Reproduce the printed surface artwork, motifs, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace. For videos, this pattern must remain static on the product surface.
 EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference. Do NOT shift, alter, recolor, or replace original colors or graphics under any lighting or environment effect.
 ${CUSTOM_COMPLEX_PATTERN_REFERENCE_LOCK}

@@ -15,6 +15,45 @@ const POLL = 500;
 const MAX_WAIT = 30000;
 const FLOW_HOME = "https://flow.google.com/";
 
+function extractFlowUserInfo(url = "") {
+    try {
+        const parsed = new URL(url);
+        if (!parsed.hostname.includes("flow.google.com")) return null;
+        const uMatch = parsed.pathname.match(/^(\/u\/\d+)/);
+        const authUser = parsed.searchParams.get("authuser");
+        if (uMatch || authUser) {
+            return {
+                pathPrefix: uMatch ? uMatch[1] : "",
+                authUser: authUser || ""
+            };
+        }
+    } catch {}
+    return null;
+}
+
+function buildFlowHomeUrl(userInfo) {
+    const base = "https://flow.google.com";
+    const path = userInfo?.pathPrefix ? `${userInfo.pathPrefix}/` : "/";
+    const url = new URL(path, base);
+    if (userInfo?.authUser) {
+        url.searchParams.set("authuser", userInfo.authUser);
+    }
+    return url.toString();
+}
+
+function getFlowHomeUrl(url = location.href) {
+    const info = extractFlowUserInfo(url);
+    if (info) return buildFlowHomeUrl(info);
+    return FLOW_HOME;
+}
+
+try {
+    const _currentInfo = extractFlowUserInfo(location.href);
+    if (_currentInfo) {
+        chrome.storage?.local?.set({ flowUserInfo: _currentInfo }).catch(() => {});
+    }
+} catch {}
+
 const PROMPT_SELECTORS = [
     'div[role="textbox"][contenteditable="true"][data-slate-editor="true"]',
     '[data-slate-editor="true"]',
@@ -510,7 +549,7 @@ function waitEl(sel, ms = MAX_WAIT) {
         }, POLL);
     });
 }
-function isProjectUrl(href) { return /^https:\/\/flow\.google\.com\/(?:u\/\d+\/)?project(?:\/|$)/i.test(href); }
+function isProjectUrl(href) { return /^https:\/\/flow\.google\.com\/(?:u\/\d+\/)?project(?:\/|$|\?)/i.test(href); }
 function isHomeUrl(href) { return /^https:\/\/flow\.google\.com\/(?:u\/\d+\/)?(?:[?#].*)?$/i.test(href); }
 function waitProjectUrl(ms = MAX_WAIT) {
     return new Promise(res => {
@@ -1223,6 +1262,13 @@ async function ensureProjectPage(isResume = false) {
         }
         const action = findNewProjectButton();
         if (action) {
+            const userInfo = extractFlowUserInfo(location.href);
+            if (userInfo?.pathPrefix && action.tagName === "A") {
+                const rawHref = action.getAttribute("href") || "";
+                if (rawHref.startsWith("/project") && !rawHref.startsWith(userInfo.pathPrefix)) {
+                    action.setAttribute("href", `${userInfo.pathPrefix}${rawHref}`);
+                }
+            }
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
             action.scrollIntoView({ block: "center", inline: "center" });
             pointerClick(action);
@@ -1235,7 +1281,7 @@ async function ensureProjectPage(isResume = false) {
 
     if (!isHomeUrl(location.href)) {
         log("navigate ไป Flow...");
-        location.href = FLOW_HOME;
+        location.href = getFlowHomeUrl(location.href);
         return false;
     }
 
@@ -1256,7 +1302,7 @@ async function prepareFreshProject() {
             await sleep(2200);
         } else {
             log("ไม่พบปุ่มย้อนกลับของ project เดิม → เปิดหน้า Flow ใหม่...");
-            location.href = FLOW_HOME;
+            location.href = getFlowHomeUrl(location.href);
             const deadline = Date.now() + 30000;
             while (!isHomeUrl(location.href) && Date.now() < deadline) {
                 await sleep(POLL);
@@ -1268,6 +1314,13 @@ async function prepareFreshProject() {
     for (let i = 0; i < 40; i++) {
         const action = findNewProjectButton();
         if (action) {
+            const userInfo = extractFlowUserInfo(location.href);
+            if (userInfo?.pathPrefix && action.tagName === "A") {
+                const rawHref = action.getAttribute("href") || "";
+                if (rawHref.startsWith("/project") && !rawHref.startsWith(userInfo.pathPrefix)) {
+                    action.setAttribute("href", `${userInfo.pathPrefix}${rawHref}`);
+                }
+            }
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
             action.scrollIntoView({ block: "center", inline: "center" });
             pointerClick(action);
