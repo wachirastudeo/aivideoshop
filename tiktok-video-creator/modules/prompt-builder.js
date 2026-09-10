@@ -276,7 +276,8 @@ function resolveFashionSelfiePresenter(productText, settings, autoPresenter, pro
   if (["woman", "man"].includes(settings?.presenter)) return settings.presenter;
   const textGender = detectExplicitProductGender(productText);
   const imageGender = ["man", "woman"].includes(productInfo.imageGender) ? productInfo.imageGender : "";
-  return textGender || imageGender || autoPresenter;
+  const candidate = textGender || imageGender || autoPresenter;
+  return candidate === "man" ? "man" : "woman";
 }
 
 function fashionSelfieImageDirection(presenter, settings = {}, productText = "") {
@@ -285,7 +286,7 @@ function fashionSelfieImageDirection(presenter, settings = {}, productText = "")
   if (settings?.cameraFraming === "lower_body") {
     return `LOWER-BODY GARMENT SHOWCASE MODE: Create one realistic vertical 9:16 lower-body garment photograph of a ${modelLabel} from the waist to the feet. ${framing.image} This is not a selfie: do not include a smartphone, mirror, selfie pose, hands, or face. Keep the exact lower garment as the only visual hero.`;
   }
-  return `FASHION SELFIE MODE: Create one realistic vertical 9:16 fashion photograph of a ${modelLabel} standing naturally and holding a real smartphone vertically in front of the face. ${framing.image} The smartphone must fully cover and obscure the face and facial features; do not show eyes, nose, mouth, or identifiable facial details. Keep the model modestly dressed and front-facing so the garment is easy to inspect. This is a privacy-preserving outfit showcase: no face reveal, no extra people, no text, no logos added to the phone, and no mirror selfie distortion.`;
+  return `FASHION SELFIE MODE: Create one realistic vertical 9:16 fashion photograph of a ${modelLabel} standing naturally and holding a real smartphone vertically in front of the face. ${framing.image} The model is WEARING the exact reference outfit on-body (do NOT hold the garment in hands, do NOT lay the clothes flat on the floor or surface, no review holding). The smartphone must fully cover and obscure the face and facial features; do not show eyes, nose, mouth, or identifiable facial details. Keep the model modestly dressed and front-facing so the garment is easy to inspect. This is a privacy-preserving outfit showcase: no face reveal, no extra people, no text, no logos added to the phone, and no mirror selfie distortion.`;
 }
 
 function fashionSelfieVideoDirection(presenter, settings = {}, productText = "") {
@@ -294,7 +295,7 @@ function fashionSelfieVideoDirection(presenter, settings = {}, productText = "")
   if (settings?.cameraFraming === "lower_body") {
     return `LOWER-BODY GARMENT SHOWCASE MODE: Use one consistent ${modelLabel} in a waist-to-feet lower-body garment video. ${framing.video} This is not a selfie: do not include a smartphone, mirror, selfie pose, hands, or face. Keep the exact lower garment as the only visual hero.`;
   }
-  return `FASHION SELFIE MODE — PRIVACY-PRESERVING OUTFIT SHOWCASE: Use one consistent ${modelLabel} standing still. ${framing.video} The model holds a real smartphone vertically at face height throughout the entire clip, and the phone must fully cover the face in every frame; never reveal eyes, nose, mouth, facial features, or an identifiable face. The exact reference garment is the hero: preserve its silhouette, fit, length, fabric, colors, pattern, seams, and printed artwork exactly. Keep the model front-facing, modestly dressed, and physically stable. No talking, lip-sync, waving, walking, turning around, outfit changes, extra people, mirror distortion, or added text. Use only minimal natural posture movement and a slow, subtle left-to-right smartphone-camera pan with a very small handheld micro-sway.`;
+  return `FASHION SELFIE MODE — PRIVACY-PRESERVING OUTFIT SHOWCASE: Use one consistent ${modelLabel} standing still, WEARING the exact reference outfit on-body throughout the entire video. ${framing.video} The model holds a real smartphone vertically at face height throughout the entire clip, and the phone must fully cover the face in every frame; never reveal eyes, nose, mouth, facial features, or an identifiable face. Strictly no holding the product in hands to review (review holding is for UGC mode only), no laying clothes flat on the floor. The exact reference garment is the hero: preserve its silhouette, fit, length, fabric, colors, pattern, seams, and printed artwork exactly. Keep the model front-facing, modestly dressed, and physically stable. No talking, lip-sync, waving, walking, turning around, outfit changes, extra people, mirror distortion, or added text. Use only minimal natural posture movement and a slow, subtle left-to-right smartphone-camera pan with a very small handheld micro-sway.`;
 }
 
 const FASHION_SELFIE_BACKGROUND_QUALITY_LOCK = "FASHION SELFIE BACKGROUND QUALITY LOCK: Use an elegant, believable lifestyle setting with clean architecture, soft natural daylight, subtle layered depth, a calm neutral palette, and an uncluttered floor. Keep the background beautiful but secondary to the outfit. Do not use a generic gray studio, messy bedroom, crowded street, storefront, harsh neon, random furniture, visible wall text, logos, watermark, extra people, or mirror-selfie distortion. Add only a few restrained decor details that naturally fit the garment.";
@@ -388,6 +389,14 @@ export const STRICT_ZERO_SURROUNDING_PROPS_MANDATE =
 const PRODUCT_ISOLATION_DIRECTION = "CRITICAL ISOLATION RULE — ISOLATE AND EXTRACT ONLY PRODUCT/SET: Cut out requested product/set from reference photo, ignoring original background, decorative props, and poster flavor graphics (champagne bottles, glasses, splashes). Place exact product/set into 100% NEW SCENE & BACKGROUND. STRICT RESTRICTION: Do NOT redraw, redesign, mutate, merge, omit, or alter shape, logo, patterns, branding, colors, count, or arrangement. Transfer every included piece with pixel-faithful identity.";
 
 const PRODUCT_STRUCTURE_DIRECTION = "Keep the exact visible count and arrangement of all product parts and included set pieces. Never add, remove, merge, omit, duplicate, or rearrange them.";
+export const SINGLE_HERO_PRODUCT_LOCK = "SINGLE ITEM LOCK: Unless titled as a pack, set, or dozen (ไม่ได้ระบุหลายชิ้น/ยกโหล), depict strictly ONE single product item. Forbid multiple units, color variants, or bundles.";
+
+function buildProductStructureDirection(productInfo = {}) {
+  if (isMultiItemOrBundleProduct(productInfo)) {
+    return PRODUCT_STRUCTURE_DIRECTION;
+  }
+  return "Depict strictly ONE product piece unless titled as a pack/dozen (ไม่ได้ระบุหลายชิ้น/ยกโหล). Never add, remove, merge, omit, duplicate, or rearrange parts.";
+}
 
 const SCALE_FIDELITY_DIRECTION = "Keep proportions and scale identical to reference: never stretch, squash, enlarge, or shrink it. The physical size of the product must be realistic and true-to-life compared to the environment, hands, or presenter. Do not make the product abnormally large or out-of-scale relative to the surroundings (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
 const REALISTIC_SCENE_SCALE_DIRECTION = "REALISTIC SCENE SCALE LOCK: Use real-world anchors, natural perspective, and background depth; never oversized, floating, or pasted on.";
@@ -450,6 +459,7 @@ const SHOE_STILL_REFERENCE_LOCK = "FINAL SHOE REFERENCE CHECK: Treat the referen
 const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY LOCK: Match the reference garment's type, cut, fit, length, neckline or waistband, sleeves or legs, fabric, color, print, logo, seams, pockets, and fasteners. Keep those visible design details consistent while allowing natural fabric drape and ordinary movement. Show the front design clearly and do not use a back-facing or 360-degree spin.";
 const FASHION_SELFIE_BODY_CONTINUITY_LOCK = "FASHION SELFIE COMPLETE BODY LOCK: Render exactly one anatomically complete adult model with one connected head, neck, shoulders, torso, hips, two arms, two hands, two legs, and two feet. Never erase, crop away, detach, duplicate, or deform the torso, shoulders, arms, hands, hips, legs, or feet. The phone covers only the face; it must never replace or hide the upper body. When full-body framing is required, keep the complete head-to-toe body visible and grounded in every frame.";
 const LOWER_BODY_GARMENT_CONTINUITY_LOCK = "LOWER-BODY GARMENT FRAME LOCK: Render only the natural lower body from the waist to the feet so the exact pants or skirt remains the hero. Keep the waistband, hips, full garment length, legs, and footwear anatomically connected and visible. Do not include a smartphone, mirror, selfie pose, hands, face, head, or upper torso.";
+export const FASHION_SELFIE_ON_BODY_WEAR_LOCK = "FASHION SELFIE ON-BODY WEAR LOCK: The model is WEARING the exact reference outfit/clothing directly on-body as apparel. Strictly FORBID holding the garment in hands, displaying it laid flat or folded on the floor/table, or presenting/reviewing the product by hand. The model's hands are used ONLY to hold the smartphone vertically in front of the face for the selfie. Product review holding poses are strictly prohibited (product-holding reviews are reserved for UGC mode only).";
 const FASHION_HANGER_MODEL_DIRECTION = "FASHION HANGER PRESENTER MODE: Show exactly one fictional, visibly youthful, naturally beautiful, cute, polished Thai female fashion model aged 20-25 years old with a distinctly Thai identity and a Korean-inspired K-fashion/K-beauty aesthetic: soft clean makeup, fresh luminous skin, neat modern hair, and elegant youthful styling. This is a Thai woman, not a Korean or foreign model. She stands and faces the camera directly with a fully visible fresh youthful face, clear eye contact, and a friendly confident commercial presentation. Never make the model older than 25, mature-looking, or elderly. Generate a brand-new fictional face that does not copy, match, resemble, or reproduce any face from the reference image or any uploaded model image. Do not infer identity, likeness, or facial features from the source.";
 const FASHION_HANGER_PRODUCT_ONLY_STYLE_LOCK = "FASHION HANGER PRODUCT-ONLY STYLE LOCK: Copy only the exact garment that is the product being sold. If the product is a shirt, copy only that shirt; use newly generated fashionable, simple, modest, opaque non-denim bottoms and newly generated styling. If the product is a skirt or pants, copy only that exact skirt or pants; use a newly generated fashionable, simple, modest, opaque non-denim top and newly generated styling. NO UNREQUESTED JEANS LOCK: Do not dress the model in jeans, denim pants, denim skirts, or a denim jacket when denim is not the sold product; choose tailored trousers, wide-leg trousers, a pleated midi skirt, or another polished non-denim option instead. If the sold product itself is denim, preserve only that exact product garment. Do not copy any non-product clothing, outfit combination, shoes, accessories, jewelry, hairstyle, makeup, pose, background, or overall styling from the reference image or model image. The worn garment and the hanger garment must match the product only; everything else must be an original fictional choice.";
 const FASHION_HANGER_GARMENT_PAIR_DIRECTION = "EXACT GARMENT PAIR LOCK: Create exactly two visually identical instances of the exact reference garment for this requested presentation: one instance naturally worn by the standing model and one identical instance hanging on a real clothes hanger held beside the model's torso. Both garments must match the reference type, cut, size proportions, fabric, colors, print, logo, seams, and every visible detail exactly. Do not add any third garment, alternate design, or generic substitute.";
@@ -484,7 +494,8 @@ export function isClothingProduct(text = "") {
   if (isFurnitureProduct(clean)) {
     return false;
   }
-  if (isUnderwearOrIntimateProduct(clean)) {
+  const isSportswear = /(?:ชุดออกกำลังกาย|เสื้อออกกำลังกาย|กางเกงออกกำลังกาย|ชุดกีฬา|ชุดฟิตเนส|ชุดโยคะ|activewear|sportswear|gym\s*wear|workout)/i.test(clean);
+  if (!isSportswear && isUnderwearOrIntimateProduct(clean)) {
     return false;
   }
   return /(เสื้อ(?!ใน)|กางเกง(?!ใน)|กระโปรง|ชุด(?!ชั้นใน|ว่ายน้ำ)|เดรส|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|เสื้อผ้า|แฟชั่น|เข็มขัด|หมวก|ถุงเท้า|กางเกงยีนส์|ชุดเดรส|ชุดเซ็ท|ชุดกระโปรง|ผ้าพันคอ|ผ้าคลุม|clothing|clothes|apparel|dress|shirt|tshirt|tee|pants|trousers|jacket|hoodie|skirt|outfit|garment|fashion|\bwear\b|suit|coat|\btop\b|\bbottom\b)/i.test(clean);
@@ -500,9 +511,10 @@ function isNeckScarfProduct(text = "") {
     !/(ผ้าคลุมหัว|โพกหัว|คลุมผม|ผ้าโพก|head\s*scarf|headwrap|hair\s*scarf|turban)/i.test(clean);
 }
 
-function getApparelWearDirection(text = "", selectedPresenter = "") {
+function getApparelWearDirection(text = "", selectedPresenter = "", options = {}) {
+  const isFashionSelfie = options?.isFashionSelfie === true;
   const clean = String(text || "").toLowerCase();
-  if (isUnderwearOrIntimateProduct(clean)) {
+  if (!isFashionSelfie && isUnderwearOrIntimateProduct(clean)) {
     return "INTIMATE APPAREL SAFETY: Strictly no on-body wearing of underwear, lingerie, or panties. The product must be shown laid flat on a surface or displayed neatly without a person wearing it.";
   }
   const gender = detectExplicitProductGender(clean) || (["woman", "man"].includes(selectedPresenter) ? selectedPresenter : "");
@@ -515,11 +527,15 @@ function getApparelWearDirection(text = "", selectedPresenter = "") {
   if (/(เดรส|จั๊มสูท|ชุดหมี|dress|jumpsuit|romper|one.?piece)/i.test(clean)) {
     return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference one-piece garment once as intended. Let the model choose simple shoes and accessories naturally.`;
   }
+  if (/(?:ชุดออกกำลังกาย|ชุดฟิตเนส|ชุดโยคะ|ชุดกีฬา|workout\s*set|gym\s*set|activewear\s*set|athletic\s*set|fitness\s*set|sports\s*set|2\s*piece)/i.test(clean) ||
+      (/(?:ออกกำลังกาย|ฟิตเนส|โยคะ|workout|gym|fitness|yoga|activewear)/i.test(clean) && /(?:เซ็ท|เซ็ต|ชุด|set|bra.*leggings|leggings.*bra|top.*pants)/i.test(clean))) {
+    return `APPAREL WEARING MODE: The ${model} naturally wears the complete exact reference workout outfit/set (matching athletic top/sports bra and gym leggings/shorts) together on-body as a cohesive fitness outfit.`;
+  }
   if (/(กางเกง(?!ใน)|กระโปรง|เลกกิ้ง|ยีนส์|ขาสั้น|ขาสามส่วน|pants|trousers|shorts|leggings|jeans|skirt|bottoms?)/i.test(clean)) {
     return `APPAREL WEARING MODE: The ${model} naturally wears exactly one pair of the exact reference garment as the sole visible bottom garment. Let the model choose a simple matching top naturally. Do not add another pair of trousers, shorts, leggings, or a skirt over or under it.`;
   }
-  if (/(เสื้อ(?!ใน)|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|shirt|tshirt|tee|top|jacket|hoodie|sweater|blouse|coat)/i.test(clean)) {
-    return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once as the sole visible featured top. Use a simple opaque, full-coverage matching bottom such as jeans, trousers, or a modest skirt. Do NOT show underwear, lingerie, panties, briefs, thongs, bikini bottoms, or any transparent lower garment. Do not add another top over the reference garment.`;
+  if (/(เสื้อ(?!ใน)|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|สปอร์ตบรา|shirt|tshirt|tee|top|jacket|hoodie|sweater|blouse|coat|sports\s*bra)/i.test(clean)) {
+    return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once as the sole visible featured top. Use a simple opaque, full-coverage matching bottom such as jeans, trousers, athletic leggings, or a modest skirt. Do NOT show underwear, lingerie, panties, briefs, thongs, bikini bottoms, or any transparent lower garment. Do not add another top over the reference garment.`;
   }
   return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once in the normal way for that garment type. Let the model choose a simple complementary outfit naturally without layering a duplicate garment of the same type.`;
 }
@@ -1083,7 +1099,9 @@ function buildCompactPhoneCaseStillPrompt(productInfo = {}, productName, auto, s
     UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     PHONE_CASE_STILL_GEOMETRY_LOCK,
     "CASE ARTWORK COORDINATE LOCK: Keep every pattern and printed detail fixed relative to the case's top, bottom, left, right edges, corners, and camera cutout; never shift, stretch, mirror, simplify, or recolor it.",
-    "FINAL PHONE CASE CHECK: The result must be the same case from the original image, not a lookalike or generic replacement. Keep each visible case separate with the same count.",
+    !isMultiItemOrBundleProduct(productInfo)
+      ? "FINAL PHONE CASE CHECK: The result must be the same case from the original image, not a lookalike or generic replacement. If the listing is not for multiple cases or a pack (ไม่ได้ระบุหลายชิ้น/ยกโหล), render strictly ONE single case even if the reference image shows multiple cases; otherwise keep each visible case separate with the same count."
+      : "FINAL PHONE CASE CHECK: The result must be the same case from the original image, not a lookalike or generic replacement. Keep each visible case separate with the same count.",
     background,
     presenter,
     PHONE_CASE_ONE_HAND_HOLD_LOCK,
@@ -1309,14 +1327,20 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
           ? "Single full-frame footwear pair product shot: show both the left and right shoes from the reference together on one level surface in a realistic 3/4 product angle, with both complete silhouettes visible, soles supported by the surface, natural spacing, and separate contact shadows. Both shoes must feature the exact same matching design, pattern, and colorway from the reference. No one-shoe-only output, mismatched designs, collage, split screen, floating shoe, unsupported vertical placement, duplicate shoe, or social-media screenshot UI."
           : "Single full-frame footwear product shot: show the exact single shoe from the reference naturally resting on a level surface in a realistic 3/4 product angle, with the complete silhouette visible, sole supported by the surface, and a believable contact shadow. No collage, split screen, floating shoe, unsupported vertical placement, duplicate shoe, or social-media screenshot UI."
         : isPhoneCaseProduct(productText)
-        ? "Single full-frame phone-case product scene: reproduce the exact phone case or exact phone-case set shown in the reference. If multiple cases are visible, preserve every visible case as a separate object with the same count, color order, spacing, overlap, outer silhouette, camera opening, and artwork; do not collapse the set into one case or invent variants. No collage, split screen, generic replacement case, merged cases, omitted cases, or social-media screenshot UI."
+        ? (!isMultiItemOrBundleProduct(productInfo)
+            ? "Single full-frame phone-case product scene: depict strictly ONE single phone case in the scene matching the reference case artwork and geometry. Even if the reference image shows multiple cases or color variants, isolate and render only ONE single phone case. No collage, split screen, generic replacement case, multiple cases, or social-media screenshot UI."
+            : "Single full-frame phone-case product scene: reproduce the exact phone case or exact phone-case set shown in the reference. If multiple cases are visible, preserve every visible case as a separate object with the same count, color order, spacing, overlap, outer silhouette, camera opening, and artwork; do not collapse the set into one case or invent variants. No collage, split screen, generic replacement case, merged cases, omitted cases, or social-media screenshot UI.")
         : isScreenless
         ? "Single full-frame SCREENLESS wristband product shot: Depict the exact screenless fabric strap and metal clasp from the reference image in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity: exact strap weave texture, clasp, and colors. If the product in the reference has no screen, show NO screen; absolutely NO screen, NO display glass, NO watch face, NO Apple Watch body, and NO digital readout. No collage, split screen, phantom screens, or duplicate items."
         : isWatchOrWristbandProduct(productText)
         ? "Single full-frame watch/wristband product shot: Depict the exact wristwatch or wristband in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity: exact case/band silhouette, exact strap material, texture, clasp, and colors. If the product in the reference has no screen, show NO screen; if it has an analog dial or digital display, match it exactly. No collage, split screen, phantom screens, or duplicate items."
         : (isClothing || isUnderwear)
-        ? "Single full-frame front shot: Depict ONLY the front-facing view of the garment in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side."
-        : "Single full-frame hero shot: Depict the product in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity, printed text, brand logo, and packaging artwork.")
+        ? (!isMultiItemOrBundleProduct(productInfo)
+            ? "Single full-frame front shot: Depict strictly ONE single garment in one photograph centered in a 9:16 vertical layout (forbid multiple pieces). Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side."
+            : "Single full-frame front shot: Depict ONLY the front-facing view of the garment in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Highlight fabric texture, front logo, and front details. STRICT RULE: Show ONLY the front view of the garment; do NOT show the back view or reverse side.")
+        : (!isMultiItemOrBundleProduct(productInfo)
+            ? "Single full-frame hero shot: Depict strictly ONE product piece centered in a 9:16 vertical layout (unless titled as a pack/dozen, forbid multiple units or bundles). Maintain 100% exact product fidelity, printed text, brand logo, and packaging artwork."
+            : "Single full-frame hero shot: Depict the product in one single, high-resolution full-frame photograph centered in a 9:16 vertical layout. Maintain 100% exact product fidelity, printed text, brand logo, and packaging artwork."))
     : (isClothing
         ? "Multi-angle 4-panel grid collage layout: A 4-panel split layout showing the clothing item from 4 clean front-facing perspectives (Panel 1: Full outfit view, Panel 2: Upper body close-up of collar/logo, Panel 3: Fabric texture detail, Panel 4: Lifestyle presentation). Maintain 100% identical garment cut, color, logo, and texture across all panels."
         : "Multi-angle 4-panel grid collage layout: A 4-panel split layout showing the product from 4 distinct angles (Panel 1: Front view hero shot, Panel 2: Side/3-quarter angle view, Panel 3: Macro close-up of texture/logo, Panel 4: Realistic lifestyle context). Maintain 100% identical product appearance, packaging artwork, colors, and printed text across all 4 panels.");
@@ -2082,7 +2106,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
     productActivityDirection,
     scaleInstruction,
     categoryDirection && categoryDirection.includes(specificScale) ? "" : specificScale,
-    PRODUCT_STRUCTURE_DIRECTION,
+    buildProductStructureDirection(productInfo),
     categoryDirection,
     analysisDirection,
     isFarmPoultryProduct(productText) ? FARM_POULTRY_FEED_EXCLUSION_RULE : "",
@@ -2469,7 +2493,7 @@ function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, 
   const framing = resolveFashionSelfieFramingForProduct(productText, settings);
   const lowerBodyFraming = settings?.cameraFraming === "lower_body";
   const apparelPriority = APPAREL_REFERENCE_PRIORITY;
-  const apparelWearDirection = getApparelWearDirection(productText, presenter);
+  const apparelWearDirection = getApparelWearDirection(productText, presenter, { isFashionSelfie: true });
   const fidelity = PRODUCT_FIDELITY_DIRECTION;
   const location = resolveFashionSelfieLocation(productInfo, settings);
   const textRule = buildFashionSelfieTextDirection(productInfo, settings, false);
@@ -2481,6 +2505,7 @@ function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, 
     UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     apparelPriority,
     apparelWearDirection,
+    FASHION_SELFIE_ON_BODY_WEAR_LOCK,
     lowerBodyFraming ? LOWER_BODY_GARMENT_CONTINUITY_LOCK : FASHION_SELFIE_BODY_CONTINUITY_LOCK,
     fidelity,
     lowerBodyFraming
@@ -2511,7 +2536,8 @@ function buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, du
       : `Create a ${durationSeconds}-second photorealistic vertical 9:16 fashion outfit video featuring ${garmentName}${location}.`,
     fashionSelfieVideoDirection(presenter, settings, productText),
     APPAREL_REFERENCE_PRIORITY,
-    getApparelWearDirection(productText, presenter),
+    getApparelWearDirection(productText, presenter, { isFashionSelfie: true }),
+    FASHION_SELFIE_ON_BODY_WEAR_LOCK,
     lowerBodyFraming ? LOWER_BODY_GARMENT_CONTINUITY_LOCK : FASHION_SELFIE_BODY_CONTINUITY_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
     `FASHION SELFIE BACKGROUND LOCK: Keep the same background direction throughout every scene: ${compactPromptText(locationStr, 180)}.${isMinimalistStudioLocation(locationStr) ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""} Keep the outfit separated from the background with natural depth of field; the background must remain stable, tasteful, and secondary to the garment.`,
@@ -3040,6 +3066,51 @@ function stripStructuralVariantCounts(value) {
     .trim();
 }
 
+export function isMultiItemOrBundleProduct(productInfo = {}) {
+  const text = [
+    productInfo.originalName,
+    productInfo.productLinkTitle,
+    productInfo.rawProduct?.title,
+    productInfo.rawProduct?.product_name,
+    productInfo.rawProduct?.name,
+    productInfo.name,
+    productInfo.category
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  if (!text) return false;
+
+  // 1. Explicit multi-item Thai phrases (ยกโหล, หลายชิ้น)
+  if (/(ยกโหล|1\s*โหล|โหลละ|เป็นโหล|หลายชิ้น|หลายอัน|หลายขวด|หลายซอง|หลายกล่อง|หลายแบบ|หลายตัว|หลายใบ|หลายคู่)/i.test(text)) {
+    return true;
+  }
+
+  // 2. Buy X get Y / promo bundles
+  if (/(แถม|buy\s*\d+\s*get\s*\d+)/i.test(text)) {
+    return true;
+  }
+
+  // 3. English bundle, multipack, dozen, wholesale
+  if (/\b(bundle|multi-?pack|multipack|wholesale|dozen)\b/i.test(text)) {
+    return true;
+  }
+
+  // 4. Pack / set with count >= 2: e.g. "แพ็ค 2", "แพ็ก 3", "เซ็ต 4", "ชุด 5", "pack of 3", "set of 2"
+  if (/(?:แพ็ค|แพ็ก|แพค|เซ็ต|เซต|ชุด)\s*(?:ละ\s*)?(?:[2-9]|\d{2,})\b/i.test(text)) {
+    return true;
+  }
+  if (/\b(?:pack|set)\s*(?:of\s*)?(?:[2-9]|\d{2,})\b/i.test(text)) {
+    return true;
+  }
+
+  // 5. Explicit count >= 2 with item units (excluding structural drawers/shelves/tiers like ชั้น/ลิ้นชัก/ช่อง/บาน)
+  // e.g. "2 ชิ้น", "3 ขวด", "4 ซอง", "5 กล่อง", "6 ตัว", "10 คู่", "3 pcs", "5 pieces", "3 bottles"
+  if (/(?:^|[^\d๑-๙])(?:[2-9]|\d{2,}|[๒-๙]|[๑-๙][๐-๙]+)\s*(?:ชิ้น|ขวด|ซอง|กล่อง|ตลับ|กระป๋อง|หลอด|แท่ง|ม้วน|ถุง|เล่ม|ใบ|ห่อ|ด้าม|ผืน|แผ่น|ตัว|อัน|กระปุก|คู่|pcs|pieces|pack|packs|bottles|boxes|cans|bars|bags|sachets|pairs)(?=$|[^\p{L}\p{N}])/iu.test(text)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function resolveAutoSettings(productInfo = {}, settings = {}) {
   const inferred = inferPromptAutoOptions(productInfo);
   const recommendedSource = productInfo.autoOptions && typeof productInfo.autoOptions === "object"
@@ -3057,12 +3128,12 @@ export function resolveAutoSettings(productInfo = {}, settings = {}) {
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const outdoorOnlyProduct = footwear || isRainwearProduct(productText) || isOutdoorRideProduct(productText);
   const contextLockedProduct = outdoorOnlyProduct || Boolean(vehicleAccessoryContext);
-  const isPetProduct = /(สัตว์เลี้ยง|หมา(?!ย|ก|ด|ล่า|น|ง|ม)|แมว|สุนัข|อาหารแมว|อาหารหมา|\bcat\b|\bdog\b|\bpet\b|\bkitten\b|\bpuppy\b|\banimal\b)/i.test(productText);
-  const autoPresenter = isUnderwear ? "none" : pickAutoReviewer(productInfo);
+  const isFashionSelfie = settings?.videoStyle === "fashion-selfie" || (isAuto(settings?.videoStyle) && (recommended.videoStyle === "fashion-selfie" || inferred.videoStyle === "fashion-selfie"));
+  const autoPresenter = (isUnderwear && !isFashionSelfie) ? "none" : pickAutoReviewer(productInfo);
   const prefersMan = detectExplicitProductGender(productText) === "man"
     || isCampingOutdoorProduct(productText)
     || /(ช่าง|mechanic)/i.test(productText);
-  const safeAutoPresenter = isUnderwear
+  const safeAutoPresenter = (isUnderwear && !isFashionSelfie)
     ? "none"
     : (autoPresenter === "dog" || autoPresenter === "cat")
     ? "woman"
@@ -3071,16 +3142,18 @@ export function resolveAutoSettings(productInfo = {}, settings = {}) {
     : autoPresenter;
 
   let videoStyle = isAuto(settings.videoStyle) ? (recommended.videoStyle || inferred.videoStyle) : settings.videoStyle;
+  const isCurrentFashionSelfie = isFashionSelfie || videoStyle === "fashion-selfie";
+
   // Underwear / intimate apparel policy protection:
-  // UGC testimonial, lifestyle, and selfie on-body wearing are strictly prohibited
-  if (isUnderwear) {
-    if (isAuto(settings.videoStyle) || videoStyle === "testimonial" || videoStyle === "lifestyle" || videoStyle === "fashion-selfie" || videoStyle === "fashion-hanger-presenter") {
+  // In fashion-selfie mode, completely bypass underwear checks ("ไม่ต้องเข้าเงื่อนไขใดชุดชั้นในอะไรไม่ต้องเช็คในโหมดนี้")
+  if (isUnderwear && !isCurrentFashionSelfie) {
+    if (isAuto(settings.videoStyle) || videoStyle === "testimonial" || videoStyle === "lifestyle" || videoStyle === "fashion-hanger-presenter") {
       videoStyle = "hands-only";
     }
   }
 
-  let presenter = isAuto(settings.presenter) ? safeAutoPresenter : settings.presenter;
-  if (isUnderwear) {
+  let presenter = isAuto(settings.presenter) ? (isCurrentFashionSelfie ? (prefersMan ? "man" : "woman") : safeAutoPresenter) : settings.presenter;
+  if (isUnderwear && !isCurrentFashionSelfie) {
     if (isAuto(settings.presenter) || presenter === "woman" || presenter === "man" || presenter === "child" || presenter === "older_child") {
       presenter = videoStyle === "hands-only" ? "hands_only" : "none";
     }
@@ -3105,7 +3178,9 @@ export function resolveAutoSettings(productInfo = {}, settings = {}) {
     transition: (videoStyle === "still-motion" && (isAuto(settings.transition) || /zoom/i.test(settings.transition)))
       ? "None"
       : (isAuto(settings.transition) ? (recommended.transition || inferred.transition) : settings.transition),
-    reason: recommended.reason || inferred.reason || ""
+    reason: isCurrentFashionSelfie
+      ? "โหมด Fashion Selfie สำหรับชุดแฟชั่น/ชุดออกกำลังกาย นางแบบสวมใส่ชุดจริงถือมือถือบังหน้า"
+      : (recommended.reason || inferred.reason || "")
   };
 }
 

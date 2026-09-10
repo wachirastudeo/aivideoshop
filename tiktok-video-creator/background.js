@@ -59,12 +59,34 @@ chrome.action.onClicked.addListener(async (tab) => {
   await openCreatorTab();
 });
 
+let lastActiveFlowTabId = null;
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (tab?.url && tab.url.includes("flow.google.com")) {
+    lastActiveFlowTabId = tabId;
     const info = extractFlowUserInfo(tab.url);
-    if (info) {
-      chrome.storage.local.set({ flowUserInfo: info }).catch(() => {});
+    chrome.storage.local.set({
+      flowUserInfo: info || { pathPrefix: "", authUser: "" }
+    }).catch(() => {});
+  }
+});
+
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    const tab = await chrome.tabs.get(activeInfo.tabId);
+    if (tab?.url && tab.url.includes("flow.google.com")) {
+      lastActiveFlowTabId = tab.id;
+      const info = extractFlowUserInfo(tab.url);
+      chrome.storage.local.set({
+        flowUserInfo: info || { pathPrefix: "", authUser: "" }
+      }).catch(() => {});
     }
+  } catch {}
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (tabId === lastActiveFlowTabId) {
+    lastActiveFlowTabId = null;
   }
 });
 
@@ -582,12 +604,19 @@ function buildFlowHomeUrl(userInfo) {
 }
 
 async function resolveFlowHomeUrl(currentUrl = "") {
-  let userInfo = extractFlowUserInfo(currentUrl);
-  if (userInfo) {
+  if (currentUrl && currentUrl.includes("flow.google.com")) {
+    const userInfo = extractFlowUserInfo(currentUrl);
+    if (userInfo) {
+      try {
+        await chrome.storage.local.set({ flowUserInfo: userInfo });
+      } catch {}
+      return buildFlowHomeUrl(userInfo);
+    }
+    // Flow URL without /u/X or authuser = User 0 (default Google user)
     try {
-      await chrome.storage.local.set({ flowUserInfo: userInfo });
+      await chrome.storage.local.set({ flowUserInfo: { pathPrefix: "", authUser: "" } });
     } catch {}
-    return buildFlowHomeUrl(userInfo);
+    return "https://flow.google.com/";
   }
 
   try {
@@ -604,15 +633,16 @@ async function openGoogleFlow(payload) {
   const runVersion = flowStopVersion;
   const flowSettings = await getFlowSettings();
   const reuseProject = flowSettings.reuseProject === true;
-  const existingTabs = await queryFlowTabs();
+  const reuseTab = flowSettings.reuseTab !== false;
+  const existingTabs = reuseTab ? await queryFlowTabs() : [];
   let tab;
   let needNavigate = true;
   let needReload = false;
   const { settings = {} } = await chrome.storage.sync.get("settings");
-  const targetHomeUrl = await resolveFlowHomeUrl(existingTabs[0]?.url || "");
 
   if (existingTabs.length > 0) {
     tab = existingTabs[0];
+    const targetHomeUrl = await resolveFlowHomeUrl(tab.url || "");
     await chrome.tabs.update(tab.id, { active: true });
     try {
       await chrome.windows.update(tab.windowId, { focused: true });
@@ -621,26 +651,34 @@ async function openGoogleFlow(payload) {
     if (reuseProject && isFlowProjectUrl(tab.url || "")) {
       needNavigate = false;
       needReload = true;
+    } else if (tab.url === targetHomeUrl) {
+      needNavigate = false;
+      needReload = false;
     } else {
       needNavigate = true;
       needReload = false;
     }
+
+    if (needNavigate) {
+      await chrome.tabs.update(tab.id, { url: targetHomeUrl });
+      await waitForTabComplete(tab.id);
+    } else if (needReload) {
+      await chrome.tabs.reload(tab.id);
+      await waitForTabComplete(tab.id);
+    } else {
+      const currentTab = await chrome.tabs.get(tab.id);
+      if (currentTab.status !== "complete") {
+        await waitForTabComplete(tab.id);
+      }
+    }
   } else {
+    const targetHomeUrl = await resolveFlowHomeUrl("");
     tab = await chrome.tabs.create({ url: targetHomeUrl, active: true });
     try {
       await chrome.windows.update(tab.windowId, { focused: true });
     } catch { }
     needNavigate = false;
     needReload = false;
-  }
-
-  if (needNavigate) {
-    await chrome.tabs.update(tab.id, { url: targetHomeUrl });
-    await waitForTabComplete(tab.id);
-  } else if (needReload) {
-    await chrome.tabs.reload(tab.id);
-    await waitForTabComplete(tab.id);
-  } else {
     const currentTab = await chrome.tabs.get(tab.id);
     if (currentTab.status !== "complete") {
       await waitForTabComplete(tab.id);
@@ -762,6 +800,7 @@ async function getFlowSettings() {
     autoPortrait: settings.flow?.autoPortrait !== false,
     uploadWaitSec: settings.flow?.uploadWaitSec ?? 8,
     reuseProject: settings.flow?.reuseProject === true,
+    reuseTab: settings.flow?.reuseTab !== false,
     imageCount: media.imageCount || 1,
     videoCount: media.videoCount || 1,
     videoDuration: media.videoDuration || 8,
@@ -802,9 +841,37 @@ async function stopTikTokStudioPipeline() {
 }
 
 async function queryFlowTabs() {
-  return [
+  const allFlowTabs = [
     ...(await chrome.tabs.query({ url: "https://flow.google.com/*" }))
   ].filter((candidate, index, list) => candidate.id && list.findIndex((item) => item.id === candidate.id) === index);
+
+  if (allFlowTabs.length <= 1) return allFlowTabs;
+
+  let currentWindowId = null;
+  try {
+    const currentWin = await chrome.windows.getCurrent();
+    currentWindowId = currentWin?.id;
+  } catch {}
+
+  return allFlowTabs.sort((a, b) => {
+    const aActiveCurrent = (a.active && a.windowId === currentWindowId) ? 1 : 0;
+    const bActiveCurrent = (b.active && b.windowId === currentWindowId) ? 1 : 0;
+    if (aActiveCurrent !== bActiveCurrent) return bActiveCurrent - aActiveCurrent;
+
+    const aLastActive = (lastActiveFlowTabId && a.id === lastActiveFlowTabId) ? 1 : 0;
+    const bLastActive = (lastActiveFlowTabId && b.id === lastActiveFlowTabId) ? 1 : 0;
+    if (aLastActive !== bLastActive) return bLastActive - aLastActive;
+
+    const aActive = a.active ? 1 : 0;
+    const bActive = b.active ? 1 : 0;
+    if (aActive !== bActive) return bActive - aActive;
+
+    const aInWin = (a.windowId === currentWindowId) ? 1 : 0;
+    const bInWin = (b.windowId === currentWindowId) ? 1 : 0;
+    if (aInWin !== bInWin) return bInWin - aInWin;
+
+    return b.id - a.id;
+  });
 }
 
 /**

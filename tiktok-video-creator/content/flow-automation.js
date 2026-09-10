@@ -48,9 +48,11 @@ function getFlowHomeUrl(url = location.href) {
 }
 
 try {
-    const _currentInfo = extractFlowUserInfo(location.href);
-    if (_currentInfo) {
-        chrome.storage?.local?.set({ flowUserInfo: _currentInfo }).catch(() => {});
+    if (location.hostname.includes("flow.google.com")) {
+        const _currentInfo = extractFlowUserInfo(location.href);
+        chrome.storage?.local?.set({
+            flowUserInfo: _currentInfo || { pathPrefix: "", authUser: "" }
+        }).catch(() => {});
     }
 } catch {}
 
@@ -1263,10 +1265,16 @@ async function ensureProjectPage(isResume = false) {
         const action = findNewProjectButton();
         if (action) {
             const userInfo = extractFlowUserInfo(location.href);
-            if (userInfo?.pathPrefix && action.tagName === "A") {
+            if (action.tagName === "A") {
                 const rawHref = action.getAttribute("href") || "";
-                if (rawHref.startsWith("/project") && !rawHref.startsWith(userInfo.pathPrefix)) {
-                    action.setAttribute("href", `${userInfo.pathPrefix}${rawHref}`);
+                if (userInfo?.pathPrefix) {
+                    const cleanHref = rawHref.replace(/^\/u\/\d+/, "");
+                    if (cleanHref.startsWith("/project")) {
+                        action.setAttribute("href", `${userInfo.pathPrefix}${cleanHref}`);
+                    }
+                } else if (rawHref.match(/^\/u\/\d+\/project/)) {
+                    const cleanHref = rawHref.replace(/^\/u\/\d+/, "");
+                    action.setAttribute("href", cleanHref);
                 }
             }
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);
@@ -1315,10 +1323,16 @@ async function prepareFreshProject() {
         const action = findNewProjectButton();
         if (action) {
             const userInfo = extractFlowUserInfo(location.href);
-            if (userInfo?.pathPrefix && action.tagName === "A") {
+            if (action.tagName === "A") {
                 const rawHref = action.getAttribute("href") || "";
-                if (rawHref.startsWith("/project") && !rawHref.startsWith(userInfo.pathPrefix)) {
-                    action.setAttribute("href", `${userInfo.pathPrefix}${rawHref}`);
+                if (userInfo?.pathPrefix) {
+                    const cleanHref = rawHref.replace(/^\/u\/\d+/, "");
+                    if (cleanHref.startsWith("/project")) {
+                        action.setAttribute("href", `${userInfo.pathPrefix}${cleanHref}`);
+                    }
+                } else if (rawHref.match(/^\/u\/\d+\/project/)) {
+                    const cleanHref = rawHref.replace(/^\/u\/\d+/, "");
+                    action.setAttribute("href", cleanHref);
                 }
             }
             log(`กดปุ่ม Flow: ${elementText(action).slice(0, 60) || "Create/New project"}`);

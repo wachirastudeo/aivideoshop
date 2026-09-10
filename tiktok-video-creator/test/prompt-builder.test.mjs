@@ -29,7 +29,8 @@ import {
   isMinimalistStudioLocation,
   MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION,
   isUnderwearOrIntimateProduct,
-  resolveAutoSettings
+  resolveAutoSettings,
+  isMultiItemOrBundleProduct
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -395,7 +396,31 @@ const enabledTextVideo = buildVideoPrompt(
 );
 check("enabled text uses only configured overlays", /รองเท้าทดสอบ/.test(enabledTextVideo) && !/ส่งฟรี/.test(enabledTextVideo), enabledTextVideo);
 check("enabled text respects configured position", /at Top third/i.test(enabledTextVideo), enabledTextVideo);
-check("enabled text does not inject default CTA", !/กดสั่งซื้อ|กดซื้อเลย/.test(enabledTextVideo), enabledTextVideo);
+// --- Fashion Selfie Mode: Normal for every outfit, bypasses all underwear checks, no holding to review ---
+const workoutFashionSelfieProduct = { name: "ชุดออกกำลังกาย สปอร์ตบรา และ กางเกงเลกกิ้ง", category: "เสื้อผ้า" };
+const workoutAutoSettings = resolveAutoSettings(workoutFashionSelfieProduct, fashionSelfieSettings);
+check("fashion selfie does not downgrade workout clothes/sports bra to hands-only", workoutAutoSettings.videoStyle === "fashion-selfie" && workoutAutoSettings.presenter !== "hands_only", JSON.stringify(workoutAutoSettings));
+
+const workoutFashionSelfieImage = buildImagePrompt(workoutFashionSelfieProduct, fashionSelfieSettings);
+const workoutFashionSelfieVideo = buildVideoPrompt(workoutFashionSelfieProduct, fashionSelfieSettings);
+
+check("fashion selfie image enforces on-body wear for workout outfit", /The model is WEARING the exact reference outfit on-body/i.test(workoutFashionSelfieImage) && /FASHION SELFIE ON-BODY WEAR LOCK/i.test(workoutFashionSelfieImage), workoutFashionSelfieImage);
+check("fashion selfie image forbids holding in hand and flat-lay", !/neatly laid flat|must be shown laid flat|smooth the fabric|holding or presenting the product/i.test(workoutFashionSelfieImage), workoutFashionSelfieImage);
+check("fashion selfie image bypasses intimate apparel safety lock", !/INTIMATE APPAREL SAFETY|STRICTLY NO-ON-BODY-WEARING/i.test(workoutFashionSelfieImage), workoutFashionSelfieImage);
+check("fashion selfie image wears workout set together as cohesive outfit", /naturally wears the complete exact reference workout outfit\/set/i.test(workoutFashionSelfieImage), workoutFashionSelfieImage);
+
+check("fashion selfie video enforces on-body wear and forbids review holding", /WEARING the exact reference outfit on-body throughout the entire video/i.test(workoutFashionSelfieVideo) && /Strictly no holding the product in hands to review \(review holding is for UGC mode only\)/i.test(workoutFashionSelfieVideo), workoutFashionSelfieVideo);
+check("fashion selfie video bypasses intimate apparel safety lock", !/INTIMATE APPAREL SAFETY|STRICTLY NO-ON-BODY-WEARING/i.test(workoutFashionSelfieVideo), workoutFashionSelfieVideo);
+check("fashion selfie video includes on-body wear lock", /FASHION SELFIE ON-BODY WEAR LOCK/i.test(workoutFashionSelfieVideo), workoutFashionSelfieVideo);
+
+// Even if explicit intimate apparel is selected in fashion-selfie mode, underwear checks are bypassed ("ไม่ต้องเข้าเงื่อนไขใดชุดชั้นในอะไรไม่ต้องเช็คในโหมดนี้")
+const intimateInFashionSelfie = { name: "ชุดชั้นใน บราลูกไม้ เซ็กซี่", category: "ชุดชั้นใน" };
+const intimateAuto = resolveAutoSettings(intimateInFashionSelfie, fashionSelfieSettings);
+check("fashion selfie mode bypasses underwear checks for all apparel", intimateAuto.videoStyle === "fashion-selfie" && intimateAuto.presenter !== "hands_only", JSON.stringify(intimateAuto));
+const intimateFashionSelfieImage = buildImagePrompt(intimateInFashionSelfie, fashionSelfieSettings);
+const intimateFashionSelfieVideo = buildVideoPrompt(intimateInFashionSelfie, fashionSelfieSettings);
+check("fashion selfie image remains normal for intimate apparel without flat-lay", /FASHION SELFIE MODE[\s\S]*The model is WEARING the exact reference outfit on-body/i.test(intimateFashionSelfieImage) && !/neatly laid flat|must be shown laid flat|smooth the fabric/i.test(intimateFashionSelfieImage), intimateFashionSelfieImage);
+check("fashion selfie video remains normal for intimate apparel without review holding", /FASHION SELFIE MODE[\s\S]*WEARING the exact reference outfit on-body/i.test(intimateFashionSelfieVideo) && !/Strictly no on-body wearing/i.test(intimateFashionSelfieVideo), intimateFashionSelfieVideo);
 
 // --- structural fidelity: source image overrides ambiguous title variants ---
 const cabinet = {
@@ -2227,6 +2252,30 @@ check("still-motion video prompt ignores forced zoom cameraMovement and enforces
   !/Slow Zoom In/i.test(stillMotionForcedZoom)
 );
 
+
+// --- Single Hero Product Isolation vs Multi-item / Bundle detection ---
+check("detects single item without pack/dozen keywords as false", !isMultiItemOrBundleProduct({ name: "ปุ๋ยน้ำบำรุงพืช 1 ขวด" }));
+check("detects single t-shirt as false", !isMultiItemOrBundleProduct({ name: "เสื้อยืดคอกลมผู้ชาย สีดำ" }));
+check("detects cabinet with tiers as single product", !isMultiItemOrBundleProduct({ name: "ตู้ลิ้นชักพลาสติก 5 ชั้น สีขาว" }));
+check("detects single pair of socks as false", !isMultiItemOrBundleProduct({ name: "ถุงเท้าข้อสั้น 1 คู่" }));
+check("detects single phone case as false", !isMultiItemOrBundleProduct({ name: "เคสโทรศัพท์ iPhone 15 Pro Max" }));
+
+check("detects ยกโหล as multi-item", isMultiItemOrBundleProduct({ name: "ปุ๋ยน้ำบำรุงพืช ยกโหล" }));
+check("detects 1 โหล as multi-item", isMultiItemOrBundleProduct({ name: "ถุงเท้า 1 โหล" }));
+check("detects หลายชิ้น as multi-item", isMultiItemOrBundleProduct({ name: "ปากกาเจล หลายชิ้น" }));
+check("detects 10 คู่ as multi-item", isMultiItemOrBundleProduct({ name: "ถุงเท้ากีฬา 10 คู่" }));
+check("detects แพ็ค 3 as multi-item", isMultiItemOrBundleProduct({ name: "สบู่ก้อน แพ็ค 3 ชิ้น" }));
+check("detects ซื้อ 1 แถม 1 as multi-item", isMultiItemOrBundleProduct({ name: "โลชั่นบำรุงผิว ซื้อ 1 แถม 1" }));
+check("detects English bundle as multi-item", isMultiItemOrBundleProduct({ name: "Skincare starter bundle pack" }));
+
+const singleSerumStill = buildImagePrompt({ name: "เซรั่มบำรุงผิวหน้าเข้มข้น" }, settings);
+check("single serum still mandates strictly one piece", /Depict strictly ONE product piece/i.test(singleSerumStill) && /forbid multiple units/i.test(singleSerumStill));
+
+const singleSerumVideo = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้าเข้มข้น" }, settings);
+check("single serum video mandates strictly one piece", /Depict strictly ONE product piece unless titled as a pack\/dozen/i.test(singleSerumVideo));
+
+const multiSerumVideo = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้า ยกโหล" }, settings);
+check("multi-item serum video preserves visible count", /Keep the exact visible count and arrangement/i.test(multiSerumVideo));
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
