@@ -286,7 +286,7 @@ function fashionSelfieImageDirection(presenter, settings = {}, productText = "")
   if (settings?.cameraFraming === "lower_body") {
     return `LOWER-BODY GARMENT SHOWCASE MODE: Create one realistic vertical 9:16 lower-body garment photograph of a ${modelLabel} from the waist to the feet. ${framing.image} This is not a selfie: do not include a smartphone, mirror, selfie pose, hands, or face. Keep the exact lower garment as the only visual hero.`;
   }
-  return `FASHION SELFIE MODE: Create one realistic vertical 9:16 fashion photograph of a ${modelLabel} standing naturally and holding a real smartphone vertically in front of the face. ${framing.image} The model is WEARING the exact reference outfit on-body (do NOT hold the garment in hands, do NOT lay the clothes flat on the floor or surface, no review holding). The smartphone must fully cover and obscure the face and facial features; do not show eyes, nose, mouth, or identifiable facial details. Keep the model modestly dressed and front-facing so the garment is easy to inspect. This is a privacy-preserving outfit showcase: no face reveal, no extra people, no text, no logos added to the phone, and no mirror selfie distortion.`;
+  return `FASHION SELFIE MODE: Create one realistic vertical 9:16 fashion photograph of a ${modelLabel} standing naturally in an effortless, stylish OOTD outfit selfie pose, holding a sleek modern smartphone with one hand naturally at chin/face height so the smartphone must fully cover and obscure the face and facial features while keeping the body posture relaxed and realistic. ${framing.image} The model is WEARING the exact reference outfit on-body (do NOT hold the garment in hands, do NOT lay the clothes flat on the floor or surface, no review holding). Do not show eyes, nose, mouth, or identifiable facial details. Keep the model front-facing, gracefully posed, and modestly dressed so the garment is easy to inspect. This is a privacy-preserving outfit showcase: no face reveal, no extra people, no text, no logos added to the phone, and no mirror distortion.`;
 }
 
 function fashionSelfieVideoDirection(presenter, settings = {}, productText = "") {
@@ -295,7 +295,7 @@ function fashionSelfieVideoDirection(presenter, settings = {}, productText = "")
   if (settings?.cameraFraming === "lower_body") {
     return `LOWER-BODY GARMENT SHOWCASE MODE: Use one consistent ${modelLabel} in a waist-to-feet lower-body garment video. ${framing.video} This is not a selfie: do not include a smartphone, mirror, selfie pose, hands, or face. Keep the exact lower garment as the only visual hero.`;
   }
-  return `FASHION SELFIE MODE — PRIVACY-PRESERVING OUTFIT SHOWCASE: Use one consistent ${modelLabel} standing still, WEARING the exact reference outfit on-body throughout the entire video. ${framing.video} The model holds a real smartphone vertically at face height throughout the entire clip, and the phone must fully cover the face in every frame; never reveal eyes, nose, mouth, facial features, or an identifiable face. Strictly no holding the product in hands to review (review holding is for UGC mode only), no laying clothes flat on the floor. The exact reference garment is the hero: preserve its silhouette, fit, length, fabric, colors, pattern, seams, and printed artwork exactly. Keep the model front-facing, modestly dressed, and physically stable. No talking, lip-sync, waving, walking, turning around, outfit changes, extra people, mirror distortion, or added text. Use only minimal natural posture movement and a slow, subtle left-to-right smartphone-camera pan with a very small handheld micro-sway.`;
+  return `FASHION SELFIE MODE — PRIVACY-PRESERVING OUTFIT SHOWCASE: Use one consistent ${modelLabel} standing still in an authentic, effortless OOTD fashion outfit selfie pose, WEARING the exact reference outfit on-body throughout the entire video. ${framing.video} The model holds a sleek modern smartphone with one hand naturally at chin/face height throughout the entire clip, and the phone must fully cover the face in every frame with a relaxed, natural arm posture (elbow resting down comfortably close to body, natural grip); never reveal eyes, nose, mouth, facial features, or an identifiable face. Strictly no holding the product in hands to review (review holding is for UGC mode only), no laying clothes flat on the floor. The exact reference garment is the hero: preserve its silhouette, fit, length, fabric, colors, pattern, seams, and printed artwork exactly. Keep the model front-facing, gracefully posed, modestly dressed, and physically stable. No talking, lip-sync, waving, walking, turning around, outfit changes, extra people, mirror distortion, or added text. Use only minimal natural posture movement and a slow, subtle left-to-right smartphone-camera pan with a very small handheld micro-sway.`;
 }
 
 const FASHION_SELFIE_BACKGROUND_QUALITY_LOCK = "FASHION SELFIE BACKGROUND QUALITY LOCK: Use an elegant, believable lifestyle setting with clean architecture, soft natural daylight, subtle layered depth, a calm neutral palette, and an uncluttered floor. Keep the background beautiful but secondary to the outfit. Do not use a generic gray studio, messy bedroom, crowded street, storefront, harsh neon, random furniture, visible wall text, logos, watermark, extra people, or mirror-selfie distortion. Add only a few restrained decor details that naturally fit the garment.";
@@ -460,6 +460,7 @@ const CLOTHING_FIDELITY_DIRECTION = "STRICT CLOTHING & APPAREL GARMENT FIDELITY 
 const FASHION_SELFIE_BODY_CONTINUITY_LOCK = "FASHION SELFIE COMPLETE BODY LOCK: Render exactly one anatomically complete adult model with one connected head, neck, shoulders, torso, hips, two arms, two hands, two legs, and two feet. Never erase, crop away, detach, duplicate, or deform the torso, shoulders, arms, hands, hips, legs, or feet. The phone covers only the face; it must never replace or hide the upper body. When full-body framing is required, keep the complete head-to-toe body visible and grounded in every frame.";
 const LOWER_BODY_GARMENT_CONTINUITY_LOCK = "LOWER-BODY GARMENT FRAME LOCK: Render only the natural lower body from the waist to the feet so the exact pants or skirt remains the hero. Keep the waistband, hips, full garment length, legs, and footwear anatomically connected and visible. Do not include a smartphone, mirror, selfie pose, hands, face, head, or upper torso.";
 export const FASHION_SELFIE_ON_BODY_WEAR_LOCK = "FASHION SELFIE ON-BODY WEAR LOCK: The model is WEARING the exact reference outfit/clothing directly on-body as apparel. Strictly FORBID holding the garment in hands, displaying it laid flat or folded on the floor/table, or presenting/reviewing the product by hand. The model's hands are used ONLY to hold the smartphone vertically in front of the face for the selfie. Product review holding poses are strictly prohibited (product-holding reviews are reserved for UGC mode only).";
+export const FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK = "NATURAL SMARTPHONE HOLDING REALISM & ERGONOMIC POSE LOCK: The model holds a modern sleek smartphone naturally in ONE hand (left or right hand) at chin / lower-face height in an authentic, effortless OOTD mirror-selfie pose. The hand uses a relaxed, anatomically correct human grip: slender fingers naturally wrapped around the side/back edge of the phone, thumb resting along the side, wrist straight and relaxed with the forearm, and the elbow resting naturally downward close to the torso (strictly NEVER raised high, NEVER stick elbow outward like a wing, NEVER rigid robotic pose). The other arm hangs relaxed and naturally at the side. The smartphone is held vertically at true smartphone scale (standard 6.1–6.7 inches) with the sleek back of the phone and camera lenses facing outward toward the viewer/mirror, naturally obscuring the model's facial features without covering the neck or chest. STRICT ANATOMICAL HAND RULES: Exactly 5 slender, natural fingers on each hand with organic human skin texture, realistic knuckles, and clean natural fingernails. ABSOLUTELY FORBIDDEN: deformed fingers, extra fingers, 6 fingers, claw-like grip, backward twisted wrist, severed/floating hands, giant/oversized phone, or the phone floating in mid-air.";
 const FASHION_HANGER_MODEL_DIRECTION = "FASHION HANGER PRESENTER MODE: Show exactly one fictional, visibly youthful, naturally beautiful, cute, polished Thai female fashion model aged 20-25 years old with a distinctly Thai identity and a Korean-inspired K-fashion/K-beauty aesthetic: soft clean makeup, fresh luminous skin, neat modern hair, and elegant youthful styling. This is a Thai woman, not a Korean or foreign model. She stands and faces the camera directly with a fully visible fresh youthful face, clear eye contact, and a friendly confident commercial presentation. Never make the model older than 25, mature-looking, or elderly. Generate a brand-new fictional face that does not copy, match, resemble, or reproduce any face from the reference image or any uploaded model image. Do not infer identity, likeness, or facial features from the source.";
 const FASHION_HANGER_PRODUCT_ONLY_STYLE_LOCK = "FASHION HANGER PRODUCT-ONLY STYLE LOCK: Copy only the exact garment that is the product being sold. If the product is a shirt, copy only that shirt; use newly generated fashionable, simple, modest, opaque non-denim bottoms and newly generated styling. If the product is a skirt or pants, copy only that exact skirt or pants; use a newly generated fashionable, simple, modest, opaque non-denim top and newly generated styling. NO UNREQUESTED JEANS LOCK: Do not dress the model in jeans, denim pants, denim skirts, or a denim jacket when denim is not the sold product; choose tailored trousers, wide-leg trousers, a pleated midi skirt, or another polished non-denim option instead. If the sold product itself is denim, preserve only that exact product garment. Do not copy any non-product clothing, outfit combination, shoes, accessories, jewelry, hairstyle, makeup, pose, background, or overall styling from the reference image or model image. The worn garment and the hanger garment must match the product only; everything else must be an original fictional choice.";
 const FASHION_HANGER_GARMENT_PAIR_DIRECTION = "EXACT GARMENT PAIR LOCK: Create exactly two visually identical instances of the exact reference garment for this requested presentation: one instance naturally worn by the standing model and one identical instance hanging on a real clothes hanger held beside the model's torso. Both garments must match the reference type, cut, size proportions, fabric, colors, print, logo, seams, and every visible detail exactly. Do not add any third garment, alternate design, or generic substitute.";
@@ -529,13 +530,17 @@ function getApparelWearDirection(text = "", selectedPresenter = "", options = {}
   }
   if (/(?:ชุดออกกำลังกาย|ชุดฟิตเนส|ชุดโยคะ|ชุดกีฬา|workout\s*set|gym\s*set|activewear\s*set|athletic\s*set|fitness\s*set|sports\s*set|2\s*piece)/i.test(clean) ||
       (/(?:ออกกำลังกาย|ฟิตเนส|โยคะ|workout|gym|fitness|yoga|activewear)/i.test(clean) && /(?:เซ็ท|เซ็ต|ชุด|set|bra.*leggings|leggings.*bra|top.*pants)/i.test(clean))) {
-    return `APPAREL WEARING MODE: The ${model} naturally wears the complete exact reference workout outfit/set (matching athletic top/sports bra and gym leggings/shorts) together on-body as a cohesive fitness outfit.`;
+    return `APPAREL WEARING MODE: The ${model} naturally wears the complete exact reference workout outfit/set (matching athletic fitness top and high-waisted workout leggings) together on-body as a cohesive fitness outfit. MODEST ATHLETIC COMMERCIAL PRESENTATION: High-performance sportswear styling, tasteful fitness aesthetic, clean fitness gym look, 100% commercial-safe, fully covered, no provocative poses.`;
+  }
+  if (/(?:สปอร์ตบรา|sports\s*bra)/i.test(clean) ||
+      (/(?:ออกกำลังกาย|ฟิตเนส|โยคะ|workout|gym|fitness|yoga|activewear)/i.test(clean) && /(?:บรา|bra|\btop\b|เสื้อ(?!ผ้า))/i.test(clean))) {
+    return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference athletic fitness top once as the sole visible featured top. Pair with matching modest, high-waisted opaque athletic workout leggings. MODEST ATHLETIC COMMERCIAL PRESENTATION: High-performance sportswear styling, tasteful fitness aesthetic, clean fitness gym look, 100% commercial-safe, fully covered, no provocative poses.`;
   }
   if (/(กางเกง(?!ใน)|กระโปรง|เลกกิ้ง|ยีนส์|ขาสั้น|ขาสามส่วน|pants|trousers|shorts|leggings|jeans|skirt|bottoms?)/i.test(clean)) {
     return `APPAREL WEARING MODE: The ${model} naturally wears exactly one pair of the exact reference garment as the sole visible bottom garment. Let the model choose a simple matching top naturally. Do not add another pair of trousers, shorts, leggings, or a skirt over or under it.`;
   }
   if (/(เสื้อ(?!ใน)|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|สปอร์ตบรา|shirt|tshirt|tee|top|jacket|hoodie|sweater|blouse|coat|sports\s*bra)/i.test(clean)) {
-    return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once as the sole visible featured top. Use a simple opaque, full-coverage matching bottom such as jeans, trousers, athletic leggings, or a modest skirt. Do NOT show underwear, lingerie, panties, briefs, thongs, bikini bottoms, or any transparent lower garment. Do not add another top over the reference garment.`;
+    return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once as the sole visible featured top. Use a simple opaque, full-coverage matching bottom such as jeans, trousers, athletic leggings, or a modest skirt. Do NOT show underwear or revealing bottoms. Professional commercial presentation. Do not add another top over the reference garment.`;
   }
   return `APPAREL WEARING MODE: The ${model} naturally wears the exact reference garment once in the normal way for that garment type. Let the model choose a simple complementary outfit naturally without layering a duplicate garment of the same type.`;
 }
@@ -2506,6 +2511,7 @@ function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, 
     apparelPriority,
     apparelWearDirection,
     FASHION_SELFIE_ON_BODY_WEAR_LOCK,
+    lowerBodyFraming ? "" : FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK,
     lowerBodyFraming ? LOWER_BODY_GARMENT_CONTINUITY_LOCK : FASHION_SELFIE_BODY_CONTINUITY_LOCK,
     fidelity,
     lowerBodyFraming
@@ -2514,7 +2520,7 @@ function buildFashionSelfieImagePrompt(productInfo, productName, settings = {}, 
     FASHION_SELFIE_BACKGROUND_QUALITY_LOCK,
     textRule,
     "The reference image is the only source of truth for the garment. Do not redesign, crop, duplicate, or replace it."
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, durationSeconds, settings = {}, presenter = "woman") {
@@ -2538,6 +2544,7 @@ function buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, du
     APPAREL_REFERENCE_PRIORITY,
     getApparelWearDirection(productText, presenter, { isFashionSelfie: true }),
     FASHION_SELFIE_ON_BODY_WEAR_LOCK,
+    lowerBodyFraming ? "" : FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK,
     lowerBodyFraming ? LOWER_BODY_GARMENT_CONTINUITY_LOCK : FASHION_SELFIE_BODY_CONTINUITY_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
     `FASHION SELFIE BACKGROUND LOCK: Keep the same background direction throughout every scene: ${compactPromptText(locationStr, 180)}.${isMinimalistStudioLocation(locationStr) ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""} Keep the outfit separated from the background with natural depth of field; the background must remain stable, tasteful, and secondary to the garment.`,
@@ -2986,14 +2993,27 @@ function generationProductName(value, category = "") {
   if (/รองเท้าบูท|บูท|boots|boot/i.test(text)) return "boots";
   if (/รองเท้า|footwear|shoe|shoes/i.test(text)) return "shoes";
 
-  // Clothing & Fashion
+  // Clothing & Fashion & Sportswear
+  if (/(?:ชุดออกกำลังกาย|ชุดฟิตเนส|ชุดโยคะ|ชุดกีฬา|workout\s*set|gym\s*set|activewear\s*set|athletic\s*set)/i.test(text) ||
+      (/(?:ออกกำลังกาย|ฟิตเนส|โยคะ|workout|gym|fitness|yoga|activewear)/i.test(text) && /(?:เซ็ท|เซ็ต|ชุด|set)/i.test(text))) {
+    return "athletic workout set";
+  }
+  if (/สปอร์ตบรา|sports\s*bra/i.test(text) || (/(?:ออกกำลังกาย|ฟิตเนส|โยคะ|workout|gym|fitness|yoga|activewear)/i.test(text) && /(?:บรา|bra|\btop\b|เสื้อ(?!ผ้า))/i.test(text))) {
+    return "athletic fitness top";
+  }
+  if (/กางเกงขาสั้น|ขาสั้น|shorts/i.test(text)) return "shorts";
+  if (/กางเกง(?!ใน)|กางเกงขายาว|กางเกงยีนส์|ยีนส์|pants|trousers|jeans/i.test(text)) return "pants";
+  if (/(?:เลกกิ้ง|leggings)/i.test(text)) {
+    return "workout leggings";
+  }
+  if (/(?:ชุดออกกำลังกาย|ชุดกีฬา|ชุดฟิตเนส|ชุดโยคะ|activewear|sportswear|gym\s*wear)/i.test(text)) {
+    return "athletic sportswear outfit";
+  }
   if (/เดรส|ชุดกระโปรง|แซก|dress/i.test(text)) return "fashion dress";
   if (/เสื้อยืด|คอกลม|คอวี|t-shirt|tshirt|tee/i.test(text)) return "t-shirt";
   if (/เสื้อเชิ้ต|เชิ้ต|shirt/i.test(text)) return "shirt";
   if (/เสื้อฮู้ด|ฮู้ด|hoodie/i.test(text)) return "hoodie";
   if (/เสื้อแจ็คเก็ต|แจ็คเก็ต|เสื้อกันหนาว|jacket|coat/i.test(text)) return "jacket";
-  if (/กางเกงขาสั้น|ขาสั้น|shorts/i.test(text)) return "shorts";
-  if (/กางเกง(?!ใน)|กางเกงขายาว|กางเกงยีนส์|ยีนส์|pants|trousers|jeans/i.test(text)) return "pants";
   if (/กระโปรง|skirt/i.test(text)) return "skirt";
   if (/ชุดชั้นใน|บรา|กางเกงใน|underwear|bra/i.test(text)) return "underwear";
   if (/ถุงเท้า|socks/i.test(text)) return "socks";

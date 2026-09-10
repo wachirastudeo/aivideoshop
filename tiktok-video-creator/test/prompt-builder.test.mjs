@@ -30,7 +30,8 @@ import {
   MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION,
   isUnderwearOrIntimateProduct,
   resolveAutoSettings,
-  isMultiItemOrBundleProduct
+  isMultiItemOrBundleProduct,
+  FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -412,6 +413,21 @@ check("fashion selfie image wears workout set together as cohesive outfit", /nat
 check("fashion selfie video enforces on-body wear and forbids review holding", /WEARING the exact reference outfit on-body throughout the entire video/i.test(workoutFashionSelfieVideo) && /Strictly no holding the product in hands to review \(review holding is for UGC mode only\)/i.test(workoutFashionSelfieVideo), workoutFashionSelfieVideo);
 check("fashion selfie video bypasses intimate apparel safety lock", !/INTIMATE APPAREL SAFETY|STRICTLY NO-ON-BODY-WEARING/i.test(workoutFashionSelfieVideo), workoutFashionSelfieVideo);
 check("fashion selfie video includes on-body wear lock", /FASHION SELFIE ON-BODY WEAR LOCK/i.test(workoutFashionSelfieVideo), workoutFashionSelfieVideo);
+
+// Natural ergonomic phone holding lock checks
+check("fashion selfie image includes natural phone holding lock", workoutFashionSelfieImage.includes(FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK), workoutFashionSelfieImage);
+check("fashion selfie video includes natural phone holding lock", workoutFashionSelfieVideo.includes(FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK), workoutFashionSelfieVideo);
+check("fashion selfie lower body framing excludes phone holding lock", !fashionSelfiePantsLowerBodyImage.includes(FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK) && !fashionSelfiePantsLowerBodyVideo.includes(FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK));
+
+// Workout clothes / sports bra prompt safety checks (commercial fitness terms, zero policy trigger words)
+check("workout selfie maps to athletic workout set instead of underwear", /featuring athletic workout set/i.test(workoutFashionSelfieImage) && /featuring athletic workout set/i.test(workoutFashionSelfieVideo), workoutFashionSelfieVideo);
+check("workout selfie video contains zero underwear trigger words", !/underwear|panties|thong|lingerie|bikini/i.test(workoutFashionSelfieVideo), workoutFashionSelfieVideo);
+check("workout selfie video contains modest athletic presentation styling", /MODEST ATHLETIC COMMERCIAL PRESENTATION/i.test(workoutFashionSelfieVideo) && /clean fitness gym look/i.test(workoutFashionSelfieVideo), workoutFashionSelfieVideo);
+
+const standaloneSportsBra = { name: "สปอร์ตบรา ออกกำลังกาย ผ้ายืดหยุ่น", category: "เสื้อผ้า" };
+const sportsBraVideo = buildVideoPrompt(standaloneSportsBra, fashionSelfieSettings);
+check("standalone sports bra maps to athletic fitness top", /featuring athletic fitness top/i.test(sportsBraVideo), sportsBraVideo);
+check("standalone sports bra video contains zero underwear trigger words", !/underwear|panties|thong|lingerie|bikini/i.test(sportsBraVideo), sportsBraVideo);
 
 // Even if explicit intimate apparel is selected in fashion-selfie mode, underwear checks are bypassed ("ไม่ต้องเข้าเงื่อนไขใดชุดชั้นในอะไรไม่ต้องเช็คในโหมดนี้")
 const intimateInFashionSelfie = { name: "ชุดชั้นใน บราลูกไม้ เซ็กซี่", category: "ชุดชั้นใน" };
