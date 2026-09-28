@@ -484,6 +484,14 @@ check("shoe still image requires both shoes together", /MANDATORY FOOTWEAR PAIR 
 check("still prompt transfers product identity only", /REFERENCE PRODUCT IDENTITY ONLY[\s\S]*do NOT reproduce the source photo as a whole/i.test(shoeImage));
 check("still prompt rejects copying the source scene", /do not copy the source people, pose, background, props, lighting, camera angle, framing, or layout/i.test(shoeImage));
 check("still prompt requires a new composition", /create a new composition/i.test(shoeImage));
+const asymmetricShoeImage = buildImagePrompt({
+  name: "sneaker shoes", footwearCount: "pair",
+  structureAdvice: "Reference pair has different left and right graphics."
+}, settings);
+check("shoe pair does not overwrite reference asymmetry with identical graphics",
+  !/apply it identically to both shoes|NEVER make the left and right shoes different|exact same identical|Both shoes must feature the exact same matching design/i.test(asymmetricShoeImage));
+check("shoe pair preserves each reference shoe independently",
+  /Preserve each shoe's own visible graphics, logo placement, and left\/right asymmetry/i.test(asymmetricShoeImage));
 const singleShoeImage = buildImagePrompt({ name: "รองเท้าข้างเดียว", structureAdvice: "Reference shows one single shoe only." }, settings);
 check("explicit single-shoe reference stays single", /exact single shoe from the reference/i.test(singleShoeImage) && !/MANDATORY FOOTWEAR PAIR STILL COMPOSITION/i.test(singleShoeImage));
 check("shoe video Auto includes a reviewer", /Presenter: (?:A fictional adult Thai woman reviewer|A fictional adult Thai man reviewer)/i.test(shoeVideo));
