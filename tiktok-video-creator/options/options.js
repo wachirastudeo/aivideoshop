@@ -23,6 +23,8 @@ async function loadOptions() {
   setSelectValue("openai-model", settings.openaiModel || DEFAULT_OPENAI_MODEL);
   updateProviderVisibility();
 
+  setSelectValue("generation-provider", settings.generationProvider || "google-flow");
+
   // Google Flow
   const flow = settings.flow || {};
   setRadio("flow-video-model", flow.videoModel || "veo-3.1-lite-low-priority");
@@ -106,6 +108,7 @@ async function saveSettings() {
   }
 
   const settings = {
+    generationProvider: getSelectValue("generation-provider") === "meta-ai" ? "meta-ai" : "google-flow",
     aiProvider: provider,
     geminiApiKey: geminiKey,
     geminiModel: getSelectValue("gemini-model") || DEFAULT_GEMINI_MODEL,

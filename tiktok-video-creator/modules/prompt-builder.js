@@ -337,8 +337,8 @@ function resolveFashionSelfieLocation(productInfo = {}, settings = {}, auto = nu
 
 const FULL_PRODUCT_VISIBILITY_DIRECTION = "STRICT FULL PRODUCT VISIBILITY & NO CROPPING RULE: The ENTIRE product (including all top, bottom, left, right, side edges, legs, handles, doors, shelves, and structural frame) MUST be 100% fully visible inside the frame. ABSOLUTELY NO CROPPING or cutting off any edge or portion of the product. For large or bulky items (such as cabinets, wardrobes, kitchen sinks, dishwashers, refrigerators, sofas, desks, or shelves), use a wide-angle framing (wide camera shot) with ample breathing space around all four edges of the product so that the ENTIRE full cabinet/sink/furniture piece is completely captured in the frame without any part chopped off.";
 
-const HANDS_DIRECTION = "NATURAL HUMAN HAND REALISM & AUTHENTIC REVIEW POSES: Realistic first-person POV perspective. Show authentic, slender, natural adult female hands and forearms holding, supporting, or presenting the product in a realistic, comfortable review pose with delicate feminine proportions (strictly NOT oversized, NOT giant, NOT thick or bulky; accurately proportioned to the product without dwarfing it). NATURAL HAND POSES & GESTURES: Hands must use authentic, relaxed, ergonomic holding poses — such as gently supporting the product from the bottom or sides, holding it steadily with a natural grip, softly turning it to show texture, or gesturing naturally toward details. ALWAYS keep the main brand logo, product title, and printed front artwork 100% visible without hands blocking or covering them. STRICTLY FORBIDDEN POSES: oversized bulky hands, thick masculine hands dwarfing the product, awkward claw grips squeezing the product, fingers covering key logos or text, contorted wrists, impossible arm angles, or hands floating detached in mid-air. The hands must look 100% realistic, organic, and human with soft feminine skin texture, realistic slender knuckles, clean natural fingernails, and natural wrist alignment. STRICT MAXIMUM TWO-HAND COUNT LOCK: The frame must contain AT MOST 2 human hands in total (strictly 1 left and 1 right, or 1 single hand). ABSOLUTELY FORBIDDEN & CRITICAL RULE: NEVER render 3 hands, NEVER render a third hand, NEVER render floating extra hands, duplicated hands, extra arms, or more than 2 hands under any circumstances across all frames. Each hand must have strictly exactly 5 slender fingers with natural fingernails, clean skin texture, realistic knuckles, and wrist joints; no extra fingers, no distorted digits, no clipping into the product.";
-const HANDS_ONLY_SINGLE_HAND_DIRECTION = "SINGLE-HAND LOCK FOR HANDS-ONLY MODE: Show exactly one natural human hand and forearm from one person (specifically a slender, natural adult female hand with delicate proportions, strictly NOT oversized, NOT giant, NOT thick or bulky, perfectly proportioned to the product) holding, supporting, or presenting the product in a realistic, comfortable pose, with exactly five correctly attached fingers. Never show a second hand, extra arm, duplicated hand, floating hand, detached hand, or any hand belonging to another person.";
+const HANDS_DIRECTION = "NATURAL HUMAN HAND REALISM & AUTHENTIC REVIEW POSES: Realistic first-person POV perspective. Show authentic, slender, natural adult female hands and forearms holding, supporting, or presenting the product in a realistic, comfortable review pose with delicate feminine proportions (strictly NOT oversized, NOT giant, NOT thick or bulky; accurately proportioned to the real-world scale of the product; never blow up or enlarge the product to match or exceed the hand or body). NATURAL HAND POSES & GESTURES: Hands must use authentic, relaxed, ergonomic holding poses — such as gently supporting the product from the bottom or sides, holding it steadily with a natural grip, softly turning it to show texture, or gesturing naturally toward details. ALWAYS keep the main brand logo, product title, and printed front artwork 100% visible without hands blocking or covering them. STRICTLY FORBIDDEN POSES: oversized bulky hands, thick masculine hands, awkward claw grips squeezing the product, fingers covering key logos or text, contorted wrists, impossible arm angles, or hands floating detached in mid-air. The hands must look 100% realistic, organic, and human with soft feminine skin texture, realistic slender knuckles, clean natural fingernails, and natural wrist alignment. STRICT MAXIMUM TWO-HAND COUNT LOCK: The frame must contain AT MOST 2 human hands in total (strictly 1 left and 1 right, or 1 single hand). ABSOLUTELY FORBIDDEN & CRITICAL RULE: NEVER render 3 hands, NEVER render a third hand, NEVER render floating extra hands, duplicated hands, extra arms, or more than 2 hands under any circumstances across all frames. Each hand must have strictly exactly 5 slender fingers with natural fingernails, clean skin texture, realistic knuckles, and wrist joints; no extra fingers, no distorted digits, no clipping into the product.";
+const HANDS_ONLY_SINGLE_HAND_DIRECTION = "SINGLE-HAND LOCK FOR HANDS-ONLY MODE: Show exactly one natural human hand and forearm from one person (specifically a slender, natural adult female hand with delicate proportions, strictly NOT oversized, NOT giant, NOT thick or bulky, accurately proportioned to the product's real-world size; never blow up or enlarge the product to match or exceed the hand) holding, supporting, or presenting the product in a realistic, comfortable pose, with exactly five correctly attached fingers. Never show a second hand, extra arm, duplicated hand, floating hand, detached hand, or any hand belonging to another person.";
 const HANDS_ONLY_GLOBAL_COUNT_LOCK = "GLOBAL SINGLE-HAND LOCK FOR THE ENTIRE HANDS-ONLY VIDEO: Across every scene and frame, show exactly one natural human hand total from one person (specifically a slender, natural adult female hand with delicate realistic proportions, never oversized, bulky, or thick). Never add a second hand, third hand, extra arm, duplicated hand, floating hand, or hand belonging to another person. If a shot would create more than one hand, remove every hand except the primary hand.";
 const HANDS_ONLY_STILL_COUNT_LOCK = "STILL IMAGE SINGLE-HAND LOCK: Show exactly one natural human hand total from one person (specifically a slender, natural adult female hand with delicate realistic proportions, never oversized or bulky), with exactly five correctly attached fingers. Never render a second hand, extra arm, duplicated hand, detached hand, or more than 5 fingers.";
 const SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION = "SINGLE-PRESENTER HAND ANATOMY: The one presenter has exactly 2 arms and at most 2 hands total, one left and one right, naturally attached to the same body. Never render a third hand, duplicated hand, extra arm, detached hand, or more than 5 fingers on either hand. Hands may be naturally hidden behind the body or outside the crop, but no additional hands may appear.";
@@ -474,7 +474,11 @@ const APPAREL_PRESENTER_FRAME_CONTINUITY = "APPAREL PRESENTER FRAME CONTINUITY: 
 const FICTIONAL_CAST_DIRECTION = "HUMAN CAST: Use a generic fictional commercial presenter according to the selected presenter mode.";
 const INDEPENDENT_FICTIONAL_CAST_DIRECTION = "INDEPENDENT FICTIONAL CAST: Generate the selected fictional presenter independently. Use the product reference only for garment design details; choose the presenter and setting from the selected options.";
 const APPAREL_FICTIONAL_MODEL_DIRECTION = "APPAREL MODEL SAFETY: For clothing, fashion, bags, or accessories, use only a fictional adult commercial fit model or product-only mannequin-style presentation.";
-const NECK_SCARF_USAGE_LOCK = "STRICT SILK NECK SCARF USAGE LOCK: Treat this as the exact small silk neck scarf/neckerchief shown in the reference. Follow the reference image's real wearing position, fold, knot, and drape. For a scarf shown for the neck, keep it around the neck, collar, or collarbone only. Never wrap it around the hair, cover the head, make a turban/headwrap/headband, tie it as a hair accessory, or use it as a face covering. The reference usage overrides the generic word 'scarf'; only use headwear placement if the reference clearly shows head use.";
+export const SCARF_SCALE_DIRECTION = "STRICT SCARF LENGTH & SCALE LOCK: Reproduce the exact real-world dimensions, length, and proportions of the scarf shown in the reference image. Do NOT elongate the scarf or make it hang down excessively long. When worn or tied (around the neck or as a headwrap/headscarf), the tied ends, knot, and fabric drape must stay at their true natural compact length matching the actual reference product, never draped past the torso or waist like a winter muffler.";
+
+export const SCARF_FIDELITY_AND_USAGE_LOCK = "STRICT SCARF WEARING STYLE & TRUE LENGTH/SCALE LOCK: Treat this product as the exact scarf/silk scarf/wrap/headscarf shown in the reference image. WEARING PLACEMENT & STYLING FIDELITY: Strictly adhere to how the product is worn and styled in the reference image. If the reference image or model shows it worn on the head as a headwrap, headscarf, hair wrap, or bandana (โพกหัว/คลุมผม/ผูกผม), the presenter must wear the exact reference scarf on their head matching that exact reference styling. If the reference shows it worn around the neck or collar (พันคอ/ผูกคอ), wear it naturally around the neck as shown. TRUE LENGTH & PROPORTIONS MANDATE: Strictly preserve the real physical size, length, and proportions of the product from the reference image. STRICTLY FORBIDDEN to elongate the scarf, generate overly long dangling ends/tails, or depict it as an excessively long winter muffler or giant trailing shawl hanging down past the chest or waist. Keep all tied knots, folds, and fabric tails at their true compact real-world length matching the actual product.";
+export const SCARF_HEADWRAP_VIDEO_LOCK = "SCARF HEADWRAP VIDEO WEARING LOCK (โพกหัวในวิดีโอ): In the video, the presenter stylishly wears the exact reference scarf on their head as a chic headwrap / headscarf / hair wrap / bandana (สวมใส่แบบโพกหัว / ผูกผม / คลุมผมบนศีรษะอย่างสวยงาม), neatly framing the face and hair. The product's exact printed pattern, motifs, colors, and fabric texture from the reference image must remain clearly visible on the head throughout the video. STRICT COMPACT LENGTH: The knot and tied fabric ends must stay compact and true to the product's actual dimensions, strictly forbidden to hang down excessively long or drape past the chest.";
+const NECK_SCARF_USAGE_LOCK = SCARF_FIDELITY_AND_USAGE_LOCK;
 
 const COLOR_AND_PATTERN_FIDELITY_DIRECTION = "EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference image pixel-for-pixel. Do NOT shift, alter, tint, recolor, or replace original colors or graphics under any lighting or environment effect. Every color zone — background fill, text color, graphic element colors, border colors — must remain exactly as shown in the reference photo.";
 export const TIKTOK_CAPTION_SIGNATURE = "i love tiktok";
@@ -499,17 +503,23 @@ export function isClothingProduct(text = "") {
   if (!isSportswear && isUnderwearOrIntimateProduct(clean)) {
     return false;
   }
-  return /(เสื้อ(?!ใน)|กางเกง(?!ใน)|กระโปรง|ชุด(?!ชั้นใน|ว่ายน้ำ)|เดรส|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|เสื้อผ้า|แฟชั่น|เข็มขัด|หมวก|ถุงเท้า|กางเกงยีนส์|ชุดเดรส|ชุดเซ็ท|ชุดกระโปรง|ผ้าพันคอ|ผ้าคลุม|clothing|clothes|apparel|dress|shirt|tshirt|tee|pants|trousers|jacket|hoodie|skirt|outfit|garment|fashion|\bwear\b|suit|coat|\btop\b|\bbottom\b)/i.test(clean);
+  return /(เสื้อ(?!ใน)|กางเกง(?!ใน)|กระโปรง|ชุด(?!ชั้นใน|ว่ายน้ำ)|เดรส|แจ็คเก็ต|สเวตเตอร์|ฮู้ด|เสื้อผ้า|แฟชั่น|เข็มขัด|หมวก|ถุงเท้า|กางเกงยีนส์|ชุดเดรส|ชุดเซ็ท|ชุดกระโปรง|ผ้าพัน|ผ้าโพก|ผ้าคลุม|clothing|clothes|apparel|dress|shirt|tshirt|tee|pants|trousers|jacket|hoodie|skirt|outfit|garment|fashion|\bwear\b|suit|coat|\btop\b|\bbottom\b|\bscarf\b|\bscarves\b|\bbandana\b|\bshawl\b)/i.test(clean);
 }
 
 function isRainwearProduct(text = "") {
   return /(เสื้อกันฝน|เสื้อฝน|ชุดกันฝน|เสื้อคลุมกันฝน|raincoat|rain\s*jacket|waterproof\s*jacket|waterproof\s*coat|poncho)/i.test(String(text || ""));
 }
 
-function isNeckScarfProduct(text = "") {
+export function isScarfProduct(text = "") {
   const clean = String(text || "").toLowerCase();
-  return /(?:ผ้าพันคอ|ผ้าพันคอไหม|silk\s*scarf|neck\s*scarf|neckerchief)/i.test(clean) &&
-    !/(ผ้าคลุมหัว|โพกหัว|คลุมผม|ผ้าโพก|head\s*scarf|headwrap|hair\s*scarf|turban)/i.test(clean);
+  if (/(ผ้าพันแผล|bandage|พันสายไฟ|สายพัน|กาวพัน)/i.test(clean)) {
+    return false;
+  }
+  return /(?:ผ้าพัน(?:คอ|หัว|ผม|ไหม|แฟชั่น|ไหล่)?|ผ้าโพก(?:หัว|ผม|คอ)?|ผ้าคลุมไหล่|\bscarf\b|\bscarves\b|silk\s*scarf|neck\s*scarf|head\s*scarf|hair\s*scarf|neckerchief|bandana|kerchief|shawl|headwrap|hair\s*wrap)/i.test(clean);
+}
+
+function isNeckScarfProduct(text = "") {
+  return isScarfProduct(text);
 }
 
 function getApparelWearDirection(text = "", selectedPresenter = "", options = {}) {
@@ -521,8 +531,8 @@ function getApparelWearDirection(text = "", selectedPresenter = "", options = {}
   const gender = detectExplicitProductGender(clean) || (["woman", "man"].includes(selectedPresenter) ? selectedPresenter : "");
   const model = gender === "man" ? "adult male model" : gender === "woman" ? "adult female model" : "selected adult model";
 
-  if (isNeckScarfProduct(clean)) {
-    return `${NECK_SCARF_USAGE_LOCK} The ${model} wears the exact scarf naturally around the neck as shown in the reference, with the hair and head uncovered.`;
+  if (isScarfProduct(clean)) {
+    return `${SCARF_FIDELITY_AND_USAGE_LOCK}\n${SCARF_HEADWRAP_VIDEO_LOCK}\nThe ${model} stylishly wears the exact reference scarf on their head as a headwrap / headscarf / bandana (โพกหัว/คลุมผม/ผูกผม), neatly framing the hair and face while strictly maintaining the scarf's true length, compact size, and proportions without exaggerating its length or dangling too long.`;
   }
 
   if (/(เดรส|จั๊มสูท|ชุดหมี|dress|jumpsuit|romper|one.?piece)/i.test(clean)) {
@@ -643,10 +653,34 @@ function isCoffeeCategoryProduct(text = "") {
     || isCoffeeBeanProduct(clean)
     || isPackagedCoffeeProduct(clean);
 }
+
+export function isCoffeeSachetProduct(text = "") {
+  const clean = String(text || "").toLowerCase();
+  const hasCoffeeOrTea = /(กาแฟ|ชา|coffee|tea|espresso|arabica|robusta|ดอยช้าง|doi\s*chang)/i.test(clean);
+  if (!hasCoffeeOrTea) return false;
+  if (/(?:100|150|200|250|300|400|500)\s*(?:g|กรัม)|gr?a?m|กิโล|kg/i.test(clean)) return false;
+  if (/(เมล็ดกาแฟ|กาแฟเมล็ด|เมล็ดคั่ว|whole\s*beans?)/i.test(clean)) return false;
+  return /(ซองดริป|กาแฟดริป|ดริปแบค|ดริปแบ็ก|ซองสติ๊ก|กาแฟสติ๊ก|สติ๊ก|ซองฟอยล์เล็ก|ซองเล็ก|stick\s*pack|drip\s*bag|single[- ]serve)/i.test(clean)
+    || (/(ซองกาแฟ|กาแฟซอง|ซองชา|ชาซอง|sachet|packet)/i.test(clean) && !/(ถุงใหญ่|กระสอบ|500\s*g|1\s*kg|กิโล)/i.test(clean))
+    || (/(ซอง|sachet|packet)/i.test(clean) && !/(ถุงใหญ่|กระสอบ|500\s*g|1\s*kg|กิโล)/i.test(clean))
+    || /\b(?:[5-9]|[1-4]\d)\s*(?:g|กรัม)\b/i.test(clean);
+}
+
+export function isSmallPouchProduct(text = "") {
+  const clean = String(text || "").toLowerCase();
+  if (isPaperFoodContainerProduct(clean)) return false;
+  if (/(กระสอบ|25\s*kg|50\s*kg|10\s*kg|5\s*kg)/i.test(clean)) return false;
+  if (isCoffeeSachetProduct(clean)) return true;
+  const isPouch = /(ถุงกาแฟ|ซองกาแฟ|กาแฟซอง|ซองชา|ถุงชา|ซองดริป|coffee\s*(?:bag|pouch|sachet)|stand\s*up\s*pouch|\bpouch\b|\bsachet\b|\bpacket\b)/i.test(clean);
+  const hasCoffeeContext = /(กาแฟ|ชา|ผง|เมล็ด|coffee|tea|powder|beans?)/i.test(clean);
+  const hasPouchWeight = /(?:100|150|200|250|300|400|500)\s*(?:g|กรัม)|gr?a?m/i.test(clean);
+  const isCoffeeBeans = /(เมล็ดกาแฟ|กาแฟเมล็ด|เมล็ดคั่ว|whole\s*beans?)/i.test(clean);
+  return isPouch || isCoffeeBeans || (hasCoffeeContext && hasPouchWeight);
+}
 const ELECTRONICS_GADGETS_FIDELITY_DIRECTION = "For tech/gadgets, preserve exact body contours, button placement, screen bezel width, port cuts, texture, and brand logo. Do not distort device shape.";
 const SMALL_TECH_ACCESSORY_SCALE_DIRECTION = "STRICT SMALL TECH ACCESSORY SCALE LOCK: This product is a real desk-sized tech accessory, not a large appliance or oversized prop. Preserve true physical scale: a mouse is about palm-sized (roughly 10-13cm long), a keyboard is desk-width and slim, earbuds fit in the ear or charging case, a charger/cable is small enough to hold in one hand, and a headset/headphones fit naturally on a human head or rest on a desk. Show it at realistic size relative to hands, a laptop, keyboard, desk surface, or presenter. ABSOLUTELY FORBIDDEN: do not enlarge it into a giant object, appliance, bag-sized item, or furniture-scale prop; do not shrink it into a tiny toy.";
 const REAL_WORLD_SCALE_AND_PLACEMENT_DIRECTION = "REAL-WORLD SCALE & PLACEMENT LOCK: Analyze the product name/category/size wording and uploaded product image together. Image is truth; name supplies context. Infer scale from anchors, especially the holder's hand; when uncertain, choose the smaller plausible scale. Capacity/weight/dimensions are facts, not enlargement cues. Product is the hero: use focus, light, contrast, placement—not resizing. If held, fit it naturally to the hand; never make it oversized (slender female hand scale, not bulky). Place with perspective, gravity, shadows, reflections. Keep product sharp; background soft/blurred and secondary, without forced props. On tables, show surface and background depth. Never use macro framing or let the product/table fill the frame.";
-const PACKAGE_SCALE_FROM_NAME_AND_IMAGE_DIRECTION = "PACKAGE SCALE FROM NAME + IMAGE: Analyze the package type and stated weight/capacity in the product name together with the uploaded product image. When held, infer a normal retail package size relative to the person's hand; a 250g coffee pouch should look like a normal hand-held retail pouch, not a sack or oversized prop. Preserve the reference proportions and do not enlarge it for hero emphasis.";
+const PACKAGE_SCALE_FROM_NAME_AND_IMAGE_DIRECTION = "PACKAGE SCALE FROM NAME + IMAGE: Analyze stated weight/capacity and package type in product name and image. When held, infer normal retail package size relative to the person's hand: a 200g-250g coffee beans/ground pouch is compact (approx 11-13cm wide, 15-18cm tall, smartphone or mug height); held easily in ONE hand with fingers around it, taking up only ~1/4 of chest width, NEVER an oversized sack, pillow, or torso-covering prop. Sachets/drip bags (5g-40g, ซองกาแฟ) are palm-sized (8-14cm). Preserve reference proportions.";
 const PHONE_CASE_FIDELITY_DIRECTION = "STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK: You MUST reproduce the phone case (or mobile cover) EXACTLY as depicted in the reference image. PRESERVE EXACT 3D FORM & CUTOUT GEOMETRY: All camera lens cutout shapes, camera bump border, side button covers, speaker/charger port cutouts, edge bevels, AND any built-in magnetic ring (MagSafe ring) MUST be rendered 100% pixel-faithfully without any deformation. EXACT PRINTED ARTWORK & PATTERNS: Any printed cartoon graphics, illustrations, brand artwork, typography, pattern motifs, magnetic ring circle, or charm attachments MUST be reproduced 100% pixel-faithfully in exact position, colors, and layout. CASE ARTWORK COORDINATE LOCK: Treat the reference artwork as an exact texture map on the case surface. Preserve every motif's orientation and position relative to the case's top, bottom, left, right edges, corners, camera cutout, MagSafe ring, and side boundaries. Do NOT invent a similar pattern, mirror it, rotate it, stretch it, reflow it, center-shift it, crop it, or let it drift onto the phone, camera bump, bezel, or background. If perspective or curvature is visible, follow the reference perspective while keeping the artwork aligned to the physical case surface. REAL-WORLD PHONE SCALE LOCK: When the case is on or near a phone, preserve true smartphone size relative to a full-size hand, table, room, and furniture. Never let one phone or case fill half a table or become furniture-sized just to look prominent. ZERO WARPING & SHAPE DRIFT RULE: The phone case must remain 100% rigid, perfectly fitted to a phone, and static without morphing, bending, stretching, or shifting design elements across video frames.";
 const PHONE_CASE_ONE_HAND_HOLD_LOCK = "MANDATORY ONE-HAND PHONE CASE HOLD: The phone case must remain held by exactly one visible natural adult hand total (specifically a slender adult female hand with delicate proportions, strictly not oversized or bulky) in every shot. Show one anatomically correct hand attached to one wrist and forearm, with no more than five fingers. The second hand must remain completely outside the frame. Never use a two-handed grip, a supporting second hand, an extra, duplicated, detached, or floating hand, or a handoff between hands. Keep the same one-hand rule across every scene cut and close-up.";
 const PHONE_CASE_HANDLING_DIRECTION = "NATURAL PHONE CASE HANDLING LOCK: When a presenter holds the phone, use one natural adult female hand with a relaxed ergonomic grip: thumb along one side or lightly on the case back, fingers naturally supporting the opposite edge behind the phone, wrist and fingers anatomically connected. Keep the phone and case at true smartphone size with delicate feminine hand proportions. Do not pinch the artwork, cover the camera cutout, bend the case, make the hand claw-like, add fingers, float the hand, or make the hand/phone/case oversized. Keep the case fitted flush to the phone, with the exact camera opening, buttons, corners, pattern, and edges aligned and clearly visible.";
@@ -724,7 +758,7 @@ export const STILL_MOTION_DYNAMIC_CAMERA_DIRECTION = "CAMERA MOTION ONLY — CON
   "- UPBEAT FUN SOUNDTRACK (เพลงสนุกๆ จังหวะสนุกสนาน): Paired with upbeat, cheerful, and lively commercial instrumental background music with a catchy bounce and playful rhythm that elevates product appeal and matches the dynamic motion.\n" +
   "- NO TRANSITION EFFECTS & NO ZOOM EFFECTS (ไม่มีเอฟเฟกต์เปลี่ยนซีน และไม่ซูม): Strictly NO transition effects and NO zoom effects — NO zoom in, NO zoom out, NO wipes, NO flashes, NO scene dissolves, NO fade-to-black, NO morphs, and NO graphic transitions. The camera moves in a pure, clean, seamless continuous horizontal orbit arc without changing scenes.\n" +
   "The camera moves dynamically with smooth horizontal 45° product orbit panning left-to-right (orbit ซ้ายขวาเลยจบ) with strictly zero zoom effects, while the product remains anchored dead-center with generous safe margins (15–25%). Zero out-of-frame drift. Never let the video feel like a frozen still picture.";
-const HANDS_ONLY_SIMPLE_MOTION_DIRECTION = "HANDS-ONLY SIMPLE HOLDING MOTION LOCK: Show only one person's natural hand and forearm (specifically a slender, natural adult female hand with delicate realistic proportions; strictly NOT oversized, NOT giant, NOT thick or bulky, perfectly proportioned to the product) holding the exact product. Use exactly one hand with exactly five correctly attached fingers; never show a second hand. Keep the product mostly steady, move it gently a short distance left and right, and make only one small natural partial turn to reveal its front and side. Do not open, use, shake, swing, toss, repeatedly rotate, place down, or perform a multi-step demonstration.";
+const HANDS_ONLY_SIMPLE_MOTION_DIRECTION = "HANDS-ONLY SIMPLE HOLDING MOTION LOCK: Show only one person's natural hand and forearm (specifically a slender, natural adult female hand with delicate realistic proportions; strictly NOT oversized, NOT giant, NOT thick or bulky, accurately proportioned to the product's real physical scale; never enlarge the product into an oversized prop) holding the exact product. Use exactly one hand with exactly five correctly attached fingers; never show a second hand. Keep the product mostly steady, move it gently a short distance left and right, and make only one small natural partial turn to reveal its front and side. Do not open, use, shake, swing, toss, repeatedly rotate, place down, or perform a multi-step demonstration.";
 const HANDS_ONLY_VIDEO_STYLE_DIRECTION = "HANDS-ONLY VIDEO STYLE LOCK: The entire video must be filmed from a realistic first-person point of view showing exactly one person's slender, natural adult female hand and forearm (delicate, realistic proportions, never oversized, bulky, or masculine) interacting with the exact product. Exactly one hand only; no second hand, face, head, torso, full body, or second person may appear in any scene. Keep the action simple: hold the product steadily, move it slightly back and forth, and turn it only a little.";
 const HANDS_ONLY_CLOTHING_MOTION_DIRECTION = "CLOTHING HANDS-ONLY FLAT-LAY & HANDLING LOCK: For clothing and apparel items in hands-only POV, the garment must start neatly laid flat or placed down on a clean aesthetic surface (such as an aesthetic bed, wooden table, or flat display surface). Natural slender adult female hands (delicate feminine proportions, strictly NOT oversized, NOT giant, NOT thick or bulky; accurately proportioned) enter the frame to gently touch or smooth the fabric, and then pick up and lift the garment to showcase its fabric quality, texture, and front details. Do NOT render the clothing item floating in mid-air or held stiffly without surface support from the beginning. Start flat-lay on the surface first, then naturally pick up and inspect.";
 const HANDS_ONLY_CLOTHING_STYLE_DIRECTION = "HANDS-ONLY CLOTHING VIDEO STYLE LOCK: Filmed from a realistic first-person point of view with no visible face, head, torso, or full body. Start with the clothing garment neatly laid flat on a clean surface. Slender, natural adult female hands gently touch or smooth the fabric, then pick up and lift the garment to showcase its material, cut, and details naturally.";
@@ -1103,6 +1137,7 @@ function buildCompactPhoneCaseStillPrompt(productInfo = {}, productName, auto, s
     "REFERENCE PRODUCT SOURCE: Use the attached reference image as the exact source for the product only. Copy the visible case or case set 1:1; do not redraw, redesign, beautify, or generate a lookalike replacement.",
     UNIVERSAL_REFERENCE_SURFACE_TRANSFER_LOCK,
     PHONE_CASE_STILL_GEOMETRY_LOCK,
+    PHONE_CASE_COMPLEX_PATTERN_REFERENCE_LOCK,
     "CASE ARTWORK COORDINATE LOCK: Keep every pattern and printed detail fixed relative to the case's top, bottom, left, right edges, corners, and camera cutout; never shift, stretch, mirror, simplify, or recolor it.",
     !isMultiItemOrBundleProduct(productInfo)
       ? "FINAL PHONE CASE CHECK: The result must be the same case from the original image, not a lookalike or generic replacement. If the listing is not for multiple cases or a pack (ไม่ได้ระบุหลายชิ้น/ยกโหล), render strictly ONE single case even if the reference image shows multiple cases; otherwise keep each visible case separate with the same count."
@@ -1192,7 +1227,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   const isFootwear = isFootwearProduct(productInfo);
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const isHeavy = isHeavyProduct(productText);
-  const specificScale = getProductSpecificScaleInstruction(visualProductName);
+  const specificScale = getProductSpecificScaleInstruction(productText);
 
   // Keep regular phone-case stills concise: the attached asset is the product
   // source, so only the scene and natural handling need to be generated.
@@ -1239,7 +1274,12 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
       : (isClothing || isUnderwear)
       ? HANDS_ONLY_CLOTHING_STILL_DIRECTION
       : (handsOnlyStyle || auto.presenter === "hands_only" ? HANDS_ONLY_SINGLE_HAND_DIRECTION : HANDS_DIRECTION);
-    peopleDirection = `${handsPromptDirection}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}`;
+    const pouchHandsScaleLock = isSmallPouchProduct(productText)
+      ? (isCoffeeSachetProduct(productText)
+          ? "\nSTRICT SACHET SCALE: Palm-sized sachet (8-14cm); hold naturally in palm/fingers, never enlarged into a giant bag/sack."
+          : "\nSTRICT POUCH SCALE: Compact 250g coffee pouch (11-13cm wide, 15-18cm tall, smartphone/mug scale); hold in ONE hand with fingers around sides, never enlarged into an oversized sack.")
+      : "";
+    peopleDirection = `${handsPromptDirection}\n${HANDS_ONLY_FACE_EXCLUSION}${stillHandCount}${pouchHandsScaleLock}`;
   } else if (isAnimal) {
     peopleDirection = `Pet Animal: A cute, friendly pet animal (${auto.presenter === "cat" ? "cat" : "dog"}) sitting next to or interacting naturally with the product in a bright, clean indoor setting. ${ANIMAL_PRESENTER_DIRECTION} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION}`;
   } else if (wearableCrop) {
@@ -1257,7 +1297,17 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
     const apparelDirection = isChildPresenter && isClothing
       ? getChildApparelWearDirection(productText)
       : getPresenterOutfitDirection(productText, auto.presenter);
-    peopleDirection = `Presenter: ${presenterInstruction}. ${apparelDirection} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.`;
+    const isPouch = isSmallPouchProduct(productText);
+    const isSachet = isCoffeeSachetProduct(productText);
+    const isBeansOr250g = isCoffeeBeanProduct(productText) || /(?:200|250)\s*(?:g|กรัม)/i.test(productText);
+    const productFocus = isPouch
+      ? (isSachet
+          ? "Product Focus: Palm-sized sachet (8-14cm), never torso-covering."
+          : (isBeansOr250g
+              ? "Product Focus: Compact 250g coffee pouch (11-13cm wide, 15-18cm tall, smartphone/mug size); presenter holds it naturally in ONE hand (~1/4 chest width), never oversized or torso-covering."
+              : "Product Focus: Retail pouch scale (15-18cm); hold in ONE hand, never oversized."))
+      : "Product Focus: Keep the product as the primary hero focal point in the center of the frame in true scale.";
+    peopleDirection = `Presenter: ${presenterInstruction}. ${apparelDirection} ${SINGLE_PRESENTER_HAND_ANATOMY_DIRECTION} ${productFocus}`;
   } else {
     peopleDirection = NO_PEOPLE_DIRECTION;
   }
@@ -1358,18 +1408,18 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   } else if (handsOnly) {
     scaleInstruction = isHeavy
       ? "Real scale."
-      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the hands in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to the hands; never make the product abnormally large).";
+      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the hands in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale.";
     if (!isHeavy) {
       scaleInstruction += " The physical size of the product must be perfectly proportional and realistic relative to the human hands holding it. Do not make the product abnormally giant, massive, or tiny relative to the hands.";
     }
   } else if (noPeople) {
     scaleInstruction = isHeavy
       ? "Real scale."
-      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment; never make the product abnormally large).";
+      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Avoid extreme closeups that make the product fill the entire panel; keep a visible margin of surrounding space or background around the product to clearly show its compact hand-sized scale.";
   } else {
     scaleInstruction = isHeavy
       ? "Real scale."
-      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment, hands, or presenter in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale (Strictest rule: Product size must be realistic and in true scale relative to its environment or presenter; never make the product abnormally large).";
+      : "Small consumer product scale: The product is a small, lightweight, pocket-sized/hand-sized item. Depict it in a realistic small scale relative to the environment, hands, or presenter in every panel. STRICT RULE: Do not make the product look abnormally large, giant, or oversized. Keep a visible margin of surrounding space, hands, or background around the product to clearly show its compact hand-sized scale.";
   }
 
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
@@ -1413,7 +1463,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
     (stillMotionMode || boxedMotionMode) ? CAMERA_ONLY_NO_HANDS_DIRECTION : "",
     stillMotionMode ? STILL_MOTION_IN_FRAME_LOCK : "",
     stillMotionMode ? STILL_MOTION_TOP_VIEW_DIRECTION : "",
-    isNeckScarfProduct(productText) ? NECK_SCARF_USAGE_LOCK : "",
+    isScarfProduct(productText) ? SCARF_FIDELITY_AND_USAGE_LOCK : "",
     isPackagedCoffeeProduct(productText) ? REFERENCE_VARIANT_DISAMBIGUATION_DIRECTION : "",
     (isClothing || isUnderwear) ? referenceCompositingDirection : "",
     isUnderwear ? INTIMATE_APPAREL_SAFETY_MANDATE : "",
@@ -1559,6 +1609,9 @@ function getWearableCropFrame(text = "") {
   if (/(สร้อยคอ|สร้อย|necklace)/i.test(clean)) {
     return "neck-and-upper-chest crop, showing the exact necklace naturally worn";
   }
+  if (isScarfProduct(clean)) {
+    return "head-and-neck or shoulders crop, showing the exact scarf or wrap naturally worn (around the neck or as a headwrap) matching the reference style";
+  }
   if (isHeadwearProduct(clean) || isFullFaceCoveringProduct(clean)) {
     return "head-and-shoulders crop from below the eyes or below the face, showing the exact worn item without showing the full face";
   }
@@ -1689,10 +1742,13 @@ function getProductSpecificScaleInstruction(text = "") {
   if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|shoe|shoes|sneaker|footwear|sandal|boot)/i.test(clean)) {
     return SHOE_SCALE_DIRECTION;
   }
+
+  if (isScarfProduct(clean)) {
+    return SCARF_SCALE_DIRECTION;
+  }
   
   // Detect coffee bags, pouches, sachets, packets (ถุงกาแฟ, ซองกาแฟ, 200g, 250g, 500g)
-  const isSmallPouch = /(กาแฟ|ชา|ผง|เมล็ด|coffee|tea|powder|\bpouch\b|\bsachet\b|\bpacket\b|200\s*g|250\s*g|500\s*g|gr?a?m|กรัม)/i.test(clean);
-  if (isSmallPouch && !/(กระสอบ|25\s*kg|50\s*kg|10\s*kg|5\s*kg)/i.test(clean)) {
+  if (isSmallPouchProduct(clean)) {
     return PACKAGE_SCALE_FROM_NAME_AND_IMAGE_DIRECTION;
   }
   
@@ -1946,7 +2002,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   const isClothing = isClothingProduct(productText);
   const isUnderwear = isUnderwearOrIntimateProduct(productText);
   const isWearable = isWearableProduct(productText);
-  const specificScale = getProductSpecificScaleInstruction(visualProductName);
+  const specificScale = getProductSpecificScaleInstruction(productText);
   const productActivityDirection = getProductActivityDirection(productText, settings);
   const selectedProductActivity = settings?.productActivity;
 
@@ -2095,7 +2151,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
     PRODUCT_FIDELITY_DIRECTION,
     STRICT_PRODUCT_IDENTITY_RULE,
     isClothing ? (handsOnly ? APPAREL_HANDS_ONLY_REFERENCE_DIRECTION : APPAREL_REFERENCE_USE_DIRECTION) : PRODUCT_ISOLATION_DIRECTION,
-    isNeckScarfProduct(productText) ? NECK_SCARF_USAGE_LOCK : "",
+    isScarfProduct(productText) ? `${SCARF_FIDELITY_AND_USAGE_LOCK}\n${SCARF_HEADWRAP_VIDEO_LOCK}` : "",
     PRINTED_GRAPHIC_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
     shoeWearableCrop ? SHOE_WEARABLE_CROP_VIDEO_DIRECTION : (wearableCrop ? WEARABLE_CROP_SCENE_DIRECTION : (isClothing ? APPAREL_VISIBILITY_DIRECTION : FULL_PRODUCT_VISIBILITY_DIRECTION)),
@@ -2341,6 +2397,18 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
 
       presenterInstruction = presenterInstruction
         + " The product is eyewear; depict the glasses in a realistic natural scale relative to the presenter's face or head, ensuring it fits perfectly on the face without looking abnormally large or tiny.";
+    } else if (isSmallPouchProduct(productText)) {
+      const isSachet = isCoffeeSachetProduct(productText);
+      const pouchDetail = isSachet
+        ? " The product is a compact single-serve coffee sachet/packet (approx 8-14cm tall); depict it in a realistic palm-sized or finger-held scale relative to the hands. Show it clearly and sharply, but NEVER make it look like a giant bag, sack, or oversized prop."
+        : " The product is a compact 200g-250g coffee beans/ground retail pouch (approx 11-13cm wide, 15-18cm tall, roughly the height of a smartphone or coffee mug); depict it held naturally in ONE hand with fingers wrapping around the sides. Show it clearly and sharply, but NEVER enlarge it into a giant sack, 1kg commercial bag, or oversized prop.";
+
+      const presenterPouchDetail = isSachet
+        ? " The product is a compact single-serve coffee sachet/packet (approx 8-14cm tall); depict it in a realistic palm-sized scale held naturally by the presenter. Show it clearly and sharply, but NEVER blow it up into a giant bag, sack, or prop covering the chest/torso."
+        : " When holding the 200g-250g coffee beans/ground pouch, the presenter must hold it naturally in ONE hand (approx 11-13cm wide, 15-18cm tall, smartphone/mug size); it occupies only ~1/4 of chest width. STRICTLY FORBIDDEN: never enlarge it into a giant sack, pillow, or 1kg commercial bag; never cover the chest or torso; never cradle with two arms.";
+
+      handsDir = handsDir + pouchDetail;
+      presenterInstruction = presenterInstruction + presenterPouchDetail;
     } else {
       handsDir = handsDir
         + " The product is a small item; depict it in a realistic small hand-sized scale relative to the hands. Show it clearly and sharply, but do not make it look abnormally giant, massive, or oversized.";
@@ -2414,9 +2482,15 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
     : "Voiceover: Add a natural Thai off-screen voiceover narration speaking in Thai.";
 
   if (handsOnly) {
-    const handsMotionDir = isClothing
+    let handsMotionDir = isClothing
       ? HANDS_ONLY_CLOTHING_MOTION_DIRECTION
       : (handsOnlyStyle || auto.presenter === "hands_only" ? HANDS_ONLY_SIMPLE_MOTION_DIRECTION : handsDir);
+    if ((handsOnlyStyle || auto.presenter === "hands_only") && isSmallPouchProduct(productText)) {
+      const isSachet = isCoffeeSachetProduct(productText);
+      handsMotionDir += isSachet
+        ? " The product is a compact single-serve coffee sachet/packet (approx 8-14cm tall); depict it in a realistic palm-sized or finger-held scale relative to the hand. NEVER make it look like a giant bag, sack, or oversized prop."
+        : " The product is a compact 200g-250g coffee beans/ground pouch (approx 11-13cm wide, 15-18cm tall, smartphone/mug size); depict it held naturally in ONE hand with fingers around the sides. NEVER enlarge it into a giant sack or oversized prop.";
+    }
     const handsCountLock = isUnboxingHands
       ? UNBOXING_TWO_HAND_COUNT_LOCK
       : isClothing
@@ -2860,8 +2934,8 @@ export function buildCategoryFidelityDirection(productInfo = {}) {
   if (isUnderwearOrIntimateProduct(text)) {
     return `${INTIMATE_APPAREL_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (isClothingProduct(text)) {
-    return `${isNeckScarfProduct(text) ? NECK_SCARF_USAGE_LOCK + "\n" : ""}${CLOTHING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  if (isClothingProduct(text) || isScarfProduct(text)) {
+    return `${isScarfProduct(text) ? SCARF_FIDELITY_AND_USAGE_LOCK + "\n" : ""}${CLOTHING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
   if (isFurnitureProduct(text)) {
     const isChair = /(เก้าอี้|อาร์มแชร์|ม้านั่ง|chair|armchair|stool|bench)/i.test(text);
@@ -2983,6 +3057,7 @@ function generationProductName(value, category = "") {
   // to underwear.
   if (isCoffeePowderProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing ground coffee powder" : "ground coffee powder";
   if (isCoffeeBeanProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing whole roasted coffee beans" : "whole roasted coffee beans";
+  if (isCoffeeSachetProduct(text) || isCoffeeSachetProduct(lowerVal)) return "sealed coffee sachet packet";
   if (isCoffeeCategoryProduct(lowerVal)) return "coffee pouch bag";
 
   // Footwear must be identified before the generic Thai fabric keyword "ผ้า"
@@ -3059,7 +3134,8 @@ function generationProductName(value, category = "") {
   // Food & Beverage & Supplements
   if (isCoffeePowderProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing ground coffee powder" : "ground coffee powder";
   if (isCoffeeBeanProduct(text)) return isPackagedCoffeeProduct(text) ? "sealed printed coffee pouch bag containing whole roasted coffee beans" : "whole roasted coffee beans";
-  if (/ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean/i.test(text)) return "printed coffee pouch bag";
+  if (isCoffeeSachetProduct(text)) return "sealed coffee sachet packet";
+  if (/ถุงกาแฟ|เมล็ดกาแฟ|ซองกาแฟ|ผงกาแฟ|กาแฟคั่ว|coffee bag|coffee pouch|coffee bean/i.test(text)) return /ซอง/i.test(text) ? "sealed coffee sachet packet" : "printed coffee pouch bag";
   if (/กาแฟ|coffee/i.test(text)) return "coffee pouch bag";
   if (/ชา|ชาไทย|ชาเขียว|tea/i.test(text)) return "tea product";
   if (/ขนม|คุกกี้|เบเกอรี่|snack|cookie|bakery/i.test(text)) return "snack food product";

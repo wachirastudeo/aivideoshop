@@ -1,3 +1,4 @@
+import { bindGenerationProvider } from "../modules/generation-provider.js";
 import {
   getSelectableVideoStyles,
   HIDDEN_VIDEO_STYLE_IDS,
@@ -70,6 +71,9 @@ export async function initVideoTab(injectedHelpers) {
   renderPills("mood-pills", MOODS, settings.mood, (value) => updateSettings({ mood: value }));
   bindGlobalEvents();
   fillGlobalFormFromState();
+  bindGenerationProvider("video-generation-provider", savedOptions.generationProvider,
+    ["image-model", "video-model", "video-ref-mode", "image-count", "video-count"],
+    (error) => helpers.showStatus(error.message, "error"));
   renderQueue();
 
   // Sync running state from storage on load
@@ -297,8 +301,8 @@ function normalizeSettings(value) {
     videoModel: value.videoModel || "veo-3.1-lite-low-priority",
     imageCount: value.imageCount || 1,
     videoCount: value.videoCount || 1,
-    videoDuration: value.videoDuration || 8,
-    aspectRatio: value.aspectRatio || "9:16",
+    videoDuration: 10,
+    aspectRatio: "9:16",
     videoRefMode: value.videoRefMode === "ingredients" ? "ingredients" : "frames",
     flowGenMode: ["video", "image"].includes(value.flowGenMode) ? value.flowGenMode : "combined",
     postAction: value.postAction === "both" ? "draft" : (["download", "draft", "post", "schedule"].includes(value.postAction) ? value.postAction : "post"),
@@ -843,7 +847,7 @@ async function processQueue() {
     if (stopRequested) break;
     if (queueAttempt > 1 && !failedIndexes.has(i)) continue;
     const product = productQueue[i];
-    if (product.status === "done") {
+    if (product.status === "done" && (settings.flowGenMode === "image" || product.videoUrl)) {
       helpers.logActivity?.(`สินค้า ${i + 1} (${product.name || "ไม่มีชื่อ"}): ข้ามการทำรายการเนื่องจากสถานะเป็น done แล้ว`, "info");
       continue;
     }
@@ -872,7 +876,8 @@ async function processQueue() {
 
       const isIngredients = options.videoRefMode === "ingredients";
       const isImageOnly = settings.flowGenMode === "image";
-      const isVideoOnly = !isImageOnly && (settings.flowGenMode === "video" || product.status === "image_done");
+      const isVideoOnly = !isImageOnly && (settings.flowGenMode === "video" || product.status === "image_done"
+        || (product.approvedImage && !product.videoUrl));
       product.status = isVideoOnly ? "video_generating" : "image_generating";
       product.errorMessage = "";
       product.isCollapsed = false;
@@ -1018,7 +1023,8 @@ async function processQueue() {
       await persistState();
       renderQueue();
       helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
-      const willRetry = queueAttempt < QUEUE_MAX_ATTEMPTS;
+      if (err.retryable === false) stopRequested = true;
+      const willRetry = !stopRequested && queueAttempt < QUEUE_MAX_ATTEMPTS;
       helpers.logActivity?.(
         willRetry
           ? `สินค้า ${i + 1} ล้มเหลวรอบแรก: ${err.message} — เก็บไว้ลองใหม่ในรอบ Retry`
@@ -1240,6 +1246,7 @@ async function clearVideoQueue() {
 
 function buildFlowOptions(product = null) {
   const opts = {
+    generationProvider: getValue("video-generation-provider") || "google-flow",
     imageModel: settings.imageModel,
     videoModel: settings.videoModel,
     imageCount: settings.imageCount,

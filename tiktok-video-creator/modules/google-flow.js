@@ -1,3 +1,5 @@
+import { openMetaAI } from "./meta-ai.js";
+
 /**
  * @description ขอ background เปิด Google Flow และส่ง prompt เข้าไป
  * @param {"image"|"video"} phase - phase ที่ต้องการเปิด
@@ -7,6 +9,19 @@
  * @returns {Promise<string>} resultUrl ที่ได้กลับมาจาก automation
  */
 export async function openGoogleFlow(phase, prompt, imageUrl = "", options = {}) {
+  if (phase === "video" || phase === "combined") {
+    const direction = "MANDATORY VIDEO FORMAT: Create a vertical portrait 9:16 video lasting exactly 10 seconds. Keep this format and duration throughout the final output.";
+    options = { ...options, videoDuration: 10, aspectRatio: "9:16" };
+    if (phase === "combined") {
+      const prompts = typeof prompt === "string" ? { imagePrompt: prompt, videoPrompt: prompt } : prompt;
+      prompt = { ...prompts, videoPrompt: `${direction}\n${prompts.videoPrompt || ""}\n${direction}` };
+    } else {
+      prompt = `${direction}\n${prompt}\n${direction}`;
+    }
+  }
+  const { settings = {} } = await chrome.storage.sync.get("settings");
+  if ((options.generationProvider || settings.generationProvider) === "meta-ai") return openMetaAI(phase, prompt, imageUrl, options);
+
   // If prompt is an object { imagePrompt, videoPrompt }, it means we want the combined pipeline
   const jobId = crypto.randomUUID();
   const storageKey = `flowJob:${jobId}`;

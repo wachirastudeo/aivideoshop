@@ -104,6 +104,10 @@ async function routeMessage(message, sender) {
     case "SHOPEE_CLICK_POINT":       return clickPointWithDebugger(message.payload, sender, { detachAfter: true });
     case "SHOPEE_FETCH_IMAGES":      return fetchShopeeImages(message.payload);
     case "SHOPEE_CLOSE_SCRAPE_TAB":  return closeShopeeScrapeTab();
+    case "OPEN_META_AI":             return openMetaAI(message.payload);
+    case "META_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
+    case "META_CLICK":               return clickPointWithDebugger(message.payload, sender, { detachAfter: true });
+    case "META_DONE":                return detachDebuggerTab(sender?.tab?.id);
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
     case "DOWNLOAD_VIDEO":           return downloadVideo(message.payload);
     case "DOWNLOAD_FILE":            return downloadFile(message.payload);
@@ -629,6 +633,29 @@ async function resolveFlowHomeUrl(currentUrl = "") {
   return "https://flow.google.com/";
 }
 
+async function openMetaAI(payload = {}) {
+  if (!payload.jobId) throw new Error("Missing Meta AI job ID");
+  const version = flowStopVersion;
+  const sources = [...new Set([payload.imageUrl, ...(payload.options?.imageUrls || []), payload.options?.modelRefImage].filter(Boolean))];
+  const references = await Promise.all(sources.map(async (url) => {
+    if (url.startsWith("data:image/")) return url;
+    const {base64, mime} = await fetchImageData({url});
+    return `data:${mime};base64,${base64}`;
+  }));
+  assertRunNotStopped(version, flowStopVersion);
+  const tab = await chrome.tabs.create({url:"https://www.meta.ai/", active:true});
+  await waitForTabComplete(tab.id);
+  assertRunNotStopped(version, flowStopVersion);
+  await chrome.scripting.executeScript({target:{tabId:tab.id},files:["content/meta-automation.js"]});
+  const response = await chrome.tabs.sendMessage(tab.id, {type:"META_RUN",payload:{...payload,references}});
+  if (!response?.accepted) throw new Error(response?.error || "Meta AI automation did not accept the job");
+  if (version !== flowStopVersion) {
+    await chrome.tabs.sendMessage(tab.id,{type:"META_STOP"}).catch(()=>{});
+    throw createBackgroundStopError();
+  }
+  return {started:true,tabId:tab.id,jobId:payload.jobId};
+}
+
 async function openGoogleFlow(payload) {
   const runVersion = flowStopVersion;
   const flowSettings = await getFlowSettings();
@@ -814,6 +841,11 @@ async function stopFlowPipeline() {
   flowStopVersion += 1;
   await chrome.storage.local.set({ flowStopRequested: true });
   await chrome.storage.local.remove("activeFlowTabId");
+  const metaTabs = await chrome.tabs.query({ url: "https://www.meta.ai/*" });
+  await Promise.allSettled(metaTabs.map(async (tab) => {
+    await chrome.tabs.sendMessage(tab.id, { type: "META_STOP" });
+    await detachDebuggerTab(tab.id);
+  }));
   const tabs = await queryFlowTabs();
   await Promise.allSettled(tabs.map(async (tab) => {
     await chrome.tabs.sendMessage(tab.id, { type: "FLOW_STOP" });

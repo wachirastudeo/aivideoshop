@@ -38,6 +38,9 @@ export async function downloadVideo(url, productInfo) {
   });
 
   if (!response?.ok) throw new Error(response?.error || "ดาวน์โหลดวิดีโอไม่สำเร็จ");
+  if (response.downloadError || response.downloadId == null) {
+    throw new Error(response.downloadError || "Chrome did not start the video download");
+  }
   if (response.videoUrl) {
     productInfo.preparedVideoUrl = response.videoUrl;
     productInfo.preparedVideoMimeType = response.mimeType || "";

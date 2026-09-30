@@ -31,7 +31,13 @@ import {
   isUnderwearOrIntimateProduct,
   resolveAutoSettings,
   isMultiItemOrBundleProduct,
-  FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK
+  FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK,
+  isCoffeeSachetProduct,
+  isSmallPouchProduct,
+  isScarfProduct,
+  SCARF_SCALE_DIRECTION,
+  SCARF_FIDELITY_AND_USAGE_LOCK,
+  SCARF_HEADWRAP_VIDEO_LOCK
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -1197,6 +1203,37 @@ check("angry bears coffee image prompt includes coffee pouch fidelity", /STRICT 
 check("angry bears coffee image prompt includes label exact copy mandate", /ABSOLUTE LABEL & COLOR FIDELITY MANDATE/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
 check("angry bears coffee image prompt includes exact color lock", /STRICT COLOR REPRODUCTION LOCK/i.test(angryBearsCoffeeImage), angryBearsCoffeeImage);
 
+// --- Coffee sachet / drip bag scale tests ---
+const dripBagProduct = { name: "กาแฟดริป ซองพกพา", category: "ซองกาแฟ" };
+const dripBagImage = buildImagePrompt(dripBagProduct, settings);
+const dripBagVideo = buildVideoPrompt(dripBagProduct, settings);
+const dripBagHandsImage = buildImagePrompt(dripBagProduct, { ...settings, presenter: "hands_only" });
+const dripBagHandsVideo = buildVideoPrompt(dripBagProduct, { ...settings, presenter: "hands_only" });
+
+check("isCoffeeSachetProduct identifies coffee sachet name", isCoffeeSachetProduct("กาแฟดริป ซอง"));
+check("isSmallPouchProduct identifies coffee sachet", isSmallPouchProduct("กาแฟดริป ซอง"));
+check("coffee sachet image prompt uses sealed coffee sachet packet name", /sealed coffee sachet packet/i.test(dripBagImage), dripBagImage);
+check("coffee sachet image prompt locks palm-sized scale in presenter focus", /Product Focus: Palm-sized sachet \(8-14cm\), never torso-covering/i.test(dripBagImage), dripBagImage);
+check("coffee sachet video prompt locks palm-sized scale and forbids giant sack or torso covering", /compact single-serve coffee sachet\/packet[\s\S]*palm-sized[\s\S]*NEVER blow it up into a giant bag, sack, or prop covering the chest\/torso/i.test(dripBagVideo), dripBagVideo);
+check("coffee sachet hands-only image prompt includes strict sachet scale", /STRICT SACHET SCALE: Palm-sized sachet \(8-14cm\)/i.test(dripBagHandsImage), dripBagHandsImage);
+check("coffee sachet hands-only video prompt includes strict sachet scale", /compact single-serve coffee sachet\/packet[\s\S]*palm-sized or finger-held scale/i.test(dripBagHandsVideo), dripBagHandsVideo);
+
+// --- 250g coffee beans / retail pouch scale tests ---
+const beans250gProduct = { name: "เมล็ดกาแฟคั่ว Arabica 250 กรัม", category: "เมล็ดกาแฟ" };
+const beans250gImage = buildImagePrompt(beans250gProduct, settings);
+const beans250gVideo = buildVideoPrompt(beans250gProduct, settings);
+const beans250gHandsImage = buildImagePrompt(beans250gProduct, { ...settings, presenter: "hands_only" });
+const beans250gHandsVideo = buildVideoPrompt(beans250gProduct, { ...settings, presenter: "hands_only" });
+
+check("250g coffee beans is not coffee sachet", !isCoffeeSachetProduct("เมล็ดกาแฟคั่ว Arabica 250 กรัม"));
+check("250g coffee beans is small pouch", isSmallPouchProduct("เมล็ดกาแฟคั่ว Arabica 250 กรัม"));
+check("pure coffee beans name is small pouch", isSmallPouchProduct("เมล็ดกาแฟ"));
+check("250g coffee beans image prompt locks compact 250g pouch held in one hand", /Compact 250g coffee pouch[\s\S]*presenter holds it naturally in ONE hand/i.test(beans250gImage), beans250gImage);
+check("250g coffee beans video prompt locks 200g-250g compact scale held in one hand", /200g-250g coffee beans\/ground pouch[\s\S]*hold it naturally in ONE hand/i.test(beans250gVideo), beans250gVideo);
+check("250g coffee beans video prompt strictly forbids giant sack, pillow, or torso covering", /STRICTLY FORBIDDEN: never enlarge it into a giant sack, pillow, or 1kg commercial bag; never cover the chest or torso/i.test(beans250gVideo), beans250gVideo);
+check("250g coffee beans hands-only image prompt includes one-hand pouch scale", /STRICT POUCH SCALE: Compact 250g coffee pouch[\s\S]*hold in ONE hand with fingers around sides/i.test(beans250gHandsImage), beans250gHandsImage);
+check("250g coffee beans hands-only video prompt includes one-hand pouch scale", /compact 200g-250g coffee beans\/ground pouch[\s\S]*held naturally in ONE hand/i.test(beans250gHandsVideo), beans250gHandsVideo);
+
 const multiSceneVideo = buildVideoPrompt(
   { name: "5 กก ข้าวเหนียวเขี้ยวงู ตรานกกระเรียนทอง" },
   { ...settings, videoStyle: "review", duration: 8 }
@@ -1591,6 +1628,13 @@ check("image prompt uses product-only compositing instead of copying the source 
 
 const fidelityVid = buildVideoPrompt({ name: "black insulated bottle", category: "drinkware" }, { ...settings, presenter: "none" });
 check("video prompt keeps strict reference product fidelity", /STRICT PRODUCT FIDELITY LOCK/i.test(fidelityVid), fidelityVid);
+
+const patternedPhoneCaseStill = buildImagePrompt(
+  { name: "เคสมือถือ ลายการ์ตูน", category: "เคสโทรศัพท์" },
+  { ...settings, presenter: "none" }
+);
+check("phone case still prompt preserves the complete reference artwork layer", /COMPLEX PHONE CASE PATTERN REFERENCE LOCK/i.test(patternedPhoneCaseStill), patternedPhoneCaseStill);
+check("phone case still prompt locks artwork coordinates to case geometry", /CASE ARTWORK COORDINATE LOCK/i.test(patternedPhoneCaseStill), patternedPhoneCaseStill);
 
 const insulatedCupAuto = buildVideoPrompt(
   { name: "แก้วน้ำเก็บความเย็น", category: "แก้วน้ำ" },
@@ -2300,6 +2344,35 @@ check("single serum video mandates strictly one piece", /Depict strictly ONE pro
 
 const multiSerumVideo = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้า ยกโหล" }, settings);
 check("multi-item serum video preserves visible count", /Keep the exact visible count and arrangement/i.test(multiSerumVideo));
+
+// --- Scarf & Headwrap Product Detection, Wearing Style, and Length/Scale Fidelity ---
+check("isScarfProduct detects ผ้าพันคอ", isScarfProduct("ผ้าพันคอไหม ลายวินเทจ"));
+check("isScarfProduct detects ผ้าพันผม", isScarfProduct("ผ้าพันผมเกาหลี ผ้าไหมซาติน"));
+check("isScarfProduct detects ผ้าโพกหัว", isScarfProduct("ผ้าโพกหัวสามเหลี่ยม แฟชั่น"));
+check("isScarfProduct detects ผ้าโพกผม", isScarfProduct("ผ้าโพกผม สไตล์โบฮีเมียน"));
+check("isScarfProduct detects silk scarf", isScarfProduct("Luxury Silk Scarf 70x70"));
+check("isScarfProduct detects bandana", isScarfProduct("Cotton Bandana Headwrap"));
+check("isScarfProduct rejects bandage (ผ้าพันแผล)", !isScarfProduct("ผ้าพันแผล ปฐมพยาบาล"));
+check("isScarfProduct rejects wire tape (เทปพันสายไฟ)", !isScarfProduct("เทปพันสายไฟ 3M"));
+
+check("isClothingProduct detects ผ้าพันคอ", isClothingProduct("ผ้าพันคอแฟชั่น"));
+check("isClothingProduct detects ผ้าโพกหัว", isClothingProduct("ผ้าโพกหัวสไตล์วินเทจ"));
+check("isClothingProduct detects silk scarf", isClothingProduct("Floral silk scarf"));
+
+const scarfStillPrompt = buildImagePrompt({ name: "ผ้าพันคอไหมแฟชั่น ผ้าโพกหัว", category: "แฟชั่นผู้หญิง" }, settings);
+check("scarf still prompt includes SCARF_FIDELITY_AND_USAGE_LOCK", scarfStillPrompt.includes("STRICT SCARF WEARING STYLE & TRUE LENGTH/SCALE LOCK"));
+check("scarf lock supports headwrap (โพกหัว)", /headwrap.*headscarf.*โพกหัว/i.test(scarfStillPrompt));
+check("scarf lock strictly forbids overly long fabric (ยาวเกินจริง)", /STRICTLY FORBIDDEN to elongate the scarf.*winter muffler/i.test(scarfStillPrompt));
+
+const scarfVideoPrompt = buildVideoPrompt({ name: "ผ้าพันคอไหมซาติน สี่เหลี่ยม 70x70", category: "แฟชั่นผู้หญิง" }, settings);
+check("scarf video prompt includes SCARF_SCALE_DIRECTION", scarfVideoPrompt.includes("STRICT SCARF LENGTH & SCALE LOCK"));
+check("scarf video prompt keeps compact real-world length", /stay at their true natural compact length/i.test(scarfVideoPrompt));
+check("scarf video prompt includes SCARF_HEADWRAP_VIDEO_LOCK", scarfVideoPrompt.includes("SCARF HEADWRAP VIDEO WEARING LOCK (โพกหัวในวิดีโอ)"));
+check("scarf video prompt explicitly mandates headwrap on head (โพกหัวในวิดีโอเลย)", /wears the exact reference scarf on their head as a (?:chic )?headwrap/i.test(scarfVideoPrompt));
+
+const scarfCategoryFidelity = buildCategoryFidelityDirection({ name: "ผ้าพันไหม ลายดอกไม้", category: "แฟชั่น" });
+check("scarf category fidelity includes SCARF_FIDELITY_AND_USAGE_LOCK", scarfCategoryFidelity.includes("STRICT SCARF WEARING STYLE & TRUE LENGTH/SCALE LOCK"));
+
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));

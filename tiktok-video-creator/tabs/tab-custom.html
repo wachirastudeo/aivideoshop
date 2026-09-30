@@ -16,6 +16,15 @@
         </div>
       </div>
       <div class="settings-stack">
+        <label class="field">
+          <span class="field__label">Generate with</span>
+          <select id="custom-generation-provider" class="select select--accent" aria-describedby="custom-generation-provider-help">
+            <option value="google-flow">Google Flow</option>
+            <option value="meta-ai">Meta AI</option>
+          </select>
+        </label>
+        <p id="custom-generation-provider-help" class="field__hint" hidden>New chat → upload product image → generate → download. Video: vertical 9:16, 10 seconds.</p>
+
         <!-- อัปโหลดรูปภาพอ้างอิง (ไม่บังคับ) -->
         <div class="field">
           <label class="field__label" for="custom-image-file">รูปภาพอ้างอิง / คีย์เวิร์ดภาพสินค้า (ไม่บังคับ)</label>
@@ -95,17 +104,14 @@
           <label class="field">
             <span class="field__label">ความยาววิดีโอ</span>
             <select id="custom-video-duration" class="select">
-              <option value="5">5 วินาที</option>
-              <option value="8" selected>8 วินาที</option>
-              <option value="10">10 วินาที</option>
-            </select>
+<option value="10" selected>10 seconds</option>
+</select>
           </label>
           <label class="field">
             <span class="field__label">สัดส่วนวิดีโอ</span>
             <select id="custom-aspect-ratio" class="select">
-              <option value="9:16" selected>9:16 TikTok</option>
-              <option value="16:9">16:9 แนวนอน</option>
-            </select>
+<option value="9:16" selected>9:16 vertical</option>
+</select>
           </label>
         </div>
 

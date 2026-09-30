@@ -491,10 +491,8 @@ async function closeGeneratedAssetOverlay() {
         .filter(isVisible)
         .filter(btn => !/clear prompt/i.test(btn.getAttribute("aria-label") || ""))
         .filter(btn => /(?:^|\s)(?:close|dismiss|ปิด)(?:\s|$)/i.test(signature(btn)));
-    // In the current UI the modal close control is exposed as the stable
-    // `Clear prompt` button (same close icon/class shown in the DOM dump).
-    const clearPrompt = [...document.querySelectorAll("button[aria-label='Clear prompt']")].find(isVisible);
-    if (clearPrompt) candidates.push(clearPrompt);
+    // Clear prompt belongs to the composer, never to a result preview.
+    // Clicking it here erased unsubmitted prompts while polling for results.
     if (!candidates.length) return false;
     const button = candidates.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
     try {
@@ -2867,15 +2865,16 @@ async function clickGenerate() {
     btn.scrollIntoView({ block: "center", inline: "center" });
     await sleep(400);
     
-    // มีการ์ดใหม่แล้ว = เริ่มเจนแล้ว ห้ามกดซ้ำ (กันเจนภาพ 2รอบ)
-    const generationStarted = () => getMediaCards().some(card => card.key && !preGenMediaKeys.has(card.key));
-
-    // Submit exactly once. Flow may delay its DOM/card update for several
-    // seconds; retrying with DOM click/Enter/trusted click creates duplicates.
-    log("ลองกด Generate แบบปกติ (human click) — one-shot...");
-    await humanClick(btn);
-    await waitGenerationStarted(btn, 3500);
-    log("✅ ส่งคำสั่ง Generate แล้ว (ไม่กดซ้ำ)");
+    // Submit once using browser input; synthetic events can leave Flow's
+    // composer unchanged. Never follow an uncertain submission with a retry.
+    log("กด Start generation ผ่าน browser input — one-shot...");
+    if (!await clickButtonCenterWithDebugger(btn)) {
+        throw new Error("ส่งคลิก Start generation ไม่สำเร็จ");
+    }
+    const started = await waitGenerationStarted(btn, 7000);
+    log(started
+        ? "✅ Flow ยืนยันว่าเริ่มสร้างแล้ว (ไม่กดซ้ำ)"
+        : "ยังไม่พบสัญญาณเริ่มสร้าง รอตรวจผลลัพธ์ต่อโดยไม่กดซ้ำ");
     return true;
 }
 
@@ -2922,7 +2921,7 @@ function findPromptSubmitButtons() {
         ].filter(Boolean).map(value => value.replace(/\s+/g, " ").trim().toLowerCase());
         const hasSubmitIcon = iconNames.some(name => name === "arrow_forward" || name === "send");
         const hasSubmitLabel = labelParts.some(label =>
-            label === "create" || label === "generate" || label === "สร้าง"
+            label === "start generation" || label === "create" || label === "generate" || label === "สร้าง"
         );
         if (!hasSubmitIcon && !hasSubmitLabel) continue;
 
@@ -2943,7 +2942,8 @@ function findPromptSubmitButtons() {
 
         candidates.push({
             button,
-            score: (hasSubmitIcon ? 100 : 0) + (hasSubmitLabel ? 50 : 0) + (insideComposer ? 25 : 0)
+            score: (labelParts.includes("start generation") ? 200 : 0)
+                + (hasSubmitIcon ? 100 : 0) + (hasSubmitLabel ? 50 : 0) + (insideComposer ? 25 : 0)
         });
     }
 

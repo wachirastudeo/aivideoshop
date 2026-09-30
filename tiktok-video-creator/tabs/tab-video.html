@@ -19,6 +19,15 @@
       </div>
 
       <div class="settings-stack">
+        <label class="field">
+          <span class="field__label">Generate with</span>
+          <select id="video-generation-provider" class="select select--accent" aria-describedby="video-generation-provider-help">
+            <option value="google-flow">Google Flow</option>
+            <option value="meta-ai">Meta AI</option>
+          </select>
+        </label>
+        <p id="video-generation-provider-help" class="field__hint" hidden>New chat → upload product image → generate → download. Video: vertical 9:16, 10 seconds.</p>
+
         <div class="settings-group" data-collapsible data-collapse-key="video.group.basic">
           <div class="settings-group__header">
             <h4>พื้นฐาน</h4>
@@ -36,7 +45,7 @@
               </select>
             </label>
             <label class="field">
-              <span class="field__label">ขั้นตอนการทำงานของ Flow</span>
+              <span class="field__label">Generation mode</span>
               <select id="flow-gen-mode" class="select select--accent">
                 <option value="combined" selected>ภาพและวิดีโอ</option>
                 <option value="video">วิดีโออย่างเดียว</option>
@@ -93,18 +102,14 @@
               <label class="field">
                 <span class="field__label">ความยาววิดีโอ</span>
                 <select id="video-duration" class="select">
-                  <option value="5">5 วินาที</option>
-                  <option value="8">8 วินาที</option>
-                  <option value="10">10 วินาที</option>
-                </select>
+<option value="10" selected>10 seconds</option>
+</select>
               </label>
               <label class="field">
                 <span class="field__label">สัดส่วน</span>
                 <select id="aspect-ratio" class="select">
-                  <option value="9:16">9:16 TikTok</option>
-                  <option value="16:9">16:9</option>
-                  <option value="1:1">1:1</option>
-                </select>
+<option value="9:16" selected>9:16 vertical</option>
+</select>
               </label>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { bindGenerationProvider } from "../modules/generation-provider.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
 import {
@@ -157,6 +158,9 @@ export async function initCustomTab(injectedHelpers) {
   ]);
   const { settings: syncSettings = {} } = await chrome.storage.sync.get("settings");
 
+  bindGenerationProvider("custom-generation-provider", syncSettings.generationProvider,
+    ["custom-video-model"], (error) => helpers.showStatus(error.message, "error"));
+
   populateStyleDropdown();
 
   if (stored.customCreatorPrompt) {
@@ -193,8 +197,8 @@ export async function initCustomTab(injectedHelpers) {
     "custom-video-model",
     customSettings.videoModel || syncSettings.flow?.videoModel || "veo-3.1-lite-low-priority"
   );
-  setValue("custom-video-duration", customSettings.duration || "8");
-  setValue("custom-aspect-ratio", customSettings.aspectRatio || "9:16");
+  setValue("custom-video-duration", "10");
+  setValue("custom-aspect-ratio", "9:16");
   setValue("custom-loops", customSettings.loops || 1);
   setValue("custom-schedule-interval", customSettings.scheduleInterval || 10);
 
@@ -440,8 +444,8 @@ async function startPipeline() {
     const flowMode = getValue("custom-flow-mode");
     const audioMode = getValue("custom-audio-mode") || "voiceover";
     const videoModel = getValue("custom-video-model");
-    const duration = parseInt(getValue("custom-video-duration"), 10) || 8;
-    const aspectRatio = getValue("custom-aspect-ratio") || "9:16";
+    const duration = 10;
+    const aspectRatio = "9:16";
     const postAction = getValue("custom-post-action");
     const loops = parseInt(getValue("custom-loops"), 10) || 1;
     const interval = parseInt(getValue("custom-schedule-interval"), 10) || 10;
@@ -454,7 +458,7 @@ async function startPipeline() {
 
       if (statusEl) {
         statusEl.style.color = "";
-        statusEl.textContent = `${loopPrefix}กำลังเริ่มระบบอัตโนมัติเปิดหน้า Google Flow...`;
+        statusEl.textContent = `${loopPrefix}${getValue("custom-generation-provider") === "meta-ai" ? "Opening Meta AI assisted generation..." : "Opening Google Flow..."}`;
       }
       helpers.logActivity?.(`${loopPrefix}เริ่มการเจนวิดีโออิสระ`, "info");
 
@@ -463,6 +467,7 @@ async function startPipeline() {
       if (selectedModelRefImageBase64) imageUrls.push(selectedModelRefImageBase64);
 
       const flowOptions = {
+        generationProvider: getValue("custom-generation-provider") || "google-flow",
         imageModel: "nano-banana-pro",
         videoModel: videoModel,
         imageCount: 1,
