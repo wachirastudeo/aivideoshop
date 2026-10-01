@@ -139,10 +139,32 @@ check("fashion hanger image shows a visible fictional face", /FASHION HANGER PRE
 check("fashion hanger image limits model age to 25", /aged 20-25 years old[\s\S]*Never make the model older than 25/i.test(hangerImage), hangerImage);
 check("fashion hanger image uses a youthful attractive model", /visibly youthful[\s\S]*naturally beautiful[\s\S]*aged 20-25 years old/i.test(hangerImage), hangerImage);
 check("fashion hanger image uses a Thai model with Korean-inspired styling", /distinctly Thai identity[\s\S]*Korean-inspired K-fashion\/K-beauty aesthetic[\s\S]*not a Korean or foreign model/i.test(hangerImage), hangerImage);
-check("fashion hanger image matches the worn and held garments", /EXACT GARMENT PAIR LOCK[\s\S]*one instance naturally worn[\s\S]*one identical instance hanging on a real clothes hanger/i.test(hangerImage), hangerImage);
+check("fashion hanger image matches the worn and held garments", /EXACT SINGLE HANGER GARMENT LOCK[\s\S]*ONE instance[\s\S]*ONE real clothes hanger/i.test(hangerImage), hangerImage);
 check("fashion hanger image copies only the sold garment", /FASHION HANGER PRODUCT-ONLY STYLE LOCK[\s\S]*copy only the exact garment[\s\S]*copy only that shirt[\s\S]*Do not copy any non-product clothing/i.test(hangerImage), hangerImage);
 check("fashion hanger image avoids unrequested jeans", /NO UNREQUESTED JEANS LOCK[\s\S]*Do not dress the model in jeans[\s\S]*non-denim option/i.test(hangerImage), hangerImage);
 check("fashion hanger video presents directly to camera", /direct-to-camera[\s\S]*looks into the camera|direct-to-camera[\s\S]*looking into the camera/i.test(hangerVideo), hangerVideo);
+check("hanger video keeps the hanger visible throughout the demonstration", /HANGER CONTINUITY & ACTION LOCK[\s\S]*first frame to the last[\s\S]*grips only the hanger hook[\s\S]*Never remove the hanger/i.test(hangerVideo), hangerVideo);
+check("hanger final override allows the requested garment pair", /FINAL OVERRIDE[\s\S]*Exactly ONE sold garment on ONE hanger/i.test(hangerVideo) && !/FINAL OVERRIDE[\s\S]*Never duplicate the item/i.test(hangerVideo), hangerVideo);
+const staleUnderwearShirt = {
+  originalName: 'เสื้อกันหนาว แขนยาว คอกลม ทรงหลวม เสื้อยืดโอเวอร์ไซส์สีเทาอ่อน ลายตัวอักษรแนวมินิมอล สไตล์เกาหลี ผ้าฝ้าย 100%',
+  name: "t-shirt",
+  category: "underwear",
+  highlights: "underwear fabric stretch",
+  autoOptions: { videoStyle: "hands-only", presenter: "none" }
+};
+const staleUnderwearHangerSettings = { ...settings, videoStyle: "fashion-hanger-presenter", videoDuration: "10" };
+const staleUnderwearHangerVideo = buildVideoPrompt(staleUnderwearShirt, staleUnderwearHangerSettings);
+check("winter shirt identifies the specific product before generic tee keywords", /sweatshirt or sweater/.test(staleUnderwearHangerVideo) && !/featuring t-shirt/.test(staleUnderwearHangerVideo));
+check("winter shirt narration must say the short Thai product type", /SPOKEN PRODUCT TYPE: Say the short Thai product type "เสื้อกันหนาว" exactly once/.test(staleUnderwearHangerVideo));
+check("music-only winter shirt does not require spoken product wording", !/SPOKEN PRODUCT TYPE:/.test(buildVideoPrompt(staleUnderwearShirt, { ...staleUnderwearHangerSettings, audioMode: "music_only" })));
+check("shirt title prevents stale underwear metadata switching explicit hanger mode", resolveAutoSettings(staleUnderwearShirt, staleUnderwearHangerSettings).videoStyle === "fashion-hanger-presenter");
+check("shirt hanger video contains hanger action without underwear or flat-lay instructions", /HANGER CONTINUITY & ACTION LOCK/.test(staleUnderwearHangerVideo) && !/INTIMATE APPAREL|HANDS-ONLY CLOTHING|Elasticity & Stitching Demo/.test(staleUnderwearHangerVideo), staleUnderwearHangerVideo);
+check("shirt hanger image also avoids stale underwear classification", /EXACT SINGLE HANGER GARMENT LOCK/.test(buildImagePrompt(staleUnderwearShirt, staleUnderwearHangerSettings)));
+check("real underwear still uses the existing mode protection", resolveAutoSettings({ name: "กางเกงในผู้หญิง", category: "เสื้อผ้า" }, staleUnderwearHangerSettings).videoStyle === "hands-only");
+const winterHoodedTitle = 'เสื้อสเวตเตอร์แจ็คเก็ตมีฮู้ด Unisex ใส่คู่กับแฟนได้ เนื้อผ้านุ่ม ใส่สบาย หน้าหนาวนี้ต้องมี';
+const winterHoodedPrompt = buildVideoPrompt({ name: winterHoodedTitle }, staleUnderwearHangerSettings);
+check("hooded sweater requires Thai winter-top wording", /SPOKEN PRODUCT TYPE:[\s\S]*"เสื้อกันหนาว" exactly once[\s\S]*Never say "ฮู้ดดี้"/.test(winterHoodedPrompt));
+check("couple title still shows only one hanger garment", /EXACT SINGLE HANGER GARMENT LOCK/.test(winterHoodedPrompt) && !/two visually identical|identical copy|already wearing the exact|one instance naturally worn/.test(winterHoodedPrompt), winterHoodedPrompt);
 check("fashion hanger video keeps non-product styling original", /FASHION HANGER PRODUCT-ONLY STYLE LOCK[\s\S]*everything else must be an original fictional choice/i.test(hangerVideo), hangerVideo);
 check("fashion hanger video prevents source-face matching", /does not copy, match, resemble, or reproduce any face from the reference image/i.test(hangerVideo), hangerVideo);
 check("fashion hanger video keeps the exact garment on the model", /already wearing|naturally wears the exact reference garment|exact reference garment/i.test(hangerVideo), hangerVideo);
@@ -985,6 +1007,11 @@ eq("normalizeHashtags splits space-separated tags", normalizeHashtags("##TikTokS
 eq("normalizeHashtags handles mixed comma and space input", normalizeHashtags("##Tiktok, ###ขายดี #ของดี"), ["#Tiktok", "#ขายดี", "#ของดี"]);
 check("normalizeHashtags never outputs repeated hash prefixes", normalizeHashtags(["##Tiktok", "###ขายดี"]).every((tag) => !/^##/.test(tag)));
 
+for (const videoStyle of ["sales", "fashion-hanger-presenter", "hands-only", "still-motion", "fashion-selfie"]) {
+  const multiShotPrompt = buildVideoPrompt({ name: "เสื้อกันหนาว" }, { ...settings, videoStyle, videoModel: "omni-flash", videoDuration: "10" });
+  check(`Omni 10s ${videoStyle} uses four angles without competing timeline`, /OMNI 10-SECOND MULTI-SHOT OVERRIDE[\s\S]*Exactly FOUR shots[\s\S]*Shot 4/.test(multiShotPrompt) && !/MANDATORY TWO-SCENE EDIT|MANDATORY FASHION HANGER SHOT PLAN|^- Scene \d/m.test(multiShotPrompt), multiShotPrompt);
+}
+check("other models keep their existing shot plan at 10 seconds", !/OMNI 10-SECOND MULTI-SHOT OVERRIDE/.test(buildVideoPrompt({ name: "เสื้อกันหนาว" }, { ...settings, videoModel: "veo-3.1-lite-low-priority", videoDuration: "10" })));
 // --- omni-flash: multi-scene description ---
 const omniSettings = { ...settings, videoModel: "omni-flash", videoStyle: "sales" };
 const omniVid = buildVideoPrompt({ name: "เครื่องปั่นน้ำผลไม้", highlights: "" }, omniSettings);

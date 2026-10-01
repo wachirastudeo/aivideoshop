@@ -12,6 +12,9 @@ for (const duration of [4, 6, 8, 10]) {
       assert.ok(prompt.includes(`at most ${Math.floor((duration - 1.5) * 3)} spoken syllables total`));
       assert.ok(prompt.includes("never speed up, trail off"));
       assert.ok(prompt.includes("music-only clips remain without speech"));
+      assert.ok(prompt.includes("SINGLE AUDIO TAKE: Speak one sentence once across the whole clip."));
+      assert.ok(prompt.includes("Scene cuts change visuals only; never restart narration"));
+      assert.ok(prompt.includes("After the sentence ends, stay silent."));
       assert.ok(!prompt.includes("Scene 2 must use a new sentence"));
     });
   }
