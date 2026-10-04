@@ -155,7 +155,7 @@ const staleUnderwearShirt = {
 const staleUnderwearHangerSettings = { ...settings, videoStyle: "fashion-hanger-presenter", videoDuration: "10" };
 const staleUnderwearHangerVideo = buildVideoPrompt(staleUnderwearShirt, staleUnderwearHangerSettings);
 check("winter shirt identifies the specific product before generic tee keywords", /sweatshirt or sweater/.test(staleUnderwearHangerVideo) && !/featuring t-shirt/.test(staleUnderwearHangerVideo));
-check("winter shirt narration must say the short Thai product type", /SPOKEN PRODUCT TYPE: Say the short Thai product type "เสื้อกันหนาว" exactly once/.test(staleUnderwearHangerVideo));
+check("winter shirt narration analyzes the authoritative title", staleUnderwearHangerVideo.includes("SPOKEN PRODUCT TYPE: Analyze this authoritative product title:") && staleUnderwearHangerVideo.includes(staleUnderwearShirt.originalName));
 check("music-only winter shirt does not require spoken product wording", !/SPOKEN PRODUCT TYPE:/.test(buildVideoPrompt(staleUnderwearShirt, { ...staleUnderwearHangerSettings, audioMode: "music_only" })));
 check("shirt title prevents stale underwear metadata switching explicit hanger mode", resolveAutoSettings(staleUnderwearShirt, staleUnderwearHangerSettings).videoStyle === "fashion-hanger-presenter");
 check("shirt hanger video contains hanger action without underwear or flat-lay instructions", /HANGER CONTINUITY & ACTION LOCK/.test(staleUnderwearHangerVideo) && !/INTIMATE APPAREL|HANDS-ONLY CLOTHING|Elasticity & Stitching Demo/.test(staleUnderwearHangerVideo), staleUnderwearHangerVideo);
@@ -163,7 +163,11 @@ check("shirt hanger image also avoids stale underwear classification", /EXACT SI
 check("real underwear still uses the existing mode protection", resolveAutoSettings({ name: "กางเกงในผู้หญิง", category: "เสื้อผ้า" }, staleUnderwearHangerSettings).videoStyle === "hands-only");
 const winterHoodedTitle = 'เสื้อสเวตเตอร์แจ็คเก็ตมีฮู้ด Unisex ใส่คู่กับแฟนได้ เนื้อผ้านุ่ม ใส่สบาย หน้าหนาวนี้ต้องมี';
 const winterHoodedPrompt = buildVideoPrompt({ name: winterHoodedTitle }, staleUnderwearHangerSettings);
-check("hooded sweater requires Thai winter-top wording", /SPOKEN PRODUCT TYPE:[\s\S]*"เสื้อกันหนาว" exactly once[\s\S]*Never say "ฮู้ดดี้"/.test(winterHoodedPrompt));
+check("hooded sweater narration uses title analysis without forcing winter-top wording", winterHoodedPrompt.includes(winterHoodedTitle) && !winterHoodedPrompt.includes('Say the short Thai product type "เสื้อกันหนาว"') && !winterHoodedPrompt.includes('Never say "ฮู้ดดี้"'));
+for (const name of ["เสื้อยืดคอกลม", "เสื้อแจ็คเก็ตยีนส์", "กางเกงขายาว", "กระเป๋าสะพาย", "แก้วเก็บความเย็น"]) {
+  const prompt = buildVideoPrompt({ originalName: name, name: "hoodie", category: "winter clothing" }, staleUnderwearHangerSettings);
+  check(`${name}: spoken type follows product title despite stale hoodie metadata`, prompt.includes(`SPOKEN PRODUCT TYPE: Analyze this authoritative product title: ${JSON.stringify(name)}`) && prompt.includes("Prioritize the title over conflicting category") && !prompt.includes('Say the short Thai product type "เสื้อกันหนาว"'));
+}
 check("couple title still shows only one hanger garment", /EXACT SINGLE HANGER GARMENT LOCK/.test(winterHoodedPrompt) && !/two visually identical|identical copy|already wearing the exact|one instance naturally worn/.test(winterHoodedPrompt), winterHoodedPrompt);
 check("fashion hanger video keeps non-product styling original", /FASHION HANGER PRODUCT-ONLY STYLE LOCK[\s\S]*everything else must be an original fictional choice/i.test(hangerVideo), hangerVideo);
 check("fashion hanger video prevents source-face matching", /does not copy, match, resemble, or reproduce any face from the reference image/i.test(hangerVideo), hangerVideo);
@@ -2400,6 +2404,13 @@ check("scarf video prompt explicitly mandates headwrap on head (โพกหั�
 const scarfCategoryFidelity = buildCategoryFidelityDirection({ name: "ผ้าพันไหม ลายดอกไม้", category: "แฟชั่น" });
 check("scarf category fidelity includes SCARF_FIDELITY_AND_USAGE_LOCK", scarfCategoryFidelity.includes("STRICT SCARF WEARING STYLE & TRUE LENGTH/SCALE LOCK"));
 
+
+for (const videoStyle of ["review", "still-motion", "boxed-motion", "fashion-selfie", "fashion-hanger-presenter"]) {
+  const single = buildImagePrompt({ name: "Coffee", category: "coffee" }, { ...settings, videoStyle });
+  check(`single product retains complete reference identity for ${videoStyle}`, /FINAL REFERENCE FIDELITY[\s\S]*one complete reference product[\s\S]*natural pairs and set parts intact/.test(single) && !single.includes("ONE unit despite multiple reference items"), single);
+  const bundle = buildImagePrompt({ name: "Coffee pack of 3", category: "coffee" }, { ...settings, videoStyle });
+  check(`pack never invents units from title for ${videoStyle}`, /FINAL REFERENCE FIDELITY[\s\S]*No redesign or invented units/.test(bundle) && !bundle.includes("FINAL QUANTITY OVERRIDE"), bundle);
+}
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));

@@ -22,7 +22,7 @@
     else if (/video generation is not available|can(?:not|'t) (?:create|produce|generate).*video/i.test(text)) code = 'META_UNAVAILABLE';
     else if (/try again later|something went wrong/i.test(text)) code = 'META_GENERATION_FAILED';
     if (!code) return null;
-    return Object.assign(new Error(`Meta AI: ${text.trim().slice(0,500)}`),{code,retryable:false});
+    return Object.assign(new Error(`Meta AI: ${text.trim().slice(0,500)}`),{code,retryable:code === 'META_GENERATION_FAILED' && /something went wrong/i.test(text)});
   }
   async function waitFor(find, description, timeout = 30000) {
     const deadline = Date.now() + timeout;
@@ -112,12 +112,12 @@
     const oldResponses = new Set(document.querySelectorAll('[aria-label="Meta AI response"]'));
     const direction = kind === 'image'
       ? 'Generate an actual image using the uploaded product reference. Output a vertical 9:16 image, not a written description.'
-      : 'Generate an actual VIDEO from the uploaded product image. Mandatory: vertical portrait 9:16, exactly 10 seconds. Output the video file, not a description or GIF.';
+      : 'Generate an actual VIDEO from the uploaded product image. Mandatory: vertical portrait 9:16, exactly 10 seconds. Output the video file, not a description or GIF. META MULTI-ANGLE CAMERA PRIORITY: Use four sequential full-frame shots with clean cuts: 0–2.5s front view; 2.5–5s gentle left three-quarter view; 5–7.5s gentle right three-quarter view; 7.5–10s front hero view with a subtle camera push-in. Keep the entire product visible with comfortable space around it in every shot. Change camera angle, never product shape, printed artwork, physical size, contents, presenter, or setting. Keep true scale against hands and body; a 200g pouch stays a compact one-hand retail pouch, never a giant sack. Keep the reference-facing label readable; do not reveal an unseen back or invent hidden details. No strong zoom-in, macro shots, extreme close-ups, collage, split screen, or cropping. Continue the same narration smoothly across cuts without restarting. This four-shot camera plan overrides conflicting single-shot, static-camera, scene-count, zoom, or close-up directions; retain the selected product action and audio mode.';
     await enterPrompt(`${direction}\n${prompt}\n${direction}`);
     await report(`generating-${kind}`);
     const output = await waitFor(()=>{
       const response = [...document.querySelectorAll('[aria-label="Meta AI response"]')].filter(item=>!oldResponses.has(item)).at(-1);
-      const text = response?.innerText || '';
+      const text = [response?.innerText || '', ...[...document.querySelectorAll('[role="alert"]')].map(item=>item.innerText)].join('\n');
       const failure = generationFailure(text);
       if (failure) throw failure;
       if (!response) return null;
@@ -137,16 +137,33 @@
     }
     return blobData(blob);
   }
+  async function newChat() {
+    await waitFor(composer,'New chat composer',60000);
+    const link = await waitFor(()=>[...document.querySelectorAll('a')].find(link=>visible(link)&&/^New chat/.test(link.textContent.trim()) && new URL(link.href).pathname === '/'),'New chat link');
+    await click(link);
+    await waitFor(()=>composer()&&!document.querySelector('[aria-label="Conversation messages"]'),'empty New chat');
+  }
+  async function generateWithRetry(kind, prompt, references) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await generate(kind,prompt,references);
+      } catch (error) {
+        check();
+        if (!error.retryable || attempt === 1) throw error;
+        await report(`retrying-${kind}`);
+        await pause(3000);
+        check();
+        await newChat();
+      }
+    }
+  }
   async function run(payload) {
     let imgUrl = '';
     try {
-      await waitFor(composer,'New chat composer',60000);
-      const newChat = await waitFor(()=>[...document.querySelectorAll('a')].find(link=>visible(link)&&/^New chat/.test(link.textContent.trim()) && new URL(link.href).pathname === '/'),'New chat link');
-      await click(newChat);
-      await waitFor(()=>composer()&&!document.querySelector('[aria-label="Conversation messages"]'),'empty New chat');
+      await newChat();
       const prompts = typeof payload.prompt === 'string' ? {imagePrompt:payload.prompt,videoPrompt:payload.prompt} : payload.prompt;
-      if (payload.phase !== 'video') imgUrl = await generate('image',prompts.imagePrompt,payload.references || []);
-      const resultUrl = payload.phase === 'image' ? imgUrl : await generate('video',prompts.videoPrompt,imgUrl?[imgUrl]:(payload.references || []));
+      if (payload.phase !== 'video') imgUrl = await generateWithRetry('image',prompts.imagePrompt,payload.references || []);
+      const resultUrl = payload.phase === 'image' ? imgUrl : await generateWithRetry('video',prompts.videoPrompt,imgUrl?[imgUrl]:(payload.references || []));
       await chrome.storage.local.set({[`metaJob:${payload.jobId}`]:{result:{ok:true,resultUrl,imgUrl,provider:'meta-ai'}}});
     } catch (error) {
       await chrome.storage.local.set({[`metaJob:${payload.jobId}`]:{result:{ok:false,error:error.message,code:error.code,retryable:error.retryable,imgUrl,pageUrl:location.href}}});

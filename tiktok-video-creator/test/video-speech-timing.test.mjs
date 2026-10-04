@@ -19,3 +19,24 @@ for (const duration of [4, 6, 8, 10]) {
     });
   }
 }
+
+for (const videoModel of ["omni-flash", "veo-3.1"]) {
+  test(`${videoModel}: 10s narration spans visual cuts without stopping`, () => {
+    const prompt = buildVideoPrompt({ name: "เสื้อยืด", category: "fashion", highlights: "ผ้านุ่ม ใส่สบาย" }, {
+      ...getDefaultSettings(), videoStyle: "fashion-hanger-presenter", videoDuration: 10, videoModel,
+      audioMode: "voiceover"
+    });
+    assert.ok(prompt.includes("ONE complete connected Thai sentence of about 20–25 syllables"));
+    assert.ok(prompt.includes("continuously from 0.5s until 8–9s"));
+    assert.ok(prompt.includes("No mid-sentence silence, stop-and-resume delivery"));
+    assert.ok(prompt.includes("including 2.5s, 5s and 7.5s when present"));
+    assert.ok(!prompt.includes("STRICT PROGRESSIVE SCENE NARRATION"));
+  });
+}
+
+test("10s music-only video does not request continuous speech", () => {
+  const prompt = buildVideoPrompt({ name: "เสื้อยืด" }, {
+    ...getDefaultSettings(), videoDuration: 10, audioMode: "music_only"
+  });
+  assert.ok(!prompt.includes("10-SECOND CONTINUOUS DELIVERY"));
+});

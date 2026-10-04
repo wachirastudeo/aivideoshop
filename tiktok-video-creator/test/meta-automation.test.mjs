@@ -11,6 +11,45 @@ function load(name, next, dependencies = {}) {
 }
 const failure = load('generationFailure', '\n  async function waitFor');
 
+test('temporary Meta error is retryable but try again later is not', () => {
+  assert.equal(failure('Something went wrong. Please try again.').retryable, true);
+  assert.equal(failure('Please try again later').retryable, false);
+});
+
+test('generation retries once in a new chat with the same prompt and references', async () => {
+  const references = ['data:image/png;base64,reference'];
+  const events = [];
+  let attempts = 0;
+  const retry = load('generateWithRetry', '\n  async function run', {
+    generate: async (...args) => {
+      events.push(args);
+      if (++attempts === 1) throw failure('Something went wrong. Please try again.');
+      return 'video-result';
+    },
+    check: () => {}, report: async stage => events.push(stage),
+    pause: async () => {}, newChat: async () => events.push('new-chat'),
+  });
+  assert.equal(await retry('video','prompt',references), 'video-result');
+  assert.deepEqual(events, [['video','prompt',references], 'retrying-video', 'new-chat', ['video','prompt',references]]);
+});
+
+test('retry stops after two failures and does not retry quota or cancellation', async () => {
+  for (const [error, stopped, expected] of [
+    [failure('Something went wrong. Please try again.'), false, 2],
+    [failure('You reached your limit.'), false, 1],
+    [failure('Something went wrong. Please try again.'), true, 1],
+  ]) {
+    let attempts = 0;
+    const retry = load('generateWithRetry', '\n  async function run', {
+      generate: async () => {attempts++; throw error;},
+      check: () => {if (stopped) throw Error('Meta AI generation stopped');},
+      report: async () => {}, pause: async () => {}, newChat: async () => {},
+    });
+    await assert.rejects(retry('video','prompt',[]), stopped ? /generation stopped/ : error);
+    assert.equal(attempts, expected);
+  }
+});
+
 test('Meta quota, security and account failures are actionable and non-retryable', () => {
   for (const [text, code] of [
     ['The video generation quota is temporarily exhausted right now.', 'META_QUOTA'],
@@ -57,4 +96,28 @@ test('home-page submission follows only its new conversation and sends once', as
   assert.equal(sends, 1);
   assert.equal(historyClicks, 1);
   assert.equal(location.pathname, '/prompt/new');
+});
+
+test('Meta video submission requests multiple angles while images remain single-frame', async () => {
+  for (const kind of ['image', 'video']) {
+    let submitted;
+    const halt = new Error('captured submission');
+    const generate = load('generate', '\n  async function newChat', {
+      report: async () => {}, upload: async () => {},
+      responseMedia: () => [], document: {querySelectorAll: () => []},
+      enterPrompt: async prompt => {submitted = prompt; throw halt;},
+    });
+    await assert.rejects(generate(kind, 'Original product and audio instructions', []), error => error === halt);
+    assert.ok(submitted.includes('Original product and audio instructions'));
+    if (kind === 'video') {
+      assert.match(submitted, /four sequential full-frame shots/);
+      assert.match(submitted, /front view.*left three-quarter view.*right three-quarter view.*front hero view/);
+      assert.match(submitted, /Keep true scale against hands and body/);
+      assert.match(submitted, /Continue the same narration smoothly across cuts/);
+      assert.match(submitted, /overrides conflicting single-shot/);
+    } else {
+      assert.doesNotMatch(submitted, /META MULTI-ANGLE/);
+      assert.match(submitted, /Output a vertical 9:16 image/);
+    }
+  }
 });

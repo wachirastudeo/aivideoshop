@@ -643,7 +643,13 @@ async function openMetaAI(payload = {}) {
     return `data:${mime};base64,${base64}`;
   }));
   assertRunNotStopped(version, flowStopVersion);
-  const tab = await chrome.tabs.create({url:"https://www.meta.ai/", active:true});
+  const existingTabs = await chrome.tabs.query({ url: "https://www.meta.ai/*" });
+  let tab = existingTabs.find(candidate => candidate.active) || existingTabs[0];
+  if (tab) {
+    await chrome.tabs.update(tab.id, { active: true });
+  } else {
+    tab = await chrome.tabs.create({ url: "https://www.meta.ai/", active: true });
+  }
   await waitForTabComplete(tab.id);
   assertRunNotStopped(version, flowStopVersion);
   await chrome.scripting.executeScript({target:{tabId:tab.id},files:["content/meta-automation.js"]});
