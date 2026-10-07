@@ -301,7 +301,7 @@ function normalizeSettings(value) {
     videoModel: value.videoModel || "veo-3.1-lite-low-priority",
     imageCount: value.imageCount || 1,
     videoCount: value.videoCount || 1,
-    videoDuration: 10,
+    videoDuration: 8,
     aspectRatio: "9:16",
     videoRefMode: value.videoRefMode === "ingredients" ? "ingredients" : "frames",
     flowGenMode: ["video", "image"].includes(value.flowGenMode) ? value.flowGenMode : "combined",
@@ -493,7 +493,7 @@ function productMarkup(p, index) {
   const sourceImage = getDisplayProductImage(p);
   const approvedImage = p.approvedImage || "";
   const imagePrompt = buildImagePrompt(p, settings);
-  const videoPrompt = buildVideoPrompt(p, settings);
+  const videoPrompt = buildVideoPrompt(p, getVideoPromptSettings());
   const status = getStatusMeta(p.status);
   const isVideoOnly = settings.flowGenMode === "video";
   const isImageOnly = settings.flowGenMode === "image";
@@ -709,7 +709,7 @@ function updatePrompts(itemEl, product) {
   const imagePrompt = itemEl.querySelector(".batch-image-prompt");
   const videoPrompt = itemEl.querySelector(".batch-prompt");
   if (imagePrompt) imagePrompt.value = buildImagePrompt(product, settings);
-  if (videoPrompt) videoPrompt.value = buildVideoPrompt(product, settings);
+  if (videoPrompt) videoPrompt.value = buildVideoPrompt(product, getVideoPromptSettings());
 }
 
 async function copyPrompts(itemEl) {
@@ -772,7 +772,7 @@ async function handleUploadApproved(event, product) {
 
 async function launchFlow(phase, product) {
   try {
-    const prompt = phase === "image" ? buildImagePrompt(product, settings) : buildVideoPrompt(product, settings);
+    const prompt = phase === "image" ? buildImagePrompt(product, settings) : buildVideoPrompt(product, getVideoPromptSettings());
     const image = phase === "image" ? getFlowProductImage(product) : (product.approvedImage || getFlowProductImage(product));
     product.status = phase === "image" ? "image_generating" : "video_generating";
     product.errorMessage = "";
@@ -893,7 +893,7 @@ async function processQueue() {
         result = await openGoogleFlowWithLoginResume("image", imgPrompt, getFlowProductImage(product), buildFlowOptions(product), product, i);
       } else if (isVideoOnly) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: กำลังอัปโหลดรูปและสร้างวิดีโอ (${options.videoCount} คลิป)`, "info");
-        const vidPrompt = buildVideoPrompt(product, settings);
+        const vidPrompt = buildVideoPrompt(product, getVideoPromptSettings());
         assertNotStopped();
         const modeLabel = isIngredients ? "Ingredients" : "Video Only";
         helpers.logActivity?.(`สินค้า ${i + 1} (${modeLabel}): เปิด New Project ใน Google Flow เพื่อสร้างวิดีโอโดยตรง`, "info");
@@ -908,7 +908,7 @@ async function processQueue() {
       } else {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพ แล้วต่อวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)`, "info");
         const imgPrompt = buildImagePrompt(product, settings);
-        const vidPrompt = buildVideoPrompt(product, settings);
+        const vidPrompt = buildVideoPrompt(product, getVideoPromptSettings());
         assertNotStopped();
         helpers.logActivity?.(`สินค้า ${i + 1}: เปิด New Project ใหม่ใน Google Flow เพื่อทำ Combined Pipeline`, "info");
         result = await openGoogleFlowWithLoginResume("combined", { imagePrompt: imgPrompt, videoPrompt: vidPrompt }, getFlowProductImage(product), buildFlowOptions(product), product, i);
@@ -1244,6 +1244,11 @@ async function clearVideoQueue() {
   helpers.showStatus("ล้างคิววิดีโอแล้ว", "success");
 }
 
+function getVideoPromptSettings() {
+  const generationProvider = getValue("video-generation-provider") || "google-flow";
+  return { ...settings, generationProvider, videoDuration: generationProvider === "meta-ai" ? 10 : 8 };
+}
+
 function buildFlowOptions(product = null) {
   const opts = {
     generationProvider: getValue("video-generation-provider") || "google-flow",
@@ -1251,9 +1256,10 @@ function buildFlowOptions(product = null) {
     videoModel: settings.videoModel,
     imageCount: settings.imageCount,
     videoCount: settings.videoCount,
-    videoDuration: settings.videoDuration,
+    videoDuration: getVideoPromptSettings().videoDuration,
     aspectRatio: settings.aspectRatio,
     videoRefMode: settings.videoRefMode || "frames",
+    videoResolution: "720p",
     modelRefImage: product?.modelRefImage || settings.modelRefImage || ""
   };
   if (product) {

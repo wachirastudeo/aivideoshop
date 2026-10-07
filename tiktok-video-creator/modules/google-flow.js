@@ -9,9 +9,12 @@ import { openMetaAI } from "./meta-ai.js";
  * @returns {Promise<string>} resultUrl ที่ได้กลับมาจาก automation
  */
 export async function openGoogleFlow(phase, prompt, imageUrl = "", options = {}) {
+  const { settings = {} } = await chrome.storage.sync.get("settings");
+  const isMeta = (options.generationProvider || settings.generationProvider) === "meta-ai";
+  const duration = isMeta ? 10 : 8;
   if (phase === "video" || phase === "combined") {
-    const direction = "MANDATORY VIDEO FORMAT: Create a vertical portrait 9:16 video lasting exactly 10 seconds. Keep this format and duration throughout the final output.";
-    options = { ...options, videoDuration: 10, aspectRatio: "9:16" };
+    const direction = `MANDATORY VIDEO FORMAT: Create a vertical portrait 9:16 video lasting exactly ${duration} seconds. ${isMeta ? "Keep this format and duration throughout the final output." : "Use one continuous shot with no cuts or scene changes."}`;
+    options = { ...options, videoDuration: duration, aspectRatio: "9:16", videoResolution: "720p" };
     if (phase === "combined") {
       const prompts = typeof prompt === "string" ? { imagePrompt: prompt, videoPrompt: prompt } : prompt;
       prompt = { ...prompts, videoPrompt: `${direction}\n${prompts.videoPrompt || ""}\n${direction}` };
@@ -19,8 +22,7 @@ export async function openGoogleFlow(phase, prompt, imageUrl = "", options = {})
       prompt = `${direction}\n${prompt}\n${direction}`;
     }
   }
-  const { settings = {} } = await chrome.storage.sync.get("settings");
-  if ((options.generationProvider || settings.generationProvider) === "meta-ai") return openMetaAI(phase, prompt, imageUrl, options);
+  if (isMeta) return openMetaAI(phase, prompt, imageUrl, options);
 
   // If prompt is an object { imagePrompt, videoPrompt }, it means we want the combined pipeline
   const jobId = crypto.randomUUID();

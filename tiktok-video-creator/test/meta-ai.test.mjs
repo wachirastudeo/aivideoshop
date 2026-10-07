@@ -81,15 +81,15 @@ test('existing settings default to Google Flow', async () => {
   assert.equal(mock.listeners.size, 0);
 });
 
-test('every dispatched video and combined job carries mandatory portrait 10-second settings', async () => {
+test('Flow video and combined jobs use portrait eight-second single-shot settings', async () => {
   for (const phase of ['video', 'combined']) {
     const mock = mockChrome('google-flow');
     await assert.rejects(openGoogleFlow(phase, phase === 'combined' ? {imagePrompt:'image', videoPrompt:'video'} : 'video', '', {videoDuration:8,aspectRatio:'16:9'}), /Flow reached/);
     const payload = mock.calls[0].payload;
-    assert.equal(payload.options.videoDuration,10);
+    assert.equal(payload.options.videoDuration,8);
     assert.equal(payload.options.aspectRatio,'9:16');
     const prompt = typeof payload.prompt === 'string' ? payload.prompt : payload.prompt.videoPrompt;
-    assert.match(prompt,/vertical portrait 9:16 video lasting exactly 10 seconds/);
+    assert.match(prompt,/vertical portrait 9:16 video lasting exactly 8 seconds/);
     if (phase === 'combined') assert.equal(payload.prompt.imagePrompt,'image');
   }
 });

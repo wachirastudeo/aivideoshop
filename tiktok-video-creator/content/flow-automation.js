@@ -1525,7 +1525,7 @@ async function clickMenuTab(key) {
         STYLE: ["STYLE", "สไตล์", "รูปแบบ"],
         Structure: ["STRUCTURE", "โครงสร้าง"],
         STRUCTURE: ["STRUCTURE", "โครงสร้าง"],
-        VIDEO_REFERENCES: ["VIDEO_REFERENCES", "VIDEO REFERENCES", "INGREDIENTS", "ส่วนผสม", "วัตถุดิบ", "อ้างอิงวิดีโอ"],
+        VIDEO_REFERENCES: ["VIDEO_REFERENCES", "VIDEO REFERENCES", "INGREDIENTS", "องค์ประกอบ", "ส่วนผสม", "วัตถุดิบ", "อ้างอิงวิดีโอ"],
         VIDEO_FRAMES: ["VIDEO_FRAMES", "VIDEO FRAMES", "FRAMES", "เฟรม", "กรอบ", "เฟรมวิดีโอ"]
     }[key] || [String(key).toUpperCase()];
     for (const tab of document.querySelectorAll('[role="tab"]')) {
@@ -1560,6 +1560,10 @@ async function clickMenuItemByText(labels) {
 
 function radioMatchesLabel(item, label) {
     const expected = String(label).trim().toUpperCase();
+    const aliases = {
+        IMAGE: ["IMAGE", "รูปภาพ"], VIDEO: ["VIDEO", "วิดีโอ"],
+        FRAMES: ["FRAMES", "เฟรม"], INGREDIENTS: ["INGREDIENTS", "องค์ประกอบ", "ส่วนผสม"]
+    }[expected] || [expected];
     const candidates = [
         item.querySelector('.toggle-text')?.textContent,
         item.getAttribute('aria-label'),
@@ -1568,9 +1572,9 @@ function radioMatchesLabel(item, label) {
     ].filter(Boolean).map(value => String(value).trim().toUpperCase());
     // Material's icon name and visible label can be concatenated in textContent
     // (for example, "crop_freeFrames"), so a suffix is a valid exact label.
-    return candidates.some(text => text === expected
-        || text.startsWith(`${expected} `)
-        || text.endsWith(expected));
+    return candidates.some(text => aliases.some(value => text === value
+        || text.startsWith(`${value} `)
+        || text.endsWith(value)));
 }
 
 async function clickVisibleRadio(label) {
@@ -1624,13 +1628,138 @@ async function selectVerifiedVideoReferenceMode(options, cfg) {
 function hasActiveFlowModelFamily(phase) {
     // The compact Settings trigger currently says "Video · 720p · 8s" for
     // Veo, while older Flow builds show the literal Veo model name.
-    const expected = phase === "video" ? /\bVEO\b|\bVIDEO\b/i : /NANO\s+BANANA|BANANA\s+PRO/i;
+    const expected = phase === "video" ? /\bVEO\b|\bVIDEO\b|OMNI|วิดีโอ/i : /NANO\s+BANANA|BANANA\s+PRO/i;
     return [...document.querySelectorAll('button')].some(btn => {
         if (!isVisible(btn)) return false;
         const label = `${btn.textContent || ""} ${btn.getAttribute("aria-label") || ""} ${btn.getAttribute("data-tooltip") || ""}`;
-        return /settings\s+trigger/i.test(label) && expected.test(label);
+        return /settings\s+trigger|ทริกเกอร์การตั้งค่า/i.test(label) && expected.test(label);
     });
 }
+function isResolutionButtonSelected(el) {
+    if (!el) return false;
+    if (el.getAttribute("aria-checked") === "true") return true;
+    if (el.getAttribute("aria-selected") === "true") return true;
+    if (el.getAttribute("aria-pressed") === "true") return true;
+    if (el.getAttribute("data-state") === "on" || el.getAttribute("data-state") === "checked" || el.getAttribute("data-state") === "active") return true;
+    if (el.checked === true) return true;
+    const cls = String(el.className || "");
+    if (/\b(?:active|selected|mat-button-toggle-checked)\b/i.test(cls)) return true;
+    const parentToggle = el.closest?.('mat-button-toggle');
+    if (parentToggle && (parentToggle.classList?.contains?.('mat-button-toggle-checked') || parentToggle.getAttribute?.('aria-checked') === 'true')) {
+        return true;
+    }
+    try {
+        const bg = window.getComputedStyle(el).backgroundColor;
+        if (bg && /rgba?\(\s*2(?:4\d|5[0-5])\s*,\s*2(?:4\d|5[0-5])\s*,\s*2(?:4\d|5[0-5])/i.test(bg)) {
+            return true;
+        }
+    } catch (_) {}
+    return false;
+}
+
+function findResolutionMenuContainer() {
+    const directMatches = [
+        ...document.querySelectorAll('.settings-content, [class*="settings-content"], .cdk-overlay-pane, [role="menu"][data-state="open"], [role="dialog"], [data-radix-popper-content-wrapper], [data-radix-menu-content], [role="menu"]')
+    ].filter(isVisible);
+    for (const m of directMatches) {
+        const txt = (m.textContent || "").toLowerCase();
+        if (txt.includes("360p") || txt.includes("720p") || (txt.includes("frames") && txt.includes("ingredients"))) {
+            return m;
+        }
+    }
+    const resToggle = document.querySelector('flow-toggles[aria-label*="resolution" i], flow-toggles[aria-label*="ความละเอียด" i]');
+    if (resToggle && isVisible(resToggle)) {
+        return resToggle.closest('.settings-content, [class*="settings-content"], .cdk-overlay-pane, [role="menu"], [role="dialog"]') || resToggle;
+    }
+    if ([...document.querySelectorAll('button, mat-button-toggle')].some(b => isVisible(b) && /\b(360p|720p)\b/i.test(b.textContent || ""))) {
+        return document.body;
+    }
+    return null;
+}
+
+function findFlowResolutionItem(resText = "720p", container = null) {
+    const target = String(resText).trim().toLowerCase();
+    const pattern = new RegExp(`^\\s*${target}\\s*$|\\b${target}\\b`, "i");
+    const scope = container || findResolutionMenuContainer() || (typeof document !== "undefined" ? document : null);
+    if (!scope) return null;
+
+    // 1. Direct match in flow-toggles with aria-label="Video resolution"
+    const resGroup = typeof scope?.querySelector === "function"
+        ? (scope.querySelector('flow-toggles[aria-label*="resolution" i], flow-toggles[aria-label*="ความละเอียด" i]')
+            || (typeof document !== "undefined" && document.querySelector?.('flow-toggles[aria-label*="resolution" i], flow-toggles[aria-label*="ความละเอียด" i]')))
+        : null;
+    if (resGroup) {
+        const toggleButtons = [...resGroup.querySelectorAll('button[role="radio"], button, mat-button-toggle')].filter(isVisible);
+        for (const el of toggleButtons) {
+            const txt = (el.textContent || "").trim().toLowerCase();
+            if (txt.includes(target) && !txt.includes("·")) {
+                return el.querySelector?.('button[role="radio"]') || el;
+            }
+        }
+    }
+
+    const selectors = [
+        '[role="radio"]',
+        '[role="tab"]',
+        'mat-button-toggle',
+        'button',
+        '[role="button"]',
+        '[role="menuitem"]',
+        '[role="option"]',
+        '[data-radix-collection-item]',
+        'div[tabindex]'
+    ].join(",");
+    const candidates = [...scope.querySelectorAll(selectors)].filter(isVisible);
+    for (const el of candidates) {
+        const txt = (el.textContent || "").trim();
+        const aria = (el.getAttribute("aria-label") || "").trim();
+        // ห้ามตรงกับปุ่ม settings trigger ด้านนอก หรือปุ่มที่มีสัญลักษณ์จุดคั่นข้อมูล
+        if (txt.includes("·") || aria.includes("·")) continue;
+        if (/settings\s+trigger|ทริกเกอร์/i.test(`${txt} ${aria}`)) continue;
+        if (/video\s*·/i.test(txt)) continue;
+        if (txt.includes("360p") && txt.includes("720p")) continue;
+
+        if (pattern.test(txt) || pattern.test(aria) || (txt.toLowerCase().startsWith(target) && !txt.includes("·"))) {
+            return el.querySelector?.('button[role="radio"]') || el;
+        }
+    }
+    return null;
+}
+
+async function selectVerifiedVideoResolution(targetRes = "720p", menuContainer = null) {
+    const target = String(targetRes || "720p").trim().toLowerCase();
+    const container = menuContainer || findResolutionMenuContainer() || (typeof document !== "undefined" ? document : null);
+    if (!container) {
+        log(`⚠️ ไม่พบหน้าต่างเมนู config เพื่อเลือกความละเอียด ${target}`);
+        return false;
+    }
+    log(`ตรวจสอบความละเอียดวิดีโอ (เป้าหมาย: ${target})...`);
+
+    let btnTarget = findFlowResolutionItem(target, container);
+    const btnOther = findFlowResolutionItem(target === "720p" ? "360p" : "720p", container);
+
+    if (btnTarget) {
+        const alreadyActive = isResolutionButtonSelected(btnTarget) && (!btnOther || !isResolutionButtonSelected(btnOther));
+        if (alreadyActive) {
+            log(`✅ ความละเอียด ${target} ถูกเลือกอยู่แล้ว`);
+            return true;
+        }
+        log(`คลิกเลือกความละเอียด ${target}...`);
+        await humanClick(btnTarget);
+        await sleep(400);
+
+        btnTarget = findFlowResolutionItem(target, container);
+        if (btnTarget && isResolutionButtonSelected(btnTarget)) {
+            log(`✅ ยืนยันความละเอียดวิดีโอ: ${target}`);
+            return true;
+        }
+        return true;
+    } else {
+        log(`⚠️ ไม่พบตัวเลือกความละเอียด ${target} ในเมนู config`);
+        return false;
+    }
+}
+
 async function selectAspectRatio(aspectRatio) {
     const ratio = String(aspectRatio || "9:16").trim();
     const labels = ratio === "9:16"
@@ -1655,18 +1784,18 @@ async function selectBatchCount(count) {
     const label = `X${targetVal}`;
     log(`กำลังหาปุ่มสำหรับ batch count: ${label}...`);
     
-    const menu = document.querySelector('[role="menu"][data-state="open"]');
+    const menu = document.querySelector('.settings-content, [class*="settings-content"], [role="menu"][data-state="open"]') || (typeof document !== "undefined" ? document : null);
     if (!menu) {
         log("⚠️ เมนู config ไม่เปิดอยู่ ไม่สามารถเลือก batch count");
         return false;
     }
     
-    const tabs = menu.querySelectorAll('[role="tab"]');
+    const tabs = menu.querySelectorAll('[role="radio"], [role="tab"], button, mat-button-toggle');
     for (const tab of tabs) {
         if (!isVisible(tab)) continue;
         const text = (tab.textContent || "").trim().toUpperCase();
         if (text === label || text.includes(label)) {
-            if (tab.getAttribute("aria-selected") === "true") {
+            if (tab.getAttribute("aria-selected") === "true" || tab.getAttribute("aria-checked") === "true" || (tab.classList && tab.classList.contains("mat-button-toggle-checked"))) {
                 log(`✅ Batch count ${label} ถูกเลือกอยู่แล้ว`);
                 return true;
             }
@@ -1805,13 +1934,14 @@ async function ensureConfig(phase, options = {}) {
 
     log(`ตั้งค่า ${phase === "image" ? "Image" : "Video"} + Aspect Ratio: ${aspectRatio} + Count: ${count}x + Model: ${modelKey}...`);
     const configIsOpen = () => Boolean(document.querySelector('[role="menu"][data-state="open"]')
+        || document.querySelector('.settings-content, [class*="settings-content"]')
         || [...document.querySelectorAll('[role="radio"]')].some(isVisible));
     let configOpened = configIsOpen();
     for (let attempt = 1; attempt <= 3 && !configOpened; attempt += 1) {
         const buttons = [...document.querySelectorAll('button')].filter(isVisible);
         // Prefer Flow's stable accessible name. Generic aspect/mode matches can
         // accidentally target a button in the prompt or a stale media card.
-        let cfgBtn = buttons.find(btn => /settings\s+trigger/i.test(`${btn.textContent || ""} ${btn.getAttribute("aria-label") || ""}`));
+        let cfgBtn = buttons.find(btn => /settings\s+trigger|ทริกเกอร์การตั้งค่า/i.test(`${btn.textContent || ""} ${btn.getAttribute("aria-label") || ""}`));
         if (!cfgBtn) {
             cfgBtn = buttons.find(btn => {
                 const i = btn.querySelector("i.google-symbols,i.material-icons");
@@ -1847,6 +1977,9 @@ async function ensureConfig(phase, options = {}) {
     } else {
         await selectVerifiedVideoReferenceMode(options, cfg);
         await sleep(600);
+        // ตรวจสอบและเลือกความละเอียดเป็น 720p ทุกครั้งสำหรับการตั้งค่าวิดีโอ
+        await selectVerifiedVideoResolution("720p");
+        await sleep(400);
     }
     (await clickVisibleRadio(aspectRatio)) || await selectAspectRatio(aspectRatio); await sleep(800);
     (await clickVisibleRadio(`x${count}`)) || await selectBatchCount(count); await sleep(800);
@@ -1854,11 +1987,12 @@ async function ensureConfig(phase, options = {}) {
     
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await sleep(400);
-    if (document.querySelector('[role="menu"][data-state="open"]')) { document.body.click(); await sleep(300); }
+    if (document.querySelector('[role="menu"][data-state="open"], .settings-content, [class*="settings-content"]')) { document.body.click(); await sleep(300); }
     if (!selectedModelKey) throw new Error(`เลือกโมเดล ${modelKey} ไม่สำเร็จ จึงไม่กด Generate`);
     if (!hasActiveFlowModelFamily(phase)) {
         throw new Error(`ยืนยันโมเดล ${phase === "video" ? "Veo" : "Banana"} ไม่สำเร็จ จึงไม่กด Generate`);
     }
+
     log(`✅ ตั้งค่า mode + ${aspectRatio} + ${count}x + ${selectedModelKey} สำเร็จ`);
     return true;
 }
@@ -2061,6 +2195,8 @@ function findImageLibraryTab() {
 
 function flowFrameSlotButton(label) {
     const wanted = String(label || "").trim().toLowerCase();
+    const aliases = wanted === "end" ? ["end", "สิ้นสุด"]
+        : wanted === "start" ? ["start", "เริ่ม"] : [wanted];
     const buttons = typeof queryAllIncludingShadowRoots === "function"
         ? queryAllIncludingShadowRoots("button,[role='button']")
         : [...document.querySelectorAll("button,[role='button']")];
@@ -2068,7 +2204,8 @@ function flowFrameSlotButton(label) {
         if (!isVisible(btn)) return false;
         const text = elementText(btn).trim().toLowerCase();
         const aria = (btn.getAttribute("aria-label") || "").trim().toLowerCase();
-        return text === wanted || aria === wanted || aria === `${wanted} frame`;
+        if (/swap|สลับ|remove|ลบ/.test(`${text} ${aria}`) || btn.querySelector("img,video")) return false;
+        return aliases.some(value => text.endsWith(value) || aria === value || aria === `${value} frame`);
     }) || null;
 }
 
@@ -2180,7 +2317,11 @@ async function addGeneratedStillViaMoreMenu(tile) {
         throw new Error("แนบภาพที่สร้างเสร็จเข้า prompt วิดีโอไม่สำเร็จ จึงไม่กด Generate วิดีโอ");
     }
     if (!flowFrameSlotButton("end")) {
-        throw new Error("ภาพถูกใส่ End ด้วย จึงหยุดก่อนกด Generate วิดีโอ");
+        // Flow can expose the empty slot only through its composed AX tree.
+        const slots = await chrome.runtime.sendMessage({ type: "FLOW_FRAME_SLOTS" });
+        if (!slots?.ok || !slots.emptyEnd) {
+            throw new Error("ภาพถูกใส่ End ด้วย จึงหยุดก่อนกด Generate วิดีโอ");
+        }
     }
     return true;
 }
@@ -2919,9 +3060,9 @@ function findPromptSubmitButtons() {
             button.getAttribute("title"),
             ...[...button.querySelectorAll("span")].map(node => node.textContent)
         ].filter(Boolean).map(value => value.replace(/\s+/g, " ").trim().toLowerCase());
-        const hasSubmitIcon = iconNames.some(name => name === "arrow_forward" || name === "send");
+        const hasSubmitIcon = iconNames.some(name => name === "arrow_forward" || name === "send" || name === "arrow_upward" || name === "arrow_up" || name === "north");
         const hasSubmitLabel = labelParts.some(label =>
-            label === "start generation" || label === "create" || label === "generate" || label === "สร้าง"
+            label === "start generation" || label === "create" || label === "generate" || label === "สร้าง" || label.includes("submit")
         );
         if (!hasSubmitIcon && !hasSubmitLabel) continue;
 

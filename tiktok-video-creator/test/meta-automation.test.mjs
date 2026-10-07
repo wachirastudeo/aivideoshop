@@ -10,6 +10,7 @@ function load(name, next, dependencies = {}) {
   return new Function(...Object.keys(dependencies), `${body};return ${name};`)(...Object.values(dependencies));
 }
 const failure = load('generationFailure', '\n  async function waitFor');
+const prepareMetaVideoPrompt = load('prepareMetaVideoPrompt', '\n  async function generate');
 
 test('temporary Meta error is retryable but try again later is not', () => {
   assert.equal(failure('Something went wrong. Please try again.').retryable, true);
@@ -98,11 +99,12 @@ test('home-page submission follows only its new conversation and sends once', as
   assert.equal(location.pathname, '/prompt/new');
 });
 
-test('Meta video submission requests multiple angles while images remain single-frame', async () => {
+test('Meta sales video uses front-facing wide-medium-close shots while images remain single-frame', async () => {
   for (const kind of ['image', 'video']) {
     let submitted;
     const halt = new Error('captured submission');
     const generate = load('generate', '\n  async function newChat', {
+      prepareMetaVideoPrompt,
       report: async () => {}, upload: async () => {},
       responseMedia: () => [], document: {querySelectorAll: () => []},
       enterPrompt: async prompt => {submitted = prompt; throw halt;},
@@ -110,14 +112,86 @@ test('Meta video submission requests multiple angles while images remain single-
     await assert.rejects(generate(kind, 'Original product and audio instructions', []), error => error === halt);
     assert.ok(submitted.includes('Original product and audio instructions'));
     if (kind === 'video') {
-      assert.match(submitted, /four sequential full-frame shots/);
-      assert.match(submitted, /front view.*left three-quarter view.*right three-quarter view.*front hero view/);
+      assert.match(submitted, /three sequential full-frame front-facing shots/);
+      assert.match(submitted, /0–3s WIDE.*3–6s MEDIUM.*6–10s CLOSE/);
+      assert.match(submitted, /No oblique or three-quarter angles, orbit, side views, or product rotation/);
+      assert.match(submitted, /moving the camera closer, never by enlarging the product/);
       assert.match(submitted, /Keep true scale against hands and body/);
       assert.match(submitted, /Continue the same narration smoothly across cuts/);
       assert.match(submitted, /overrides conflicting single-shot/);
     } else {
-      assert.doesNotMatch(submitted, /META MULTI-ANGLE/);
+      assert.doesNotMatch(submitted, /META SALES SHOT/);
       assert.match(submitted, /Output a vertical 9:16 image/);
     }
   }
 });
+
+
+test('Meta removes obsolete eight-second scene and orbit instructions without losing product or audio rules', () => {
+  const legacy = [
+    'MANDATORY VIDEO FORMAT: vertical 9:16 exactly 10 seconds',
+    'MANDATORY TWO-SCENE EDIT: Render exactly 2 scenes in 8s',
+    'This video must consist of two sequential scenes:',
+    '- Scene 1 (Showcase): A 360-degree rotation',
+    '- Scene 2 (Detail Zoom): A close-up zoom',
+    'Subtle Slow Zoom In; legacy camera movement',
+    'RETAIL COFFEE SCALE: 200g compact retail pouch',
+    'Preserve product label and colors.',
+    'Carry the same sentence across every visual cut, including 2.5s, 5s and 7.5s when present.',
+    'Music-only mode: no speech.',
+  ].join('\n');
+  const cleaned = prepareMetaVideoPrompt(legacy);
+  assert.doesNotMatch(cleaned, /8s|360-degree|Scene 1|Scene 2|MANDATORY VIDEO FORMAT|2\.5s/);
+  assert.match(cleaned, /RETAIL COFFEE SCALE: 200g/);
+  assert.match(cleaned, /Preserve product label and colors/);
+  assert.match(cleaned, /Carry the same sentence across every visual cut/);
+  assert.match(cleaned, /Music-only mode: no speech/);
+});
+
+test('Meta automatically submits ทำใหม่ when Something went wrong occurs', async () => {
+  const enteredPrompts = [];
+  const reportedStages = [];
+  let responseCount = 0;
+
+  const badResponse = { innerText: 'Something went wrong. Please try again.' };
+  const goodVideo = { element: { readyState: 4, duration: 10, videoWidth: 720, videoHeight: 1280 }, url: 'blob:video' };
+
+  const generate = load('generate', '\n  async function newChat', {
+    waitFor: async find => {
+      for (let i = 0; i < 5; i++) {
+        const res = await find();
+        if (res) return res;
+      }
+      throw Error('timed out in test');
+    },
+    prepareMetaVideoPrompt,
+    report: async stage => reportedStages.push(stage),
+    upload: async () => {},
+    responseMedia: () => responseCount >= 2 ? [goodVideo] : [],
+    document: {
+      querySelectorAll: sel => {
+        if (sel.includes('Meta AI response')) {
+          if (responseCount === 1) return [badResponse];
+          if (responseCount >= 2) return [badResponse, { innerText: 'Here is your video' }];
+          return [];
+        }
+        return [];
+      }
+    },
+    enterPrompt: async text => {
+      enteredPrompts.push(text);
+      responseCount++;
+    },
+    blobData: async () => 'data:video/mp4;base64,result',
+    fetch: async () => ({ ok: true, blob: async () => ({ type: 'video/mp4' }) }),
+    pause: async () => {},
+    check: () => {},
+    generationFailure: failure,
+  });
+
+  const result = await generate('video', 'test prompt', []);
+  assert.equal(result, 'data:video/mp4;base64,result');
+  assert.ok(enteredPrompts.includes('ทำใหม่'));
+  assert.ok(reportedStages.some(s => s.includes('redo-attempt')));
+});
+

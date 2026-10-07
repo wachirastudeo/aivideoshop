@@ -109,6 +109,11 @@ async function routeMessage(message, sender) {
     case "META_CLICK":               return clickPointWithDebugger(message.payload, sender, { detachAfter: true });
     case "META_DONE":                return detachDebuggerTab(sender?.tab?.id);
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
+    case "FLOW_FRAME_SLOTS": {
+      const nodes = await getFlowAXTree(sender?.tab?.id);
+      return { emptyEnd: nodes.some(node => String(node?.role?.value || "").toLowerCase() === "button"
+        && /^(?:end(?: frame)?|สิ้นสุด)$/i.test(axText(node).trim())) };
+    }
     case "DOWNLOAD_VIDEO":           return downloadVideo(message.payload);
     case "DOWNLOAD_FILE":            return downloadFile(message.payload);
     case "FETCH_IMAGE_DATA":         return fetchImageData(message.payload);
