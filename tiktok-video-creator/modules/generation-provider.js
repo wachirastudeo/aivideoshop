@@ -12,6 +12,8 @@ export function bindGenerationProvider(selectId, initialProvider, flowControlIds
     }
     const help = document.getElementById(`${selectId}-help`);
     if (help) help.hidden = !meta;
+    const multiSceneField = document.getElementById("meta-multi-scene-field");
+    if (multiSceneField) multiSceneField.hidden = !meta;
   }
   updateControls();
   let saving = Promise.resolve();

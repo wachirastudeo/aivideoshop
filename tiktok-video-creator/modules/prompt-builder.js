@@ -790,7 +790,7 @@ function getDefaultAutoPresenterProfile(text = "", presenter = "") {
   const appearance = presenter === "man"
     ? "handsome, naturally attractive, well-groomed, and confident"
     : "beautiful, naturally attractive, well-groomed, and confident";
-  const ageRange = presenter === "woman" ? "20-29" : "22-35";
+  const ageRange = "20-25";
   const ageGuard = presenter === "woman"
     ? "visibly youthful adult appearance, not mature-looking or elderly"
     : "young working-age appearance";
@@ -1245,8 +1245,8 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   const handsOnlyPresenter = settings?.presenter === "hands_only" || auto.presenter === "hands_only";
   const isHandsOnlyActive = handsOnlyStyle || handsOnlyPresenter;
   const productOnlyStill = stillMotionMode || boxedMotionMode || (!isHandsOnlyActive && settings?.flowGenMode === "combined" && (!explicitChildPresenter || isClothing || isUnderwear));
-  const autoPresenterProfile = !productOnlyStill && isAuto(settings.presenter)
-    ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
+  const autoPresenterProfile = !productOnlyStill
+    ? getDefaultAutoPresenterProfile(productText, auto.presenter)
     : "";
   const explicitLocationSelected = !isAuto(settings.location);
   const isChildPresenter = ["baby", "toddler", "child", "older_child"].includes(auto.presenter);
@@ -1812,7 +1812,7 @@ export function resolveSpokenOpeningHook(productInfo = {}, random = Math.random)
       .replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, "")
       .replace(/^[\s"'“”‘’.,!?-]+|[\s"'“”‘’]+$/g, "")
       .trim();
-    if (!phrase || /(ของอันนี้|ชิ้นนี้แนะนำเลย|สวัสดี|หวัดดี|\bhello\b|\bhi\b)/i.test(phrase)) return "";
+    if (!phrase || /(ของอันนี้|ชิ้นนี้แนะนำเลย|สวัสดี|หวัดดี|ราคา|บาท|฿|คุ้มราคา|ประหยัด|ลดราคา|ส่วนลด|\bhello\b|\bhi\b|\bprice\b|\bdiscount\b)/i.test(phrase)) return "";
     const lowerPhrase = phrase.toLowerCase();
     if (productNames.some(name => lowerPhrase.includes(name))) return "";
     return phrase;
@@ -2001,11 +2001,13 @@ export function buildVideoPrompt(productInfo, settings = {}) {
   const visualRules = `FINAL OVERRIDE: ${textRule}${retailCoffeeScale ? `\n${retailCoffeeScale}` : ""}
 Keep original product lettering/language/layout; preserve unclear marks without guessing. Copy no catalog text. Maintain reference proportions and constant scale against hands/body/scene. Verified variant dimensions override category guesses. Close up with the camera; never enlarge the item or invent parts. ${instanceRule}`;
   const duration = Number.parseInt(settings?.videoDuration, 10) || 8;
-  const omniMultiShot = settings?.videoModel === "omni-flash" && duration === 10;
+  const isMeta = settings?.generationProvider === "meta-ai" && duration === 10;
+  const omniMultiShot = !isMeta && settings?.videoModel === "omni-flash" && duration === 10;
+  const metaMultiScene = isMeta && settings?.metaMultiScene !== false;
   let stylePrompt = [...new Set(buildVideoPromptForStyle(productInfo, settings).split("\n"))].join("\n");
   // The clip-wide audio rules below replace this duplicate style-level instruction.
   stylePrompt = stylePrompt.replace(SPEECH_DIRECTION, "");
-  if (omniMultiShot) {
+  if (omniMultiShot || isMeta) {
     // Remove old timelines rather than presenting competing shot counts.
     stylePrompt = stylePrompt.split("\n").filter(line =>
       !/MANDATORY TWO-SCENE EDIT|MANDATORY FASHION HANGER SHOT PLAN|^- Scene \d|^This video must/.test(line)
@@ -2013,7 +2015,11 @@ Keep original product lettering/language/layout; preserve unclear marks without 
   }
   const shotPlan = omniMultiShot
     ? "OMNI 10-SECOND MULTI-SHOT OVERRIDE: Exactly FOUR shots with clean cuts at 2.5s, 5s and 7.5s. Shot 1 (0–2.5s): full-product front hero. Shot 2 (2.5–5s): gentle left three-quarter angle. Shot 3 (5–7.5s): close-up of a visible fabric, print or construction detail. Shot 4 (7.5–10s): right three-quarter angle returning to a clear product hold. Use genuinely different camera positions/framing, not one continuous zoom. Overrides earlier single-take, fixed-angle and scene-count camera instructions only. Preserve reference-facing details; never invent unseen backs. Keep the same product, physical scale, presenter, outfit, background and support across cuts. Hanger mode: ONE garment stays on ONE hanger; show hook and supported shoulders in wider shots. Retain face/privacy restrictions and product-only Scene 1 when selected. ONE continuous audio take across all shots, no repeated narration; final 1s silent."
-    : "";
+    : metaMultiScene
+      ? "META 10-SECOND THREE-SCENE PLAN: Scene 1 (0–3s): wide front-facing product reveal in the selected setting. Scene 2 (3–6s): medium front-facing view showing one natural use or demonstration. Scene 3 (6–10s): closer front-facing product detail and steady hero hold. Use clean cuts and keep the same product, scale, presenter, outfit, and setting across scenes. Keep the product fully visible; never invent an unseen back or change its design. One continuous narration across all scenes, with the final second silent. This plan overrides earlier single-take and scene-count directions; retain selected product actions and product-only Scene 1 when enabled."
+      : isMeta
+        ? "META 10-SECOND SINGLE-SCENE PLAN: One continuous front-facing 10-second shot with no cuts or scene changes. Begin with a clear product view, demonstrate one natural use through camera or presenter movement, then finish on a steady product hold. Preserve the same product, scale, presenter, outfit, and setting. One continuous narration, with the final second silent. This plan overrides earlier multi-scene and scene-count directions."
+        : "";
   const prompt = `${stylePrompt}\n${visualRules}${shotPlan ? `\n${shotPlan}` : ""}`;
   const speechEnd = Math.max(0, duration - 1);
   const syllableBudget = Math.floor(Math.max(0, speechEnd - 0.5) * 3);
@@ -2054,9 +2060,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   ].filter(Boolean);
  
   const productText = `${visualProductName} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
-  const autoPresenterProfile = isAuto(settings.presenter)
-    ? getDefaultAutoPresenterProfile(`${productText} ${productInfo.targetGroup || ""}`, auto.presenter)
-    : "";
+  const autoPresenterProfile = getDefaultAutoPresenterProfile(productText, auto.presenter);
   const vehicleAccessoryContext = getVehicleAccessoryContext(productText);
   const weightCategory = getProductWeightCategory(productText);
   const isHeavy = weightCategory !== "light";
@@ -2531,7 +2535,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
     ? "narrate her own thoughts naturally in Thai off-screen (e.g., how the product helps her child, or how her child enjoys it). The script must NOT sound like a commercial product review or sales pitch, and the child must NOT present, explain features, or review the product themselves"
     : "present the product naturally in Thai; mention a relevant benefit, feature, material, or realistic use only when it fits";
 
-  const speechCore = `${SPEECH_PRODUCT_TITLE_EXCLUSION} Use [${combinedProductDetails}] as context, not a script. Choose one natural Thai sentence using supported product details only. Avoid unrelated situations, exaggerated claims, filler, repetition, prices, or forced CTA. The wording is up to the model.`;
+  const speechCore = `${SPEECH_PRODUCT_TITLE_EXCLUSION} Use [${combinedProductDetails}] as context, not a script. Choose one natural Thai sentence using supported product details only. STRICT SPOKEN PRICE BAN: Never mention, imply, or read any price, currency amount, discount, sale, or price comparison, even if it appears in the product title, reference, hook, highlights, or user text. Avoid unrelated situations, exaggerated claims, filler, repetition, or forced CTA. The wording is up to the model.`;
   const speechDir = isMusicOnlyMode(auto.audioMode)
     ? resolveMusicAudioDirection(auto.audioMode)
     : isFullFaceCoveringProduct(productText)

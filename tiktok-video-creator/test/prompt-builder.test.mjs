@@ -1016,6 +1016,10 @@ for (const videoStyle of ["sales", "fashion-hanger-presenter", "hands-only", "st
   check(`Omni 10s ${videoStyle} uses four angles without competing timeline`, /OMNI 10-SECOND MULTI-SHOT OVERRIDE[\s\S]*Exactly FOUR shots[\s\S]*Shot 4/.test(multiShotPrompt) && !/MANDATORY TWO-SCENE EDIT|MANDATORY FASHION HANGER SHOT PLAN|^- Scene \d/m.test(multiShotPrompt), multiShotPrompt);
 }
 check("other models keep their existing shot plan at 10 seconds", !/OMNI 10-SECOND MULTI-SHOT OVERRIDE/.test(buildVideoPrompt({ name: "เสื้อกันหนาว" }, { ...settings, videoModel: "veo-3.1-lite-low-priority", videoDuration: "10" })));
+const metaSceneProduct = { name: "กระเป๋าสะพาย" };
+const metaSceneSettings = { ...settings, generationProvider: "meta-ai", videoDuration: 10, videoStyle: "testimonial" };
+check("Meta checked uses three scenes", /META 10-SECOND THREE-SCENE PLAN:[^\n]*Scene 3 \(6–10s\)/.test(buildVideoPrompt(metaSceneProduct, { ...metaSceneSettings, metaMultiScene: true })));
+check("Meta unchecked uses one scene", /META 10-SECOND SINGLE-SCENE PLAN:[^\n]*no cuts or scene changes/.test(buildVideoPrompt(metaSceneProduct, { ...metaSceneSettings, metaMultiScene: false })));
 // --- omni-flash: multi-scene description ---
 const omniSettings = { ...settings, videoModel: "omni-flash", videoStyle: "sales" };
 const omniVid = buildVideoPrompt({ name: "เครื่องปั่นน้ำผลไม้", highlights: "" }, omniSettings);
@@ -1506,17 +1510,20 @@ check("clothing scene directions show the garment worn instead of generically pr
 const mensWorkoutPants = { name: "กางเกงออกกำลังกายผู้ชาย", category: "เสื้อผ้า", autoOptions: { presenter: "woman" } };
 const mensWorkoutPantsImg = buildImagePrompt(mensWorkoutPants, settings);
 const mensWorkoutPantsVid = buildVideoPrompt(mensWorkoutPants, settings);
+check("spoken video direction bans every price mention", /STRICT SPOKEN PRICE BAN:[^\n]*Never mention, imply, or read any price, currency amount, discount, sale, or price comparison/i.test(mensWorkoutPantsVid), mensWorkoutPantsVid);
 check("men's workout pants override an incorrect woman recommendation", /Presenter: A fictional adult Thai man commercial fit model/i.test(mensWorkoutPantsImg) && /Presenter: A fictional adult Thai man commercial fit model/i.test(mensWorkoutPantsVid), mensWorkoutPantsImg + mensWorkoutPantsVid);
 check("workout pants are the sole visible bottom garment", /exactly one pair[\s\S]*sole visible bottom garment/i.test(mensWorkoutPantsImg) && /exactly one pair[\s\S]*sole visible bottom garment/i.test(mensWorkoutPantsVid), mensWorkoutPantsImg + mensWorkoutPantsVid);
 check("workout pants prompt does not request vague supporting clothes", !/supporting clothes/i.test(mensWorkoutPantsImg + mensWorkoutPantsVid), mensWorkoutPantsImg + mensWorkoutPantsVid);
 
 const womensWorkoutPantsVid = buildVideoPrompt({ name: "กางเกงออกกำลังกายผู้หญิง", category: "เสื้อผ้า" }, settings);
 check("women's workout pants select a woman model", /Presenter: A fictional adult Thai woman commercial fit model/i.test(womensWorkoutPantsVid), womensWorkoutPantsVid);
-check("Auto men's apparel uses a handsome young working-age presenter", /AUTO PRESENTER PROFILE:[^\n]*Thai man around 22-35 years old[^\n]*handsome/i.test(mensWorkoutPantsVid), mensWorkoutPantsVid);
-check("Auto women's apparel uses a youthful 20-29 presenter", /AUTO PRESENTER PROFILE:[^\n]*Thai woman around 20-29 years old[^\n]*visibly youthful adult appearance[^\n]*not mature-looking or elderly[^\n]*beautiful/i.test(womensWorkoutPantsVid), womensWorkoutPantsVid);
+check("Auto men's apparel uses a handsome 20-25 presenter", /AUTO PRESENTER PROFILE:[^\n]*Thai man around 20-25 years old[^\n]*handsome/i.test(mensWorkoutPantsVid), mensWorkoutPantsVid);
+check("Auto women's apparel uses a youthful 20-25 presenter", /AUTO PRESENTER PROFILE:[^\n]*Thai woman around 20-25 years old[^\n]*visibly youthful adult appearance[^\n]*not mature-looking or elderly[^\n]*beautiful/i.test(womensWorkoutPantsVid), womensWorkoutPantsVid);
 
-const manualWomanProfileVid = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, { ...settings, presenter: "woman" });
-check("manual presenter selection does not receive the Auto age profile", !/AUTO PRESENTER PROFILE/i.test(manualWomanProfileVid), manualWomanProfileVid);
+const manualWomanProfileVid = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, { ...settings, presenter: "woman", generationProvider: "meta-ai", videoDuration: 10 });
+check("manual woman presenter receives the 20-25 age profile", /AUTO PRESENTER PROFILE:[^\n]*Thai woman around 20-25 years old/i.test(manualWomanProfileVid), manualWomanProfileVid);
+const manualManProfileVid = buildVideoPrompt({ name: "แก้วน้ำเก็บความเย็น" }, { ...settings, presenter: "man", generationProvider: "meta-ai", videoDuration: 10 });
+check("manual man presenter receives the 20-25 age profile", /AUTO PRESENTER PROFILE:[^\n]*Thai man around 20-25 years old/i.test(manualManProfileVid), manualManProfileVid);
 
 const seniorProductVid = buildVideoPrompt({ name: "ไม้เท้าสำหรับผู้สูงอายุ", targetGroup: "ผู้สูงอายุ" }, settings);
 check("age-specific products do not receive the default young Auto profile", !/AUTO PRESENTER PROFILE/i.test(seniorProductVid), seniorProductVid);

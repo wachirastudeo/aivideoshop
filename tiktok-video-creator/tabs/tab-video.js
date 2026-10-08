@@ -101,7 +101,7 @@ function bindGlobalEvents() {
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement", "camera-framing", "transition",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action", "post-no-link",
     "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
-    "first-scene-no-people"
+    "first-scene-no-people", "meta-multi-scene", "video-generation-provider"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
     if (!el) return;
@@ -140,6 +140,7 @@ function fillGlobalFormFromState() {
   setValue("product-activity", settings.productActivity);
   setValue("image-model", settings.imageModel);
   setValue("video-model", settings.videoModel);
+  setValue("meta-multi-scene", settings.metaMultiScene);
   setValue("image-count", settings.imageCount);
   setValue("video-count", settings.videoCount);
   setValue("video-duration", settings.videoDuration);
@@ -191,6 +192,7 @@ function syncSettingsForm() {
     productActivity: getValue("product-activity") || "Auto",
     imageModel: getValue("image-model"),
     videoModel: getValue("video-model"),
+    metaMultiScene: getValue("meta-multi-scene"),
     imageCount: parseInt(getValue("image-count"), 10) || 1,
     videoCount: parseInt(getValue("video-count"), 10) || 1,
     videoDuration: parseInt(getValue("video-duration"), 10) || 8,
@@ -299,6 +301,7 @@ function normalizeSettings(value) {
     transition: value.transition || "Auto",
     imageModel: value.imageModel || "nano-banana-pro",
     videoModel: value.videoModel || "veo-3.1-lite-low-priority",
+    metaMultiScene: value.metaMultiScene !== false && value.metaMultiScene !== "false",
     imageCount: value.imageCount || 1,
     videoCount: value.videoCount || 1,
     videoDuration: 8,
@@ -1246,7 +1249,7 @@ async function clearVideoQueue() {
 
 function getVideoPromptSettings() {
   const generationProvider = getValue("video-generation-provider") || "google-flow";
-  return { ...settings, generationProvider, videoDuration: generationProvider === "meta-ai" ? 10 : 8 };
+  return { ...settings, generationProvider, metaMultiScene: getValue("meta-multi-scene"), videoDuration: generationProvider === "meta-ai" ? 10 : 8 };
 }
 
 function buildFlowOptions(product = null) {
