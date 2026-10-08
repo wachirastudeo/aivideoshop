@@ -40,3 +40,17 @@ test("10s music-only video does not request continuous speech", () => {
   });
   assert.ok(!prompt.includes("10-SECOND CONTINUOUS DELIVERY"));
 });
+
+for (const metaMultiScene of [true, false]) {
+  test(`Meta AI 10s speech is complete and omits product codes (${metaMultiScene ? "three scenes" : "one scene"})`, () => {
+    const prompt = buildVideoPrompt({ name: "เสื้อยืด รุ่น ABC-123", productId: "987654321", highlights: "ผ้านุ่ม" }, {
+      ...getDefaultSettings(), generationProvider: "meta-ai", videoDuration: 10,
+      metaMultiScene, audioMode: "voiceover"
+    });
+    assert.ok(prompt.includes("META 10-SECOND SPEECH OVERRIDE"));
+    assert.ok(prompt.includes("at most 18 spoken syllables total"));
+    assert.ok(prompt.includes("finish every sentence by 8s"));
+    assert.ok(prompt.includes("never read a product ID, SKU, model/catalog code"));
+    assert.ok(prompt.includes("shorten or omit details before speaking"));
+  });
+}
