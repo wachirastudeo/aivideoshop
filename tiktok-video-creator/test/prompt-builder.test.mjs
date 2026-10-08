@@ -1187,6 +1187,20 @@ check("child and parent still uses per-person hand anatomy", /MULTI-PERSON HAND 
 check("child and parent video uses per-person hand anatomy", /MULTI-PERSON HAND ANATOMY[\s\S]*Never give any person a third hand/i.test(childHandsVideo), childHandsVideo);
 check("child video keeps exactly one child and one parent", /exactly two consistent people: one child and one parent\/guardian/i.test(childHandsVideo), childHandsVideo);
 
+const rice5kgImage = buildImagePrompt({ name: "ข้าวสาร 5 กิโลกรัม" }, settings);
+const rice10kgImage = buildImagePrompt({ name: "ข้าวสาร 10 กิโลกรัม" }, settings);
+const rice5kgVideo = buildVideoPrompt({ name: "ข้าวสาร 5 กิโลกรัม" }, settings);
+const rice10kgVideo = buildVideoPrompt({ name: "ข้าวสาร 10 กิโลกรัม" }, settings);
+check("5 kg and 10 kg image variants retain distinct declared scale", /DECLARED WEIGHT SCALE: This exact variant is 5 kg/.test(rice5kgImage) && /DECLARED WEIGHT SCALE: This exact variant is 10 kg/.test(rice10kgImage));
+check("5 kg and 10 kg video variants retain distinct declared scale", /DECLARED WEIGHT SCALE: This exact variant is 5 kg/.test(rice5kgVideo) && /DECLARED WEIGHT SCALE: This exact variant is 10 kg/.test(rice10kgVideo));
+check("10 kg variant requires more support without invented fixed dimensions", /10 kg variant must look more substantial than a 5 kg variant/.test(rice10kgImage) && /Weight does not imply doubled length or fixed dimensions/.test(rice10kgVideo) && /Support it with both hands or rest it on a surface/.test(rice10kgVideo));
+
+const metaPresenterSettings = { ...settings, generationProvider: "meta-ai", presenter: "woman", videoDuration: 10 };
+const metaPresenterImage = buildImagePrompt({ name: "เสื้อเชิ้ตแฟชั่น" }, metaPresenterSettings);
+const metaPresenterVideo = buildVideoPrompt({ name: "เสื้อเชิ้ตแฟชั่น" }, metaPresenterSettings);
+check("Meta image replaces the reference person's identity", /META PERSON REPLACEMENT[\s\S]*clearly different face, facial structure, hairstyle/i.test(metaPresenterImage));
+check("Meta video replaces the reference person's identity across scenes", /META PERSON REPLACEMENT[\s\S]*Do not copy, trace, preserve, or closely resemble the source person[\s\S]*consistent across scenes/i.test(metaPresenterVideo));
+
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
 check("image prompt with text enabled shows only clipText phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled), imgTextEnabled);
 check("image prompt with text enabled does NOT include product name or promotion in overlay", !/ลด 50%/i.test(imgTextEnabled) && !/พัดลมไร้สาย.*overlay/i.test(imgTextEnabled), imgTextEnabled);
