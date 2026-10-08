@@ -37,29 +37,17 @@
   async function click(element) {
     check();
     element.scrollIntoView({block:'center'});
-    try {
-      element.focus?.();
-      element.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, view: window }));
-      element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-      element.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, cancelable: true, view: window }));
-      element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
-      element.click?.();
-    } catch {}
     const rect = element.getBoundingClientRect?.() || { x: 0, y: 0, width: 0, height: 0 };
-    if (chrome?.runtime?.sendMessage) {
+    if (rect.width && rect.height && chrome?.runtime?.sendMessage) {
       try {
         const response = await chrome.runtime.sendMessage({
           type: 'META_CLICK',
           payload: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
         });
-        if (response && response.ok === false && !element.click) {
-          throw new Error(response.error || 'Meta AI click failed');
-        }
-      } catch (err) {
-        // If debugger click fails but DOM click was executed, do not crash unconditionally unless element has no click
-        if (typeof element.click !== 'function') throw err;
-      }
+        if (response?.ok) return;
+      } catch {}
     }
+    element.click?.();
   }
   const blobData = blob => new Promise((resolve,reject) => {
     const reader = new FileReader();
@@ -69,8 +57,17 @@
   });
   async function upload(dataUrls) {
     if (!dataUrls.length) return;
-    await click(await waitFor(()=>button(/^Add attachment$/i),'Add attachment button'));
-    const input = await waitFor(()=>document.querySelector('input[type="file"]'),'upload file input');
+    let input = document.querySelector('input[type="file"]');
+    if (!input) {
+      const addBtn = button(/^Add attachment$/i);
+      if (addBtn) {
+        addBtn.click();
+        input = await waitFor(()=>document.querySelector('input[type="file"]'),'upload file input', 5000).catch(()=>null);
+      }
+    }
+    if (!input) {
+      input = await waitFor(()=>document.querySelector('input[type="file"]'),'upload file input');
+    }
     const transfer = new DataTransfer();
     for (const [index,dataUrl] of dataUrls.entries()) {
       const blob = await (await fetch(dataUrl)).blob();
@@ -85,17 +82,16 @@
     await pause(1200);
   }
   async function enterPrompt(text) {
-    const previousLinks = new Set(conversationLinks().map(link=>link.href));
+    const previousLinks = new Set((typeof conversationLinks === 'function' ? conversationLinks() : []).map(link => link.href));
+    const previousPath = location.pathname;
+    const previousMessages = new Set(document.querySelectorAll('[aria-label="Your message"]'));
     const editor = await waitFor(composer,'New chat composer');
     editor.focus();
-    // Lexical uses paste to preserve uploaded image nodes in the composer.
-    const transfer = new DataTransfer();
-    transfer.setData('text/plain',text);
-    editor.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:transfer}));
-    await pause(500);
-    if (!editor.textContent.includes(text.slice(0,80))) {
-      const response = await chrome.runtime.sendMessage({type:'META_INSERT_TEXT',payload:{text,clear:false}});
-      if (!response?.ok) throw new Error(response?.error || 'Could not enter Meta AI prompt');
+    const response = await chrome.runtime.sendMessage({ type: 'META_INSERT_TEXT', payload: { text, clear: false } });
+    if (!response?.ok) {
+      const transfer = new DataTransfer();
+      transfer.setData('text/plain', text);
+      editor.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: transfer }));
     }
     await waitFor(() => {
       const current = composer();
@@ -104,13 +100,16 @@
       return current.textContent?.includes(textSample) || current.innerText?.includes(textSample);
     }, 'prompt insertion');
 
+    // Wait briefly for Lexical state update to enable Send button
+    await pause(800);
+
     const findSendButton = () => {
       const byTestId = document.querySelector?.('button[data-testid="composer-send-button"], button[data-testid="send-button"]');
-      if (byTestId) return byTestId;
-      const byAria = document.querySelector?.('button[aria-label*="send" i], button[aria-label*="ส่ง" i], button[aria-label*="submit" i]');
-      if (byAria) return byAria;
+      if (byTestId && !byTestId.disabled) return byTestId;
+      const byAria = document.querySelector?.('button[aria-label="Send"], button[aria-label*="send" i], button[aria-label*="ส่ง" i], button[aria-label*="submit" i]');
+      if (byAria && !byAria.disabled) return byAria;
       const byRegex = button(/send|ส่ง|submit|arrow_upward/i);
-      if (byRegex) return byRegex;
+      if (byRegex && !byRegex.disabled) return byRegex;
       return [...(document.querySelectorAll?.('button') || [])].find(b => {
         if (!visible(b) || b.disabled) return false;
         const container = b.closest?.('form, [data-testid*="composer"], div:has([contenteditable])');
@@ -121,36 +120,32 @@
     const sendBtn = await waitFor(findSendButton, 'Send button', 10000).catch(() => null);
     if (sendBtn) {
       await click(sendBtn);
-      // Extra safety: Lexical composer might need Enter key dispatch if button click alone did not trigger submission
-      const targetEditor = composer() || editor;
-      if (targetEditor && typeof KeyboardEvent !== 'undefined') {
-        targetEditor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
-        targetEditor.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
-      }
     } else {
-      // Fallback: Send Enter key in composer
       const targetEditor = composer() || editor;
       if (targetEditor) {
         targetEditor.focus?.();
-        if (typeof KeyboardEvent !== 'undefined') {
-          targetEditor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
-          targetEditor.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
-        } else {
-          targetEditor.dispatchEvent?.(new Event('keydown', { bubbles: true }));
-        }
+        const response = await chrome.runtime.sendMessage({ type: 'META_PRESS_ENTER' });
+        if (!response?.ok) throw new Error(response?.error || 'Could not submit Meta AI prompt');
       }
     }
     // Meta can save a submitted chat while leaving the home composer visible.
     // Follow only this submission's newly created history link; never resubmit.
     let openedHistory = false;
-    await waitFor(()=>{
+    await waitFor(async () => {
       const message = [...document.querySelectorAll('[aria-label="Your message"]')].at(-1);
-      const textSample = text.slice(0, 40).trim();
-      if (location.pathname.startsWith('/prompt/') && message?.textContent.includes(textSample)) return true;
+      if (location.pathname.startsWith('/prompt/') && message && (location.pathname !== previousPath || !previousMessages.has(message))) return true;
       if (!openedHistory) {
-        const link = conversationLinks().find(item=>!previousLinks.has(item.href) && label(item).includes(textSample));
+        const newLinks = (typeof conversationLinks === 'function' ? conversationLinks() : []).filter(item => !previousLinks.has(item.href));
+        const link = newLinks.find(item => label(item).includes(text.slice(0, 40))) || (newLinks.length === 1 ? newLinks[0] : null);
         if (link) { openedHistory = true; link.click(); }
       }
+
+      // Automatically dismiss Discard modal if it appears
+      const discardBtn = button(/^discard$/i) || [...(document.querySelectorAll?.('button') || [])].find(b => visible(b) && !b.disabled && /discard/i.test(label(b)));
+      if (discardBtn && typeof discardBtn.click === 'function') {
+        discardBtn.click();
+      }
+
       const alertText = [...document.querySelectorAll('[role="alert"], [class*="error" i]')].map(item=>item.innerText || item.textContent || '').join('\n');
       const failure = generationFailure(alertText);
       if (failure) throw failure;
@@ -169,7 +164,7 @@
   }
   function prepareMetaVideoPrompt(prompt) {
     return String(prompt || '').split('\n').filter(line =>
-      !/^\s*(?:MANDATORY VIDEO FORMAT:|MANDATORY TWO-SCENE EDIT:|This video must consist of|[-*]\s*Scene\s*\d+\s*\(|Subtle Slow Zoom In;)/i.test(line)
+      !/^\s*(?:MANDATORY VIDEO FORMAT:|MANDATORY TWO-SCENE EDIT:|OMNI 10-SECOND MULTI-SHOT OVERRIDE:|This video must consist of|[-*]\s*Scene\s*\d+\s*\(|Subtle Slow Zoom In;)/i.test(line)
     ).join('\n').replace(/, including 2\.5s, 5s and 7\.5s when present/g, '');
   }
   async function generate(kind, prompt, references) {
@@ -230,17 +225,24 @@
         return;
       }
     }
-    const link = await waitFor(() => [...document.querySelectorAll('a')].find(link => visible(link) && /^New chat/.test(link.textContent.trim()) && new URL(link.href, location.href).pathname === '/'), 'New chat link');
-    await click(link);
+    const findNewChatLink = () => [...document.querySelectorAll('a')].find(link => visible(link) && (/^new chat/i.test(link.textContent.trim()) || link.getAttribute('aria-label')?.includes('New chat')) && new URL(link.href, location.href).pathname === '/');
+    const link = findNewChatLink();
+    if (link) {
+      await click(link);
+    } else {
+      location.href = 'https://www.meta.ai/';
+    }
     await waitFor(async () => {
       // Check if "Discard prompt?" confirmation dialog popped up
       const discardBtn = button(/^discard$/i) || [...document.querySelectorAll('button')].find(b => visible(b) && !b.disabled && /discard/i.test(label(b)));
       if (discardBtn) {
-        await click(discardBtn);
+        discardBtn.click();
         await pause(500);
       }
-      return composer() && !document.querySelector('[aria-label="Conversation messages"]');
-    }, 'empty New chat');
+      return composer() && (!document.querySelector('[aria-label="Conversation messages"]') || location.pathname === '/');
+    }, 'empty New chat', 15000).catch(() => {
+      if (location.pathname !== '/') location.href = 'https://www.meta.ai/';
+    });
   }
   async function generateWithRetry(kind, prompt, references) {
     for (let attempt = 0; attempt < 2; attempt++) {

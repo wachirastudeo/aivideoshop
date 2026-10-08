@@ -106,7 +106,8 @@ async function routeMessage(message, sender) {
     case "SHOPEE_CLOSE_SCRAPE_TAB":  return closeShopeeScrapeTab();
     case "OPEN_META_AI":             return openMetaAI(message.payload);
     case "META_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
-    case "META_CLICK":               return clickPointWithDebugger(message.payload, sender, { detachAfter: true });
+    case "META_PRESS_ENTER":         return pressEnterWithDebugger(sender);
+    case "META_CLICK":               return clickPointWithDebugger(message.payload, sender, { detachAfter: false });
     case "META_DONE":                return detachDebuggerTab(sender?.tab?.id);
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
     case "FLOW_FRAME_SLOTS": {
@@ -571,6 +572,36 @@ async function insertTextWithDebugger(payload, sender) {
   } finally {
     // ห้าม detach ทันทีเพื่อให้ระบบทำงานเบื้องหลังได้โดยไม่โดน Chrome พักการทำงาน (Throttling)
     // จะทำการ detach เมื่อขั้นตอนทั้งหมดเสร็จสิ้น
+  }
+}
+
+async function pressEnterWithDebugger(sender) {
+  const tabId = sender?.tab?.id;
+  if (!tabId) throw new Error("ไม่พบ tab สำหรับกด Enter");
+  const target = { tabId };
+  try {
+    await ensureDebuggerAttached(tabId);
+    await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+      type: "keyDown",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+      code: "Enter",
+      key: "Enter",
+      unmodifiedText: "\r",
+      text: "\r"
+    });
+    await new Promise(r => setTimeout(r, 80));
+    await chrome.debugger.sendCommand(target, "Input.dispatchKeyEvent", {
+      type: "keyUp",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+      code: "Enter",
+      key: "Enter"
+    });
+    return { ok: true, pressed: true };
+  } catch (error) {
+    console.error("pressEnterWithDebugger error:", error);
+    return { ok: false, error: error?.message || String(error) };
   }
 }
 

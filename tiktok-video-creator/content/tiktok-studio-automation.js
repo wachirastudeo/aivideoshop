@@ -196,6 +196,7 @@ async function handleVideoUpload(payload = {}) {
       }
 
       assertNotStopped();
+      await verifyCaptionBeforeSubmit(caption, hashtags);
       await clickPost();
       log("คลิก Post สำเร็จ");
       sendPipelineLog("info", "เสร็จสิ้น");
@@ -207,6 +208,7 @@ async function handleVideoUpload(payload = {}) {
     const aigcBeforeDraft = await setAigcSwitch(aiGenerated ?? true);
     assertNotStopped();
     if (!aigcBeforeDraft) throw new Error("ตั้ง AI-generated ไม่สำเร็จก่อนบันทึก draft");
+    await verifyCaptionBeforeSubmit(caption, hashtags);
     await clickSaveDraftV2();
     log("คลิก Save Draft สำเร็จ");
     sendPipelineLog("info", "เสร็จสิ้น");
@@ -599,6 +601,25 @@ async function repairCaptionHashtags(editor) {
   await sleep(150);
   if (/#{2,}(?=[\p{L}\p{M}\p{N}_])/u.test(editor.innerText || "")) {
     throw new Error("Caption still contains repeated hashtag prefixes");
+  }
+}
+
+async function verifyCaptionBeforeSubmit(caption, hashtags) {
+  const editor = document.querySelector(TIKTOK_SELECTORS.captionEditor);
+  if (!editor) throw new Error("ไม่พบช่อง Caption ก่อนส่ง");
+  const expected = [sanitizeCaption(caption), ...normalizeHashtags(hashtags)].filter(Boolean).join(" ");
+  const normalize = value => String(value || "").replace(/\s+/g, " ").trim();
+  if (normalize(editor.innerText) === expected) return;
+
+  editor.focus();
+  selectAllEditable(editor);
+  document.execCommand("insertText", false, expected);
+  editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: expected }));
+  editor.dispatchEvent(new Event("change", { bubbles: true }));
+  dismissCaptionSuggestion(editor);
+  await sleep(300);
+  if (normalize(editor.innerText) !== expected) {
+    throw new Error("Caption changed before submission");
   }
 }
 

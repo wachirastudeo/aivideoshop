@@ -84,7 +84,7 @@ test('home-page submission follows only its new conversation and sends once', as
     pause: async () => {},
     DataTransfer: class { setData() {} },
     ClipboardEvent: class {},
-    chrome: {runtime:{sendMessage() {throw Error('Unexpected text fallback');}}},
+    chrome: {runtime:{sendMessage(message) {assert.equal(message.type, 'META_INSERT_TEXT'); return {ok:true};}}},
     button: () => ({send:true}),
     click: async () => {sends++; links = [oldLink, unrelated, jobLink];},
     document: { querySelectorAll: selector => selector.includes('Your message') && message ? [message] : [] },
@@ -194,4 +194,3 @@ test('Meta automatically submits ทำใหม่ when Something went wrong oc
   assert.ok(enteredPrompts.includes('ทำใหม่'));
   assert.ok(reportedStages.some(s => s.includes('redo-attempt')));
 });
-
