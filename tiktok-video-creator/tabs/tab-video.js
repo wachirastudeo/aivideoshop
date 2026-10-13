@@ -786,7 +786,9 @@ async function launchFlow(phase, product) {
     // วิดีโอต้องใช้รูปในกล่อง "ภาพ" (approvedImage จาก Phase 1) เท่านั้น
     // ไม่ใช่รูปตัวอย่างจากรายการสินค้า — override imageUrls ที่ buildFlowOptions ตั้งไว้
     const flowOptions = buildFlowOptions(product);
-    if (phase === "video" && image) flowOptions.imageUrls = [image];
+    if (phase === "video" && image && (product.approvedImage || flowOptions.generationProvider !== "meta-ai")) {
+      flowOptions.imageUrls = [image];
+    }
 
     helpers.showStatus(phase === "image" ? "เปิด Google Flow เพื่อสร้างภาพ..." : "เปิด Google Flow เพื่อสร้างวิดีโอ...", "info");
     const result = await runInterruptibly(() => openGoogleFlow(phase, prompt, image, flowOptions));

@@ -52,6 +52,24 @@ function eq(name, got, want) {
 
 const settings = getDefaultSettings();
 
+const phoneFilmPrompt = buildVideoPrompt(
+  { name: "iFilm ฟิล์มหลัง รอบเครื่อง สำหรับ iPhone" },
+  { ...settings, generationProvider: "meta-ai", videoDuration: 10 }
+);
+check("Meta phone back film shows installation and completed result", /META PHONE FILM INSTALLATION:[\s\S]*phone BACK[\s\S]*peel the liner[\s\S]*FINISHED protected back/.test(phoneFilmPrompt));
+check("Meta phone back film avoids a package-only review", /do not[\s\S]*spend the clip displaying packaging/.test(phoneFilmPrompt));
+const screenFilmPrompt = buildVideoPrompt(
+  { name: "ฟิล์มหน้าจอ iPhone" },
+  { ...settings, generationProvider: "meta-ai", videoDuration: 10 }
+);
+check("Meta screen film installs on the front display", /FRONT DISPLAY[\s\S]*peel the liner[\s\S]*FINISHED protected front screen/.test(screenFilmPrompt));
+check("Meta screen film excludes the phone back", /Never place film on the back/.test(screenFilmPrompt));
+const lensFilmPrompt = buildVideoPrompt(
+  { name: "ฟิล์มกันรอยเลนส์กล้อง iPhone" },
+  { ...settings, generationProvider: "meta-ai", videoDuration: 10 }
+);
+check("Meta lens film installs on camera lenses", /CAMERA LENSES[\s\S]*FINISHED camera module/.test(lensFilmPrompt));
+
 check("hands-only is a standalone video style", VIDEO_STYLES.some((style) => style.id === "hands-only"));
 check("requested sales styles are hidden from selectors", ["review", "flash-sale", "sales", "lifestyle", "cinematic", "trending-hook", "before-after"].every((id) => HIDDEN_VIDEO_STYLE_IDS.has(id)));
 check("UGC/Testimonial appears first in selectable styles", getSelectableVideoStyles()[0]?.id === "testimonial");
@@ -613,6 +631,9 @@ const boxedCarFragranceVideo = buildVideoPrompt(boxedCarFragranceProduct, boxedC
 const boxedCarFragrancePrompt = `${boxedCarFragranceImage}\n${boxedCarFragranceVideo}`;
 check("boxed car fragrance uses an indoor tabletop presentation", /indoor premium gift-presentation room|clean elegant tabletop/i.test(boxedCarFragrancePrompt), boxedCarFragrancePrompt);
 check("boxed car fragrance does not put the gift box inside the car", !/Inside a parked luxury car|car cabin|dashboard|center console|cup-holder|air-vent/i.test(boxedCarFragrancePrompt), boxedCarFragrancePrompt);
+const selectedCarFragranceSettings = { ...boxedCarFragranceSettings, location: "Cafe / Coffee Shop" };
+const selectedCarFragrancePrompt = `${buildImagePrompt(boxedCarFragranceProduct, selectedCarFragranceSettings)}\n${buildVideoPrompt(boxedCarFragranceProduct, selectedCarFragranceSettings)}`;
+check("boxed car fragrance respects a manually selected location in image and video", (selectedCarFragrancePrompt.match(/Cafe \/ Coffee Shop/g) || []).length >= 2 && !/indoor premium gift-presentation room/i.test(selectedCarFragrancePrompt), selectedCarFragrancePrompt);
 check("boxed mode locks box fit and tabletop support", /BOXED PRESENTATION COMPOSITION LOCK/i.test(boxedCarFragrancePrompt) && /rest flat and fully supported on a real tabletop/i.test(boxedCarFragrancePrompt), boxedCarFragrancePrompt);
 
 const autoLocationProducts = [
@@ -1057,7 +1078,7 @@ const heavyRiceImage = buildImagePrompt(heavyRice, settings);
 const heavyRiceVideo = buildVideoPrompt(heavyRice, settings);
 check("heavy product weight 10kg detected for image", /Real scale./i.test(heavyRiceImage), heavyRiceImage);
 check("heavy product weight 10kg detected for video", /Real scale./i.test(heavyRiceVideo), heavyRiceVideo);
-check("heavy product weight 10kg uses realistic medium scale instructions", /realistic medium scale relative to the presenter, never as a tiny packet or a giant sack/i.test(heavyRiceVideo), heavyRiceVideo);
+check("heavy product weight 10kg stays on a stable support", /Keep this heavy product on the floor, pallet, or stable surface; never lift, carry, or hold it in the air/i.test(heavyRiceVideo), heavyRiceVideo);
 check("video prompt enforces real-world object gravity and contact shadows", /REAL-WORLD OBJECT PHYSICS/i.test(heavyRiceVideo) && /believable gravity, contact shadows/i.test(heavyRiceVideo), heavyRiceVideo);
 check("video prompt allows camera movement but keeps product physically stable", /camera movement should feel like a real/i.test(heavyRiceVideo) && /product remains physically stable/i.test(heavyRiceVideo), heavyRiceVideo);
 
@@ -1075,6 +1096,8 @@ const rice14KgVideo = buildVideoPrompt(rice14Kg, settings);
 check("14kg rice sack keeps the exact stated weight in the image prompt", /STRICT WEIGHT & PACKAGE SIZE LOCK[\s\S]*weighs 14kg[\s\S]*Do NOT depict it as a 5kg, 1kg/i.test(rice14KgImage), rice14KgImage);
 check("14kg rice sack keeps substantial physical scale in the image prompt", /substantial heavy package, not a small retail pouch/i.test(rice14KgImage), rice14KgImage);
 check("14kg rice sack keeps the exact stated weight in the video prompt", /STRICT WEIGHT & PACKAGE SIZE LOCK[\s\S]*weighs 14kg[\s\S]*Do NOT depict it as a 5kg, 1kg/i.test(rice14KgVideo), rice14KgVideo);
+check("rice sack follows the reference contour without inflation in the image prompt", /original sack's actual folds and contour[\s\S]*without a taut, inflated or overstuffed look/i.test(rice14KgImage), rice14KgImage);
+check("rice sack follows the reference contour without inflation in the video prompt", /original sack's actual folds and contour[\s\S]*without a taut, inflated or overstuffed look/i.test(rice14KgVideo), rice14KgVideo);
 
 const lightSoap = { name: "สบู่ก้อน 100 กรัม" };
 const lightSoapImage = buildImagePrompt(lightSoap, settings);
@@ -1193,7 +1216,9 @@ const rice5kgVideo = buildVideoPrompt({ name: "ข้าวสาร 5 กิโ
 const rice10kgVideo = buildVideoPrompt({ name: "ข้าวสาร 10 กิโลกรัม" }, settings);
 check("5 kg and 10 kg image variants retain distinct declared scale", /DECLARED WEIGHT SCALE: This exact variant is 5 kg/.test(rice5kgImage) && /DECLARED WEIGHT SCALE: This exact variant is 10 kg/.test(rice10kgImage));
 check("5 kg and 10 kg video variants retain distinct declared scale", /DECLARED WEIGHT SCALE: This exact variant is 5 kg/.test(rice5kgVideo) && /DECLARED WEIGHT SCALE: This exact variant is 10 kg/.test(rice10kgVideo));
-check("10 kg variant requires more support without invented fixed dimensions", /10 kg variant must look more substantial than a 5 kg variant/.test(rice10kgImage) && /Weight does not imply doubled length or fixed dimensions/.test(rice10kgVideo) && /Support it with both hands or rest it on a surface/.test(rice10kgVideo));
+check("10 kg variant stays supported without invented fixed dimensions", /10 kg variant must look more substantial than a 5 kg variant/.test(rice10kgImage) && /Weight does not imply doubled length or fixed dimensions/.test(rice10kgVideo) && /never lift, carry, or hold it in the air/.test(rice10kgImage) && /never lift, carry, or hold it in the air/.test(rice10kgVideo));
+check("10 kg video scene never directs lifting or holding", /never lift, carry, or hold it in the air/.test(rice10kgVideo) && /silent steady product view/.test(rice10kgVideo));
+check("spoken price ban survives a priced product", /SPOKEN CONTENT: Never mention price, cost, currency, discounts, sales, or price comparisons/.test(buildVideoPrompt({ name: "ข้าวสาร 10 กิโลกรัม ราคา 399 บาท", price: 399 }, settings)));
 
 const metaPresenterSettings = { ...settings, generationProvider: "meta-ai", presenter: "woman", videoDuration: 10 };
 const metaPresenterImage = buildImagePrompt({ name: "เสื้อเชิ้ตแฟชั่น" }, metaPresenterSettings);

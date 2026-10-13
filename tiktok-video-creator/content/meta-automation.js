@@ -57,27 +57,23 @@
   });
   async function upload(dataUrls) {
     if (!dataUrls.length) return;
-    let input = document.querySelector('input[type="file"]');
-    if (!input) {
-      const addBtn = button(/^Add attachment$/i);
-      if (addBtn) {
-        addBtn.click();
-        input = await waitFor(()=>document.querySelector('input[type="file"]'),'upload file input', 5000).catch(()=>null);
-      }
-    }
-    if (!input) {
-      input = await waitFor(()=>document.querySelector('input[type="file"]'),'upload file input');
-    }
-    const transfer = new DataTransfer();
+    const uploadedCount = () => [...document.querySelectorAll('button[aria-label="Remove image"]')].filter(visible).length;
     for (const [index,dataUrl] of dataUrls.entries()) {
+      let input = document.querySelector('input[type="file"]');
+      if (!input) {
+        button(/^Add attachment$/i)?.click();
+        input = await waitFor(()=>document.querySelector('input[type="file"]'),'upload file input');
+      }
       const blob = await (await fetch(dataUrl)).blob();
       if (!blob.type.startsWith('image/')) throw new Error('Meta AI reference must be an image');
       const extension = {'image/png':'png','image/webp':'webp','image/gif':'gif'}[blob.type] || 'jpg';
+      const transfer = new DataTransfer();
       transfer.items.add(new File([blob],`product-reference-${index+1}.${extension}`,{type:blob.type}));
+      const expectedCount = uploadedCount() + 1;
+      input.files = transfer.files;
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+      await waitFor(()=>uploadedCount() >= expectedCount,`uploaded reference image ${index+1} of ${dataUrls.length}`,60000);
     }
-    input.files = transfer.files;
-    input.dispatchEvent(new Event('change',{bubbles:true}));
-    await waitFor(()=>button(/^Remove image$/i),'uploaded reference image',60000);
     await waitFor(()=>composer(),'composer after upload');
     await pause(1200);
   }
@@ -167,17 +163,37 @@
       !/^\s*(?:MANDATORY VIDEO FORMAT:|MANDATORY TWO-SCENE EDIT:|OMNI 10-SECOND MULTI-SHOT OVERRIDE:|META 10-SECOND (?:THREE-SCENE|SINGLE-SCENE) PLAN:|This video must consist of|[-*]\s*Scene\s*\d+\s*\(|Subtle Slow Zoom In;)/i.test(line)
     ).join('\n').replace(/, including 2\.5s, 5s and 7\.5s when present/g, '');
   }
+  function metaLocationDirection(prompt, kind = 'video') {
+    const source = String(prompt || '');
+    const selected = source.match(/(?:SELECTED BACKGROUND LOCATION LOCK|SHOE WORN-ON-FEET SELECTED LOCATION LOCK): Use exactly the user's selected ([^\n.]+?)(?: background|\.|$)/i);
+    const video = source.match(/^Location setting: Place the product in a brand new, realistic (.+?) background location\./m);
+    const location = selected?.[1] || video?.[1];
+    if (!location) return '';
+    if (kind === 'image') {
+      const livingRoom = /living room|ห้องนั่งเล่น/i.test(location)
+        ? ' Furnish it as an attractive lived-in home: a sofa, coffee table, textured rug, curtains, a plant, and soft window light, with natural depth and realistic scale. No blank wall, empty showroom, trade-show banner, poster, or source-photo graphics.'
+        : '';
+      return `META IMAGE LOCATION PRIORITY: Create a NEW photograph in a clearly recognizable ${location}.${livingRoom} Use the uploaded image ONLY to preserve the product itself; replace its original background, people, signage, and composition. Keep the product accurate and prominent.`;
+    }
+    return `META SCENE LOCATION PRIORITY: Every scene and every camera framing must remain in the same clearly recognizable ${location} setting. Show enough room context in the wide shot to identify this location. Keep its furniture, architecture, and lighting consistent in medium and close shots. Do not move to a studio, shop, cafe, or another room.`;
+  }
   async function generate(kind, prompt, references) {
     await report(`uploading-${kind}-reference`);
     await upload(references);
     const existing = new Set(responseMedia(kind).map(item=>item.url));
     const oldResponses = new Set(document.querySelectorAll('[aria-label="Meta AI response"]'));
     const multiScene = !/META 10-SECOND SINGLE-SCENE PLAN:/.test(prompt);
+    const phoneFilmInstallation = kind === 'video' && /META PHONE FILM INSTALLATION:/.test(prompt);
     const direction = kind === 'image'
       ? 'Generate an actual image using the uploaded product reference. Output a vertical 9:16 image, not a written description. CRITICAL COLOR FIDELITY LOCK: Strictly match the exact color, shade, hue, and saturation of the product from the uploaded reference image pixel-for-pixel. Do NOT alter, shift, tint, or recolor the product under any scene lighting.'
-      : `Generate an actual VIDEO from the uploaded product image. Mandatory: vertical portrait 9:16, exactly 10 seconds. Output the video file, not a description or GIF. CRITICAL COLOR FIDELITY LOCK: Strictly preserve the exact product color, fabric/material hue, shade, and printed artwork from the uploaded reference image pixel-for-pixel; do not tint, desaturate, or shift product colors under any lighting. ${multiScene ? 'META SALES SHOT PRIORITY: Use three sequential full-frame front-facing scenes with clean cuts: 0–3s WIDE establishing shot showing the product with the presenter or selling environment; 3–6s MEDIUM shot emphasizing the product and natural demonstration; 6–10s CLOSE product shot showing the front label and material clearly, finishing on a steady sales hero hold. Keep the camera level and front-facing in all three scenes. No oblique or three-quarter angles, orbit, side views, or product rotation. Change framing by moving the camera closer, never by enlarging the product.' : 'META SINGLE-SCENE PRIORITY: Use one continuous front-facing shot for the full 10 seconds with no cuts or scene changes. Start with a clear product view, show one natural product action through gentle camera or presenter movement, and finish on a steady hero hold.'} Keep the entire product visible with comfortable margins; no extreme macro or cropped packaging. Preserve product shape, printed artwork, physical size, contents, presenter, and setting. Keep true scale against hands and body; a 200g pouch stays a compact one-hand retail pouch, never a giant sack. Do not reveal an unseen back or invent hidden details. No collage or split screen. Continue one narration smoothly without restarting. META PRESENTER AGE: When the prompt shows an adult woman or man and specifies no different age, cast a newly generated fictional Thai adult aged 20–25 with a visibly youthful face. Do not copy the age, face, or identity of any person visible in a product reference image; that image is for the product only. Keep the same young presenter in every scene. META THAI SPEECH: All spoken dialogue and voiceover must be in natural native Thai only, with Thai pronunciation throughout; no English speech or English dubbing. Follow the selected music-only mode if it requests no speech. This selected scene plan overrides conflicting shot-count and camera directions; retain the selected product action and audio mode.`;
+      : phoneFilmInstallation
+        ? 'Generate the actual phone film installation VIDEO described below. Show the physical application and reserve the final two seconds for a steady view of the fully installed film. No presenter, package showcase, or spoken review.'
+      : `Generate an actual VIDEO from the uploaded product image. Mandatory: vertical portrait 9:16, exactly 10 seconds. Output the video file, not a description or GIF. CRITICAL COLOR FIDELITY LOCK: Strictly preserve the exact product color, fabric/material hue, shade, and printed artwork from the uploaded reference image pixel-for-pixel; do not tint, desaturate, or shift product colors under any lighting. ${multiScene ? 'META SALES SHOT PRIORITY: Use three sequential full-frame front-facing scenes with clean cuts: 0–3s WIDE establishing shot showing the product with the presenter or selling environment; 3–6s MEDIUM shot emphasizing the product and natural demonstration; 6–10s CLOSE product shot showing the front label and material clearly, finishing on a steady sales hero hold with the presenter calmly completing the spoken review before the final silent hold. Keep the camera level and front-facing in all three scenes. No oblique or three-quarter angles, orbit, side views, or product rotation. Change framing by moving the camera closer, never by enlarging the product.' : 'META SINGLE-SCENE PRIORITY: Use one continuous front-facing shot for the full 10 seconds with no cuts or scene changes. Start with a clear product view, show one natural product action through gentle camera or presenter movement, and finish on a steady hero hold with the presenter calmly completing the spoken review before the final silent hold.'} Keep the entire product visible with comfortable margins; no extreme macro or cropped packaging. Preserve product shape, printed artwork, physical size, contents, presenter, and setting. Keep true scale against hands and body. Do not reveal an unseen back or invent hidden details. No collage or split screen. Continue one narration smoothly without restarting. META PRESENTER AGE: When the prompt shows an adult woman or man and specifies no different age, cast a newly generated fictional Thai adult aged 20–25 with a visibly youthful face. Do not copy the age, face, or identity of any person visible in a product reference image; that image is for the product only. Keep the same young presenter in every scene. META THAI SPEECH: All speech must be clear, natural native Thai with accurate Thai pronunciation, crisp consonants, complete words, a comfortable unhurried pace, and an intelligible voice mixed louder than background music. No mumbling, rushed syllables, clipped endings, echo, or English dubbing. When a visible adult presenter is selected, that presenter speaks the Thai review on camera in their own voice; never use a detached background narrator for that presenter. Keep voiceover only for product-only, hands-only, covered-face, or explicitly selected voiceover modes. Music-only mode has no speech. This selected scene plan overrides conflicting shot-count and camera directions; retain the selected product action and audio mode.`;
     const content = kind === 'video' ? prepareMetaVideoPrompt(prompt) : prompt;
-    await enterPrompt(`${direction}\n${content}`);
+    const presenterDelivery = phoneFilmInstallation ? '' : kind === 'image'
+      ? 'PRESENTER REPLACEMENT: If a presenter is requested, create a new fictional Thai presenter with a different face and a calm, natural friendly expression. The uploaded person is only a product-scale reference; do not copy their face, pose, or expression.'
+      : 'PRESENTER DELIVERY: Speak the Thai review normally on camera in a clear, friendly voice. A natural smile is fine. Do not laugh or add laughter at the end.';
+    await enterPrompt(`${direction}\n${metaLocationDirection(prompt, kind)}\n${presenterDelivery}\n${content}`.trim());
     await report(`generating-${kind}`);
     let redoAttempts = 0;
     let lastFailedResponse = null;
@@ -265,7 +281,7 @@
       await newChat();
       const prompts = typeof payload.prompt === 'string' ? {imagePrompt:payload.prompt,videoPrompt:payload.prompt} : payload.prompt;
       if (payload.phase !== 'video') imgUrl = await generateWithRetry('image',prompts.imagePrompt,payload.references || []);
-      const videoReferences = imgUrl ? [imgUrl] : (payload.references?.length ? [payload.references[0]] : []);
+      const videoReferences = imgUrl ? [imgUrl] : (payload.references || []);
       const resultUrl = payload.phase === 'image' ? imgUrl : await generateWithRetry('video',prompts.videoPrompt,videoReferences);
       await chrome.storage.local.set({[`metaJob:${payload.jobId}`]:{result:{ok:true,resultUrl,imgUrl,provider:'meta-ai'}}});
     } catch (error) {

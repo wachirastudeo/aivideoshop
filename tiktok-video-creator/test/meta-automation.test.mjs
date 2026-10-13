@@ -11,6 +11,64 @@ function load(name, next, dependencies = {}) {
 }
 const failure = load('generationFailure', '\n  async function waitFor');
 const prepareMetaVideoPrompt = load('prepareMetaVideoPrompt', '\n  async function generate');
+const metaLocationDirection = load('metaLocationDirection', '\n  async function generate');
+
+test('Meta uploads each reference separately and waits for every attachment', async () => {
+  const attachments = [];
+  const input = {
+    files: [],
+    dispatchEvent() { attachments.push(this.files[0].name); },
+  };
+  const upload = load('upload', '\n  async function enterPrompt', {
+    document: { querySelector: () => input, querySelectorAll: () => attachments.map(() => ({})) },
+    visible: () => true,
+    fetch: async () => ({ blob: async () => ({ type: 'image/png' }) }),
+    DataTransfer: class { items = { add: file => { this.files = [file]; } }; },
+    File: class { constructor(_parts, name) { this.name = name; } },
+    Event: class {},
+    waitFor: async (find, description) => { if (!find()) throw Error(description); },
+    composer: () => ({}),
+    pause: async () => {},
+  });
+  await upload(['first', 'second']);
+  assert.deepEqual(attachments, ['product-reference-1.png', 'product-reference-2.png']);
+});
+
+test('Meta video-only generation keeps all selected references', async () => {
+  const references = ['first', 'second'];
+  let uploaded;
+  const run = load('run', '\n  chrome.runtime.onMessage', {
+    newChat: async () => {},
+    generateWithRetry: async (kind, _prompt, images) => { uploaded = { kind, images }; return 'video-url'; },
+    chrome: { storage: { local: { set: async () => {} } }, runtime: { sendMessage: async () => {} } },
+    location: { href: 'https://www.meta.ai/' },
+  });
+  await run({ phase: 'video', jobId: 'test', prompt: 'prompt', references });
+  assert.deepEqual(uploaded, { kind: 'video', images: references });
+});
+
+test('Meta phone film installation overrides generic presenter direction', async () => {
+  let submitted;
+  const halt = new Error('captured prompt');
+  const generate = load('generate', '\n  async function newChat', {
+    report: async () => {}, upload: async () => {}, responseMedia: () => [],
+    document: { querySelectorAll: () => [] },
+    prepareMetaVideoPrompt: prompt => prompt, metaLocationDirection: () => '',
+    enterPrompt: async prompt => { submitted = prompt; throw halt; },
+  });
+  await assert.rejects(generate('video', 'META PHONE FILM INSTALLATION: Apply the film.', []), halt);
+  assert.match(submitted, /physical application/);
+  assert.doesNotMatch(submitted, /META SALES SHOT PRIORITY|PRESENTER DELIVERY/);
+});
+
+test('Meta keeps the selected living room in every scene', () => {
+  const prompt = "SELECTED BACKGROUND LOCATION LOCK: Use exactly the user's selected Modern Living Room background. Do not replace it.\nLocation setting: Place the product in a brand new, realistic Modern Living Room background location.";
+  assert.match(metaLocationDirection(prompt), /Every scene.*Modern Living Room/);
+  assert.match(metaLocationDirection(prompt), /Show enough room context/);
+  const imageDirection = metaLocationDirection(prompt, 'image');
+  assert.match(imageDirection, /sofa, coffee table, textured rug/);
+  assert.match(imageDirection, /replace its original background, people, signage/);
+});
 
 test('temporary Meta error is retryable but try again later is not', () => {
   assert.equal(failure('Something went wrong. Please try again.').retryable, true);
@@ -104,7 +162,7 @@ test('Meta sales video uses front-facing wide-medium-close shots while images re
     let submitted;
     const halt = new Error('captured submission');
     const generate = load('generate', '\n  async function newChat', {
-      prepareMetaVideoPrompt,
+      prepareMetaVideoPrompt, metaLocationDirection,
       report: async () => {}, upload: async () => {},
       responseMedia: () => [], document: {querySelectorAll: () => []},
       enterPrompt: async prompt => {submitted = prompt; throw halt;},
@@ -112,18 +170,38 @@ test('Meta sales video uses front-facing wide-medium-close shots while images re
     await assert.rejects(generate(kind, 'Original product and audio instructions', []), error => error === halt);
     assert.ok(submitted.includes('Original product and audio instructions'));
     if (kind === 'video') {
-      assert.match(submitted, /three sequential full-frame front-facing shots/);
+      assert.match(submitted, /^Generate an actual VIDEO/);
+      assert.match(submitted, /PRESENTER DELIVERY: Speak the Thai review normally on camera/);
+      assert.match(submitted, /Do not laugh or add laughter at the end/);
+      assert.match(submitted, /visible adult presenter is selected, that presenter speaks the Thai review on camera in their own voice/);
+      assert.match(submitted, /crisp consonants, complete words, a comfortable unhurried pace/);
+      assert.match(submitted, /three sequential full-frame front-facing scenes/);
       assert.match(submitted, /0–3s WIDE.*3–6s MEDIUM.*6–10s CLOSE/);
       assert.match(submitted, /No oblique or three-quarter angles, orbit, side views, or product rotation/);
       assert.match(submitted, /moving the camera closer, never by enlarging the product/);
       assert.match(submitted, /Keep true scale against hands and body/);
-      assert.match(submitted, /Continue the same narration smoothly across cuts/);
-      assert.match(submitted, /overrides conflicting single-shot/);
+      assert.match(submitted, /Continue one narration smoothly without restarting/);
+      assert.match(submitted, /overrides conflicting shot-count and camera directions/);
     } else {
       assert.doesNotMatch(submitted, /META SALES SHOT/);
       assert.match(submitted, /Output a vertical 9:16 image/);
+      assert.match(submitted, /create a new fictional Thai presenter with a different face and a calm, natural friendly expression/);
     }
   }
+});
+
+test('Meta single-scene video completes speech before the calm final hold', async () => {
+  let submitted;
+  const halt = new Error('captured submission');
+  const generate = load('generate', '\n  async function newChat', {
+    prepareMetaVideoPrompt, metaLocationDirection,
+    report: async () => {}, upload: async () => {}, responseMedia: () => [],
+    document: {querySelectorAll: () => []},
+    enterPrompt: async prompt => {submitted = prompt; throw halt;},
+  });
+  await assert.rejects(generate('video', 'META 10-SECOND SINGLE-SCENE PLAN: one scene', []), error => error === halt);
+  assert.match(submitted, /META SINGLE-SCENE PRIORITY:[^\n]*presenter calmly completing the spoken review before the final silent hold/);
+  assert.doesNotMatch(submitted, /200g pouch/);
 });
 
 
@@ -164,7 +242,7 @@ test('Meta automatically submits ทำใหม่ when Something went wrong oc
       }
       throw Error('timed out in test');
     },
-    prepareMetaVideoPrompt,
+    prepareMetaVideoPrompt, metaLocationDirection,
     report: async stage => reportedStages.push(stage),
     upload: async () => {},
     responseMedia: () => responseCount >= 2 ? [goodVideo] : [],

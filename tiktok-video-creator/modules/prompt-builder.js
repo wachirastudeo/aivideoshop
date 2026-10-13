@@ -170,7 +170,7 @@ const PRESENTERS = {
   hands_only: "Realistic first-person POV (Point of View) perspective. Show the product being used, worn, or presented naturally with slender, natural adult female hands with delicate, realistic proportions (strictly NOT oversized, NOT thick or bulky, strictly 5 slender fingers per hand, natural ergonomic grip, soft feminine skin texture, clean natural fingernails, realistic slender knuckles) or feet/legs depending on product category. No face or head shown in the frame.",
   unboxing_hands: "Realistic first-person POV hands-only unboxing presenter. Show only slender, natural adult female hands with delicate, realistic proportions (strictly NOT oversized or bulky) opening the product box/package and revealing the product inside. No face, head, torso, or full body shown.",
   wearable_crop: "Wearable close-up presenter mode. Show only the relevant body area wearing or using the exact product, cropped below the face with no face, head, or full body. Use a clear off-screen Thai voiceover instead of on-screen presenter speech.",
-  woman: "A fictional adult Thai woman reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/blouse AND long pants/jeans/skirt). She uses or stands near the product naturally for its category, smiling at the camera.",
+  woman: "A fictional adult Thai woman reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/blouse AND long pants/jeans/skirt). She uses or stands near the product naturally for its category, speaking calmly with a relaxed, friendly smile but never laughing or giggling.",
   man: "A fictional adult Thai man reviewer standing in full-body view, modestly dressed in a complete outfit (proper shirt/polo AND long pants/jeans). He uses or stands near the product naturally for its category, smiling at the camera.",
   child: "A cute young Thai child (4-6 years old, kindergarten age, strictly no baby or toddler under 4 years old) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
   older_child: "A cute Thai older child (7-12 years old, kid) actively, safely, and naturally riding, playing with, wearing, or using the product in the scene (not hard-selling), accompanied by a friendly, smiling Thai parent/guardian (mother or father) standing or sitting nearby supervising with love and care.",
@@ -817,6 +817,15 @@ export function isPhoneCaseProduct(text = "") {
   return /(เคส|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|phone case|phone cover|mobile case|mobile cover|magsafe)/i.test(String(text || ""));
 }
 
+function getPhoneFilmInstallationType(text = "") {
+  const value = String(text || "");
+  if (!/(ไอโฟน|iphone|โทรศัพท์|phone|มือถือ|กล้อง|camera|เลนส์|lens|รอบเครื่อง)/i.test(value)) return "";
+  if (/(ฟิล์มกันรอยเลนส์|ฟิล์มเลนส์|ฟิล์มกล้อง|กระจกกันเลนส์|lens protector|camera lens protector)/i.test(value)) return "lens";
+  if (/(ฟิล์มหลัง|ฟิล์มรอบเครื่อง|back\s*(?:protective\s*)?film|back\s*protector)/i.test(value)) return "back";
+  if (/(ฟิล์มหน้าจอ|ฟิล์มจอ|ฟิล์มกระจก|ฟิล์มกันรอย|screen protector|screen film|tempered glass|display protector)/i.test(value)) return "screen";
+  return "";
+}
+
 export function isMagneticPhoneCaseProduct(text = "") {
   return /(แม่เหล็ก|magsafe|วงกลม|ชาร์จไร้สาย|wireless charge|magnetic|ขาตั้งยึด|ยึดแม่เหล็ก)/i.test(String(text || ""));
 }
@@ -1199,8 +1208,9 @@ function buildDeclaredWeightScaleDirection(productInfo = {}) {
   if (!match) return "";
   const kg = Number(match[1]);
   if (!Number.isFinite(kg) || kg < 1 || kg >= 25) return "";
-  const handling = kg >= 10 ? "Support it with both hands or rest it on a surface; do not show a casual fingertip hold." : kg >= 5 ? "Use a secure two-hand grip or stable surface support; do not show a fingertip hold." : "Hold or support it naturally for its stated weight.";
-  return `DECLARED WEIGHT SCALE: This exact variant is ${kg} kg. Match its visible bulk, packaging fill, hand grip and support to ${kg} kg. For the same product and material, a 10 kg variant must look more substantial than a 5 kg variant; do not use identical bag size or handling for both. Weight does not imply doubled length or fixed dimensions. Preserve reference proportions and use verified dimensions when available. ${handling}`;
+  const handling = kg >= 10 ? "Keep it resting on the floor, a pallet, or another stable support throughout; the presenter may stand beside or lightly touch it, but must never lift, carry, or hold it in the air." : kg >= 5 ? "Use a secure two-hand grip or stable surface support; do not show a fingertip hold." : "Hold or support it naturally for its stated weight.";
+  const riceFill = /(ข้าวสาร|ข้าวหอม|rice)/i.test(title) ? " Match the reference sack's actual silhouette, fill, folds, seams, corners, and printed artwork. Let the rice settle naturally under gravity; do not inflate, overstuff, stretch the fabric taut, or invent a pillow shape. Do not flatten or resize it beyond what the reference and stated weight support." : "";
+  return `DECLARED WEIGHT SCALE: This exact variant is ${kg} kg. Match its visible bulk, packaging fill, hand grip and support to ${kg} kg. For the same product and material, a 10 kg variant must look more substantial than a 5 kg variant; do not use identical bag size or handling for both. Weight does not imply doubled length or fixed dimensions. Preserve reference proportions and use verified dimensions when available.${riceFill} ${handling}`;
 }
 
 export function buildImagePrompt(productInfo, settings = {}) {
@@ -1461,7 +1471,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
 
   const locationSetting = auto.location || inferRequiredProductLocation(productInfo) || "Clean Modern Studio";
   if (boxedMotionMode) {
-    return buildBoxedReferenceStillPrompt(productInfo, productText, productName, resolveBoxedPresentationLocation(productText, locationSetting), textEnabled);
+    return buildBoxedReferenceStillPrompt(productInfo, productText, productName, resolveBoxedPresentationLocation(productText, locationSetting, explicitLocationSelected), textEnabled);
   }
   if (isCoffeeImageAd && productOnlyStill) {
     return buildCoffeeReferenceFirstStillPrompt(productText, productName, locationSetting, textEnabled);
@@ -1765,7 +1775,8 @@ function getProductSpecificScaleInstruction(text = "") {
     const weightKg = Number(weightMatch[1]);
     const weightLabel = `${weightMatch[1]}kg`;
     const packageLabel = /(กระสอบ|sack|bag|pouch|ถุง|ซอง)/i.test(clean) ? "bag/sack" : "product";
-    return `STRICT WEIGHT & PACKAGE SIZE LOCK: The exact reference ${packageLabel} weighs ${weightLabel}. Preserve the reference bag/sack dimensions, fill level, thickness, width-to-height ratio, seam placement, and true physical scale. Do NOT depict it as a 5kg, 1kg, smaller, thinner, or pocket-sized package, and do not replace it with a giant oversized sack. Keep the ${weightLabel} package grounded on a realistic floor, pallet, or suitable support with believable gravity and contact shadows. The printed artwork and pattern must remain on this exact ${weightLabel} package. ${weightKg >= 10 ? "Show it as a substantial heavy package, not a small retail pouch." : "Keep its package size proportional to the stated weight."}`;
+    const isRice = /(ข้าวสาร|ข้าวหอม|rice)/i.test(clean);
+    return `STRICT WEIGHT & PACKAGE SIZE LOCK: The exact reference ${packageLabel} weighs ${weightLabel}. Preserve the reference bag/sack dimensions, fill level, thickness, width-to-height ratio, seam placement, and true physical scale. Do NOT depict it as a 5kg, 1kg, smaller, thinner, or pocket-sized package, and do not replace it with a giant oversized sack. Keep the ${weightLabel} package grounded on a realistic floor, pallet, or suitable support with believable gravity and contact shadows. The printed artwork and pattern must remain on this exact ${weightLabel} package. ${weightKg >= 10 ? "Show it as a substantial heavy package, not a small retail pouch." : "Keep its package size proportional to the stated weight."}${isRice ? " Match the original sack's actual folds and contour; let its contents settle naturally, without a taut, inflated or overstuffed look. Do not change the source bag's shape or artwork to achieve this." : ""}`;
   }
 
   if (isWatchOrWristbandProduct(clean)) {
@@ -2010,9 +2021,18 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     : "Never duplicate the item.";
   const retailCoffeeScale = buildRetailCoffeeScaleDirection(productInfo);
   const visualRules = `FINAL OVERRIDE: ${textRule}${retailCoffeeScale ? `\n${retailCoffeeScale}` : ""}
-Keep original product lettering/language/layout; preserve unclear marks without guessing. Copy no catalog text. Maintain reference proportions and constant scale against hands/body/scene. Verified variant dimensions override category guesses. Close up with the camera; never enlarge the item or invent parts. ${instanceRule}`;
+Keep original product lettering/language/layout; preserve unclear marks without guessing. Copy no catalog text. Maintain reference proportions and constant scale against hands/body/scene. Verified variant dimensions override category guesses. Close up with the camera; never enlarge the item or invent parts. ${instanceRule} Presenter delivery: speak the Thai review normally with a natural smile; do not laugh or add laughter at the end.`;
   const duration = Number.parseInt(settings?.videoDuration, 10) || 8;
   const isMeta = settings?.generationProvider === "meta-ai" && duration === 10;
+  const phoneFilmType = getPhoneFilmInstallationType(`${productInfo.name || ""} ${productInfo.category || ""}`);
+  if (isMeta && phoneFilmType) {
+    const installation = {
+      screen: "Apply the thin film to the FRONT DISPLAY only. 0–2s: show the clean, bare screen and the film on its release liner. 2–5s: peel the liner and align the film with the display edges and any visible speaker or camera cutout. 5–8s: lower it onto the glass and push trapped air outward with a soft squeegee. 8–10s: hands leave the frame; hold on the FINISHED protected front screen, fully attached and free of visible bubbles. Never place film on the back or over the camera lenses.",
+      back: "Apply the thin film to the phone BACK and edges only. 0–2s: show the bare back and die-cut film on its release liner. 2–5s: peel the liner, align the camera opening and any logo cutout visible in the references, and place the film on the back. 5–8s: press from the center outward with a soft squeegee and smooth the edges. 8–10s: hands leave the frame; hold on the FINISHED protected back, fully attached and free of visible bubbles. Never place film on the front screen.",
+      lens: "Apply the lens protectors to the phone CAMERA LENSES only. 0–2s: show the clean, bare camera lenses and the exact protector pieces. 2–5s: peel the backing from one protector and align it precisely over its matching lens. 5–8s: press each visible protector into place with real finger contact, without covering the flash. 8–10s: hands leave the frame; hold on the FINISHED camera module with protectors installed and aligned. Never cover the front screen or whole phone back."
+    }[phoneFilmType];
+    return `META PHONE FILM INSTALLATION: Generate an actual 10-second vertical 9:16 photorealistic video using the exact uploaded product references. ${installation} Show the same phone, product pieces, hands, and work surface throughout. Show real peeling, alignment, contact, and smoothing; do not substitute a rigid phone case, float the film, skip the installation with a jump cut, invent cutouts, or spend the clip displaying packaging. No added text or unsupported claims. Preserve exact product and phone colors. Output the video file, not a written description.`;
+  }
   const omniMultiShot = !isMeta && settings?.videoModel === "omni-flash" && duration === 10;
   const metaMultiScene = isMeta && settings?.metaMultiScene !== false;
   let stylePrompt = [...new Set(buildVideoPromptForStyle(productInfo, settings).split("\n"))].join("\n");
@@ -2044,8 +2064,9 @@ Keep original product lettering/language/layout; preserve unclear marks without 
     ? `SPOKEN PRODUCT TYPE: Analyze this authoritative product title: ${JSON.stringify(compactPromptText(getVisualProductName(productInfo), 180))}. Prioritize the title over conflicting category. Thai type once; omit if unclear.`
     : "";
   const audioRules = `${NO_SPOKEN_GREETING_DIRECTION}
+SPOKEN CONTENT: Never mention price, cost, currency, discounts, sales, or price comparisons, even when present in the title, reference image, metadata, or suggested hook. Never mention warranty, guarantees, shipping, delivery, or dispatch; speak only about the product.
 ${THAI_VOICE_DIRECTION}${spokenTypeRule ? `\n${spokenTypeRule}` : ""}
-SPEECH TIMING: Plan one complete Thai thought, at most ${isMeta ? 18 : syllableBudget} spoken syllables total. Start by 0.5s; finish every sentence by ${isMeta ? 8 : speechEnd}s. Shorten details; never speed up, trail off, or start unfinished sentences. SINGLE AUDIO TAKE: Speak one sentence once across the whole clip. Scene cuts change visuals only; never restart narration, repeat words/phrases, echo, stutter, or repeat the hook or product type. After the sentence ends, stay silent. Final 1s: silent product hold. Overrides scene narration; music-only clips remain without speech.${continuousSpeechRule}`;
+SPEECH TIMING: Plan one complete Thai thought, at most ${isMeta ? 18 : syllableBudget} spoken syllables total. Start by 0.5s; finish every sentence by ${isMeta ? 8 : speechEnd}s. Shorten details; never speed up, trail off, or start unfinished sentences. SINGLE AUDIO TAKE: Speak one sentence once across the whole clip. Scene cuts change visuals only; never restart narration, repeat words/phrases, echo, stutter, or repeat the hook or product type. After the sentence ends, stay silent. Final 1s: silent steady product view. Overrides scene narration; music-only clips remain without speech.${continuousSpeechRule}`;
   const firstLineEnd = prompt.indexOf("\n");
   if (firstLineEnd < 0) return `${prompt}\n${audioRules}`;
   return `${prompt.slice(0, firstLineEnd)}\n${audioRules}${prompt.slice(firstLineEnd)}`;
@@ -2105,7 +2126,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   }
 
   if (auto.videoStyle === "boxed-motion") {
-    return buildBoxedMotionVideoPrompt(productInfo, productName, resolveBoxedPresentationLocation(productText, locationStr), durationSeconds, textEnabled, overlayText, specificScale);
+    return buildBoxedMotionVideoPrompt(productInfo, productName, resolveBoxedPresentationLocation(productText, locationStr, !isAuto(settings.location)), durationSeconds, textEnabled, overlayText, specificScale);
   }
   if (auto.videoStyle === "still-motion") {
     return buildStillMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale, settings, auto);
@@ -2354,7 +2375,8 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   }
 
   // Adjust prompt for heavy/large products to prevent unnatural holding/lifting
-  if (isImmobile) {
+  const declaredKgForScene = Number(productText.match(/(\d+(?:\.\d+)?)\s*(?:กิโลกรัม|กิโล|กก\.?|kg|kilograms?)(?![a-zA-Z0-9])/i)?.[1]);
+  if (isImmobile || declaredKgForScene >= 10) {
     const escapedName = productName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     sceneBreakdown = sceneBreakdown
       .replace(new RegExp(`\\bholding\\s+(?:the\\s+)?(?:attached\\s+)?${escapedName}\\b`, "gi"), `standing next to ${productName}`)
@@ -2461,14 +2483,18 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
       .replace("holding", "presenting or interacting with")
       + " The product is large and heavy, resting stably on a flat surface or floor; do not attempt to lift, carry, or hold it in the air.";
   } else if (weightCategory === "medium_heavy") {
-    handsDir = handsDir
-      .replace("holding and presenting", "holding with both hands and presenting")
-      + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the hands, never as a tiny packet or a giant sack.";
-
-    presenterInstruction = presenterInstruction
-      .replace("holding and presenting", "holding with both hands and presenting")
-      .replace("holding", "holding with both hands or interacting with")
-      + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the presenter, never as a tiny packet or a giant sack.";
+    const declaredKg = Number(productText.match(/(\d+(?:\.\d+)?)\s*(?:กิโลกรัม|กิโล|กก\.?|kg|kilograms?)(?![a-zA-Z0-9])/i)?.[1]);
+    if (declaredKg >= 10) {
+      handsDir = handsDir.replace("holding and presenting", "touching or gesturing toward").replace("holding", "touching")
+        + " Keep this heavy product on the floor, pallet, or stable surface; never lift, carry, or hold it in the air.";
+      presenterInstruction = presenterInstruction.replace("holding and presenting", "standing beside and presenting").replace("holding", "interacting with")
+        + " Keep this heavy product on the floor, pallet, or stable surface; never lift, carry, or hold it in the air.";
+    } else {
+      handsDir = handsDir.replace("holding and presenting", "holding with both hands and presenting")
+        + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the hands, never as a tiny packet or a giant sack.";
+      presenterInstruction = presenterInstruction.replace("holding and presenting", "holding with both hands and presenting").replace("holding", "holding with both hands or interacting with")
+        + " The product is a medium-sized item (approx 5-20kg); depict it in a realistic medium scale relative to the presenter, never as a tiny packet or a giant sack.";
+    }
   } else if (weightCategory === "light" && !isClothing) {
     const isEyewear = /(แว่นตา|แว่นกันแดด|แว่นสายตา|แว่น|glasses|sunglasses|eyewear|spectacles)/i.test(productText);
     if (isEyewear) {
@@ -2933,7 +2959,7 @@ function getMultiSceneDescription(videoStyle, productName, locationStr, mood, pr
         "This video must consist of multiple sequential scenes with clear cuts/transitions for a UGC testimonial:",
         `- Scene 1 (Reviewer Hook): A 3-second opening with a reviewer presenting ${productName} in its normal real-world position and talking to the camera${loc}${moodStyle}.`,
         `- Scene 2 (Feature Showcase): A 3-second cut showing the product used naturally as intended.`,
-        `- Scene 3 (Recommendation): A 2-second final recommendation shot with the reviewer smiling.`
+        `- Scene 3 (Recommendation): A 2-second final recommendation shot with the reviewer speaking naturally. Do not laugh.`
       ].join("\n");
 
     case "cinematic":
@@ -3373,8 +3399,8 @@ function resolvePromptLocation(auto = {}) {
   return auto.location;
 }
 
-function resolveBoxedPresentationLocation(productText = "", locationStr = "") {
-  if (getVehicleAccessoryContext(productText) === "car" && isFragranceProduct(productText)) {
+function resolveBoxedPresentationLocation(productText = "", locationStr = "", explicitLocationSelected = false) {
+  if (!explicitLocationSelected && getVehicleAccessoryContext(productText) === "car" && isFragranceProduct(productText)) {
     return "beautiful indoor premium gift-presentation room with the fitted box resting on a clean elegant tabletop and soft warm light";
   }
   return locationStr;
