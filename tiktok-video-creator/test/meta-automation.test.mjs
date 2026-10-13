@@ -174,7 +174,8 @@ test('Meta sales video uses front-facing wide-medium-close shots while images re
       assert.match(submitted, /PRESENTER DELIVERY: Speak the Thai review normally on camera/);
       assert.match(submitted, /Do not laugh or add laughter at the end/);
       assert.match(submitted, /visible adult presenter is selected, that presenter speaks the Thai review on camera in their own voice/);
-      assert.match(submitted, /crisp consonants, complete words, a comfortable unhurried pace/);
+      assert.match(submitted, /correct tones, vowels and final consonants, complete word endings/);
+      assert.match(submitted, /voice clearly above music/);
       assert.match(submitted, /three sequential full-frame front-facing scenes/);
       assert.match(submitted, /0–3s WIDE.*3–6s MEDIUM.*6–10s CLOSE/);
       assert.match(submitted, /No oblique or three-quarter angles, orbit, side views, or product rotation/);

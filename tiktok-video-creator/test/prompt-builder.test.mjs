@@ -52,6 +52,10 @@ function eq(name, got, want) {
 
 const settings = getDefaultSettings();
 
+const clearThaiSpeechPrompt = buildVideoPrompt({ name: "กระเป๋าผ้า" }, { ...settings, generationProvider: "meta-ai", videoDuration: 10 });
+check("spoken Thai requests accurate tones and full word endings", /correct tones, vowels, final consonants and full word endings/.test(clearThaiSpeechPrompt));
+check("spoken Thai stays clear above music", /voice clearly above music/.test(clearThaiSpeechPrompt));
+
 const phoneFilmPrompt = buildVideoPrompt(
   { name: "iFilm ฟิล์มหลัง รอบเครื่อง สำหรับ iPhone" },
   { ...settings, generationProvider: "meta-ai", videoDuration: 10 }

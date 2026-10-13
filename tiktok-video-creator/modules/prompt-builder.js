@@ -1935,7 +1935,8 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
 
 const NO_SPOKEN_GREETING_DIRECTION = 'SPOKEN DIALOGUE RULE: Never say "สวัสดี", "หวัดดี", "hello", or "hi" anywhere in dialogue or voiceover, including polite variants. Start directly with the product hook; no greeting or self-introduction.';
 
-export const THAI_VOICE_DIRECTION = "THAI VOICE: Native Thai only for ALL speech, dubbing and narration.";
+export const THAI_VOICE_DIRECTION = "THAI VOICE: Native Thai speech with clear tones, full word endings and steady pace.";
+const META_THAI_VOICE_DIRECTION = "THAI VOICE: All speech by a fluent native Thai speaker. Write the line in Thai script. Pronounce correct tones, vowels, final consonants and full word endings; pause naturally. Keep a steady conversational pace and voice clearly above music. No slurring or English-accented Thai.";
 
 export function resolveTransitionDirection(transition = "") {
   const clean = String(transition || "").trim();
@@ -2065,7 +2066,7 @@ Keep original product lettering/language/layout; preserve unclear marks without 
     : "";
   const audioRules = `${NO_SPOKEN_GREETING_DIRECTION}
 SPOKEN CONTENT: Never mention price, cost, currency, discounts, sales, or price comparisons, even when present in the title, reference image, metadata, or suggested hook. Never mention warranty, guarantees, shipping, delivery, or dispatch; speak only about the product.
-${THAI_VOICE_DIRECTION}${spokenTypeRule ? `\n${spokenTypeRule}` : ""}
+${isMeta ? META_THAI_VOICE_DIRECTION : THAI_VOICE_DIRECTION}${spokenTypeRule ? `\n${spokenTypeRule}` : ""}
 SPEECH TIMING: Plan one complete Thai thought, at most ${isMeta ? 18 : syllableBudget} spoken syllables total. Start by 0.5s; finish every sentence by ${isMeta ? 8 : speechEnd}s. Shorten details; never speed up, trail off, or start unfinished sentences. SINGLE AUDIO TAKE: Speak one sentence once across the whole clip. Scene cuts change visuals only; never restart narration, repeat words/phrases, echo, stutter, or repeat the hook or product type. After the sentence ends, stay silent. Final 1s: silent steady product view. Overrides scene narration; music-only clips remain without speech.${continuousSpeechRule}`;
   const firstLineEnd = prompt.indexOf("\n");
   if (firstLineEnd < 0) return `${prompt}\n${audioRules}`;

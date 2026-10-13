@@ -1,7 +1,7 @@
 import { buildCaption, normalizeHashtags } from "../modules/prompt-builder.js";
 import { generatePostCopy } from "../modules/image-analyzer.js";
 import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
-import { normalizePostDelay, postDelayMs } from "../modules/post-delay.js";
+import { normalizePostDelay, postDelayMs, waitForPostDelay } from "../modules/post-delay.js";
 
 const DEFAULT_POST_SETTINGS = {
   captionTemplate: "{product_name}",
@@ -27,6 +27,7 @@ const DEFAULT_POST_SETTINGS = {
 
 let helpers = {};
 let isHydrating = false;
+let activeManualRun = null;
 
 export async function initPostTab(injectedHelpers) {
   helpers = injectedHelpers;
@@ -49,6 +50,7 @@ function bindEvents() {
   document.querySelector("#post-open-upload")?.addEventListener("click", openTikTokUpload);
   document.querySelector("#post-test-file")?.addEventListener("change", onTestFileChange);
   document.querySelector("#post-test-run")?.addEventListener("click", runTestUpload);
+  document.querySelector("#post-test-stop")?.addEventListener("click", stopManualUpload);
   document.querySelector("#post-test-generate-ai")?.addEventListener("click", () => generateAndFillCaptionAndHashtags());
   document.querySelector("#post-reset-settings")?.addEventListener("click", async () => {
     fillForm(DEFAULT_POST_SETTINGS);
@@ -105,6 +107,13 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function stopManualUpload() {
+  if (!activeManualRun) return;
+  activeManualRun.stopRequested = true;
+  activeManualRun.delayController.abort();
+  setTestStatus("กำลังหยุดคิว — คลิปที่ส่งไปแล้วอาจยังโพสต์ต่อจนเสร็จ", "info");
+}
+
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -115,7 +124,9 @@ function fileToDataUrl(file) {
 }
 
 async function runTestUpload() {
+  if (activeManualRun) return;
   const button = document.querySelector("#post-test-run");
+  const stopButton = document.querySelector("#post-test-stop");
   const files = Array.from(document.querySelector("#post-test-file")?.files || []);
   if (!files.length) {
     setTestStatus("กรุณาเลือกไฟล์วิดีโออย่างน้อย 1 คลิปก่อน", "error");
@@ -177,9 +188,14 @@ async function runTestUpload() {
     }
   }
 
+  const run = { stopRequested: false, delayController: new AbortController() };
+  activeManualRun = run;
+  let completedCount = 0;
   try {
     if (button) button.disabled = true;
+    if (stopButton) stopButton.hidden = false;
     for (let index = 0; index < files.length; index += 1) {
+      if (run.stopRequested) break;
       const file = files[index];
       const jobId = createTestJobId();
       const scheduleTime = postType === "schedule"
@@ -188,6 +204,7 @@ async function runTestUpload() {
 
       setTestStatus(`กำลังอ่านคลิป ${index + 1}/${files.length}: ${file.name}`, "info");
       const dataUrl = await fileToDataUrl(file);
+      if (run.stopRequested) break;
       const payload = {
         jobId,
         videoUrl: dataUrl,
@@ -218,19 +235,25 @@ async function runTestUpload() {
       if (result?.success === false) {
         throw new Error(result.error || `TikTok ทำงานกับคลิปที่ ${index + 1} ไม่สำเร็จ`);
       }
+      completedCount += 1;
+      if (run.stopRequested) break;
       if (postType === "now" && index < files.length - 1) {
         const waitMs = postDelayMs(postSettings.postDelayMin, postSettings.postDelayMax);
         const waitMinutes = Math.round(waitMs / 60_000);
         setTestStatus(`โพสต์คลิป ${index + 1} แล้ว รอ ${waitMinutes} นาทีก่อนส่งคลิปถัดไป...`, "info");
-        await sleep(waitMs);
+        await waitForPostDelay(waitMs, run.delayController.signal);
       }
     }
 
-    setTestStatus(`ส่งครบทั้ง ${files.length} คลิปแล้ว — ใช้สินค้าชิ้นเดิมตามที่ตั้งไว้`, "success");
+    setTestStatus(run.stopRequested
+      ? `หยุดคิวแล้ว — ส่งสำเร็จ ${completedCount}/${files.length} คลิป จะไม่ส่งคลิปถัดไป`
+      : `ส่งครบทั้ง ${files.length} คลิปแล้ว — ใช้สินค้าชิ้นเดิมตามที่ตั้งไว้`, run.stopRequested ? "info" : "success");
   } catch (error) {
     setTestStatus("error: " + (error?.message || error), "error");
   } finally {
     if (button) button.disabled = false;
+    if (stopButton) stopButton.hidden = true;
+    activeManualRun = null;
   }
 }
 

@@ -9,3 +9,16 @@ export function postDelayMs(minMinutes, maxMinutes, random = Math.random) {
   const max = Math.max(min, normalizePostDelay(maxMinutes, 12));
   return (min + Math.floor(Math.min(Math.max(random(), 0), 0.999999999) * (max - min + 1))) * 60_000;
 }
+
+export function waitForPostDelay(ms, signal) {
+  if (signal?.aborted || ms <= 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    const finish = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, ms);
+    signal?.addEventListener("abort", finish, { once: true });
+  });
+}
