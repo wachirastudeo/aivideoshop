@@ -95,6 +95,17 @@
             <input id="post-schedule-interval" class="input" type="number" min="1" max="1440" placeholder="10">
           </label>
         </div>
+        <div class="settings-grid" id="post-delay-container-manual">
+          <label class="field" for="post-delay-min-manual">
+            <span class="field__label">รอคลิปถัดไปอย่างน้อย (นาที)</span>
+            <input id="post-delay-min-manual" class="input" type="number" min="0" max="1440" value="10">
+          </label>
+          <label class="field" for="post-delay-max-manual">
+            <span class="field__label">รอคลิปถัดไปอย่างมาก (นาที)</span>
+            <input id="post-delay-max-manual" class="input" type="number" min="0" max="1440" value="12">
+          </label>
+        </div>
+        <p class="field__hint" id="post-delay-hint">สำหรับโหมดโพสต์ทันที: คลิปแรกโพสต์เลย แล้วสุ่มรอตามช่วงเวลาที่ตั้งไว้ก่อนส่งคลิปถัดไป</p>
         <div class="settings-grid">
           <label class="field" for="post-location">
             <span class="field__label">สถานที่</span>

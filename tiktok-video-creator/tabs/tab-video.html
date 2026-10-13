@@ -364,6 +364,16 @@
                 </div>
               </div>
             </label>
+            <div class="field" id="post-delay-container">
+              <span class="field__label">รอก่อนโพสต์คลิปถัดไป (โพสต์ทันที)</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input id="post-delay-min" class="input" type="number" min="0" max="1440" value="10" aria-label="รออย่างน้อยกี่นาที" style="width: 80px;">
+                <span class="field__hint">ถึง</span>
+                <input id="post-delay-max" class="input" type="number" min="0" max="1440" value="12" aria-label="รออย่างมากกี่นาที" style="width: 80px;">
+                <span class="field__hint">นาที</span>
+              </div>
+              <span class="field__hint">โพสต์คลิปแรกทันที แล้วสุ่มรอก่อนเริ่มคลิปถัดไป</span>
+            </div>
           </div>
         </div>
       </div>

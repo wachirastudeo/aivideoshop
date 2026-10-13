@@ -15,6 +15,7 @@ import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.j
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, publishVideo, scheduleVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
 import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
+import { normalizePostDelay, postDelayMs } from "../modules/post-delay.js";
 
 const MOODS = ["Auto", "สดใส", "หรูหรา", "น่ารัก", "Professional", "Trendy", "มินิมัล", "Dark & Moody"];
 const RUNNING_STATUSES = new Set(["image_generating", "video_generating", "flow1", "flow2"]);
@@ -100,7 +101,7 @@ function bindGlobalEvents() {
     "video-style", "presenter", "custom-presenter", "audio-mode", "voice-tone", "location", "custom-location", "product-activity",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement", "camera-framing", "transition",
     "image-count", "video-count", "video-duration", "aspect-ratio", "post-action", "post-no-link",
-    "post-schedule-date", "post-schedule-time", "post-schedule-interval", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
+    "post-schedule-date", "post-schedule-time", "post-schedule-interval", "post-delay-min", "post-delay-max", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
     "first-scene-no-people", "meta-multi-scene", "video-generation-provider"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
@@ -156,6 +157,8 @@ function fillGlobalFormFromState() {
   setValue("post-schedule-date", freshSchedule.date);
   setValue("post-schedule-time", freshSchedule.time);
   setValue("post-schedule-interval", settings.postScheduleInterval || 10);
+  setValue("post-delay-min", settings.postDelayMin);
+  setValue("post-delay-max", settings.postDelayMax);
 
   syncVideoTextSettingsVisibility();
   syncCustomLocationVisibility();
@@ -205,7 +208,9 @@ function syncSettingsForm() {
     postRandomCaptionHook: getValue("post-random-caption-hook"),
     postCustomProductName: getValue("post-custom-product-name"),
     postScheduleTime: combinedTime,
-    postScheduleInterval: parseInt(getValue("post-schedule-interval"), 10) || 10
+    postScheduleInterval: parseInt(getValue("post-schedule-interval"), 10) || 10,
+    postDelayMin: getValue("post-delay-min"),
+    postDelayMax: getValue("post-delay-max")
   });
 
   renderQueue();
@@ -316,6 +321,8 @@ function normalizeSettings(value) {
     cameraFraming: ["top_view", "full_body", "lower_body", "half_body", "medium_shot", "close_up"].includes(value.cameraFraming) ? value.cameraFraming : "Auto",
     postScheduleTime: value.postScheduleTime || "",
     postScheduleInterval: parseInt(value.postScheduleInterval, 10) || 10,
+    postDelayMin: normalizePostDelay(value.postDelayMin, 10),
+    postDelayMax: Math.max(normalizePostDelay(value.postDelayMin, 10), normalizePostDelay(value.postDelayMax, 12)),
     modelRefImage: value.modelRefImage || ""
   };
 }
@@ -326,6 +333,8 @@ function syncScheduleTimeVisibility() {
   if (container) {
     container.style.display = action === "schedule" ? "block" : "none";
   }
+  const delayContainer = document.querySelector("#post-delay-container");
+  if (delayContainer) delayContainer.style.display = action === "post" ? "block" : "none";
 
   // Update preview
   const dateVal = getValue("post-schedule-date");
@@ -937,6 +946,7 @@ async function processQueue() {
       await persistState();
       renderQueue();
 
+      let postedNow = false;
       if (product.videoUrl) {
         product.productUrl = resolveProductUrl(product);
         await persistState();
@@ -969,6 +979,7 @@ async function processQueue() {
           helpers.logActivity?.(`สินค้า ${i + 1}: กำลังอัปโหลดและโพสต์ TikTok อัตโนมัติ...`, "info");
           await retryPostStep(`โพสต์ TikTok สินค้า ${i + 1}`, () => publishVideo(product.preparedVideoUrl || product.videoUrl, product));
           assertNotStopped();
+          postedNow = true;
         }
         if (action === "schedule") {
           assertNotStopped();
@@ -995,7 +1006,13 @@ async function processQueue() {
       if (i < productQueue.length - 1) {
         const hasNextPending = productQueue.slice(i + 1).some(p => p.status !== "done");
         if (hasNextPending) {
-          if (processedCount > 0 && processedCount % 10 === 0) {
+          if (postedNow) {
+            const waitMs = postDelayMs(settings.postDelayMin, settings.postDelayMax);
+            const waitMinutes = Math.round(waitMs / 60_000);
+            helpers.showStatus(`โพสต์แล้ว รอ ${waitMinutes} นาทีก่อนเริ่มคลิปถัดไป...`, "info");
+            helpers.logActivity?.(`รอ ${waitMinutes} นาทีหลังโพสต์ก่อนเริ่มคลิปถัดไป`, "info");
+            await interruptibleDelay(waitMs);
+          } else if (processedCount > 0 && processedCount % 10 === 0) {
             const breakSeconds = 180 + Math.floor(Math.random() * 61); // สุ่ม 180 - 240 วินาที (3-4 นาที)
             const minutesFormatted = (breakSeconds / 60).toFixed(1);
             helpers.showStatus(`ทำรายการครบ ${processedCount} รายการแล้ว พักเบรก ${minutesFormatted} นาทีเพื่อป้องกันการโดนจำกัดสิทธิ์...`, "info");

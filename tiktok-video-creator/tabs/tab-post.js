@@ -1,6 +1,7 @@
 import { buildCaption, normalizeHashtags } from "../modules/prompt-builder.js";
 import { generatePostCopy } from "../modules/image-analyzer.js";
 import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
+import { normalizePostDelay, postDelayMs } from "../modules/post-delay.js";
 
 const DEFAULT_POST_SETTINGS = {
   captionTemplate: "{product_name}",
@@ -11,6 +12,8 @@ const DEFAULT_POST_SETTINGS = {
   privacy: "",
   scheduleTime: "",
   scheduleInterval: 10,
+  postDelayMin: 10,
+  postDelayMax: 12,
   location: "",
   aiGenerated: true,
   allowComment: true,
@@ -64,7 +67,7 @@ function bindEvents() {
   });
 
   document.querySelectorAll(
-    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-no-link, #post-random-caption-hook, #post-custom-product-name, #post-privacy, #post-schedule-time, #post-schedule-interval, #post-location, #post-allow-comment, #post-allow-reuse, #post-shopee-csv-folder, #post-shopee-csv-filename"
+    "#post-caption-template, #post-hashtags, #post-auto-product-link, #post-no-link, #post-random-caption-hook, #post-custom-product-name, #post-privacy, #post-schedule-time, #post-schedule-interval, #post-delay-min-manual, #post-delay-max-manual, #post-location, #post-allow-comment, #post-allow-reuse, #post-shopee-csv-folder, #post-shopee-csv-filename"
   ).forEach((input) => {
     input.addEventListener("input", scheduleAutoSave);
     input.addEventListener("change", scheduleAutoSave);
@@ -215,6 +218,12 @@ async function runTestUpload() {
       if (result?.success === false) {
         throw new Error(result.error || `TikTok ทำงานกับคลิปที่ ${index + 1} ไม่สำเร็จ`);
       }
+      if (postType === "now" && index < files.length - 1) {
+        const waitMs = postDelayMs(postSettings.postDelayMin, postSettings.postDelayMax);
+        const waitMinutes = Math.round(waitMs / 60_000);
+        setTestStatus(`โพสต์คลิป ${index + 1} แล้ว รอ ${waitMinutes} นาทีก่อนส่งคลิปถัดไป...`, "info");
+        await sleep(waitMs);
+      }
     }
 
     setTestStatus(`ส่งครบทั้ง ${files.length} คลิปแล้ว — ใช้สินค้าชิ้นเดิมตามที่ตั้งไว้`, "success");
@@ -285,7 +294,9 @@ async function savePostSettings() {
         postRandomCaptionHook: postDefaults.postRandomCaptionHook,
         postCustomProductName: postDefaults.postCustomProductName,
         postScheduleTime: postDefaults.scheduleTime,
-        postScheduleInterval: postDefaults.scheduleInterval
+        postScheduleInterval: postDefaults.scheduleInterval,
+        postDelayMin: postDefaults.postDelayMin,
+        postDelayMax: postDefaults.postDelayMax
       }
     }
   });
@@ -309,6 +320,8 @@ function fillForm(value) {
   setValue("post-privacy", post.privacy);
   setValue("post-schedule-time", getFreshScheduleDateTime().dateTime);
   setValue("post-schedule-interval", post.scheduleInterval ?? 10);
+  setValue("post-delay-min-manual", post.postDelayMin);
+  setValue("post-delay-max-manual", post.postDelayMax);
   setValue("post-location", post.location);
   setChecked("post-ai-generated", post.aiGenerated);
   setChecked("post-allow-comment", post.allowComment);
@@ -345,6 +358,8 @@ function readForm(existingPostDefaults = {}) {
     privacy: getValue("post-privacy"),
     scheduleTime: getValue("post-schedule-time"),
     scheduleInterval: hasField("post-schedule-interval") ? (parseInt(getValue("post-schedule-interval"), 10) || 10) : existing.scheduleInterval,
+    postDelayMin: hasField("post-delay-min-manual") ? getValue("post-delay-min-manual") : existing.postDelayMin,
+    postDelayMax: hasField("post-delay-max-manual") ? getValue("post-delay-max-manual") : existing.postDelayMax,
     location: getValue("post-location"),
     aiGenerated: true,
     allowComment: getChecked("post-allow-comment"),
@@ -376,6 +391,8 @@ function normalizePostSettings(value = {}) {
     defaultMode,
     autoAddProductLink: post.autoAddProductLink !== false,
     scheduleInterval: parseInt(post.scheduleInterval, 10) || 10,
+    postDelayMin: normalizePostDelay(post.postDelayMin, 10),
+    postDelayMax: Math.max(normalizePostDelay(post.postDelayMin, 10), normalizePostDelay(post.postDelayMax, 12)),
     aiGenerated: true,
     allowComment: post.allowComment !== false,
     allowReuse: post.allowReuse !== false,
@@ -404,6 +421,8 @@ function resolveMainPostSettings(postDefaults = {}, mainSettings = {}) {
     afterCreateAction: mainAction,
     scheduleTime: mainSettings?.postScheduleTime || normalizedDefaults.scheduleTime,
     scheduleInterval: mainSettings?.postScheduleInterval || normalizedDefaults.scheduleInterval,
+    postDelayMin: mainSettings?.postDelayMin ?? normalizedDefaults.postDelayMin,
+    postDelayMax: mainSettings?.postDelayMax ?? normalizedDefaults.postDelayMax,
     autoAddProductLink: hasMainNoLink ? !mainSettings.postNoLink : normalizedDefaults.autoAddProductLink,
     postNoLink: hasMainNoLink ? mainSettings.postNoLink : normalizedDefaults.postNoLink,
     postRandomCaptionHook: mainSettings?.postRandomCaptionHook !== undefined ? mainSettings.postRandomCaptionHook : normalizedDefaults.postRandomCaptionHook,
@@ -422,6 +441,11 @@ function syncScheduleState() {
   const isSchedule = getValue("post-default-mode") === "schedule";
   const scheduleInput = document.querySelector("#post-schedule-time");
   if (scheduleInput) scheduleInput.disabled = !isSchedule;
+  const delayEnabled = getValue("post-default-mode") === "post";
+  const delayContainer = document.querySelector("#post-delay-container-manual");
+  const delayHint = document.querySelector("#post-delay-hint");
+  if (delayContainer) delayContainer.style.display = delayEnabled ? "grid" : "none";
+  if (delayHint) delayHint.style.display = delayEnabled ? "block" : "none";
 }
 
 function syncPublishModeState() {
