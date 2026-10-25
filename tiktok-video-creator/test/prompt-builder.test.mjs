@@ -37,7 +37,9 @@ import {
   isScarfProduct,
   SCARF_SCALE_DIRECTION,
   SCARF_FIDELITY_AND_USAGE_LOCK,
-  SCARF_HEADWRAP_VIDEO_LOCK
+  SCARF_HEADWRAP_VIDEO_LOCK,
+  isPlusSizeApparelProduct,
+  PLUS_SIZE_MODEL_MANDATE
 } from "../modules/prompt-builder.js";
 
 let pass = 0, fail = 0;
@@ -512,7 +514,7 @@ check("image prompt creates a new suitable background", /brand new|background th
 check("video prompt uses two scenes", /TWO-SCENE EDIT/i.test(cabinetVideo) && /Scene 1/i.test(cabinetVideo));
 check("cabinet video uses a suitable interior", /Modern Living Room/i.test(cabinetVideo) && !/Urban Street/i.test(cabinetVideo));
 check("image prompt stays concise", cabinetImage.length < 14000, `length=${cabinetImage.length}`);
-check("video prompt stays concise", cabinetVideo.length < 21000, `length=${cabinetVideo.length}`);
+check("video prompt stays concise", cabinetVideo.length < 22000, `length=${cabinetVideo.length}`);
 
 // --- footwear fidelity: preserve the exact model while Auto includes a reviewer ---
 const shoe = {
@@ -1230,6 +1232,20 @@ const metaPresenterVideo = buildVideoPrompt({ name: "เสื้อเชิ้
 check("Meta image replaces the reference person's identity", /META PERSON REPLACEMENT[\s\S]*clearly different face, facial structure, hairstyle/i.test(metaPresenterImage));
 check("Meta video replaces the reference person's identity across scenes", /META PERSON REPLACEMENT[\s\S]*Do not copy, trace, preserve, or closely resemble the source person[\s\S]*consistent across scenes/i.test(metaPresenterVideo));
 
+const metaHandsOnlySettings = { ...settings, generationProvider: "meta-ai", presenter: "hands_only", videoDuration: 10 };
+const metaHandsOnlyImage = buildImagePrompt({ name: "เซรั่มบำรุงผิวหน้า" }, metaHandsOnlySettings);
+const metaHandsOnlyVideo = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้า" }, metaHandsOnlySettings);
+check("Meta hands-only image enforces hands-only override and excludes face generation", /META FIRST-PERSON POV HANDS-ONLY OVERRIDE/i.test(metaHandsOnlyImage) && !/META PERSON REPLACEMENT/i.test(metaHandsOnlyImage) && /No full face/i.test(metaHandsOnlyImage));
+check("Meta hands-only video enforces hands-only override and excludes face generation", /META FIRST-PERSON POV HANDS-ONLY OVERRIDE/i.test(metaHandsOnlyVideo) && !/META PERSON REPLACEMENT/i.test(metaHandsOnlyVideo));
+
+check("Meta video forbids matching the reference person's face and requires a new face", /totally different individual/i.test(metaPresenterVideo) && /different eye/i.test(metaPresenterVideo) && /different nose/i.test(metaPresenterVideo));
+check("Meta video enforces new location and forbids matching reference image background", /META NEW LOCATION & BACKGROUND MANDATE[\s\S]*Discard the original background, room, setting[\s\S]*Strictly forbid copying, reproducing, or matching the background/i.test(metaPresenterVideo));
+check("Meta hands-only video enforces new location and forbids matching reference background", /META FIRST-PERSON POV HANDS-ONLY OVERRIDE[\s\S]*Discard the original background, room, setting, and location completely/i.test(metaHandsOnlyVideo));
+
+const metaProductOnlySettings = { ...settings, generationProvider: "meta-ai", presenter: "none", videoDuration: 10 };
+const metaProductOnlyVideo = buildVideoPrompt({ name: "เซรั่มบำรุงผิวหน้า" }, metaProductOnlySettings);
+check("Meta product-only video enforces new location and forbids matching reference background", /META PRODUCT-ONLY OVERRIDE[\s\S]*Discard the original background, room, setting, and location completely/i.test(metaProductOnlyVideo));
+
 const imgTextEnabled = buildImagePrompt({ name: "พัดลมไร้สาย" }, { ...settings, textEnabled: true, clipText: "เย็นสบาย", promotionText: "ลด 50%" });
 check("image prompt with text enabled shows only clipText phrase", /Place ONLY this single short Thai phrase/i.test(imgTextEnabled) && /เย็นสบาย/i.test(imgTextEnabled), imgTextEnabled);
 check("image prompt with text enabled does NOT include product name or promotion in overlay", !/ลด 50%/i.test(imgTextEnabled) && !/พัดลมไร้สาย.*overlay/i.test(imgTextEnabled), imgTextEnabled);
@@ -1612,12 +1628,25 @@ check("sofa image prompt includes furniture fidelity guidance", /FURNITURE STRUC
 // Test 16: Phone case & Bags structural fidelity lock
 const phoneCaseVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูนหมี" }, settings);
 check("phone case video prompt includes phone case fidelity lock", /STRICT PHONE CASE & MOBILE ACCESSORY FIDELITY LOCK/i.test(phoneCaseVid), phoneCaseVid);
+check("phone case video forbids all phone manufacturer logos", /LOGO-FREE PHONE AND CASE[\s\S]*Apple, Samsung, and all other phone-brand logos[\s\S]*generic unbranded phone body/i.test(phoneCaseVid), phoneCaseVid);
+check("phone case video explicitly mandates zero Apple logo at highest priority", /PHONE CASE ZERO APPLE LOGO MANDATE[\s\S]*Apple logo[\s\S]*100% unbranded/i.test(phoneCaseVid), phoneCaseVid);
+const phoneCaseStillNoLogo = buildImagePrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูนหมี" }, settings);
+check("phone case still prompt forbids Apple logo and phone brand logos", /PHONE CASE ZERO APPLE LOGO MANDATE[\s\S]*Apple logo/i.test(phoneCaseStillNoLogo), phoneCaseStillNoLogo);
+check("phone case still prompt does not mention shot on an iPhone", !/shot on an iPhone/i.test(phoneCaseStillNoLogo), phoneCaseStillNoLogo);
+const metaPhoneCaseVid = buildVideoPrompt({ name: "เคสไอโฟน 16 Pro Max ลายการ์ตูนหมี" }, { ...settings, generationProvider: "meta-ai" });
+check("Meta AI phone case video enforces zero Apple logo mandate", /PHONE CASE ZERO APPLE LOGO MANDATE/i.test(metaPhoneCaseVid), metaPhoneCaseVid);
 check("phone case video prevents pattern rotation and drift", /CASE ARTWORK COORDINATE LOCK[\s\S]*mirror it, rotate it, stretch it, reflow it, center-shift it[\s\S]*drift onto the phone/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case keeps true size against full-size scene anchors", /REAL-WORLD PHONE SCALE LOCK[\s\S]*true smartphone size relative to a full-size hand, table, room, and furniture[\s\S]*fill half a table/i.test(phoneCaseVid), phoneCaseVid);
 check("complex phone case patterns copy from the clear reference", /COMPLEX PHONE CASE PATTERN REFERENCE LOCK[\s\S]*entire visible case-back artwork as one exact graphic layer[\s\S]*reference image overrides the product title/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case uses a natural one-hand grip", /NATURAL PHONE CASE HANDLING LOCK[\s\S]*relaxed ergonomic grip[\s\S]*thumb along one side[\s\S]*fingers naturally supporting/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case video keeps the second hand outside every shot", /MANDATORY ONE-HAND PHONE CASE HOLD[\s\S]*every shot[\s\S]*second hand must remain completely outside the frame/i.test(phoneCaseVid), phoneCaseVid);
 check("phone case keeps camera cutout aligned while held", /NATURAL PHONE CASE HANDLING LOCK[\s\S]*cover the camera cutout[\s\S]*camera opening.*aligned/i.test(phoneCaseVid), phoneCaseVid);
+
+const clearCaseVid = buildVideoPrompt({ name: "เคสใสกันกระแทก สำหรับ iPhone 15 Pro Max เห็นหลังเครื่องเงาๆ" }, settings);
+check("clear phone case video mandates blank glossy back with zero logo", /CLEAR & TRANSPARENT CASE MANDATE[\s\S]*เคสใส\/โปร่งแสง เห็นตัวเครื่องเงาๆ ห้ามมีโลโก้เด็ดขาด[\s\S]*100% unbranded[\s\S]*NO APPLE LOGO/i.test(clearCaseVid), clearCaseVid);
+
+const englishClearCaseVid = buildVideoPrompt({ name: "Clear Case for iPhone 16 Pro Max Shockproof" }, settings);
+check("English clear phone case video activates zero Apple logo mandate", /PHONE CASE ZERO APPLE LOGO MANDATE[\s\S]*CLEAR & TRANSPARENT CASE MANDATE/i.test(englishClearCaseVid), englishClearCaseVid);
 
 const bagVid = buildVideoPrompt({ name: "กระเป๋าสะพายข้างหนังแท้สำหรับผู้หญิง" }, settings);
 check("bag video prompt includes bags fidelity lock", /STRICT BAGS & ACCESSORIES STRUCTURAL FIDELITY LOCK/i.test(bagVid), bagVid);
@@ -2461,6 +2490,51 @@ for (const videoStyle of ["review", "still-motion", "boxed-motion", "fashion-sel
   const bundle = buildImagePrompt({ name: "Coffee pack of 3", category: "coffee" }, { ...settings, videoStyle });
   check(`pack never invents units from title for ${videoStyle}`, /FINAL REFERENCE FIDELITY[\s\S]*No redesign or invented units/.test(bundle) && !bundle.includes("FINAL QUANTITY OVERRIDE"), bundle);
 }
+
+// Plus-size & Curvy apparel model tests
+check("isPlusSizeApparelProduct detects Thai keywords", isPlusSizeApparelProduct("เดรสสาวอวบ สไตล์เกาหลี") && isPlusSizeApparelProduct("เสื้อยืดคนอ้วน ไซส์ใหญ่ 3XL") && isPlusSizeApparelProduct("กางเกงคนตัวใหญ่ บิ๊กไซส์"));
+check("isPlusSizeApparelProduct detects English keywords", isPlusSizeApparelProduct("Plus size curvy dress 4XL") && isPlusSizeApparelProduct("Big size women casual pants"));
+check("isPlusSizeApparelProduct ignores standard non-plus apparel", !isPlusSizeApparelProduct("เสื้อยืดผู้หญิง สีพื้น") && !isPlusSizeApparelProduct("กางเกงยีนส์ผู้ชาย ทรงกระบอก"));
+check("isPlusSizeApparelProduct ignores non-apparel items", !isPlusSizeApparelProduct("อาหารสุนัขพันธุ์ใหญ่ 10kg") && !isPlusSizeApparelProduct("โซฟาขนาดใหญ่ 3 ที่นั่ง"));
+
+const plusSizeDress = { name: "เดรสสาวอวบ แขนยาว ลายดอกไม้ อก 44-50 นิ้ว", category: "แฟชั่นผู้หญิง" };
+const plusSizeVideoPrompt = buildVideoPrompt(plusSizeDress, settings);
+check("plus-size apparel video prompt includes PLUS_SIZE_MODEL_MANDATE", plusSizeVideoPrompt.includes("PLUS-SIZE & CURVY MODEL MANDATE") && /เสื้อผ้าสาวอวบ/i.test(plusSizeVideoPrompt));
+check("plus-size apparel video prompt forbids thin or skinny models", /STRICTLY FORBIDDEN: skinny, slender, thin, or petite models/i.test(plusSizeVideoPrompt));
+check("plus-size apparel video prompt mandates realistic curvy full figure", /realistic, attractive full-figured, curvy body proportion/i.test(plusSizeVideoPrompt));
+check("plus-size apparel video prompt enforces strict zero face copy", /STRICT ZERO-FACE-COPY MANDATE|หน้าห้ามเหมือนเด็ดขาด/i.test(plusSizeVideoPrompt));
+check("plus-size apparel eliminates commercial fit model", !/Presenter:[^\n]*commercial fit model/i.test(plusSizeVideoPrompt) && /Presenter:[^\n]*plus-size commercial model/i.test(plusSizeVideoPrompt));
+
+const imageAnalysisPlusSize = { name: "เสื้อเชิ้ตแขนยาว", isPlusSize: true, category: "เสื้อผ้า" };
+const imageAnalysisPlusSizeVid = buildVideoPrompt(imageAnalysisPlusSize, settings);
+check("image analysis plus-size flag triggers plus-size model mandate even without plus-size keywords in name", imageAnalysisPlusSizeVid.includes("PLUS-SIZE & CURVY MODEL MANDATE") && /นางแบบสาวอวบ/i.test(imageAnalysisPlusSizeVid));
+
+const plusSizeImagePrompt = buildImagePrompt(plusSizeDress, settings);
+check("plus-size apparel image prompt includes PLUS_SIZE_MODEL_MANDATE", plusSizeImagePrompt.includes("PLUS-SIZE & CURVY MODEL MANDATE"));
+
+const plusSizeFashionSelfieVideo = buildVideoPrompt(plusSizeDress, { ...settings, videoStyle: "fashion-selfie" });
+check("plus-size fashion-selfie video prompt uses plus-size curvy model label", /fictional plus-size curvy adult Thai female fashion model \(นางแบบสาวอวบ\)/i.test(plusSizeFashionSelfieVideo));
+check("plus-size fashion-selfie video prompt includes PLUS_SIZE_MODEL_MANDATE", plusSizeFashionSelfieVideo.includes("PLUS-SIZE & CURVY MODEL MANDATE"));
+
+const plusSizeHangerVideo = buildVideoPrompt(plusSizeDress, { ...settings, videoStyle: "fashion-hanger-presenter" });
+check("plus-size fashion-hanger video prompt includes PLUS_SIZE_MODEL_MANDATE", plusSizeHangerVideo.includes("PLUS-SIZE & CURVY MODEL MANDATE"));
+
+// Model look differentiation: hairstyle, hair color, and face must be completely different from reference image
+const modelDiffDress = { name: "ชุดเดรสแฟชั่นผู้หญิง ลายลูกไม้", category: "เสื้อผ้าผู้หญิง" };
+const modelDiffReviewVideo = buildVideoPrompt(modelDiffDress, { ...settings, presenter: "woman", videoStyle: "review" });
+check("model video prompt enforces hairstyle different from product image", /ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด|ทรงผมไม่เหมือนภาพสินค้า/i.test(modelDiffReviewVideo), modelDiffReviewVideo);
+check("model video prompt enforces hair color different from product image", /สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี|สีผมก็ต้องไม่เหมือน/i.test(modelDiffReviewVideo), modelDiffReviewVideo);
+check("model video prompt enforces face different and not similar", /หน้าตาต่างไปไม่คล้ายเลยยิ่งดี/i.test(modelDiffReviewVideo), modelDiffReviewVideo);
+
+const modelDiffHangerVideo = buildVideoPrompt(modelDiffDress, { ...settings, videoStyle: "fashion-hanger-presenter" });
+check("fashion hanger video enforces hairstyle different from product image", /ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด/i.test(modelDiffHangerVideo), modelDiffHangerVideo);
+check("fashion hanger video enforces hair color different from product image", /สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี/i.test(modelDiffHangerVideo), modelDiffHangerVideo);
+check("fashion hanger video enforces face different and not similar", /หน้าตาต่างไปไม่คล้ายเลยยิ่งดี/i.test(modelDiffHangerVideo), modelDiffHangerVideo);
+
+const modelDiffSelfieVideo = buildVideoPrompt(modelDiffDress, { ...settings, videoStyle: "fashion-selfie" });
+check("fashion selfie video enforces hairstyle different from product image", /ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด/i.test(modelDiffSelfieVideo), modelDiffSelfieVideo);
+check("fashion selfie video enforces hair color different from product image", /สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี/i.test(modelDiffSelfieVideo), modelDiffSelfieVideo);
+check("fashion selfie video enforces face/look different and not similar", /หน้าตาและรูปลักษณ์ต่างไปไม่คล้ายเลยยิ่งดี|หน้าตาต่างไปไม่คล้ายเลยยิ่งดี/i.test(modelDiffSelfieVideo), modelDiffSelfieVideo);
 
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));

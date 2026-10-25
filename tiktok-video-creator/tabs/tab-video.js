@@ -195,6 +195,7 @@ function syncSettingsForm() {
     productActivity: getValue("product-activity") || "Auto",
     imageModel: getValue("image-model"),
     videoModel: getValue("video-model"),
+    generationProvider: getValue("video-generation-provider") || settings.generationProvider || "google-flow",
     metaMultiScene: getValue("meta-multi-scene"),
     imageCount: parseInt(getValue("image-count"), 10) || 1,
     videoCount: parseInt(getValue("video-count"), 10) || 1,
@@ -259,6 +260,7 @@ function normalizeProductQueue(value) {
         structureAdvice: item.structureAdvice || "",
         promptAdvice: item.promptAdvice || "",
         imageGender: ["man", "woman", "unknown"].includes(item.imageGender) ? item.imageGender : "",
+        isPlusSize: item.isPlusSize === true,
         autoOptions: item.autoOptions && typeof item.autoOptions === "object" ? item.autoOptions : null,
         isCollapsed: item.isCollapsed !== undefined ? item.isCollapsed : true
       };
@@ -306,6 +308,7 @@ function normalizeSettings(value) {
     transition: value.transition || "Auto",
     imageModel: value.imageModel || "nano-banana-pro",
     videoModel: value.videoModel || "veo-3.1-lite-low-priority",
+    generationProvider: value.generationProvider === "meta-ai" ? "meta-ai" : (value.generationProvider || "google-flow"),
     metaMultiScene: value.metaMultiScene !== false && value.metaMultiScene !== "false",
     imageCount: value.imageCount || 1,
     videoCount: value.videoCount || 1,
@@ -504,7 +507,7 @@ function getOrGenerateHooks(p) {
 function productMarkup(p, index) {
   const sourceImage = getDisplayProductImage(p);
   const approvedImage = p.approvedImage || "";
-  const imagePrompt = buildImagePrompt(p, settings);
+  const imagePrompt = buildImagePrompt(p, getImagePromptSettings());
   const videoPrompt = buildVideoPrompt(p, getVideoPromptSettings());
   const status = getStatusMeta(p.status);
   const isVideoOnly = settings.flowGenMode === "video";
@@ -720,7 +723,7 @@ function bindBatchEvents() {
 function updatePrompts(itemEl, product) {
   const imagePrompt = itemEl.querySelector(".batch-image-prompt");
   const videoPrompt = itemEl.querySelector(".batch-prompt");
-  if (imagePrompt) imagePrompt.value = buildImagePrompt(product, settings);
+  if (imagePrompt) imagePrompt.value = buildImagePrompt(product, getImagePromptSettings());
   if (videoPrompt) videoPrompt.value = buildVideoPrompt(product, getVideoPromptSettings());
 }
 
@@ -754,6 +757,7 @@ async function handleAnalyze(product) {
     product.hooks = analysis.hooks || [];
     product.targetGroup = analysis.targetGroup || product.targetGroup;
     product.imageGender = analysis.imageGender || product.imageGender || "unknown";
+    product.isPlusSize = analysis.isPlusSize ?? product.isPlusSize ?? false;
     product.structureAdvice = analysis.structureAdvice || product.structureAdvice || "";
     product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
     product.autoOptions = analysis.autoOptions || product.autoOptions || null;
@@ -784,7 +788,7 @@ async function handleUploadApproved(event, product) {
 
 async function launchFlow(phase, product) {
   try {
-    const prompt = phase === "image" ? buildImagePrompt(product, settings) : buildVideoPrompt(product, getVideoPromptSettings());
+    const prompt = phase === "image" ? buildImagePrompt(product, getImagePromptSettings()) : buildVideoPrompt(product, getVideoPromptSettings());
     const image = phase === "image" ? getFlowProductImage(product) : (product.approvedImage || getFlowProductImage(product));
     product.status = phase === "image" ? "image_generating" : "video_generating";
     product.errorMessage = "";
@@ -878,6 +882,7 @@ async function processQueue() {
           product.hooks = analysis.hooks || [];
           product.targetGroup = analysis.targetGroup || product.targetGroup;
           product.imageGender = analysis.imageGender || product.imageGender || "unknown";
+    product.isPlusSize = analysis.isPlusSize ?? product.isPlusSize ?? false;
           product.structureAdvice = analysis.structureAdvice || product.structureAdvice || "";
           product.promptAdvice = analysis.promptAdvice || product.promptAdvice || "";
           product.autoOptions = analysis.autoOptions || product.autoOptions || null;
@@ -901,7 +906,7 @@ async function processQueue() {
       let result;
       if (isImageOnly) {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพนิ่งอย่างเดียว (${options.imageCount} ภาพ)`, "info");
-        const imgPrompt = buildImagePrompt(product, settings);
+        const imgPrompt = buildImagePrompt(product, getImagePromptSettings());
         assertNotStopped();
         helpers.logActivity?.(`สินค้า ${i + 1}: เปิด New Project ใน Google Flow เพื่อสร้างภาพนิ่งอย่างเดียว`, "info");
         result = await openGoogleFlowWithLoginResume("image", imgPrompt, getFlowProductImage(product), buildFlowOptions(product), product, i);
@@ -921,7 +926,7 @@ async function processQueue() {
         result = await openGoogleFlowWithLoginResume("video", vidPrompt, referenceImage, flowOptions, product, i);
       } else {
         helpers.showStatus(`สินค้า ${i + 1}/${productQueue.length}: สร้างภาพ แล้วต่อวิดีโอ (${options.imageCount} ภาพ, ${options.videoCount} คลิป)`, "info");
-        const imgPrompt = buildImagePrompt(product, settings);
+        const imgPrompt = buildImagePrompt(product, getImagePromptSettings());
         const vidPrompt = buildVideoPrompt(product, getVideoPromptSettings());
         assertNotStopped();
         helpers.logActivity?.(`สินค้า ${i + 1}: เปิด New Project ใหม่ใน Google Flow เพื่อทำ Combined Pipeline`, "info");
@@ -1264,6 +1269,11 @@ async function clearVideoQueue() {
   await chrome.storage.local.remove("selectedProduct");
   renderQueue();
   helpers.showStatus("ล้างคิววิดีโอแล้ว", "success");
+}
+
+function getImagePromptSettings() {
+  const generationProvider = getValue("video-generation-provider") || settings.generationProvider || "google-flow";
+  return { ...settings, generationProvider };
 }
 
 function getVideoPromptSettings() {

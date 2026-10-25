@@ -8,7 +8,9 @@ import {
   isScreenlessWristbandProduct,
   WATCH_WRISTBAND_FIDELITY_DIRECTION,
   SCREENLESS_WRISTBAND_MANDATE,
-  SCREENLESS_TOP_PRIORITY_DIRECTIVE
+  SCREENLESS_TOP_PRIORITY_DIRECTIVE,
+  META_SOURCE_PERSON_REPLACEMENT,
+  VIDEO_MODEL_DIFFERENTIATION_MANDATE
 } from "../modules/prompt-builder.js";
 import { getFreshScheduleDateTime } from "../modules/schedule-time.js";
 
@@ -516,14 +518,18 @@ async function startPipeline() {
       if (selectedImageBase64) {
         finalPrompt = `${finalPrompt}
 STRICT PRODUCT FIDELITY LOCK: You MUST reproduce the product EXACTLY as in the reference image. Preserve its exact shape, 3D geometry, form, contours, colors, texture, printed artwork, logos, labels, and parts. STRICT RULE: Do NOT redesign, warp, deform, restyle, simplify, or modify the product. Do not add extra items or decorations. It must look 100% identical and pixel-faithful to the reference without any visual drift. ABSOLUTE ZERO DISTORTION RULE: All printed text, logos, packaging dimensions, and labels must be preserved exactly as shown, with perfect spelling.
-APPAREL PERSON SAFETY: If the reference image shows clothing worn by a person, treat only the garment/outfit as the product. Preserve the garment design, fit, colors, pattern, and fabric details, but use a new generic fictional adult model if a person is needed.${watchFidelity}
+APPAREL PERSON SAFETY: If the reference image shows clothing worn by a person, treat only the garment/outfit as the product. Preserve the garment design, fit, colors, pattern, and fabric details, but use a new generic fictional adult model if a person is needed. The model's hairstyle, hair color, and facial appearance must be completely different from any model in the reference image (ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี หน้าตาต่างไปไม่คล้ายเลยยิ่งดี).${watchFidelity}
 Reproduce the printed surface artwork, motifs, patterns, illustrations, logos, and graphics EXACTLY as in the reference. Maintain the exact layout, colors, shapes, and placement. Copy it pixel-faithfully; never redraw, restyle, simplify, distort, or replace. For videos, this pattern must remain static on the product surface.
 EXACT COLOR & PATTERN ACCURACY: Preserve the exact colors, patterns, artwork, and motifs from the reference. Do NOT shift, alter, recolor, or replace original colors or graphics under any lighting or environment effect.
 ${CUSTOM_COMPLEX_PATTERN_REFERENCE_LOCK}
 STRICT RIGIDITY & STABILITY LOCK: Realistic motion only. The product must remain completely rigid, solid, and static throughout the video: strictly NO morphing, warping, bending, melting, opening, closing, floating, stretching, or shifting of dimensions. Preserve 100% exact product identity across all video frames. Camera movement must be smooth and stable.`;
       }
       if (selectedModelRefImageBase64) {
-        finalPrompt = `${finalPrompt}\nMODEL REFERENCE SAFETY: Use the model reference only for pose, framing, outfit silhouette, garment fit, colors, and pattern. Generate a new generic fictional adult model; match only the clothing and pose, not the person.`;
+        finalPrompt = `${finalPrompt}\n${VIDEO_MODEL_DIFFERENTIATION_MANDATE}\nMODEL REFERENCE SAFETY: Use the model reference only for pose, framing, outfit silhouette, garment fit, colors, and pattern. Generate a new generic fictional adult model whose hairstyle, hair color, and face are completely different from any person in the reference image (ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี หน้าตาต่างไปไม่คล้ายเลยยิ่งดี); match only the clothing and pose, not the person.`;
+      }
+
+      if (getValue("custom-generation-provider") === "meta-ai") {
+        finalPrompt = `${META_SOURCE_PERSON_REPLACEMENT}\n${finalPrompt}\n${META_SOURCE_PERSON_REPLACEMENT}`;
       }
 
       if (phase !== "image") {

@@ -273,3 +273,67 @@ test('Meta automatically submits ทำใหม่ when Something went wrong oc
   assert.ok(enteredPrompts.includes('ทำใหม่'));
   assert.ok(reportedStages.some(s => s.includes('redo-attempt')));
 });
+
+test('Meta phone case video and image prompts inject zero Apple logo mandate into direction', async () => {
+  let submittedVideo;
+  let submittedImage;
+  const halt = new Error('captured prompt');
+  const generate = load('generate', '\n  async function newChat', {
+    report: async () => {}, upload: async () => {}, responseMedia: () => [],
+    document: { querySelectorAll: () => [] },
+    prepareMetaVideoPrompt: prompt => prompt, metaLocationDirection: () => '',
+    enterPrompt: async prompt => {
+      if (!submittedVideo) {
+        submittedVideo = prompt;
+      } else {
+        submittedImage = prompt;
+      }
+      throw halt;
+    },
+  });
+
+  await assert.rejects(generate('video', 'รีวิว เคสไอโฟน 16 Pro Max ลายการ์ตูนหมี', []), halt);
+  assert.match(submittedVideo, /META PHONE CASE ZERO APPLE LOGO MANDATE/);
+  assert.match(submittedVideo, /Apple logo/);
+  assert.match(submittedVideo, /generic and 100% unbranded/);
+
+  await assert.rejects(generate('image', 'Product: เคสโทรศัพท์ ลายแมว', []), halt);
+  assert.match(submittedImage, /META PHONE CASE ZERO APPLE LOGO MANDATE/);
+  assert.match(submittedImage, /Apple logo/);
+});
+
+test('Meta video mandates face replacement and new location non-matching reference image', async () => {
+  let submitted;
+  const halt = new Error('captured prompt');
+  const generate = load('generate', '\n  async function newChat', {
+    report: async () => {}, upload: async () => {}, responseMedia: () => [],
+    document: { querySelectorAll: () => [] },
+    prepareMetaVideoPrompt: prompt => prompt,
+    metaLocationDirection,
+    enterPrompt: async prompt => { submitted = prompt; throw halt; },
+  });
+
+  await assert.rejects(generate('video', 'รีวิว เสื้อผ้าแฟชั่น ผู้หญิง', []), halt);
+  assert.match(submitted, /FACE & LOCATION REPLACEMENT \(CRITICAL\)/);
+  assert.match(submitted, /completely different face and hairstyle from any person in the reference photo/);
+  assert.match(submitted, /never copy, clone, animate, or resemble the source person's face/);
+  assert.match(submitted, /setting must also be a completely new location/);
+  assert.match(submitted, /never copy, clone, or reuse the background scene, room, or location from the reference photo/);
+  assert.match(submitted, /completely discard and replace its original background, room, setting, and location/);
+});
+
+test('Meta video casts plus-size model when clothing is for plus-size/curvy wearer', async () => {
+  let submitted;
+  const halt = new Error('captured prompt');
+  const generate = load('generate', '\n  async function newChat', {
+    report: async () => {}, upload: async () => {}, responseMedia: () => [],
+    document: { querySelectorAll: () => [] },
+    prepareMetaVideoPrompt: prompt => prompt,
+    metaLocationDirection,
+    enterPrompt: async prompt => { submitted = prompt; throw halt; },
+  });
+
+  await assert.rejects(generate('video', 'รีวิว เดรสสาวอวบ ไซส์ใหญ่ 4XL', []), halt);
+  assert.match(submitted, /PLUS-SIZE BODY: Model must have a realistic plus-size \/ curvy body proportion/);
+});
+
