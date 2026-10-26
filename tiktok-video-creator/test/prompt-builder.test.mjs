@@ -2536,6 +2536,30 @@ check("fashion selfie video enforces hairstyle different from product image", /�
 check("fashion selfie video enforces hair color different from product image", /สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี/i.test(modelDiffSelfieVideo), modelDiffSelfieVideo);
 check("fashion selfie video enforces face/look different and not similar", /หน้าตาและรูปลักษณ์ต่างไปไม่คล้ายเลยยิ่งดี|หน้าตาต่างไปไม่คล้ายเลยยิ่งดี/i.test(modelDiffSelfieVideo), modelDiffSelfieVideo);
 
+// Positive styling directives and final override checks
+check("model video prompt mandates contrasting hairstyle (ponytail, bob, bun)", /มัดรวบหางม้าสูง|ผมบ๊อบสั้นตรง|เกล้าผมมวย|sleek high ponytail|neat straight bob|hair bun/i.test(modelDiffReviewVideo), modelDiffReviewVideo);
+check("model video prompt mandates jet-black hair color", /ผมสีดำสนิทธรรมชาติ|natural deep jet-black hair/i.test(modelDiffReviewVideo), modelDiffReviewVideo);
+check("model video prompt forbids sunglasses on head", /NO sunglasses (?:resting on top of the head|on head)/i.test(modelDiffReviewVideo), modelDiffReviewVideo);
+check("model video prompt includes MODEL LOOK FINAL OVERRIDE", /MODEL LOOK FINAL OVERRIDE/i.test(modelDiffReviewVideo), modelDiffReviewVideo);
+
+// Image prompt differentiation checks (Phase 1 still image)
+const modelDiffReviewImage = buildImagePrompt(modelDiffDress, { ...settings, presenter: "woman", videoStyle: "review" });
+check("apparel image prompt enforces hairstyle different from product image", /ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด|ทรงผมไม่เหมือนภาพสินค้า/i.test(modelDiffReviewImage), modelDiffReviewImage);
+check("apparel image prompt enforces hair color different from product image", /สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี|สีผมก็ต้องไม่เหมือน/i.test(modelDiffReviewImage), modelDiffReviewImage);
+
+const modelDiffSelfieImage = buildImagePrompt(modelDiffDress, { ...settings, videoStyle: "fashion-selfie" });
+check("fashion selfie image prompt enforces hairstyle different from product image", /ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด/i.test(modelDiffSelfieImage), modelDiffSelfieImage);
+
+const modelDiffHangerImage = buildImagePrompt(modelDiffDress, { ...settings, videoStyle: "fashion-hanger-presenter" });
+check("fashion hanger image prompt enforces hairstyle different from product image", /ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด/i.test(modelDiffHangerImage), modelDiffHangerImage);
+
+// Non-clothing still and video prompts do not bloat with model differentiation
+const nonClothingChairStill = buildImagePrompt({ name: "เก้าอี้พับแคมป์ปิ้ง", category: "เดินป่า" }, settings);
+check("non-clothing still prompt excludes model look differentiation", !nonClothingChairStill.includes("MODEL LOOK DIFFERENTIATION"), nonClothingChairStill);
+
+const nonClothingCabinetVideo = buildVideoPrompt({ name: "ตู้ไม้ 3 ชั้น", category: "เฟอร์นิเจอร์" }, settings);
+check("non-clothing video prompt excludes model look differentiation", !nonClothingCabinetVideo.includes("MODEL LOOK DIFFERENTIATION"), nonClothingCabinetVideo);
+
 if (fail > 0) {
   console.log(results.filter(r => r.startsWith("❌")).join("\n"));
 }
