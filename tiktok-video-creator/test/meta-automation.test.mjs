@@ -334,6 +334,7 @@ test('Meta video casts plus-size model when clothing is for plus-size/curvy wear
   });
 
   await assert.rejects(generate('video', 'รีวิว เดรสสาวอวบ ไซส์ใหญ่ 4XL', []), halt);
+  assert.match(submitted, /^Generate an actual VIDEO/);
   assert.match(submitted, /PLUS-SIZE BODY: Model must have a realistic plus-size \/ curvy body proportion/);
 });
 
