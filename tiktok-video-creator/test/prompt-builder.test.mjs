@@ -362,6 +362,12 @@ const fashionSelfieVideo = buildVideoPrompt({
   name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว",
   category: "แฟชั่น"
 }, fashionSelfieSettings);
+const metaFashionSelfieVideo = buildVideoPrompt(
+  { name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว", category: "แฟชั่น" },
+  { ...fashionSelfieSettings, generationProvider: "meta-ai", videoDuration: 10, metaMultiScene: true }
+);
+check("Meta three-scene fashion selfie keeps the model and phone in every scene", /THREE-SCENE FASHION SELFIE PLAN:[\s\S]*Scene 1[\s\S]*smartphone over the face[\s\S]*Scene 2[\s\S]*phone-over-face pose[\s\S]*Scene 3[\s\S]*same selfie pose/i.test(metaFashionSelfieVideo), metaFashionSelfieVideo);
+check("Meta fashion selfie has no generic product-only shot plan or on-screen speech", !/META 10-SECOND THREE-SCENE PLAN:|Presenter delivery: speak/i.test(metaFashionSelfieVideo), metaFashionSelfieVideo);
 check("fashion selfie image hides the model face with a phone", /FASHION SELFIE MODE[\s\S]*smartphone[\s\S]*fully cover and obscure the face/i.test(fashionSelfieImage), fashionSelfieImage);
 check("fashion selfie image keeps the garment full body", /head-to-toe|full-body/i.test(fashionSelfieImage) && /exact reference garment/i.test(fashionSelfieImage), fashionSelfieImage);
 check("fashion selfie video keeps the phone over the face", /FASHION SELFIE MODE[\s\S]*phone must fully cover the face/i.test(fashionSelfieVideo), fashionSelfieVideo);

@@ -2096,7 +2096,10 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     : requestedText.length
       ? `The ONLY allowed added overlays are these exact strings: ${JSON.stringify([...new Set(requestedText)])}. Never expand, repeat, paraphrase, or add words, numbers, prices, or subtitles.`
       : "Allow at most ONE short Thai overlay of 1–5 words; keep the same wording throughout. No additional text, numbers, prices, CTAs, or subtitles.";
-  const isHangerMode = resolveAutoSettings(productInfo, settings).videoStyle === "fashion-hanger-presenter";
+  const selectedStyle = resolveAutoSettings(productInfo, settings).videoStyle;
+  const isHangerMode = selectedStyle === "fashion-hanger-presenter";
+  const isFashionSelfie = selectedStyle === "fashion-selfie";
+  const isLowerBodySelfie = isFashionSelfie && settings?.cameraFraming === "lower_body";
   const instanceRule = isHangerMode
     ? "Exactly ONE sold garment on ONE hanger; no extra copies, worn copies, or additional hangers."
     : "Never duplicate the item.";
@@ -2110,7 +2113,7 @@ export function buildVideoPrompt(productInfo, settings = {}) {
     ? " MODEL LOOK FINAL OVERRIDE: Presenter's hairstyle, hair color, and face MUST NOT match the reference image (ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี หน้าตาต่างไปไม่คล้ายเลยยิ่งดี). Use sleek high ponytail, straight bob, or hair bun with natural deep jet-black hair; strictly NO sunglasses on head."
     : "";
   const visualRules = `FINAL OVERRIDE: ${textRule}${retailCoffeeScale ? `\n${retailCoffeeScale}` : ""}
-Keep original product lettering/language/layout; preserve unclear marks without guessing. Copy no catalog text. Maintain reference proportions and constant scale against hands/body/scene. Verified variant dimensions override category guesses. Close up with the camera; never enlarge the item or invent parts. ${instanceRule}${modelDiffFinalCheck} Presenter delivery: speak the Thai review normally with a natural smile; do not laugh or add laughter at the end.`;
+Keep original product lettering/language/layout; preserve unclear marks without guessing. Copy no catalog text. Maintain reference proportions and constant scale against hands/body/scene. Verified variant dimensions override category guesses. Close up with the camera; never enlarge the item or invent parts. ${instanceRule}${modelDiffFinalCheck} ${isFashionSelfie ? "The on-screen model stays silent; any Thai narration is off-screen voiceover only." : "Presenter delivery: speak the Thai review normally with a natural smile; do not laugh or add laughter at the end."}`;
   const duration = Number.parseInt(settings?.videoDuration, 10) || 8;
   const isMeta = settings?.generationProvider === "meta-ai" && duration === 10;
   const phoneFilmType = getPhoneFilmInstallationType(`${productInfo.name || ""} ${productInfo.category || ""}`);
@@ -2135,8 +2138,16 @@ Keep original product lettering/language/layout; preserve unclear marks without 
   }
   const shotPlan = omniMultiShot
     ? "OMNI 10-SECOND MULTI-SHOT OVERRIDE: Exactly FOUR shots with clean cuts at 2.5s, 5s and 7.5s. Shot 1 (0–2.5s): full-product front hero. Shot 2 (2.5–5s): gentle left three-quarter angle. Shot 3 (5–7.5s): close-up of a visible fabric, print or construction detail. Shot 4 (7.5–10s): right three-quarter angle returning to a clear product hold. Use genuinely different camera positions/framing, not one continuous zoom. Overrides earlier single-take, fixed-angle and scene-count camera instructions only. Preserve reference-facing details; never invent unseen backs. Keep the same product, physical scale, presenter, outfit, background and support across cuts. Hanger mode: ONE garment stays on ONE hanger; show hook and supported shoulders in wider shots. Retain face/privacy restrictions and product-only Scene 1 when selected. ONE continuous audio take across all shots, no repeated narration; final 1s silent."
+    : metaMultiScene && isFashionSelfie
+      ? isLowerBodySelfie
+        ? "META 10-SECOND THREE-SCENE FASHION LOWER-BODY PLAN: Scene 1 (0–3s): show the same model wearing the exact lower garment from waist to feet. Scene 2 (3–6s): keep the same waist-to-feet framing with a subtle camera move to show the fabric and fit. Scene 3 (6–10s): return to a steady waist-to-feet garment view. Keep the same model, garment, and setting across clean cuts. Do not show a phone, face, upper body, or product-only shot. One continuous off-screen narration, if enabled."
+        : "META 10-SECOND THREE-SCENE FASHION SELFIE PLAN: Scene 1 (0–3s): show the same adult model wearing the exact garment and holding a smartphone over the face in the selected selfie framing. Scene 2 (3–6s): keep that same model, outfit, phone-over-face pose, and framing while the camera moves subtly to show the fit. Scene 3 (6–10s): hold a steady view of the same model in the same selfie pose with the garment visible. Keep the same setting across clean cuts. Never replace the model with product-only close-ups or reveal the face. One continuous off-screen narration, if enabled."
     : metaMultiScene
       ? "META 10-SECOND THREE-SCENE PLAN: Scene 1 (0–3s): wide front-facing product reveal in the selected setting (brand-new setting, never matching the reference image's background or location). Scene 2 (3–6s): medium front-facing view showing one natural use or demonstration. Scene 3 (6–10s): closer front-facing product detail and steady hero hold. Use clean cuts and keep the same product, scale, new fictional presenter (never matching the reference person's face), outfit, and setting across scenes. Keep the product fully visible; never invent an unseen back or change its design. One continuous narration across all scenes, with the final second silent. This plan overrides earlier single-take and scene-count directions; retain selected product actions and product-only Scene 1 when enabled."
+      : isMeta && isFashionSelfie
+        ? isLowerBodySelfie
+          ? "META 10-SECOND SINGLE-SCENE FASHION LOWER-BODY PLAN: Keep the same model wearing the exact lower garment in a continuous waist-to-feet shot. No phone, face, upper body, product-only cutaway, or scene change."
+          : "META 10-SECOND SINGLE-SCENE FASHION SELFIE PLAN: Keep the same adult model wearing the exact garment and holding a smartphone over the face in the selected selfie framing for the entire continuous shot. No face reveal, product-only cutaway, or scene change."
       : isMeta
         ? "META 10-SECOND SINGLE-SCENE PLAN: One continuous front-facing 10-second shot with no cuts or scene changes in a brand-new setting (never matching the reference image's background or location). Begin with a clear product view, demonstrate one natural use through camera or presenter movement, then finish on a steady product hold. Preserve the same product, scale, new fictional presenter (never matching the reference person's face), outfit, and setting. One continuous narration, with the final second silent. This plan overrides earlier multi-scene and scene-count directions."
         : "";

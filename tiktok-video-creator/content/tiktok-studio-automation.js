@@ -550,37 +550,11 @@ async function fillCaptionAndHashtags(caption, hashtags) {
   document.execCommand("delete", false);
   await sleep(150 + Math.random() * 100);
 
-  const cleanCaption = sanitizeCaption(caption);
-  if (cleanCaption) {
-    for (let i = 0; i < cleanCaption.length; i++) {
-      document.execCommand("insertText", false, cleanCaption[i]);
-      await sleep(15 + Math.random() * 35);
-    }
-  }
-  await sleep(200 + Math.random() * 150);
-
-  for (const rawTag of normalizeHashtags(hashtags)) {
-    assertNotStopped();
-    const tag = String(rawTag || "").replace(/^#+/, "").trim();
-    if (!tag) continue;
-    
-    const tagString = ` #${tag}`;
-    for (let i = 0; i < tagString.length; i++) {
-      document.execCommand("insertText", false, tagString[i]);
-      await sleep(15 + Math.random() * 35);
-    }
-    
-    await sleep(200 + Math.random() * 150);
-    // ปิด popup แนะนำแฮชแท็ก ไม่งั้นพอ focus หลุด (กดโพส) TikTok จะ commit suggestion ทับ
-    dismissCaptionSuggestion(editor);
-    await sleep(100 + Math.random() * 100);
-  }
-
-  // เคาะ popup ที่อาจค้างเป็นรอบสุดท้าย แล้วค่อยยิง input/change ให้ DraftJS อัปเดต state
+  const expected = [sanitizeCaption(caption), ...normalizeHashtags(hashtags)].filter(Boolean).join(" ");
+  document.execCommand("insertText", false, expected);
   dismissCaptionSuggestion(editor);
-  await sleep(150);
-  editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: " " }));
-  editor.dispatchEvent(new Event("change", { bubbles: true }));
+  await sleep(300);
+  await verifyCaptionBeforeSubmit(caption, hashtags);
   await repairCaptionHashtags(editor);
 }
 
@@ -614,7 +588,7 @@ async function verifyCaptionBeforeSubmit(caption, hashtags) {
   editor.focus();
   selectAllEditable(editor);
   document.execCommand("insertText", false, expected);
-  editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: expected }));
+  editor.dispatchEvent(new Event("input", { bubbles: true }));
   editor.dispatchEvent(new Event("change", { bubbles: true }));
   dismissCaptionSuggestion(editor);
   await sleep(300);
@@ -1200,7 +1174,7 @@ async function fillScheduleTime(scheduleTime) {
 
   // Date picker
   const scheduleRoot = document.querySelector(TIKTOK_SELECTORS.scheduleContainer) || document;
-  const dateInput = findReadonlyInputByPattern(/^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$/, scheduleRoot) || scheduleRoot.querySelectorAll('input.TUXTextInputCore-input')[0];
+  const dateInput = document.querySelector('[aria-label="Select date"]') || findReadonlyInputByPattern(/^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$|^[A-Za-z]{3,9} \d{1,2}, \d{4}$/, scheduleRoot) || scheduleRoot.querySelectorAll('input.TUXTextInputCore-input')[0];
   if (!dateInput) {
     throw new Error("ไม่พบช่องวันที่สำหรับตั้งเวลาโพสต์ใน TikTok Studio");
   } else {
@@ -1216,7 +1190,7 @@ async function fillScheduleTime(scheduleTime) {
   }
 
   // Time picker
-  const timeInput = findReadonlyInputByPattern(/^\d{2}:\d{2}$/, scheduleRoot) || scheduleRoot.querySelectorAll('input.TUXTextInputCore-input')[1];
+  const timeInput = document.querySelector('[aria-label="Select time"]') || findReadonlyInputByPattern(/^\d{2}:\d{2}$/, scheduleRoot) || scheduleRoot.querySelectorAll('input.TUXTextInputCore-input')[1];
   if (!timeInput) {
     throw new Error("ไม่พบช่องเวลาสำหรับตั้งเวลาโพสต์ใน TikTok Studio");
   } else {
@@ -1250,6 +1224,16 @@ async function pickCalendarDate(targetDate, dateInput = null) {
   const tYear = targetDate.getFullYear();
   const tMonth = targetDate.getMonth();
   const tDay = targetDate.getDate();
+  const modernDay = [...document.querySelectorAll('button[aria-label]')].find(button => {
+    const label = button.getAttribute('aria-label') || '';
+    if (!/\b\d{4}\b/.test(label) || button.disabled) return false;
+    const date = new Date(label.replace(/(\d+)(st|nd|rd|th)\b/g, '$1'));
+    return date.getFullYear() === tYear && date.getMonth() === tMonth && date.getDate() === tDay;
+  });
+  if (modernDay) {
+    await realClick(modernDay);
+    return !dateInput || await waitForScheduleDateInput(dateInput, tYear, tMonth + 1, tDay);
+  }
 
   let wrapper = null;
   for (let i = 0; i < 15 && !wrapper; i++) {
@@ -1351,16 +1335,20 @@ async function pickCalendarDate(targetDate, dateInput = null) {
 
 async function waitForScheduleDateInput(input, year, month, day) {
   for (let attempt = 0; attempt < 8; attempt++) {
-    if (scheduleDateInputMatches(input?.value, year, month, day)) return true;
+    if (scheduleDateInputMatches(input?.value || input?.innerText, year, month, day)) return true;
     await sleep(200);
   }
-  return scheduleDateInputMatches(input?.value, year, month, day);
+  return scheduleDateInputMatches(input?.value || input?.innerText, year, month, day);
 }
 
 function scheduleDateInputMatches(value, year, month, day) {
   const raw = normalizeCalendarDigits(value).trim();
   const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   if (raw === iso) return true;
+  if (/^[A-Za-z]{3,9} \d{1,2}, \d{4}$/.test(raw)) {
+    const parsed = new Date(raw);
+    return parsed.getFullYear() === year && parsed.getMonth() + 1 === month && parsed.getDate() === day;
+  }
 
   const match = raw.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
   if (!match) return false;
@@ -1418,6 +1406,17 @@ function parseScheduleWallClock(value) {
 }
 
 async function pickTimeHourMinute(hh, mm) {
+  const hours = document.querySelector('[role="listbox"][aria-label="Hours"]');
+  const minutes = document.querySelector('[role="listbox"][aria-label="Minutes"]');
+  if (hours && minutes) {
+    for (const [list, value] of [[hours, hh], [minutes, mm]]) {
+      const item = [...list.querySelectorAll('*')].find(el => el.children.length === 0 && (el.textContent || '').trim() === value);
+      if (!item) return false;
+      await realClick(item);
+      await sleep(300);
+    }
+    return true;
+  }
   let container = null;
   for (let i = 0; i < 15 && !container; i++) {
     container = document.querySelector(".tiktok-timepicker-time-picker-container");

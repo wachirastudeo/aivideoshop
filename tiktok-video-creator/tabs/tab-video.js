@@ -30,12 +30,14 @@ let helpers = {};
 let settings = getDefaultSettings();
 let productQueue = [];
 let isProcessing = false;
+let batchProcessing = false;
 let stopRequested = false;
+let activeJobRefresh = 0;
 const stopWaiters = new Set();
 
 export async function initVideoTab(injectedHelpers) {
   helpers = injectedHelpers;
-  const stored = await chrome.storage.local.get(["creatorState", "productQueue"]);
+  const stored = await chrome.storage.local.get(["creatorState", "productQueue", "activeFlowTabId", "activeTikTokTabId", "activeMetaTabId"]);
   const { settings: savedOptions = {} } = await chrome.storage.sync.get("settings");
 
   const optionDefaults = {
@@ -78,7 +80,7 @@ export async function initVideoTab(injectedHelpers) {
   renderQueue();
 
   // Sync running state from storage on load
-  const isRunning = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId);
+  const isRunning = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId || stored.activeMetaTabId);
   isProcessing = isRunning;
   setBatchButtons(isRunning);
 }
@@ -121,10 +123,19 @@ function bindGlobalEvents() {
   document.querySelector("#model-ref-clear-btn")?.addEventListener("click", handleModelRefClear);
 }
 
+function syncFirstScenePeopleControl() {
+  const checkbox = document.querySelector("#first-scene-no-people");
+  if (!checkbox) return;
+  const selfie = getValue("video-style") === "fashion-selfie";
+  if (selfie) checkbox.checked = false;
+  checkbox.disabled = selfie;
+}
+
 function fillGlobalFormFromState() {
   setValue("video-style", settings.videoStyle);
   setValue("presenter", settings.presenter);
   setValue("first-scene-no-people", settings.firstSceneNoPeople);
+  syncFirstScenePeopleControl();
   setValue("custom-presenter", settings.customPresenter);
   setValue("audio-mode", settings.audioMode);
   setValue("voice-tone", settings.voiceTone);
@@ -172,13 +183,14 @@ function syncSettingsForm() {
   const timeVal = getValue("post-schedule-time") || "00:00";
   const combinedTime = (dateVal && timeVal) ? `${dateVal}T${timeVal}` : "";
   const selectedVideoStyle = getValue("video-style");
+  syncFirstScenePeopleControl();
   if (selectedVideoStyle === "hands-only") setValue("presenter", "Auto");
 
   settings = normalizeSettings({
     ...settings,
     videoStyle: selectedVideoStyle,
     presenter: getValue("presenter"),
-    firstSceneNoPeople: getValue("first-scene-no-people"),
+    firstSceneNoPeople: selectedVideoStyle === "fashion-selfie" ? false : getValue("first-scene-no-people"),
     customPresenter: getValue("custom-presenter"),
     audioMode: getValue("audio-mode") || "voiceover",
     voiceTone: getValue("voice-tone"),
@@ -303,7 +315,7 @@ function normalizeSettings(value) {
     customLocation: value.customLocation || "",
     customPresenter: value.customPresenter || "",
     productActivity: ["wear", "running", "walking", "demonstrate"].includes(value.productActivity) ? value.productActivity : "Auto",
-    firstSceneNoPeople: value.firstSceneNoPeople === true || value.firstSceneNoPeople === "true" || value.firstSceneNoPeople === "false" ? (value.firstSceneNoPeople === true || value.firstSceneNoPeople === "true") : false,
+    firstSceneNoPeople: configuredVideoStyle === "fashion-selfie" ? false : (value.firstSceneNoPeople === true || value.firstSceneNoPeople === "true"),
     pacing: value.pacing || 2,
     transition: value.transition || "Auto",
     imageModel: value.imageModel || "nano-banana-pro",
@@ -846,9 +858,11 @@ async function processQueue() {
   // clip-text is now optional and will be generated automatically if left empty
 
   isProcessing = true;
+  batchProcessing = true;
+  activeJobRefresh += 1;
   stopRequested = false;
-  await chrome.storage.local.set({ tiktokStopRequested: false, flowStopRequested: false });
   setBatchButtons(true);
+  await chrome.storage.local.set({ tiktokStopRequested: false, flowStopRequested: false });
   helpers.showStatus("เริ่มสร้างภาพและวิดีโอแบบ Auto-Flow...", "info");
 
   const options = buildFlowOptions();
@@ -1080,9 +1094,11 @@ async function processQueue() {
     finalMessage = error?.message || "โปรเซสหยุดจากข้อผิดพลาด";
     finalLevel = error?.code === "STOP_REQUESTED" ? "info" : "error";
   } finally {
-    isProcessing = false;
     stopRequested = false;
     await chrome.storage.local.remove(["activeFlowTabId", "activeTikTokTabId"]);
+    batchProcessing = false;
+    activeJobRefresh += 1;
+    isProcessing = false;
     setBatchButtons(false);
     helpers.showStatus(finalMessage || "จบการทำงานแล้ว", finalLevel);
   }
@@ -1645,11 +1661,12 @@ function toInputTime(date) {
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && (changes.activeFlowTabId || changes.activeTikTokTabId)) {
-    chrome.storage.local.get(["activeFlowTabId", "activeTikTokTabId"]).then((stored) => {
-      const running = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId);
-      isProcessing = running;
-      setBatchButtons(running);
-    });
-  }
+  if (areaName !== "local" || !(changes.activeFlowTabId || changes.activeTikTokTabId || changes.activeMetaTabId)) return;
+  const refresh = ++activeJobRefresh;
+  chrome.storage.local.get(["activeFlowTabId", "activeTikTokTabId", "activeMetaTabId"]).then((stored) => {
+    if (refresh !== activeJobRefresh || batchProcessing) return;
+    const running = Boolean(stored.activeFlowTabId || stored.activeTikTokTabId || stored.activeMetaTabId);
+    isProcessing = running;
+    setBatchButtons(running);
+  });
 });

@@ -108,7 +108,12 @@ async function routeMessage(message, sender) {
     case "META_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
     case "META_PRESS_ENTER":         return pressEnterWithDebugger(sender);
     case "META_CLICK":               return clickPointWithDebugger(message.payload, sender, { detachAfter: false });
-    case "META_DONE":                return detachDebuggerTab(sender?.tab?.id);
+    case "META_DONE": {
+      const tabId = sender?.tab?.id;
+      const {activeMetaTabId} = await chrome.storage.local.get("activeMetaTabId");
+      if (activeMetaTabId === tabId) await chrome.storage.local.remove("activeMetaTabId");
+      return detachDebuggerTab(tabId);
+    }
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
     case "FLOW_FRAME_SLOTS": {
       const nodes = await getFlowAXTree(sender?.tab?.id);
@@ -689,9 +694,17 @@ async function openMetaAI(payload = {}) {
   await waitForTabComplete(tab.id);
   assertRunNotStopped(version, flowStopVersion);
   await chrome.scripting.executeScript({target:{tabId:tab.id},files:["content/meta-automation.js"]});
-  const response = await chrome.tabs.sendMessage(tab.id, {type:"META_RUN",payload:{...payload,references}});
-  if (!response?.accepted) throw new Error(response?.error || "Meta AI automation did not accept the job");
+  await chrome.storage.local.set({activeMetaTabId:tab.id});
+  let response;
+  try {
+    response = await chrome.tabs.sendMessage(tab.id, {type:"META_RUN",payload:{...payload,references}});
+    if (!response?.accepted) throw new Error(response?.error || "Meta AI automation did not accept the job");
+  } catch (error) {
+    await chrome.storage.local.remove("activeMetaTabId");
+    throw error;
+  }
   if (version !== flowStopVersion) {
+    await chrome.storage.local.remove("activeMetaTabId");
     await chrome.tabs.sendMessage(tab.id,{type:"META_STOP"}).catch(()=>{});
     throw createBackgroundStopError();
   }
@@ -882,7 +895,7 @@ async function getFlowSettings() {
 async function stopFlowPipeline() {
   flowStopVersion += 1;
   await chrome.storage.local.set({ flowStopRequested: true });
-  await chrome.storage.local.remove("activeFlowTabId");
+  await chrome.storage.local.remove(["activeFlowTabId", "activeMetaTabId"]);
   const metaTabs = await chrome.tabs.query({ url: "https://www.meta.ai/*" });
   await Promise.allSettled(metaTabs.map(async (tab) => {
     await chrome.tabs.sendMessage(tab.id, { type: "META_STOP" });
@@ -1842,6 +1855,12 @@ async function openTikTokStudioUploadTab() {
 
   let tab = uploadTabs[0];
   if (tab) {
+    const [state] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => Boolean(document.querySelector('[contenteditable="true"]')) });
+    if (state?.result) {
+      // Preserve the unfinished upload; each retry needs an empty upload form.
+      tab = await chrome.tabs.create({ url: TIKTOK_STUDIO_UPLOAD_URL, active: true });
+      await waitForTabComplete(tab.id);
+    }
     await chrome.tabs.update(tab.id, { active: true });
     try {
       await chrome.windows.update(tab.windowId, { focused: true });

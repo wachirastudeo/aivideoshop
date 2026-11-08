@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { buildImagePrompt, buildVideoPrompt, getDefaultSettings } from '../modules/prompt-builder.js';
 
 const source = await readFile(new URL('../content/meta-automation.js', import.meta.url), 'utf8');
 function load(name, next, dependencies = {}) {
@@ -59,6 +60,67 @@ test('Meta phone film installation overrides generic presenter direction', async
   await assert.rejects(generate('video', 'META PHONE FILM INSTALLATION: Apply the film.', []), halt);
   assert.match(submitted, /physical application/);
   assert.doesNotMatch(submitted, /META SALES SHOT PRIORITY|PRESENTER DELIVERY/);
+});
+
+test('Meta submits Fashion Selfie without replacing the model with a product-only presenter', async () => {
+  const stylePrompt = buildVideoPrompt(
+    { name: 'เสื้อโปโลถัก', category: 'แฟชั่น' },
+    { ...getDefaultSettings(), videoStyle: 'fashion-selfie', generationProvider: 'meta-ai', videoDuration: 10, metaMultiScene: true, audioMode: 'music_only' }
+  );
+  let submitted;
+  const halt = new Error('captured prompt');
+  const generate = load('generate', '\n  async function newChat', {
+    report: async () => {}, upload: async () => {}, responseMedia: () => [],
+    document: { querySelectorAll: () => [] },
+    prepareMetaVideoPrompt, metaLocationDirection,
+    enterPrompt: async prompt => { submitted = prompt; throw halt; },
+  });
+  await assert.rejects(generate('video', stylePrompt, []), halt);
+  assert.match(submitted, /FASHION SELFIE HIGHEST PRIORITY:[\s\S]*smartphone over the face/i);
+  assert.match(submitted, /one NEW fictional adult Thai female fashion model WEARING/i);
+  assert.match(submitted, /natural dark jet-black hair[\s\S]*No blonde, golden, honey-blonde/i);
+  assert.match(submitted, /FASHION SELFIE PRESENTER:/);
+  assert.match(submitted, /different hairstyle, hair color, body appearance, and underlying facial identity/i);
+  assert.match(submitted, /visibly different room and background from the reference/i);
+  assert.match(submitted, /uploaded image supplies ONLY the garment design:[\s\S]*exact type, silhouette, fabric, cut, colors, pattern, print/i);
+  assert.doesNotMatch(submitted, /PRODUCT-ONLY MANDATE|META SALES SHOT PRIORITY|PRESENTER DELIVERY: Speak/);
+});
+
+test('Meta Fashion Selfie image changes the person and setting while keeping the garment', async () => {
+  const stylePrompt = buildImagePrompt(
+    { name: 'เสื้อโปโลถัก', category: 'แฟชั่น' },
+    { ...getDefaultSettings(), videoStyle: 'fashion-selfie', generationProvider: 'meta-ai' }
+  );
+  let submitted;
+  const halt = new Error('captured prompt');
+  const generate = load('generate', '\n  async function newChat', {
+    report: async () => {}, upload: async () => {}, responseMedia: () => [],
+    document: { querySelectorAll: () => [] },
+    prepareMetaVideoPrompt, metaLocationDirection,
+    enterPrompt: async prompt => { submitted = prompt; throw halt; },
+  });
+  await assert.rejects(generate('image', stylePrompt, []), halt);
+  assert.match(submitted, /FASHION SELFIE IMAGE PRIORITY:[\s\S]*different hairstyle, hair color, body appearance, and underlying facial identity/i);
+  assert.match(submitted, /one new fictional adult Thai female fashion model wearing/i);
+  assert.match(submitted, /natural dark jet-black hair[\s\S]*No blonde, golden, honey-blonde/i);
+  assert.match(submitted, /visibly different room and background; copy only the garment/i);
+});
+
+test('Meta still honors an explicit product-only presenter', async () => {
+  const stylePrompt = buildVideoPrompt(
+    { name: 'แก้วน้ำ', category: 'ของใช้' },
+    { ...getDefaultSettings(), videoStyle: 'review', presenter: 'none', generationProvider: 'meta-ai', videoDuration: 10 }
+  );
+  let submitted;
+  const halt = new Error('captured prompt');
+  const generate = load('generate', '\n  async function newChat', {
+    report: async () => {}, upload: async () => {}, responseMedia: () => [],
+    document: { querySelectorAll: () => [] },
+    prepareMetaVideoPrompt, metaLocationDirection,
+    enterPrompt: async prompt => { submitted = prompt; throw halt; },
+  });
+  await assert.rejects(generate('video', stylePrompt, []), halt);
+  assert.match(submitted, /PRODUCT-ONLY MANDATE/);
 });
 
 test('Meta keeps the selected living room in every scene', () => {
