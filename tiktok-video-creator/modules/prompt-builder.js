@@ -1331,7 +1331,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
   const productName = generationProductName(visualProductName, productInfo.category) || "the attached product";
   const details = compactPromptText(sanitizePolicySensitiveText(productInfo.highlights || ""), 100).replace(/[^\x00-\x7F]/g, "").trim();
   const analysisDirection = buildAnalysisDirection(productInfo);
-  const categoryDirection = buildCategoryFidelityDirection(productInfo);
+  const categoryDirection = buildCategoryFidelityDirection(withSelectedProductType(productInfo, settings));
   const productText = `${visualProductName} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`;
   const isScreenless = isScreenlessWristbandProduct(visualProductName) || isScreenlessWristbandProduct(productText);
   if (auto.videoStyle === "fashion-hanger-presenter") {
@@ -2220,7 +2220,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   // PRODUCT_FIDELITY_DIRECTION and REFERENCE_PIXEL_ARTWORK_LOCK already carry
   // the generic pattern rules for video; keep the extra coordinate sentence
   // in the still prompt without exceeding the existing video size guard.
-  const categoryDirection = buildCategoryFidelityDirection(productInfo)
+  const categoryDirection = buildCategoryFidelityDirection(withSelectedProductType(productInfo, settings))
     .replace(`${SHOE_PATTERN_COORDINATE_LOCK}\n`, "");
   const overlayText = [
     clipText,
@@ -3214,6 +3214,11 @@ const TOOL_PATTERN = /(สว่าน|ไขควง|คีม|ประแจ
 const STORAGE_PATTERN = /(กล่องเก็บ|กล่องใส่ของ|กล่องจัดระเบียบ|ตะกร้า|ที่แขวน|ลิ้นชัก|จัดระเบียบ|organizer|storage|basket|drawer)/i;
 const KITCHEN_APPLIANCE_PATTERN = /(หม้อทอด|ไร้น้ำมัน|เครื่องปั่น|กาต้มน้ำ|หม้อหุงข้าว|หม้อไฟฟ้า|เตาไฟฟ้า|เตาแม่เหล็ก|ไมโครเวฟ|เตาอบ|เครื่องชง|เครื่องบด|air ?fryer|blender|kettle|rice cooker|toaster|microwave|\boven\b|induction|juicer|coffee machine|espresso machine)/i;
 const FOOD_WORD_PATTERN = /(อาหาร|ขนม|food|snack|treat)/i;
+
+// The product-type setting applies to every queued product.
+function withSelectedProductType(productInfo = {}, settings = {}) {
+  return settings?.productType ? { ...productInfo, productType: settings.productType } : productInfo;
+}
 
 export function buildCategoryFidelityDirection(productInfo = {}) {
   productInfo = normalizeGarmentIdentity(productInfo);

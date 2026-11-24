@@ -102,7 +102,7 @@ export async function syncSelectedProductToVideoTab() {
 
 function bindGlobalEvents() {
   [
-    "video-style", "presenter", "custom-presenter", "audio-mode", "voice-tone", "location", "custom-location", "product-activity",
+    "video-style", "product-type", "presenter", "custom-presenter", "audio-mode", "voice-tone", "location", "custom-location", "product-activity",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement", "camera-framing", "transition",
     "image-count", "video-count", "video-duration", "flow-story-parts", "aspect-ratio", "post-action", "post-no-link",
     "post-schedule-date", "post-schedule-time", "post-schedule-interval", "post-delay-min", "post-delay-max", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
@@ -135,6 +135,7 @@ function syncFirstScenePeopleControl() {
 
 function fillGlobalFormFromState() {
   setValue("video-style", settings.videoStyle);
+  setValue("product-type", settings.productType || "auto");
   setValue("presenter", settings.presenter);
   setValue("first-scene-no-people", settings.firstSceneNoPeople);
   syncFirstScenePeopleControl();
@@ -198,6 +199,7 @@ function syncSettingsForm() {
   settings = normalizeSettings({
     ...settings,
     videoStyle: selectedVideoStyle,
+    productType: getValue("product-type") || "auto",
     presenter: getValue("presenter"),
     firstSceneNoPeople: selectedVideoStyle === "fashion-selfie" ? false : getValue("first-scene-no-people"),
     customPresenter: getValue("custom-presenter"),
@@ -325,6 +327,7 @@ function normalizeSettings(value) {
     location: value.location || "Auto",
     customLocation: value.customLocation || "",
     customPresenter: value.customPresenter || "",
+    productType: PRODUCT_TYPES.some(type => type.id === value.productType) ? value.productType : "auto",
     productActivity: ["wear", "running", "walking", "demonstrate"].includes(value.productActivity) ? value.productActivity : "Auto",
     firstSceneNoPeople: configuredVideoStyle === "fashion-selfie" ? false : (value.firstSceneNoPeople === true || value.firstSceneNoPeople === "true"),
     pacing: value.pacing || 2,
@@ -451,6 +454,11 @@ function populateStyleDropdown() {
   `).join("");
   select.insertAdjacentHTML("afterbegin", `<option value="Auto">อัตโนมัติ</option>`);
   select.value = HIDDEN_VIDEO_STYLE_IDS.has(settings.videoStyle) ? "Auto" : settings.videoStyle;
+  const typeSelect = document.querySelector("#product-type");
+  if (typeSelect) {
+    typeSelect.innerHTML = PRODUCT_TYPES.map(type => `<option value="${type.id}">${escapeHtml(type.label)}</option>`).join("");
+    typeSelect.value = settings.productType || "auto";
+  }
 }
 
 function renderPills(rootId, values, activeValue, onSelect) {
@@ -608,13 +616,6 @@ function productMarkup(p, index) {
           <textarea class="textarea batch-highlights" rows="2" placeholder="จุดเด่นสินค้า...">${escapeHtml(p.highlights || "")}</textarea>
         </label>
 
-        <label class="field">
-          <span class="field__label">ประเภทสินค้า</span>
-          <select class="select batch-product-type">
-            ${PRODUCT_TYPES.map(type => `<option value="${type.id}" ${(p.productType || "auto") === type.id ? "selected" : ""}>${escapeHtml(type.label)}</option>`).join("")}
-          </select>
-        </label>
-
         <div class="prompt-grid" ${(isVideoOnly || isImageOnly) ? 'style="grid-template-columns: 1fr;"' : ''}>
           <label class="field" ${isVideoOnly ? 'style="display: none;"' : ''}>
             <span class="field__label">Prompt ภาพ</span>
@@ -739,11 +740,6 @@ function bindBatchEvents() {
       updatePrompts(item, p);
       persistState();
       renderCountersOnly();
-    });
-    item.querySelector(".batch-product-type")?.addEventListener("change", (e) => {
-      p.productType = e.target.value;
-      updatePrompts(item, p);
-      persistState();
     });
     item.querySelector(".batch-analyze")?.addEventListener("click", () => handleAnalyze(p));
     item.querySelector(".batch-copy")?.addEventListener("click", () => copyPrompts(item));

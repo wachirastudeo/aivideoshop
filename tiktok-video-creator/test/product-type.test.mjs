@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildCategoryFidelityDirection, buildVideoPrompt, getDefaultSettings, PRODUCT_TYPES } from "../modules/prompt-builder.js";
+import { buildCategoryFidelityDirection, buildImagePrompt, buildVideoPrompt, getDefaultSettings, PRODUCT_TYPES } from "../modules/prompt-builder.js";
 
 const lock = (name, productType) => buildCategoryFidelityDirection({ name, productType });
 
@@ -28,7 +28,9 @@ test("a selected product type overrides title detection", () => {
   assert.match(lock("ตุ๊กตาหมี", "unknown-type"), /^TOY FIDELITY LOCK/);
 });
 
-test("selected type reaches the video prompt and every type id is unique", () => {
-  assert.match(buildVideoPrompt({ name: "สินค้า", productType: "car" }, getDefaultSettings()), /CAR ACCESSORY FIDELITY LOCK/);
+test("the product-type setting reaches image and video prompts and every type id is unique", () => {
+  assert.match(buildVideoPrompt({ name: "สินค้า" }, { ...getDefaultSettings(), productType: "car" }), /CAR ACCESSORY FIDELITY LOCK/);
+  assert.match(buildImagePrompt({ name: "สินค้า" }, { ...getDefaultSettings(), productType: "toy" }), /TOY FIDELITY LOCK/);
+  assert.match(buildVideoPrompt({ name: "ตุ๊กตาหมี" }, { ...getDefaultSettings(), productType: "auto" }), /TOY FIDELITY LOCK/);
   assert.equal(new Set(PRODUCT_TYPES.map(type => type.id)).size, PRODUCT_TYPES.length);
 });
