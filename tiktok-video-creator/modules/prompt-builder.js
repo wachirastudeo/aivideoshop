@@ -3173,78 +3173,144 @@ export function isFurnitureProduct(text = "") {
   return /(โต๊ะ|เก้าอี้|โซฟา|ตู้|ชั้นวาง|เตียง|เก้าอี้ทำงาน|โซฟาเบด|ตู้เสื้อผ้า|ตู้รองเท้า|โต๊ะคอม|โต๊ะทำงาน|โต๊ะกินข้าว|โต๊ะอาหาร|เก้าอี้พับ|ม้านั่ง|อาร์มแชร์|เฟอร์นิเจอร์|ของแต่งบ้าน|furniture|table|chair|sofa|desk|couch|cabinet|shelf|shelving|wardrobe|bed|armchair|stool|bench|sideboard|bookcase|credenza)/i.test(clean);
 }
 
+const TOY_FIDELITY_DIRECTION = "TOY FIDELITY LOCK: Reproduce the exact toy, plush, figure, or building set from the reference: same character design, face print, proportions, colors, materials, accessories, piece count, and printed details. Keep true toy scale against hands. Never turn it into a different character, add moving parts it lacks, or animate it as if alive.";
+const PET_ACCESSORY_FIDELITY_DIRECTION = "PET ACCESSORY FIDELITY LOCK: Reproduce the exact pet product from the reference (collar, leash, bed, litter box, scratcher, bowl, carrier, or toy): same shape, size, material, stitching, buckles, colors, and printed details. Keep realistic scale next to the pet. If a pet appears, it only uses the product naturally; the product design never changes.";
+const CAR_ACCESSORY_FIDELITY_DIRECTION = "CAR ACCESSORY FIDELITY LOCK: Reproduce the exact car accessory from the reference (phone holder, air freshener, seat cover, organizer, dash cam, or interior part): same shape, mounting parts, clips, materials, colors, and logo. Show it installed in its real position inside a generic unbranded car interior at true scale. Never invent extra arms, screens, or mounts.";
+const TOOL_FIDELITY_DIRECTION = "TOOL & HARDWARE FIDELITY LOCK: Reproduce the exact tool from the reference (drill, screwdriver, pliers, wrench, tool kit, or tape measure): same body shape, handle grip, buttons, bits, metal finish, colors, brand marks, and piece count. Keep realistic hand-tool scale and safe, correct handling. Never add attachments, change the bit type, or merge tools.";
+const STORAGE_FIDELITY_DIRECTION = "STORAGE & ORGANIZER FIDELITY LOCK: Reproduce the exact storage item from the reference (box, basket, drawer, rack, or organizer): same dimensions, compartment count, lid, handles, wall pattern, transparency, material, and colors. Keep true size against hands and the room; show it holding ordinary items neatly without hiding its structure. Never add or remove compartments or tiers.";
+const KITCHEN_APPLIANCE_FIDELITY_DIRECTION = "KITCHEN APPLIANCE FIDELITY LOCK: Reproduce the exact appliance from the reference (air fryer, blender, kettle, rice cooker, toaster, or coffee machine): same body shape, size, control panel layout, buttons, dial, display, handle, lid, jar, colors, and brand marks. Show it on a kitchen counter at true countertop scale with its real function. Never invent extra buttons, screens, or parts.";
+
+export const PRODUCT_TYPES = [
+  { id: "auto", label: "Auto (เดาจากชื่อสินค้า)" },
+  { id: "clothing", label: "เสื้อผ้า / ผ้าพันคอ" },
+  { id: "underwear", label: "ชุดชั้นใน" },
+  { id: "shoes", label: "รองเท้า / ถุงเท้า" },
+  { id: "bag", label: "กระเป๋า" },
+  { id: "jewelry", label: "เครื่องประดับ" },
+  { id: "watch", label: "นาฬิกา / สายรัดข้อมือ" },
+  { id: "eyewear", label: "แว่นตา" },
+  { id: "beauty", label: "เครื่องสำอาง / สกินแคร์" },
+  { id: "spray", label: "สเปรย์" },
+  { id: "phone_case", label: "เคสมือถือ" },
+  { id: "electronics", label: "อุปกรณ์ไอที / อิเล็กทรอนิกส์" },
+  { id: "kitchen_appliance", label: "เครื่องใช้ไฟฟ้าในครัว" },
+  { id: "coffee", label: "กาแฟ / ชาแบบซอง" },
+  { id: "food", label: "อาหาร / ขนม / อาหารเสริม" },
+  { id: "drinkware", label: "แก้ว / กระบอกน้ำ" },
+  { id: "home", label: "ของใช้ในบ้าน / เครื่องนอน" },
+  { id: "furniture", label: "เฟอร์นิเจอร์" },
+  { id: "storage", label: "กล่อง / จัดเก็บ" },
+  { id: "toy", label: "ของเล่น" },
+  { id: "pet", label: "ของใช้สัตว์เลี้ยง" },
+  { id: "car", label: "ของใช้ในรถ" },
+  { id: "tools", label: "เครื่องมือ / อุปกรณ์ช่าง" },
+  { id: "general", label: "อื่นๆ (ทั่วไป)" }
+];
+const PRODUCT_TYPE_IDS = new Set(PRODUCT_TYPES.map(type => type.id));
+const TOY_PATTERN = /(ของเล่น|ตุ๊กตา|ฟิกเกอร์|เลโก้|ตัวต่อ|บล็อกตัวต่อ|จิ๊กซอว์|รถบังคับ|\btoys?\b|plush|\bfigure|figurine|\blego\b|building blocks?|jigsaw|\brc car)/i;
+const PET_ACCESSORY_PATTERN = /(สัตว์เลี้ยง|ปลอกคอ|สายจูง|กระบะทราย|ทรายแมว|ที่ลับเล็บ|คอนโดแมว|ที่นอนแมว|ที่นอนหมา|ชามอาหารแมว|ชามอาหารหมา|กรงแมว|\bpets?\b|collar|leash|litter|cat tree|scratcher)/i;
+const CAR_ACCESSORY_PATTERN = /(ในรถ|รถยนต์|ติดรถ|คอนโซล|พวงมาลัย|หุ้มเบาะ|น้ำหอมรถ|ที่วางมือถือรถ|\bcar\b|dashboard|steering wheel|dash ?cam|automotive)/i;
+const TOOL_PATTERN = /(สว่าน|ไขควง|คีม|ประแจ|ค้อน|เลื่อย|ตลับเมตร|ชุดเครื่องมือ|เครื่องมือช่าง|ปืนกาว|หัวแร้ง|\bdrill|screwdriver|pliers?|wrench|hammer|\bsaw\b|tool ?kit|tape measure|soldering)/i;
+const STORAGE_PATTERN = /(กล่องเก็บ|กล่องใส่ของ|กล่องจัดระเบียบ|ตะกร้า|ที่แขวน|ลิ้นชัก|จัดระเบียบ|organizer|storage|basket|drawer)/i;
+const KITCHEN_APPLIANCE_PATTERN = /(หม้อทอด|ไร้น้ำมัน|เครื่องปั่น|กาต้มน้ำ|หม้อหุงข้าว|หม้อไฟฟ้า|เตาไฟฟ้า|เตาแม่เหล็ก|ไมโครเวฟ|เตาอบ|เครื่องชง|เครื่องบด|air ?fryer|blender|kettle|rice cooker|toaster|microwave|\boven\b|induction|juicer|coffee machine|espresso machine)/i;
+const FOOD_WORD_PATTERN = /(อาหาร|ขนม|food|snack|treat)/i;
+
 export function buildCategoryFidelityDirection(productInfo = {}) {
   productInfo = normalizeGarmentIdentity(productInfo);
   const text = `${getVisualProductName(productInfo)} ${productInfo.name || ""} ${productInfo.category || ""} ${productInfo.highlights || ""}`.toLowerCase();
   const titleText = String(getVisualProductName(productInfo) || "").toLowerCase();
+  // A user-selected product type picks the branch; Auto keeps title-based detection.
+  const chosen = PRODUCT_TYPE_IDS.has(productInfo.productType) && productInfo.productType !== "auto" ? productInfo.productType : "";
+  const pick = (id, autoTest) => chosen ? chosen === id : autoTest();
   const hasEngraving = /(ฉลัก|สลัก|นูน|แกะสลัก|ลายนูน|ลายฉลัก|ลายแกะ|engraved|embossed|debossed|etched|carved|relief|laser.?engraved|laser.?carved)/i.test(text);
-  if (isHammockProduct(text)) {
+  if (!chosen && isHammockProduct(text)) {
     return `${HAMMOCK_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (/(สเปรย์|ฉีด|ละออง|สเปรย์อาบน้ำ|ดับกลิ่น|สเปรย์แมว|สเปรย์หมา|spray|aerosol|mist|atomizer|pump\s*bottle)/i.test(text)) {
+  if (pick("spray", () => /(สเปรย์|ฉีด|ละออง|สเปรย์อาบน้ำ|ดับกลิ่น|สเปรย์แมว|สเปรย์หมา|spray|aerosol|mist|atomizer|pump\s*bottle)/i.test(text))) {
     return `${SPRAY_BOTTLE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
-  if (/(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text)) {
+  if (pick("shoes", () => /(รองเท้า|สนีกเกอร์|แตะ|บูท|ถุงเท้า|shoe|shoes|sneaker|footwear|sandal|boot|socks)/i.test(text))) {
     return `${SHOE_FIDELITY_DIRECTION}\n${SHOE_PATTERN_COORDINATE_LOCK}\n${SHOE_SCALE_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (isUnderwearOrIntimateProduct(text)) {
+  if (pick("underwear", () => isUnderwearOrIntimateProduct(text))) {
     return `${INTIMATE_APPAREL_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (isClothingProduct(text) || isScarfProduct(text)) {
+  if (pick("clothing", () => isClothingProduct(text) || isScarfProduct(text))) {
     return `${isScarfProduct(text) ? SCARF_FIDELITY_AND_USAGE_LOCK + "\n" : ""}${CLOTHING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (isFurnitureProduct(text)) {
+  if (pick("kitchen_appliance", () => KITCHEN_APPLIANCE_PATTERN.test(text))) {
+    return `${KITCHEN_APPLIANCE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (pick("toy", () => TOY_PATTERN.test(text))) {
+    return `${TOY_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (pick("pet", () => PET_ACCESSORY_PATTERN.test(text) && !FOOD_WORD_PATTERN.test(text))) {
+    return `${PET_ACCESSORY_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (pick("car", () => CAR_ACCESSORY_PATTERN.test(text))) {
+    return `${CAR_ACCESSORY_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (pick("tools", () => TOOL_PATTERN.test(text))) {
+    return `${TOOL_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (pick("storage", () => STORAGE_PATTERN.test(text))) {
+    return `${STORAGE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (chosen === "jewelry") {
+    return `${JEWELRY_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
+  }
+  if (pick("furniture", () => isFurnitureProduct(text))) {
     const isChair = /(เก้าอี้|อาร์มแชร์|ม้านั่ง|chair|armchair|stool|bench)/i.test(text);
     return `${isChair ? CHAIR_FIDELITY_DIRECTION : FURNITURE_FIDELITY_DIRECTION}\n${FURNITURE_SURFACE_TEXT_LOCK}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (/(แว่นตา|แว่นกันแดด|แว่นสายตา|แว่น|glasses|sunglasses|eyewear|spectacles)/i.test(text)) {
+  if (pick("eyewear", () => /(แว่นตา|แว่นกันแดด|แว่นสายตา|แว่น|glasses|sunglasses|eyewear|spectacles)/i.test(text))) {
     return EYEWEAR_FIDELITY_DIRECTION;
   }
-  if (/(ครีม|เซรั่ม|ลิป|ลิปสติก|สกินแคร์|บำรุง|กันแดด|แชมพู|สบู่|น้ำหอม|แป้ง|รองพื้น|บลัชออน|แต่งหน้า|เครื่องสำอาง|cosmetics|skincare|serum|cream|lotion|lipstick|lipgloss|shampoo|cleanser|perfume|makeup|foundation)/i.test(text)) {
+  if (pick("beauty", () => /(ครีม|เซรั่ม|ลิป|ลิปสติก|สกินแคร์|บำรุง|กันแดด|แชมพู|สบู่|น้ำหอม|แป้ง|รองพื้น|บลัชออน|แต่งหน้า|เครื่องสำอาง|cosmetics|skincare|serum|cream|lotion|lipstick|lipgloss|shampoo|cleanser|perfume|makeup|foundation)/i.test(text))) {
     return `${BEAUTY_SKINCARE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
-  if (/(เคส|ไอโฟน|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|phone case|phone cover|mobile case|mobile cover|gadget)/i.test(text) || isMagneticPhoneCaseProduct(text)) {
+  if (pick("phone_case", () => /(เคส|ไอโฟน|เคสมือถือ|เคสโทรศัพท์|เคสไอโฟน|phone case|phone cover|mobile case|mobile cover|gadget)/i.test(text) || isMagneticPhoneCaseProduct(text))) {
     const extraMag = isMagneticPhoneCaseProduct(text) ? `\n${MAGNETIC_PHONE_CASE_FIDELITY_MANDATE}` : "";
     return `${PHONE_CASE_FIDELITY_DIRECTION}\n${PHONE_CASE_ZERO_APPLE_LOGO_LOCK}\n${PHONE_CASE_COMPLEX_PATTERN_REFERENCE_LOCK}${extraMag}\n${PHONE_CASE_ONE_HAND_HOLD_LOCK}\n${PHONE_CASE_HANDLING_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (isSmallTechAccessoryProduct(text)) {
+  if ((!chosen || chosen === "electronics") && isSmallTechAccessoryProduct(text)) {
     return `${ELECTRONICS_GADGETS_FIDELITY_DIRECTION}\n${SMALL_TECH_ACCESSORY_SCALE_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
-  if (/(มือถือ|หูฟัง|บลูทูธ|สายชาร์จ|พาวเวอร์แบงค์|พัดลม|อิเล็กทรอนิกส์|earphone|headphone|bluetooth|charger|powerbank|fan|electronic|appliance)/i.test(text)) {
+  if (pick("electronics", () => /(มือถือ|หูฟัง|บลูทูธ|สายชาร์จ|พาวเวอร์แบงค์|พัดลม|อิเล็กทรอนิกส์|earphone|headphone|bluetooth|charger|powerbank|fan|electronic|appliance)/i.test(text))) {
     return `${ELECTRONICS_GADGETS_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
   const isWatchOrBand = isWatchOrWristbandProduct(titleText) || isWatchOrWristbandProduct(text);
-  if (isWatchOrBand) {
+  if (pick("watch", () => isWatchOrBand)) {
     const isScreenless = isScreenlessWristbandProduct(titleText) || isScreenlessWristbandProduct(text);
     const screenlessNotice = isScreenless ? `\n${SCREENLESS_TOP_PRIORITY_DIRECTIVE}\n${SCREENLESS_WRISTBAND_MANDATE}` : "";
     const extraEng = hasEngraving ? `\n${ENGRAVED_EMBOSSED_FIDELITY_DIRECTION}` : "";
     return `${WATCH_WRISTBAND_FIDELITY_DIRECTION}${screenlessNotice}${extraEng}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (/(กระเป๋า|เป้|กระเป๋าถือ|กระเป๋าสะพาย|กระเป๋าสตางค์|สร้อย|แหวน|ต่างหู|เครื่องประดับ|bag|backpack|wallet|purse|tote|handbag|crossbody|clutch|jewelry|necklace|ring|bracelet|accessory)/i.test(text)) {
+  if (pick("bag", () => /(กระเป๋า|เป้|กระเป๋าถือ|กระเป๋าสะพาย|กระเป๋าสตางค์|สร้อย|แหวน|ต่างหู|เครื่องประดับ|bag|backpack|wallet|purse|tote|handbag|crossbody|clutch|jewelry|necklace|ring|bracelet|accessory)/i.test(text))) {
     return `${BAGS_ACCESSORIES_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (isPaperFoodContainerProduct(titleText)) {
+  if (!chosen && isPaperFoodContainerProduct(titleText)) {
     return `${PAPER_FOOD_CONTAINER_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (isCoffeePowderProduct(titleText)) {
+  if ((!chosen || chosen === "coffee") && isCoffeePowderProduct(titleText)) {
     return `${isPackagedCoffeeProduct(titleText) ? COFFEE_SEALED_POWDER_POUCH_DIRECTION + "\n" : ""}${COFFEE_POWDER_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
   }
-  if (isCoffeeBeanProduct(titleText)) {
+  if ((!chosen || chosen === "coffee") && isCoffeeBeanProduct(titleText)) {
     return `${isPackagedCoffeeProduct(titleText) ? COFFEE_SEALED_BEANS_POUCH_DIRECTION + "\n" : ""}${COFFEE_BEANS_FORM_DIRECTION}\n${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
   }
-  if (isCoffeeCategoryProduct(titleText)) {
+  if (pick("coffee", () => isCoffeeCategoryProduct(titleText))) {
     return `${COFFEE_BAG_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${LABEL_EXACT_COPY_MANDATE}\n${COLOR_EXACT_LOCK}`;
   }
-  if (/(ชา|โกโก้|ขนม|อาหาร|อาหารเสริม|วิตามิน|คอลลาเจน|อาหารหมา|อาหารแมว|tea|snack|food|supplement|vitamin|collagen|pet food)/i.test(text)) {
+  if (pick("food", () => /(ชา|โกโก้|ขนม|อาหาร|อาหารเสริม|วิตามิน|คอลลาเจน|อาหารหมา|อาหารแมว|tea|snack|food|supplement|vitamin|collagen|pet food)/i.test(text))) {
     return `${FOOD_BEVERAGE_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
-  if (/(แก้ว|กระบอกน้ำ|ชากาแฟ|กระติก|แก้วเก็บความเย็น|tumbler|mug|cup|bottle|flask)/i.test(text)) {
+  if (pick("drinkware", () => /(แก้ว|กระบอกน้ำ|ชากาแฟ|กระติก|แก้วเก็บความเย็น|tumbler|mug|cup|bottle|flask)/i.test(text))) {
     return `${TUMBLER_BOTTLE_FIDELITY_DIRECTION}\n${INSULATED_DRINKWARE_TEXT_LAYOUT_LOCK}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${COLOR_AND_PATTERN_FIDELITY_DIRECTION}`;
   }
-  if (/(หมอน|ผ้าห่ม|ที่นอน|ผ้าม่าน|เครื่องครัว|pillow|blanket|kitchenware|home)/i.test(text)) {
+  if (pick("home", () => /(หมอน|ผ้าห่ม|ที่นอน|ผ้าม่าน|เครื่องครัว|pillow|blanket|kitchenware|home)/i.test(text))) {
     return `${HOME_LIVING_FIDELITY_DIRECTION}\n${PRINTED_GRAPHIC_FIDELITY_DIRECTION}`;
   }
-  if (/(สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ลาย|ลายพิมพ์|พิมพ์ลาย|sticker|decal|poster|canvas|printed|graphic|pattern|illustration)/i.test(text)) {
+  if (!chosen && (/(สติกเกอร์|โปสเตอร์|แผ่นรอง|แผ่นรองเมาส์|สกรีน|ลายสกรีน|ลายการ์ตูน|ภาพวาด|ลาย|ลายพิมพ์|พิมพ์ลาย|sticker|decal|poster|canvas|printed|graphic|pattern|illustration)/i.test(text))) {
     return hasEngraving
       ? `${PRINTED_GRAPHIC_FIDELITY_DIRECTION}\n${ENGRAVED_EMBOSSED_FIDELITY_DIRECTION}`
       : PRINTED_GRAPHIC_FIDELITY_DIRECTION;

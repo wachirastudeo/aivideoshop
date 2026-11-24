@@ -10,7 +10,8 @@ import {
   buildCaption,
   buildPostHashtags,
   normalizeHashtags,
-  truncateShopeeCaptionAndHashtags
+  truncateShopeeCaptionAndHashtags,
+  PRODUCT_TYPES
 } from "../modules/prompt-builder.js";
 import { analyzeProductImages, fileToDataUrl } from "../modules/image-analyzer.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
@@ -607,6 +608,13 @@ function productMarkup(p, index) {
           <textarea class="textarea batch-highlights" rows="2" placeholder="จุดเด่นสินค้า...">${escapeHtml(p.highlights || "")}</textarea>
         </label>
 
+        <label class="field">
+          <span class="field__label">ประเภทสินค้า</span>
+          <select class="select batch-product-type">
+            ${PRODUCT_TYPES.map(type => `<option value="${type.id}" ${(p.productType || "auto") === type.id ? "selected" : ""}>${escapeHtml(type.label)}</option>`).join("")}
+          </select>
+        </label>
+
         <div class="prompt-grid" ${(isVideoOnly || isImageOnly) ? 'style="grid-template-columns: 1fr;"' : ''}>
           <label class="field" ${isVideoOnly ? 'style="display: none;"' : ''}>
             <span class="field__label">Prompt ภาพ</span>
@@ -731,6 +739,11 @@ function bindBatchEvents() {
       updatePrompts(item, p);
       persistState();
       renderCountersOnly();
+    });
+    item.querySelector(".batch-product-type")?.addEventListener("change", (e) => {
+      p.productType = e.target.value;
+      updatePrompts(item, p);
+      persistState();
     });
     item.querySelector(".batch-analyze")?.addEventListener("click", () => handleAnalyze(p));
     item.querySelector(".batch-copy")?.addEventListener("click", () => copyPrompts(item));
