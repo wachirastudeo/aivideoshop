@@ -23,7 +23,16 @@
             <option value="meta-ai">Meta AI</option>
           </select>
         </label>
-        <p id="custom-generation-provider-help" class="field__hint" hidden>New chat → upload product image → generate → download. Video: vertical 9:16, 10 seconds.</p>
+        <p id="custom-generation-provider-help" class="field__hint" hidden>Meta AI creates vertical 9:16 video. Each part is 10 seconds.</p>
+        <label class="field" id="custom-generation-provider-parts-field" hidden>
+          <span class="field__label">Meta AI video length</span>
+          <select id="custom-meta-video-parts" class="select select--accent">
+            <option value="1">1 part · 10 seconds</option>
+            <option value="2">2 parts · 20 seconds</option>
+            <option value="3">3 parts · 30 seconds</option>
+            <option value="4">4 parts · 40 seconds</option>
+          </select>
+        </label>
 
         <!-- อัปโหลดรูปภาพอ้างอิง (ไม่บังคับ) -->
         <div class="field">
@@ -92,20 +101,31 @@
           <label class="field">
             <span class="field__label">โมเดลวิดีโอ (Veo)</span>
             <select id="custom-video-model" class="select">
+              <option value="veo-3.1-lite">Veo 3.1 - Lite</option>
               <option value="veo-3.1-lite-low-priority" selected>Veo 3.1 - Lite (0 เครดิต)</option>
               <option value="veo-3.1-fast">Veo 3.1 - Fast</option>
               <option value="veo-3.1-quality">Veo 3.1 - Quality</option>
-              <option value="omni-flash">Omni Flash</option>
+              <option value="omni-flash">Omni 1.2 Flash</option>
             </select>
           </label>
         </div>
 
         <div class="settings-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <label class="field">
-            <span class="field__label">ความยาววิดีโอ</span>
+            <span class="field__label">Google Flow clip length</span>
             <select id="custom-video-duration" class="select">
-<option value="10" selected>10 seconds</option>
-</select>
+              <option value="8" selected>8 seconds</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Google Flow story parts</span>
+            <select id="custom-flow-story-parts" class="select" aria-describedby="custom-flow-story-length">
+              <option value="1">1 part</option>
+              <option value="2">2 parts</option>
+              <option value="3">3 parts</option>
+              <option value="4">4 parts</option>
+            </select>
+            <span id="custom-flow-story-length" class="field__hint" aria-live="polite"></span>
           </label>
           <label class="field">
             <span class="field__label">สัดส่วนวิดีโอ</span>

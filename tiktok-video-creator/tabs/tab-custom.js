@@ -1,4 +1,5 @@
 import { bindGenerationProvider } from "../modules/generation-provider.js";
+import { flowStoryPartCount, resolveFlowClipLength, syncFlowLengthControls } from "../modules/flow-video-settings.js";
 import { openGoogleFlow } from "../modules/google-flow.js";
 import { downloadVideo, sendVideoToTikTokStudio } from "../modules/video-output.js";
 import {
@@ -161,7 +162,7 @@ export async function initCustomTab(injectedHelpers) {
   const { settings: syncSettings = {} } = await chrome.storage.sync.get("settings");
 
   bindGenerationProvider("custom-generation-provider", syncSettings.generationProvider,
-    ["custom-video-model"], (error) => helpers.showStatus(error.message, "error"));
+    ["custom-video-model", "custom-video-duration", "custom-flow-story-parts"], (error) => helpers.showStatus(error.message, "error"));
 
   populateStyleDropdown();
 
@@ -199,7 +200,9 @@ export async function initCustomTab(injectedHelpers) {
     "custom-video-model",
     customSettings.videoModel || syncSettings.flow?.videoModel || "veo-3.1-lite-low-priority"
   );
-  setValue("custom-video-duration", "10");
+  setValue("custom-flow-story-parts", flowStoryPartCount(customSettings.flowStoryParts));
+  refreshCustomFlowLength(customSettings.duration);
+  setValue("custom-meta-video-parts", customSettings.metaVideoParts || "1");
   setValue("custom-aspect-ratio", "9:16");
   setValue("custom-loops", customSettings.loops || 1);
   setValue("custom-schedule-interval", customSettings.scheduleInterval || 10);
@@ -220,6 +223,8 @@ export async function initCustomTab(injectedHelpers) {
   document.querySelector("#custom-flow-mode")?.addEventListener("change", saveState);
   document.querySelector("#custom-video-model")?.addEventListener("change", saveState);
   document.querySelector("#custom-video-duration")?.addEventListener("change", saveState);
+  document.querySelector("#custom-flow-story-parts")?.addEventListener("change", saveState);
+  document.querySelector("#custom-meta-video-parts")?.addEventListener("change", saveState);
   document.querySelector("#custom-aspect-ratio")?.addEventListener("change", saveState);
   document.querySelector("#custom-loops")?.addEventListener("input", saveState);
   document.querySelector("#custom-schedule-interval")?.addEventListener("input", saveState);
@@ -369,7 +374,12 @@ function renderCustomModelRefPreview() {
   }
 }
 
+function refreshCustomFlowLength(requested) {
+  syncFlowLengthControls({ model: "custom-video-model", duration: "custom-video-duration", parts: "custom-flow-story-parts", total: "custom-flow-story-length" }, requested);
+}
+
 async function saveState() {
+  refreshCustomFlowLength();
   const prompt = document.querySelector("#custom-prompt")?.value || "";
   const caption = document.querySelector("#custom-caption")?.value || "";
   const hashtags = document.querySelector("#custom-hashtags")?.value || "";
@@ -378,6 +388,8 @@ async function saveState() {
     audioMode: getValue("custom-audio-mode") || "voiceover",
     videoModel: getValue("custom-video-model"),
     duration: getValue("custom-video-duration"),
+    metaVideoParts: getValue("custom-meta-video-parts"),
+    flowStoryParts: getValue("custom-flow-story-parts"),
     aspectRatio: getValue("custom-aspect-ratio"),
     loops: parseInt(getValue("custom-loops"), 10) || 1,
     scheduleInterval: parseInt(getValue("custom-schedule-interval"), 10) || 10
@@ -446,7 +458,7 @@ async function startPipeline() {
     const flowMode = getValue("custom-flow-mode");
     const audioMode = getValue("custom-audio-mode") || "voiceover";
     const videoModel = getValue("custom-video-model");
-    const duration = 10;
+    const duration = resolveFlowClipLength(videoModel, getValue("custom-video-duration"));
     const aspectRatio = "9:16";
     const postAction = getValue("custom-post-action");
     const loops = parseInt(getValue("custom-loops"), 10) || 1;
@@ -470,6 +482,10 @@ async function startPipeline() {
 
       const flowOptions = {
         generationProvider: getValue("custom-generation-provider") || "google-flow",
+        metaVideoParts: getValue("custom-meta-video-parts"),
+        flowStoryParts: getValue("custom-flow-story-parts"),
+        flowStoryScript: prompt,
+        onStoryProgress: message => { if (statusEl) statusEl.textContent = `${loopPrefix}${message}`; },
         imageModel: "nano-banana-pro",
         videoModel: videoModel,
         imageCount: 1,

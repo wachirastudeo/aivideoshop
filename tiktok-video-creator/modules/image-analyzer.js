@@ -3,6 +3,7 @@ import { buildCaption, buildPostHashtags, normalizeHashtags, sanitizeText, resol
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 const POST_CAPTION_MAX_LENGTH = 3000;
+const PRODUCT_IMAGE_SCOPE = "Find the item named in the listing title before analyzing appearance. Use the image only for the matching item's visible design. A shirt worn by a model is the product when the title lists a shirt. Treat a phone, bag, other clothing, packaging decorations, and anything held or worn as props unless the title includes them as sold items. Ignore props even when they are larger, centered, or in focus. Keep them out of the name, hooks, features, styling, and advice. Set listedProductVisible to true only if the listed product can be identified in the reference. If it cannot, set it to false and never substitute a more prominent object or invent visual details. If no title is supplied, use null and identify the likely product from the image.";
 
 /**
  * @description แปลงไฟล์รูปเป็น data URL
@@ -165,7 +166,7 @@ function buildPostCopyPrompt(productInfo = {}, defaults = {}) {
   const maxLen = isShopee ? 100 : POST_CAPTION_MAX_LENGTH;
   const platformName = isShopee ? "Shopee" : "TikTok Shop";
   const baseHashtags = normalizeHashtags(productInfo.hashtags || defaults.hashtags || [], isShopee ? 3 : 4).join(" ");
-  const fullProductName = resolveFullProductNameForAi(productInfo);
+  const fullProductName = resolveFullProductNameForAi(productInfo) || "the product";
   return [
     `Create ${platformName} post copy in Thai for this product.`,
     `Full product title from source: ${sanitizeLongText(fullProductName)}`,
@@ -200,7 +201,7 @@ function resolveFullProductNameForAi(productInfo = {}) {
     productInfo.rawProduct?.product_name,
     productInfo.rawProduct?.name,
     productInfo.name
-  ].map(v => String(v || "").trim()).find(Boolean) || "the product";
+  ].map(v => String(v || "").trim()).find(Boolean) || "";
 }
 
 function sanitizeLongText(value) {
@@ -272,14 +273,11 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
   const apiKey = settings.geminiApiKey;
   const productName = sanitizeText(resolveFullProductNameForAi(productInfo));
   const firstImage = imageDataUrls[0] || "";
-  const [, mediaType = "image/jpeg"] = firstImage.match(/^data:(.*?);base64,/) || [];
-  const base64 = firstImage.replace(/^data:.*?;base64,/, "");
   const model = encodeURIComponent(settings.geminiModel || DEFAULT_GEMINI_MODEL);
   const prompt = [
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
-    "Analyze the image and source product title together. Use the title for product type, model, size and intended use, and the image for exact appearance, product/set count, colors and artwork. First check whether the title describes the visible product. If they conflict, describe the visible product without inventing the named object, and state the mismatch in promptAdvice. Analyze only the product or set, not the whole scene.",
-    "CRITICAL HERO PRODUCT ISOLATION — ZERO MARKETING PROPS OR FLAVOR GRAPHICS (เอาแค่สินค้า สิ่งประกอบฉากไม่ต้อง): In e-commerce product poster/ad images, sellers frequently surround the product with decorative flavor motifs, marketing props, or 2D graphics (such as champagne bottles, wine glasses, ice buckets, liquid splashes, floating coffee beans, fruit slices, flowers, ribbons, confetti, medals, or gift boxes). You MUST identify ONLY the SINGLE CORE COMMERCIAL PRODUCT being sold (e.g. the single coffee pouch, the supplement bottle, the serum bottle, the package) and COMPLETELY DISCARD all surrounding decorative props, secondary bottles, glasses, buckets, and splashes. Never describe these decorative props or flavor illustrations in name, highlights, structureAdvice, or promptAdvice. In structureAdvice and promptAdvice, state strictly: 'Single hero product packaging only; strictly forbid adding any surrounding decorative props, side bottles, glasses, cups, ice buckets, or secondary objects.'",
+    PRODUCT_IMAGE_SCOPE,
     "CRITICAL SINGLE HERO PRODUCT ISOLATION — NO UNREQUESTED MULTI-PIECE / BUNDLE (สินค้าชิ้นเดียว ถ้าไม่ได้บอกว่าหลายชิ้นหรือยกโหล): In e-commerce product listings, the cover photo frequently showcases multiple items together (e.g. 3-5 bottles arranged in a row, a stack of clothes, multiple color/flavor variants, a bunch of pens, or a cluster of boxes) to look attractive or show color choices. Check the product title carefully: unless the title explicitly states that the listing is for multiple pieces, a dozen, a bundle, or a multi-pack (e.g. explicitly stating 'หลายชิ้น', 'ยกโหล', '1 โหล', 'แพ็ค', 'เซ็ต', 'X ชิ้น', 'X ซอง', 'X ขวด', 'X กล่อง', 'bundle', 'pack of', 'set of', 'dozen', 'lot', 'pair/คู่' for shoes/socks): (1) The commercial product being sold is strictly ONE SINGLE ITEM. (2) You MUST select and focus on ONLY ONE single representative hero product item/piece from the example image. (3) Do NOT describe or output multiple pieces, a bundle, a stack, or a collection in name, highlights, structureAdvice, or promptAdvice. (4) In structureAdvice and promptAdvice, state strictly: 'Single individual product item only; although the reference photo may display multiple pieces or color variants, render strictly ONE single standalone hero item. Strictly forbid generating multiple bottles, items, or a bundle.' Only when the title explicitly specifies multiple items, a pack, a set, or a dozen should you describe and preserve multiple pieces as a set/bundle.",
     "Ignore the source background and every unrelated object, including room surfaces, furniture, decor, lamps, plants, pictures, rugs, windows, people, hands, and props. Do not describe them in structureAdvice or promptAdvice.",
     "TEXT SCOPE LOCK: Distinguish text physically printed, engraved, embossed, or permanently attached to the named product/its packaging from text merely placed around the product in the source image. Ignore all surrounding or overlaid text such as captions, slogans, feature callouts, price/discount badges, CTA banners, arrows, stickers, seller watermarks, marketplace UI, and text in the background or margins. That surrounding text is only image composition, not product information, and MUST NOT be copied into name, highlights, structureAdvice, promptAdvice, product labels, or product artwork.",
@@ -297,23 +295,25 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
     "The recommended location must fit the product's realistic use, not a generic trendy scene. For example, cabinets, drawers, shelves, and indoor furniture belong in a clean appropriate interior, never an urban street.",
     "Recommend creative options for an 8-second vertical TikTok product video. CRITICAL PRESENTER RULE: Recommend presenter as 'dog' or 'cat' ONLY if the product is specifically for pets/animals. NEVER recommend 'dog' or 'cat' for human products, clothing, gadgets, home items, or generic products.",
     "CRITICAL SENSITIVE INTIMATE APPAREL RULE (ชุดชั้นใน กางเกงใน บรา lingerie underwear): If the product is underwear, panties, bra, lingerie, boxers, swimwear, thong, or intimate apparel, you MUST NEVER recommend videoStyle as 'testimonial' or 'lifestyle', and NEVER recommend presenter as 'woman' or 'man' (strictly NO on-body wearing of underwear/lingerie to respect content policies). You MUST recommend videoStyle as 'hands-only' (tactile fabric showcase) or 'review', and presenter as 'none' (or 'hands_only'), with location as 'Studio Minimal' or 'Modern Living Room'. In promptAdvice, instruct strictly: 'Underwear/intimate apparel flat-lay or hanger product display only; strictly forbid any model wearing underwear on-body.' EXCLUSION FOR SPORTSWEAR / WORKOUT SETS: Activewear, gym wear, workout sets, yoga outfits, and athletic sportswear (ชุดออกกำลังกาย, ชุดกีฬา, ชุดฟิตเนส, ชุดโยคะ) are SPORTSWEAR/CLOTHING, NOT intimate apparel; they are fully wearable on-body by athletic models.",
-    'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5","Thai hook 6","Thai hook 7","Thai hook 8","Thai hook 9","Thai hook 10"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|hands-only|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|still-motion|boxed-motion|trending-hook","presenter":"none|woman|man|cartoon3d|living_product|dog|cat","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace|Fitness Studio","cameraMovement":"45° Product Orbit Shot|Playful Zoom In & Out|Top View Orbit & Walk|Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
+    'Return compact JSON only: {"listedProductVisible":true,"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5","Thai hook 6","Thai hook 7","Thai hook 8","Thai hook 9","Thai hook 10"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|hands-only|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|still-motion|boxed-motion|trending-hook","presenter":"none|woman|man|cartoon3d|living_product|dog|cat","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace|Fitness Studio","cameraMovement":"45° Product Orbit Shot|Playful Zoom In & Out|Top View Orbit & Walk|Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
   const parts = [{ text: prompt }];
-
-  if (base64) {
-    parts.push({
-      inline_data: {
-        mime_type: mediaType,
-        data: base64
-      }
-    });
-  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
 
   try {
+    let imageDataUrl = firstImage;
+    if (/^https?:\/\//i.test(firstImage)) {
+      const imageResponse = await fetch(firstImage, { signal: controller.signal });
+      if (!imageResponse.ok) throw new Error(`Image download failed: HTTP ${imageResponse.status}`);
+      imageDataUrl = await fileToDataUrl(await imageResponse.blob());
+    }
+    const imageData = imageDataUrl.match(/^data:(image\/[^;,]+);base64,([^,]+)$/i);
+    if (imageData) {
+      parts.push({ inline_data: { mime_type: imageData[1], data: imageData[2] } });
+    }
+
     const response = await fetch(buildGeminiUrl(model, apiKey), {
       method: "POST",
       signal: controller.signal,
@@ -338,19 +338,7 @@ async function analyzeWithGemini(imageDataUrls, productInfo, settings) {
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text || "{}";
     const jsonText = text.match(/\{[\s\S]*\}/)?.[0] || "{}";
-    const parsed = JSON.parse(jsonText);
-
-    return {
-      name: sanitizeText(parsed.name || productName),
-      imageGender: normalizeImageGender(parsed.imageGender || parsed.visualGender || parsed.autoOptions?.presenter || detectExplicitGender(productName)),
-      isPlusSize: Boolean(parsed.isPlusSize === true || parsed.imagePlusSize === true || isPlusSizeApparelProduct(productName)),
-      hooks: Array.isArray(parsed.hooks) ? parsed.hooks.map(h => sanitizeText(h)) : [],
-      highlights: normalizeHighlights(parsed.highlights),
-      targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
-      structureAdvice: sanitizeText(parsed.structureAdvice || ""),
-      promptAdvice: sanitizeText(parsed.promptAdvice || ""),
-      autoOptions: normalizeAutoOptions(parsed.autoOptions, productInfo)
-    };
+    return normalizeImageAnalysis(JSON.parse(jsonText), productInfo, productName);
   } finally {
     clearTimeout(timeout);
   }
@@ -365,8 +353,7 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
   const prompt = [
     "Analyze product image for TikTok Shop.",
     productName ? `Title: ${productName}` : "No title.",
-    "Analyze the image and source product title together. Use the title for product type, model, size and intended use, and the image for exact appearance, product/set count, colors and artwork. First check whether the title describes the visible product. If they conflict, describe the visible product without inventing the named object, and state the mismatch in promptAdvice. Analyze only the product or set, not the whole scene.",
-    "CRITICAL HERO PRODUCT ISOLATION — ZERO MARKETING PROPS OR FLAVOR GRAPHICS (เอาแค่สินค้า สิ่งประกอบฉากไม่ต้อง): In e-commerce product poster/ad images, sellers frequently surround the product with decorative flavor motifs, marketing props, or 2D graphics (such as champagne bottles, wine glasses, ice buckets, liquid splashes, floating coffee beans, fruit slices, flowers, ribbons, confetti, medals, or gift boxes). You MUST identify ONLY the SINGLE CORE COMMERCIAL PRODUCT being sold (e.g. the single coffee pouch, the supplement bottle, the serum bottle, the package) and COMPLETELY DISCARD all surrounding decorative props, secondary bottles, glasses, buckets, and splashes. Never describe these decorative props or flavor illustrations in name, highlights, structureAdvice, or promptAdvice. In structureAdvice and promptAdvice, state strictly: 'Single hero product packaging only; strictly forbid adding any surrounding decorative props, side bottles, glasses, cups, ice buckets, or secondary objects.'",
+    PRODUCT_IMAGE_SCOPE,
     "CRITICAL SINGLE HERO PRODUCT ISOLATION — NO UNREQUESTED MULTI-PIECE / BUNDLE (สินค้าชิ้นเดียว ถ้าไม่ได้บอกว่าหลายชิ้นหรือยกโหล): In e-commerce product listings, the cover photo frequently showcases multiple items together (e.g. 3-5 bottles arranged in a row, a stack of clothes, multiple color/flavor variants, a bunch of pens, or a cluster of boxes) to look attractive or show color choices. Check the product title carefully: unless the title explicitly states that the listing is for multiple pieces, a dozen, a bundle, or a multi-pack (e.g. explicitly stating 'หลายชิ้น', 'ยกโหล', '1 โหล', 'แพ็ค', 'เซ็ต', 'X ชิ้น', 'X ซอง', 'X ขวด', 'X กล่อง', 'bundle', 'pack of', 'set of', 'dozen', 'lot', 'pair/คู่' for shoes/socks): (1) The commercial product being sold is strictly ONE SINGLE ITEM. (2) You MUST select and focus on ONLY ONE single representative hero product item/piece from the example image. (3) Do NOT describe or output multiple pieces, a bundle, a stack, or a collection in name, highlights, structureAdvice, or promptAdvice. (4) In structureAdvice and promptAdvice, state strictly: 'Single individual product item only; although the reference photo may display multiple pieces or color variants, render strictly ONE single standalone hero item. Strictly forbid generating multiple bottles, items, or a bundle.' Only when the title explicitly specifies multiple items, a pack, a set, or a dozen should you describe and preserve multiple pieces as a set/bundle.",
     "Ignore the source background and every unrelated object, including room surfaces, furniture, decor, lamps, plants, pictures, rugs, windows, people, hands, and props. Do not describe them in structureAdvice or promptAdvice.",
     "TEXT SCOPE LOCK: Distinguish text physically printed, engraved, embossed, or permanently attached to the named product/its packaging from text merely placed around the product in the source image. Ignore all surrounding or overlaid text such as captions, slogans, feature callouts, price/discount badges, CTA banners, arrows, stickers, seller watermarks, marketplace UI, and text in the background or margins. That surrounding text is only image composition, not product information, and MUST NOT be copied into name, highlights, structureAdvice, promptAdvice, product labels, or product artwork.",
@@ -384,7 +371,7 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
     "The recommended location must fit the product's realistic use, not a generic trendy scene. For example, cabinets, drawers, shelves, and indoor furniture belong in a clean appropriate interior, never an urban street.",
     "Recommend creative options for an 8-second vertical TikTok product video. CRITICAL PRESENTER RULE: Recommend presenter as 'dog' or 'cat' ONLY if the product is specifically for pets/animals. NEVER recommend 'dog' or 'cat' for human products, clothing, gadgets, home items, or generic products.",
     "CRITICAL SENSITIVE INTIMATE APPAREL RULE (ชุดชั้นใน กางเกงใน บรา lingerie underwear): If the product is underwear, panties, bra, lingerie, boxers, swimwear, thong, or intimate apparel, you MUST NEVER recommend videoStyle as 'testimonial' or 'lifestyle', and NEVER recommend presenter as 'woman' or 'man' (strictly NO on-body wearing of underwear/lingerie to respect content policies). You MUST recommend videoStyle as 'hands-only' (tactile fabric showcase) or 'review', and presenter as 'none' (or 'hands_only'), with location as 'Studio Minimal' or 'Modern Living Room'. In promptAdvice, instruct strictly: 'Underwear/intimate apparel flat-lay or hanger product display only; strictly forbid any model wearing underwear on-body.' EXCLUSION FOR SPORTSWEAR / WORKOUT SETS: Activewear, gym wear, workout sets, yoga outfits, and athletic sportswear (ชุดออกกำลังกาย, ชุดกีฬา, ชุดฟิตเนส, ชุดโยคะ) are SPORTSWEAR/CLOTHING, NOT intimate apparel; they are fully wearable on-body by athletic models.",
-    'Return compact JSON only: {"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5","Thai hook 6","Thai hook 7","Thai hook 8","Thai hook 9","Thai hook 10"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|hands-only|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|still-motion|boxed-motion|trending-hook","presenter":"none|woman|man|cartoon3d|living_product|dog|cat","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace|Fitness Studio","cameraMovement":"45° Product Orbit Shot|Playful Zoom In & Out|Top View Orbit & Walk|Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
+    'Return compact JSON only: {"listedProductVisible":true,"name":"Thai short name","hooks":["Thai hook 1","Thai hook 2","Thai hook 3","Thai hook 4","Thai hook 5","Thai hook 6","Thai hook 7","Thai hook 8","Thai hook 9","Thai hook 10"],"overlayText":"≤5 Thai words","highlights":["Thai benefit 1","Thai benefit 2","Thai benefit 3"],"targetGroup":"สาวออฟฟิศ|แม่บ้าน|วัยรุ่น|ทั่วไป","structureAdvice":"verified English structure/count lock","promptAdvice":"short English reference fidelity prompt advice","autoOptions":{"videoStyle":"review|hands-only|lifestyle|flash-sale|unboxing|before-after|testimonial|cinematic|still-motion|boxed-motion|trending-hook","presenter":"none|woman|man|cartoon3d|living_product|dog|cat","voiceTone":"kind|fun|complain|professional|hype","mood":"สดใส|หรูหรา|น่ารัก|Professional|Trendy|มินิมัล|Dark & Moody","location":"Modern Living Room|Studio Minimal|Warehouse / Stockroom|Urban Street|Nature / Outdoor|Luxury Showroom|Cafe / Coffee Shop|Office / Workspace|Fitness Studio","cameraMovement":"45° Product Orbit Shot|Playful Zoom In & Out|Top View Orbit & Walk|Slow Zoom In|Orbit / 360°|Pan Left to Right|Static/Still|Handheld Shake|Push In Fast","transition":"Cut ตรง|Zoom Transition|Swipe|Fade|Whip Pan","reason":"short Thai reason"}}'
   ].join("\n");
 
   const content = [{ type: "text", text: prompt }];
@@ -428,22 +415,31 @@ async function analyzeWithOpenAI(imageDataUrls, productInfo, settings) {
 
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(text);
-
-    return {
-      name: sanitizeText(parsed.name || productName),
-      imageGender: normalizeImageGender(parsed.imageGender || parsed.visualGender || parsed.autoOptions?.presenter || detectExplicitGender(productName)),
-      isPlusSize: Boolean(parsed.isPlusSize === true || parsed.imagePlusSize === true || isPlusSizeApparelProduct(productName)),
-      hooks: Array.isArray(parsed.hooks) ? parsed.hooks.map(h => sanitizeText(h)) : [],
-      highlights: normalizeHighlights(parsed.highlights),
-      targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
-      structureAdvice: sanitizeText(parsed.structureAdvice || ""),
-      promptAdvice: sanitizeText(parsed.promptAdvice || ""),
-      autoOptions: normalizeAutoOptions(parsed.autoOptions, productInfo)
-    };
+    return normalizeImageAnalysis(JSON.parse(text), productInfo, productName);
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function normalizeImageAnalysis(parsed, productInfo, productName) {
+  if (productName && parsed.listedProductVisible === false) {
+    return {
+      ...buildTitleBasedFallback({ name: productName, targetGroup: productInfo.targetGroup }),
+      structureAdvice: "The listed product could not be verified in the reference. Do not take visual details from unrelated objects.",
+      promptAdvice: "Use a reference that shows the listed product. Never substitute another visible item."
+    };
+  }
+  return {
+    name: sanitizeText(parsed.name || productName),
+    imageGender: normalizeImageGender(parsed.imageGender || parsed.visualGender || parsed.autoOptions?.presenter || detectExplicitGender(productName)),
+    isPlusSize: Boolean(parsed.isPlusSize === true || parsed.imagePlusSize === true || isPlusSizeApparelProduct(productName)),
+    hooks: Array.isArray(parsed.hooks) ? parsed.hooks.map(h => sanitizeText(h)) : [],
+    highlights: normalizeHighlights(parsed.highlights),
+    targetGroup: sanitizeText(parsed.targetGroup || productInfo.targetGroup || "ทั่วไป"),
+    structureAdvice: sanitizeText(parsed.structureAdvice || ""),
+    promptAdvice: sanitizeText(parsed.promptAdvice || ""),
+    autoOptions: normalizeAutoOptions(parsed.autoOptions, productInfo)
+  };
 }
 
 /**
@@ -563,7 +559,7 @@ export async function testGeminiConnection(apiKey, modelName = DEFAULT_GEMINI_MO
  * @returns {object} ผลวิเคราะห์ fallback
  */
 function buildTitleBasedFallback(productInfo) {
-  const name = sanitizeText(productInfo.name);
+  const name = sanitizeText(resolveFullProductNameForAi(productInfo));
   if (!name) {
     throw new Error("ถ้าไม่ได้ใส่ Gemini API Key ต้องกรอกชื่อสินค้า/title สินค้าก่อนวิเคราะห์");
   }
@@ -598,7 +594,7 @@ function buildTitleBasedFallback(productInfo) {
         ? "CRITICAL: The product is 100% SCREENLESS with NO screen and NO smartwatch display. Reproduce ONLY the screenless strap and metal buckle/clasp exactly as shown in the reference. Strictly forbid adding any screen, smartwatch UI, or clock hands."
         : "Preserve only the exact wristwatch or wristband from the reference image. For screenless wristbands, strictly forbid adding any screen, digital display, or smartwatch UI. For watches, preserve exact dial/screen, bezel, crown, strap, and colors. Do not hallucinate smartwatch features on screenless items. Discard the original background and unrelated objects.")
       : "Preserve only the named product's shape, proportions, colors, materials, hardware, labels, and printed text. If the reference image displays multiple pieces but the listing is not for multiple pieces or a dozen (ไม่ได้ระบุหลายชิ้น/ยกโหล), render strictly ONE single product unit. All printed text, packaging details, and brand logos on the product must be rendered extremely sharp, clear, legible, and spelt correctly in both Thai and English. Discard the original background and every unrelated object, then create a new clean setting appropriate for the product category.",
-    autoOptions: inferAutoOptionsFromProduct(productInfo)
+    autoOptions: inferAutoOptionsFromProduct({ ...productInfo, name })
   };
 }
 

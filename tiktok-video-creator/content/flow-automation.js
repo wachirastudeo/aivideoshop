@@ -1360,7 +1360,8 @@ async function refreshMediaList() {
 }
 
 // ── 3. uploadImages ──────────────────────────────────────────
-async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
+async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = [], startFrame = false) {
+    if (startFrame && dataUrls.length !== 1) throw new Error("Flow’s Start frame requires exactly one reference image");
     await closeFlowPanels({ required: true });
     patchFileInput();
     
@@ -1398,7 +1399,8 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
         }
         let mime = blob.type || "image/jpeg";
         const ext = mimeToImageExt(mime);
-        files.push(new File([blob], `${i + 1}.${ext}`, { type: mime }));
+        const name = startFrame ? `tvc-start-${crypto.randomUUID().slice(0, 8)}.${ext}` : `${i + 1}.${ext}`;
+        files.push(new File([blob], name, { type: mime }));
     }
 
     await closeFlowPanels({ required: true });
@@ -1422,6 +1424,13 @@ async function uploadImages(dataUrls, waitMs = 400000, fallbackUrls = []) {
 
         // ดีเลย์หลังอัปโหลดเพื่อเลียนแบบความเร็วคนจริงๆ
         await sleep(1500 + Math.random() * 1500);
+
+        if (startFrame) {
+            const result = await chrome.runtime.sendMessage({ type: "FLOW_ATTACH_START_FRAME", payload: { fileName: file.name } });
+            if (!result?.ok || !result.attached) throw new Error(result?.error || "Flow did not attach the uploaded Start frame");
+            log("✅ ใช้รูปที่อัปโหลดล่าสุดในช่อง Start ของ Google Flow");
+            return [{ key: file.name, label: file.name, alreadyAttached: true }];
+        }
 
         // รอจนกระทั่งรูปนี้อัปโหลดเสร็จและพร้อมใช้งาน
         const secs = Math.max(400, Math.ceil(waitMs / 1000));
@@ -1635,129 +1644,101 @@ function hasActiveFlowModelFamily(phase) {
         return /settings\s+trigger|ทริกเกอร์การตั้งค่า/i.test(label) && expected.test(label);
     });
 }
+
+function findFlowSettingsTrigger() {
+    return [...document.querySelectorAll("button")].filter(isVisible).find(btn =>
+        /settings\s+trigger|ทริกเกอร์การตั้งค่า/i.test(`${elementText(btn)} ${btn.getAttribute("data-tooltip") || ""}`));
+}
+
 function isResolutionButtonSelected(el) {
     if (!el) return false;
-    if (el.getAttribute("aria-checked") === "true") return true;
-    if (el.getAttribute("aria-selected") === "true") return true;
-    if (el.getAttribute("aria-pressed") === "true") return true;
-    if (el.getAttribute("data-state") === "on" || el.getAttribute("data-state") === "checked" || el.getAttribute("data-state") === "active") return true;
-    if (el.checked === true) return true;
-    const cls = String(el.className || "");
-    if (/\b(?:active|selected|mat-button-toggle-checked)\b/i.test(cls)) return true;
-    const parentToggle = el.closest?.('mat-button-toggle');
-    if (parentToggle && (parentToggle.classList?.contains?.('mat-button-toggle-checked') || parentToggle.getAttribute?.('aria-checked') === 'true')) {
-        return true;
+    for (const attr of ["aria-checked", "aria-selected", "aria-pressed"]) {
+        const state = el.getAttribute(attr);
+        if (state === "true" || state === "false") return state === "true";
     }
-    try {
-        const bg = window.getComputedStyle(el).backgroundColor;
-        if (bg && /rgba?\(\s*2(?:4\d|5[0-5])\s*,\s*2(?:4\d|5[0-5])\s*,\s*2(?:4\d|5[0-5])/i.test(bg)) {
-            return true;
-        }
-    } catch (_) {}
-    return false;
+    return el.checked === true
+        || /^(on|checked|active)$/.test(el.getAttribute("data-state") || "")
+        || Boolean(el.closest("mat-button-toggle.mat-button-toggle-checked"));
 }
 
 function findResolutionMenuContainer() {
-    const directMatches = [
-        ...document.querySelectorAll('.settings-content, [class*="settings-content"], .cdk-overlay-pane, [role="menu"][data-state="open"], [role="dialog"], [data-radix-popper-content-wrapper], [data-radix-menu-content], [role="menu"]')
-    ].filter(isVisible);
-    for (const m of directMatches) {
-        const txt = (m.textContent || "").toLowerCase();
-        if (txt.includes("360p") || txt.includes("720p") || (txt.includes("frames") && txt.includes("ingredients"))) {
-            return m;
-        }
-    }
-    const resToggle = document.querySelector('flow-toggles[aria-label*="resolution" i], flow-toggles[aria-label*="ความละเอียด" i]');
-    if (resToggle && isVisible(resToggle)) {
-        return resToggle.closest('.settings-content, [class*="settings-content"], .cdk-overlay-pane, [role="menu"], [role="dialog"]') || resToggle;
-    }
-    if ([...document.querySelectorAll('button, mat-button-toggle')].some(b => isVisible(b) && /\b(360p|720p)\b/i.test(b.textContent || ""))) {
-        return document.body;
-    }
-    return null;
+    const resolutionGroup = [...document.querySelectorAll('flow-toggles[aria-label*="resolution" i], flow-toggles[aria-label*="ความละเอียด" i]')].find(isVisible);
+    if (resolutionGroup) return resolutionGroup;
+    const settings = [...document.querySelectorAll('.settings-content, [class*="settings-content"]')].find(isVisible);
+    if (settings) return settings;
+    return [...document.querySelectorAll('[role="menu"], [role="dialog"], [data-radix-menu-content]')]
+        .filter(isVisible).find(panel => findFlowResolutionItem(panel));
 }
 
-function findFlowResolutionItem(resText = "720p", container = null) {
-    const target = String(resText).trim().toLowerCase();
-    const pattern = new RegExp(`^\\s*${target}\\s*$|\\b${target}\\b`, "i");
-    const scope = container || findResolutionMenuContainer() || (typeof document !== "undefined" ? document : null);
-    if (!scope) return null;
-
-    // 1. Direct match in flow-toggles with aria-label="Video resolution"
-    const resGroup = typeof scope?.querySelector === "function"
-        ? (scope.querySelector('flow-toggles[aria-label*="resolution" i], flow-toggles[aria-label*="ความละเอียด" i]')
-            || (typeof document !== "undefined" && document.querySelector?.('flow-toggles[aria-label*="resolution" i], flow-toggles[aria-label*="ความละเอียด" i]')))
-        : null;
-    if (resGroup) {
-        const toggleButtons = [...resGroup.querySelectorAll('button[role="radio"], button, mat-button-toggle')].filter(isVisible);
-        for (const el of toggleButtons) {
-            const txt = (el.textContent || "").trim().toLowerCase();
-            if (txt.includes(target) && !txt.includes("·")) {
-                return el.querySelector?.('button[role="radio"]') || el;
-            }
-        }
-    }
-
-    const selectors = [
-        '[role="radio"]',
-        '[role="tab"]',
-        'mat-button-toggle',
-        'button',
-        '[role="button"]',
-        '[role="menuitem"]',
-        '[role="option"]',
-        '[data-radix-collection-item]',
-        'div[tabindex]'
-    ].join(",");
-    const candidates = [...scope.querySelectorAll(selectors)].filter(isVisible);
-    for (const el of candidates) {
-        const txt = (el.textContent || "").trim();
-        const aria = (el.getAttribute("aria-label") || "").trim();
-        // ห้ามตรงกับปุ่ม settings trigger ด้านนอก หรือปุ่มที่มีสัญลักษณ์จุดคั่นข้อมูล
-        if (txt.includes("·") || aria.includes("·")) continue;
-        if (/settings\s+trigger|ทริกเกอร์/i.test(`${txt} ${aria}`)) continue;
-        if (/video\s*·/i.test(txt)) continue;
-        if (txt.includes("360p") && txt.includes("720p")) continue;
-
-        if (pattern.test(txt) || pattern.test(aria) || (txt.toLowerCase().startsWith(target) && !txt.includes("·"))) {
-            return el.querySelector?.('button[role="radio"]') || el;
-        }
-    }
-    return null;
+function findFlowResolutionItem(container) {
+    if (!container) return null;
+    const candidates = container.querySelectorAll('button, input[type="radio"], [role="radio"], [role="tab"], [role="menuitemradio"], [role="menuitem"], [role="option"], [data-radix-collection-item]');
+    return [...candidates].filter(isVisible).find(el => {
+        const label = el.querySelector(".toggle-text")?.textContent || el.getAttribute("aria-label") || el.value || el.textContent;
+        return /^720p(?:\s|$)/i.test((label || "").trim());
+    });
 }
 
-async function selectVerifiedVideoResolution(targetRes = "720p", menuContainer = null) {
-    const target = String(targetRes || "720p").trim().toLowerCase();
-    const container = menuContainer || findResolutionMenuContainer() || (typeof document !== "undefined" ? document : null);
-    if (!container) {
-        log(`⚠️ ไม่พบหน้าต่างเมนู config เพื่อเลือกความละเอียด ${target}`);
-        return false;
-    }
-    log(`ตรวจสอบความละเอียดวิดีโอ (เป้าหมาย: ${target})...`);
+async function selectVerifiedVideoResolution() {
+    const readResolution = () => {
+        const trigger = findFlowSettingsTrigger();
+        return trigger ? elementText(trigger).match(/\b\d{3,4}p\b/i)?.[0].toLowerCase() : undefined;
+    };
+    let menu = findResolutionMenuContainer();
+    // Some models, including Veo Lite, report 720p with no resolution switch.
+    if (!menu && readResolution() === "720p") return;
 
-    let btnTarget = findFlowResolutionItem(target, container);
-    const btnOther = findFlowResolutionItem(target === "720p" ? "360p" : "720p", container);
-
-    if (btnTarget) {
-        const alreadyActive = isResolutionButtonSelected(btnTarget) && (!btnOther || !isResolutionButtonSelected(btnOther));
-        if (alreadyActive) {
-            log(`✅ ความละเอียด ${target} ถูกเลือกอยู่แล้ว`);
-            return true;
-        }
-        log(`คลิกเลือกความละเอียด ${target}...`);
-        await humanClick(btnTarget);
+    const trigger = findFlowSettingsTrigger();
+    if (!menu && trigger) {
+        await humanClick(trigger);
         await sleep(400);
-
-        btnTarget = findFlowResolutionItem(target, container);
-        if (btnTarget && isResolutionButtonSelected(btnTarget)) {
-            log(`✅ ยืนยันความละเอียดวิดีโอ: ${target}`);
-            return true;
-        }
-        return true;
-    } else {
-        log(`⚠️ ไม่พบตัวเลือกความละเอียด ${target} ในเมนู config`);
-        return false;
+        menu = findResolutionMenuContainer();
     }
+    const option = findFlowResolutionItem(menu);
+    if (option && !isResolutionButtonSelected(option)) {
+        await humanClick(option);
+        await sleep(400);
+    }
+    const selected = isResolutionButtonSelected(findFlowResolutionItem(findResolutionMenuContainer()));
+    if (menu) {
+        await closeAnyOpenMenu();
+        if (findResolutionMenuContainer()) {
+            findFlowSettingsTrigger()?.click();
+            await sleep(400);
+        }
+    }
+    const resolution = readResolution();
+    if (findResolutionMenuContainer() || (resolution ? resolution !== "720p" : !selected)) {
+        throw new Error("ยืนยันความละเอียดวิดีโอ 720p ใน Google Flow ไม่สำเร็จ จึงไม่กด Generate");
+    }
+    log("✅ ยืนยันความละเอียดวิดีโอ: 720p");
+}
+
+function activeFlowClipLength() {
+    const trigger = findFlowSettingsTrigger();
+    return Number(trigger ? elementText(trigger).match(/\b(\d+)\s*(?:s\b|sec\b|seconds\b|วินาที)/i)?.[1] : NaN);
+}
+
+async function selectVerifiedVideoDuration(seconds) {
+    if (activeFlowClipLength() === seconds) return;
+    const group = [...document.querySelectorAll('flow-toggles[aria-label="Video duration"], flow-toggles[aria-label*="ระยะเวลา"]')].find(isVisible);
+    const option = [...(group?.querySelectorAll('[role="radio"], button') || [])].find(el =>
+        isVisible(el) && new RegExp(`^${seconds}\\s*(?:s|sec|seconds|วินาที)$`, 'i').test(elementText(el).trim()));
+    if (option) {
+        await humanClick(option);
+    } else {
+        // Omni 1.2 shows seconds in the composer and indexes its slider from 0.
+        const range = [...document.querySelectorAll('input[type="range"][aria-label="Length"], input[type="range"][aria-label="ความยาว"]')].find(isVisible);
+        const value = range ? Number(range.value) + seconds - activeFlowClipLength() : NaN;
+        if (range && Number.isInteger(value) && value >= Number(range.min) && value <= Number(range.max)) {
+            range.value = String(value);
+            range.dispatchEvent(new Event("input", { bubbles: true }));
+            range.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+    }
+    const deadline = Date.now() + 2000;
+    while (Date.now() < deadline && activeFlowClipLength() !== seconds) await sleep(100);
+    if (activeFlowClipLength() !== seconds) throw new Error(`Google Flow could not set ${seconds}s for the selected model and reference mode. Generation was not submitted.`);
 }
 
 async function selectAspectRatio(aspectRatio) {
@@ -1808,12 +1789,12 @@ async function selectBatchCount(count) {
     return false;
 }
 
-async function selectModel(modelKey) {
+async function selectModel(modelKey, { allowPaidFallback = true } = {}) {
     if (!modelKey) return false;
     const menu = document.querySelector('[role="menu"][data-state="open"]');
     // New Flow settings uses a pop-up button in a panel, not a role=menu.
     const scope = menu || document;
-    const modelBtn = Array.from(scope.querySelectorAll('button[aria-haspopup="menu"], [role="button"]'))
+    const modelBtn = Array.from(scope.querySelectorAll('button[aria-label="Select model family"], button[aria-haspopup="menu"], [role="button"]'))
         .find(btn => isVisible(btn) && /select model family|model family|โมเดล/i.test(
             `${btn.getAttribute('aria-label') || ''} ${btn.textContent || ''}`));
     if (!modelBtn) {
@@ -1827,18 +1808,26 @@ async function selectModel(modelKey) {
         "veo-3.1-fast":              ["VEO 3.1 - FAST", "VEO 3.1 — FAST", "VEO 3.1 \u2014 FAST"],
         "veo-3.1-quality":           ["VEO 3.1 - QUALITY", "VEO 3.1 — QUALITY", "VEO 3.1 \u2014 QUALITY"],
         "veo-3.1-lite":              ["VEO 3.1 - LITE", "VEO 3.1 — LITE", "VEO 3.1 \u2014 LITE"],
-        "omni-flash":                ["OMNI FLASH", "OMNI"],
+        "omni-flash":                ["OMNI 1.2 FLASH", "OMNI FLASH 1.2"],
         "nano-banana-pro":           ["NANO BANANA PRO", "BANANA PRO"],
         "nano-banana-2":             ["NANO BANANA 2", "BANANA 2"]
     };
     
     const targets = mapping[modelKey] || [modelKey.toUpperCase()];
     const currentText = (modelBtn.textContent || "").trim().toUpperCase();
-    
-    // ตรวจสอบว่าเลือกอยู่แล้วหรือไม่ (exact match ก่อน → substring fallback)
     const isNormalLite = modelKey === "veo-3.1-lite";
-    const alreadySelected = !(isNormalLite && currentText.includes("LOWER PRIORITY"))
-        && (targets.some(t => currentText === t) || targets.some(t => currentText.includes(t)));
+    const matchesModel = (value, chosen, excludeLower) => !(excludeLower && value.includes("LOWER PRIORITY"))
+        && chosen.some(target => value.includes(target));
+    const selected = async (chosen, excludeLower) => {
+        const deadline = Date.now() + 1800;
+        while (Date.now() < deadline) {
+            const current = document.querySelector('button[aria-label="Select model family"]') || modelBtn;
+            if (matchesModel((current.textContent || "").trim().toUpperCase(), chosen, excludeLower)) return true;
+            await sleep(150);
+        }
+        return false;
+    };
+    const alreadySelected = matchesModel(currentText, targets, isNormalLite);
     if (alreadySelected) {
         log(`\u2705 Model ${modelKey} ถูกเลือกอยู่แล้ว (${currentText})`);
         return modelKey;
@@ -1876,8 +1865,7 @@ async function selectModel(modelKey) {
         if (found) {
             log(`พบตัวเลือก model: ${found.textContent.trim()}, กำลังกดเลือก...`);
             await humanClick(found);
-            await sleep(600);
-            return modelKey;
+            return await selected(targets, isNormalLite) ? modelKey : false;
         }
     }
     
@@ -1887,11 +1875,10 @@ async function selectModel(modelKey) {
     if (found) {
         log(`พบตัวเลือก model (fallback): ${found.textContent.trim()}, กำลังกดเลือก...`);
         await humanClick(found);
-        await sleep(600);
-        return modelKey;
+        return await selected(targets, isNormalLite) ? modelKey : false;
     }
 
-    if (modelKey === "veo-3.1-lite-low-priority") {
+    if (modelKey === "veo-3.1-lite-low-priority" && allowPaidFallback) {
         const fallbackKey = "veo-3.1-lite";
         const fallbackTargets = mapping[fallbackKey];
         log("⚠️ ไม่พบ Veo 3.1 — Lite [Lower Priority] (0 เครดิต) จึงใช้ Veo 3.1 — Lite แทน ซึ่งอาจมีค่าเครดิต");
@@ -1941,7 +1928,7 @@ async function ensureConfig(phase, options = {}) {
         const buttons = [...document.querySelectorAll('button')].filter(isVisible);
         // Prefer Flow's stable accessible name. Generic aspect/mode matches can
         // accidentally target a button in the prompt or a stale media card.
-        let cfgBtn = buttons.find(btn => /settings\s+trigger|ทริกเกอร์การตั้งค่า/i.test(`${btn.textContent || ""} ${btn.getAttribute("aria-label") || ""}`));
+        let cfgBtn = findFlowSettingsTrigger();
         if (!cfgBtn) {
             cfgBtn = buttons.find(btn => {
                 const i = btn.querySelector("i.google-symbols,i.material-icons");
@@ -1977,18 +1964,17 @@ async function ensureConfig(phase, options = {}) {
     } else {
         await selectVerifiedVideoReferenceMode(options, cfg);
         await sleep(600);
-        // ตรวจสอบและเลือกความละเอียดเป็น 720p ทุกครั้งสำหรับการตั้งค่าวิดีโอ
-        await selectVerifiedVideoResolution("720p");
-        await sleep(400);
     }
     (await clickVisibleRadio(aspectRatio)) || await selectAspectRatio(aspectRatio); await sleep(800);
     (await clickVisibleRadio(`x${count}`)) || await selectBatchCount(count); await sleep(800);
-    const selectedModelKey = await selectModel(modelKey); await sleep(800);
+    const selectedModelKey = await selectModel(modelKey, { allowPaidFallback: phase !== "video" || !options.verifyVideoLength });
+    await sleep(800);
+    if (!selectedModelKey) throw new Error(`Google Flow could not select ${modelKey}. Generation was not submitted.`);
+    if (phase === "video" && options.verifyVideoLength) await selectVerifiedVideoDuration(options.videoDuration);
     
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await sleep(400);
     if (document.querySelector('[role="menu"][data-state="open"], .settings-content, [class*="settings-content"]')) { document.body.click(); await sleep(300); }
-    if (!selectedModelKey) throw new Error(`เลือกโมเดล ${modelKey} ไม่สำเร็จ จึงไม่กด Generate`);
     if (!hasActiveFlowModelFamily(phase)) {
         throw new Error(`ยืนยันโมเดล ${phase === "video" ? "Veo" : "Banana"} ไม่สำเร็จ จึงไม่กด Generate`);
     }
@@ -2207,6 +2193,15 @@ function flowFrameSlotButton(label) {
         if (/swap|สลับ|remove|ลบ/.test(`${text} ${aria}`) || btn.querySelector("img,video")) return false;
         return aliases.some(value => text.endsWith(value) || aria === value || aria === `${value} frame`);
     }) || null;
+}
+
+async function verifyStoryStartFrame() {
+    const slots = await chrome.runtime.sendMessage({ type: "FLOW_FRAME_SLOTS" });
+    const emptyEnd = flowFrameSlotButton("end") || slots?.emptyEnd;
+    const emptyStart = flowFrameSlotButton("start") || slots?.emptyStart;
+    if (promptAttachmentCount() !== 1 || !emptyEnd || emptyStart) {
+        throw new Error("Google Flow did not put the continuation frame in the Start slot. Generation was not submitted.");
+    }
 }
 
 function framePickerSearchInput() {
@@ -2974,13 +2969,22 @@ async function typeDraft(editor, prompt) {
 }
 
 // ── 7. clickGenerate ─────────────────────────────────────────
-async function clickGenerate() {
+async function clickGenerate(phase, expectedDuration) {
     log("รอปุ่ม Generate พร้อมกด...");
 
     // ปิด debugger ก่อนกดเจนเพื่อให้ infobar หายไปและระดับหน้าจอกลับมาปกติ
     await detachFlowDebugger();
     await sleep(1000);
-
+    if (stopRequested) return false;
+    if (phase === "video") await selectVerifiedVideoResolution();
+    if (expectedDuration) {
+        const creditWarning = [...document.querySelectorAll('button[aria-label]')].find(button =>
+            isVisible(button) && /insufficient credits|เครดิตไม่เพียงพอ/i.test(button.getAttribute("aria-label")));
+        if (creditWarning) throw new Error("Google Flow: Insufficient credits for the selected video model and duration.");
+        if (activeFlowClipLength() !== expectedDuration) {
+            throw new Error(`Google Flow changed the clip length before generation. Expected ${expectedDuration}s.`);
+        }
+    }
 
     preGenMediaKeys = new Set([...snapMediaKeys(), ...snapDirectTileKeys()]);
     const end = Date.now() + 30000;
@@ -3185,6 +3189,7 @@ async function waitForResult(phase, options = {}) {
                 const videoSrc = video?.currentSrc || video?.src || video?.querySelector("source")?.src || "";
                 if (videoSrc || (video && video.readyState >= 1) || /\.(mp4|webm|mov)(\?|$)/i.test(videoSrc)) {
                     const mediaId = host.getAttribute("data-tile-id") || videoSrc;
+                    if (isPreGenerationMediaKey(mediaId) || isPreGenerationMediaKey(videoSrc)) continue;
                     log("✅ ตรวจพบวิดีโอที่สร้างเสร็จแล้วจาก Flow (ตรวจพบจาก tile container)");
                     return { tileId: mediaId, mediaUrl: videoSrc, key: mediaId, label, el: host };
                 }
@@ -3222,7 +3227,7 @@ async function waitForResult(phase, options = {}) {
         let readyResult = null;
         for (const { card, status } of newCards) {
             if (isGeneratedResultCard(card, status, phase)) {
-                readyResult = { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key };
+                readyResult = { tileId: card.tileId || card.key, mediaUrl: card.mediaUrl, href: card.href, key: card.key, label: card.label };
                 break;
             }
         }
@@ -3462,6 +3467,13 @@ async function runPipeline(payload, runOptions = {}) {
         await closeFlowPanels({ required: true });
         await sleep(5000); // หน่วงเวลา 5 วินาที
 
+        const resultPhase = phase === "combined" ? "image" : phase;
+        const configBeforeUpload = Boolean(options.flowStartFrame && resultPhase === "video");
+        const expectedDuration = resultPhase === "video" && options.verifyVideoLength ? options.videoDuration : undefined;
+        if (configBeforeUpload) {
+            await ensureConfig("video", options);
+            if (!await clearAllPromptAttachmentsVerified()) throw new Error("Could not clear the old Flow frames");
+        }
         let uploadedTiles = [];
         if (resumeState) {
             uploadedTiles = resumeState.uploadedTiles || [];
@@ -3498,7 +3510,7 @@ async function runPipeline(payload, runOptions = {}) {
                 const fallbackUrls = uniqueUrls.map((url, index) =>
                     index === 0 && normalizedFallback && normalizedFallback !== url ? [normalizedFallback] : []
                 );
-                uploadedTiles = await uploadImages(uniqueUrls, cfg.uploadWaitSec * 1000, fallbackUrls);
+                uploadedTiles = await uploadImages(uniqueUrls, cfg.uploadWaitSec * 1000, fallbackUrls, configBeforeUpload);
                 if (uploadedTiles.length === 0) {
                     throw new Error("อัปโหลดรูปภาพสินค้าเข้า Google Flow ไม่สำเร็จ (ไม่พบ media card หลังจากการอัปโหลด)");
                 }
@@ -3513,10 +3525,9 @@ async function runPipeline(payload, runOptions = {}) {
 
         const initialPrompt = typeof prompt === "object" ? prompt.imagePrompt : prompt;
         if (!initialPrompt) throw new Error("ไม่มี prompt สำหรับสร้างภาพ/วิดีโอ");
-
         // 4. ตั้งค่า mode + ratio
-        if (cfg.autoPortrait) {
-            await ensureConfig(phase === "combined" ? "image" : phase, options);
+        if (!configBeforeUpload && (cfg.autoPortrait || expectedDuration)) {
+            await ensureConfig(resultPhase, options);
             await sleep(5000); // หน่วงเวลา 5 วินาที
         }
 
@@ -3529,6 +3540,7 @@ async function runPipeline(payload, runOptions = {}) {
             if (attached.length !== uploadedTiles.length) throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบ จึงไม่กด Generate");
             await sleep(5000); // หน่วงเวลา 5 วินาที
         }
+        if (configBeforeUpload) await verifyStoryStartFrame();
 
         // 6. กรอก prompt
         log("กรอก Prompt...");
@@ -3536,27 +3548,31 @@ async function runPipeline(payload, runOptions = {}) {
         await sleep(800 + Math.random() * 400); // หน่วงเวลาสั้นๆ ก่อนกด Generate
 
         // 7. กด Generate
-        await clickGenerate();
+        await clickGenerate(resultPhase, expectedDuration);
         await sleep(5000); // หน่วงเวลา 5 วินาทีหลังกด Generate เผื่อหน้าเว็บเริ่มทำงาน
 
         // 8. รอผลลัพธ์
-        const resultPhase = phase === "combined" ? "image" : phase;
         const restartInitialGeneration = async (context = {}) => {
-            if (cfg.autoPortrait) {
+            if (cfg.autoPortrait || expectedDuration) {
                 await ensureConfig(resultPhase, options);
                 await sleep(5000);
             }
-            const attached = await attachUploadsToPrompt(uploadedTiles, "drive_folder_upload", { skipTabSwitch: true });
-            if (attached.length !== uploadedTiles.length) {
+            const retryTiles = configBeforeUpload && promptAttachmentCount() === 0
+                ? await uploadImages([imageUrl], cfg.uploadWaitSec * 1000, [], true)
+                : uploadedTiles;
+            const attached = await attachUploadsToPrompt(retryTiles, "drive_folder_upload", { skipTabSwitch: true });
+            if (attached.length !== retryTiles.length) {
                 throw new Error("แนบรูปสินค้าเข้า prompt ไม่ครบระหว่าง Retry");
             }
+            if (configBeforeUpload) await verifyStoryStartFrame();
+            if (options.flowStorySequence && context.policyFallback === "no-people") throw new Error("Flow declined this story part. A different cast would break continuity.");
             await sleep(5000);
             const retryPrompt = context.policyFallback === "no-people"
                 ? buildPeopleSafePrompt(initialPrompt)
                 : initialPrompt;
             await setPrompt(retryPrompt);
             await sleep(800 + Math.random() * 400);
-            await clickGenerate();
+            await clickGenerate(resultPhase, expectedDuration);
         };
         const result = await waitForResult(resultPhase, {
             restartGeneration: restartInitialGeneration
@@ -3582,7 +3598,7 @@ async function runPipeline(payload, runOptions = {}) {
             await sleep(8000 + Math.random() * 2000); // รอ 8-10 วินาที
 
             // 4b. เปลี่ยน config เป็น VIDEO mode + portrait
-            if (cfg.autoPortrait) {
+            if (cfg.autoPortrait || options.verifyVideoLength) {
                 await ensureConfig("video", videoOptions);
                 await sleep(5000); // หน่วงเวลา 5 วินาที
             }
@@ -3620,19 +3636,20 @@ async function runPipeline(payload, runOptions = {}) {
             await sleep(1000 + Math.random() * 500); // หน่วงเวลาสั้นๆ ก่อนกด Generate
 
             // 7b. กด Generate
-            await clickGenerate();
+            await clickGenerate("video", options.verifyVideoLength ? options.videoDuration : undefined);
             await sleep(5000); // หน่วงเวลา 5 วินาทีหลังกด Generate เผื่อหน้าเว็บเริ่มทำงาน
 
             // 8b. รอผลลัพธ์วิดีโอ
             const restartVideoGeneration = async (context = {}) => {
-                if (cfg.autoPortrait) await ensureConfig("video", videoOptions);
+                if (cfg.autoPortrait || options.verifyVideoLength) await ensureConfig("video", videoOptions);
                 await clearPromptAttachments();
                 await addGeneratedStillToPrompt(result);
                 const retryPrompt = context.policyFallback === "no-people"
                     ? buildPeopleSafePrompt(videoPrompt)
                     : videoPrompt;
                 await setPrompt(retryPrompt);
-                await clickGenerate();
+                if (options.flowStorySequence && context.policyFallback === "no-people") throw new Error("Flow declined this story part. A different cast would break continuity.");
+                await clickGenerate("video", options.verifyVideoLength ? options.videoDuration : undefined);
             };
             const vidResult = await waitForResult("video", {
                 restartGeneration: restartVideoGeneration
@@ -3641,14 +3658,14 @@ async function runPipeline(payload, runOptions = {}) {
             await sleep(1500);
             await detachFlowDebugger();
             removeOverlay();
-            return { ok: true, resultUrl: vidResult.mediaUrl, tileId: vidResult.tileId, imgUrl: result.mediaUrl, imgTileId: result.tileId };
+            return { ok: true, resultUrl: vidResult.mediaUrl, tileId: vidResult.tileId, mediaLabel: vidResult.label, imgUrl: result.mediaUrl, imgTileId: result.tileId };
         }
 
         log("🎯 บันทึกภาพเสร็จสิ้น! รอก่อนสัก 5-10 วินาที...");
         await sleep(8000 + Math.random() * 2000); // รอ 8-10 วินาที
         await detachFlowDebugger();
         removeOverlay();
-        return { ok: true, resultUrl: result.mediaUrl, tileId: result.tileId };
+        return { ok: true, resultUrl: result.mediaUrl, tileId: result.tileId, mediaLabel: result.label };
 
     } catch (err) {
         log("❌ " + err.message);

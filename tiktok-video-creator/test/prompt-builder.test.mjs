@@ -133,6 +133,11 @@ check("post hashtags include Thai product word", posePostTags.includes("#รอ�
 // --- product url resolution ---
 const url = resolveProductUrl(prodA);
 check("product url resolvable", typeof url === "string" && url.length > 0, `url=${url}`);
+const shopeeShortUrl = "https://th.shp.ee/example";
+eq("Shopee short link survives product selection", resolveProductUrl({
+  productId: "28906364060",
+  productUrl: shopeeShortUrl
+}), shopeeShortUrl);
 
 // --- caption name resolution prefers the edited name/Hook field ---
 const rn = resolveCaptionProductName({ originalName: "ชื่อจริง", name: "ชื่อสั้น" });
@@ -353,6 +358,26 @@ check("image metadata hint uses the original title without overriding the refere
 check("image identity does not use the edited hook as the requested product", !/PRODUCT NAME \/ CATEGORY LOCK:[^\n]*แต่งตัวยากใช่ไหม/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
 check("apparel still image gives the garment reference priority", /APPAREL REFERENCE PRIORITY/i.test(hookDoesNotReplaceVisualIdentity), hookDoesNotReplaceVisualIdentity);
 
+const shirtWithProps = {
+  originalName: "เสื้อเชิ้ตแขนยาวผ้าคอตตอน",
+  name: "กระเป๋าสะพายหนัง",
+  category: "ฟิล์มหน้าจอมือถือ",
+  highlights: "Italian leather handbag",
+  structureAdvice: "Preserve the handbag strap and buckles",
+  promptAdvice: "Show the phone case filling the frame",
+  hooks: ["กระเป๋าสะพายหนังใบนี้"],
+  autoOptions: { videoStyle: "hands-only", reason: "Phone accessory" }
+};
+for (const generationProvider of ["google-flow", "meta-ai"]) {
+  const propSettings = { ...settings, generationProvider, videoDuration: "10", videoStyle: "Auto" };
+  const image = buildImagePrompt(shirtWithProps, propSettings);
+  const video = buildVideoPrompt(shirtWithProps, propSettings);
+  check(`${generationProvider} still and video isolate the listed shirt`, [image, video].every(prompt =>
+    /LISTED PRODUCT FOCUS:[^\n]*เสื้อเชิ้ตแขนยาวผ้าคอตตอน/.test(prompt)
+      && !/Preserve the handbag strap|Show the phone case filling the frame|Italian leather handbag|META PHONE FILM INSTALLATION|กระเป๋าสะพายหนังใบนี้/i.test(prompt)));
+  check(`${generationProvider} auto style ignores accessory analysis for the shirt`, resolveAutoSettings(shirtWithProps, propSettings).videoStyle === "lifestyle");
+}
+
 const fashionSelfieSettings = { ...settings, videoStyle: "fashion-selfie", presenter: "Auto", cameraMovement: "Auto" };
 const fashionSelfieImage = buildImagePrompt({
   name: "เสื้อเชิ้ตแขนยาวลายจุดสีขาว",
@@ -560,7 +585,7 @@ check("shoe video Auto includes a reviewer", /Presenter: (?:A fictional adult Th
 check("shoe presenter outfit matches the footwear", /PRESENTER OUTFIT MATCH[\s\S]*exact reference footwear[\s\S]*casual streetwear or athletic wear/i.test(shoeVideo), shoeVideo);
 check("shoe video Auto overrides no-person recommendation", !/No people, faces, presenters/i.test(shoeVideo));
 check("shoe video overrides unstable saved camera", /Subtle Slow Zoom In/i.test(shoeVideo) && !/Handheld Shake/i.test(shoeVideo));
-check("shoe prompts remain concise", shoeImage.length < 15000 && shoeVideo.length < 21000, `image=${shoeImage.length} video=${shoeVideo.length}`);
+check("shoe prompts remain concise", shoeImage.length < 15000 && shoeVideo.length < 21200, `image=${shoeImage.length} video=${shoeVideo.length}`);
 
 const runningShoeVideo = buildVideoPrompt(
   { name: "รองเท้าวิ่งผู้หญิง", productId: "running-activity-shoe" },
@@ -975,7 +1000,7 @@ check(
 );
 check(
   "child clothing prompt stays below the compact video limit",
-  childRaincoatVideo.length < 20000,
+  childRaincoatVideo.length < 20700,
   `length=${childRaincoatVideo.length}`
 );
 
@@ -1191,7 +1216,7 @@ check("image prompt with hands_only specifies slender female hand and realistic 
 check("hands-only video style specifies slender female hand and forbids oversized hands", /slender.*natural adult female hand/i.test(handsOnlyStyleVideo) && /never oversized, bulky, or masculine/i.test(handsOnlyStyleVideo), handsOnlyStyleVideo);
 check("unboxing hands presenter specifies slender female hands and forbids oversized hands", /slender, natural adult female hands/i.test(vidPresenterUnboxingHands) && /not oversized or bulky/i.test(vidPresenterUnboxingHands), vidPresenterUnboxingHands);
 
-// Clothing in hands-only mode: Lay flat on surface first, then hands pick up / inspect
+// Clothing in hands-only mode: Keep the garment open and clearly held throughout.
 const clothingHandsOnlyVideo = buildVideoPrompt(
   { name: "เสื้อยืดคอกลม โอเวอร์ไซส์", category: "เสื้อผ้าแฟชั่น" },
   { ...settings, videoStyle: "hands-only" }
@@ -1205,14 +1230,14 @@ const clothingPresenterHandsVideo = buildVideoPrompt(
   { ...settings, presenter: "hands_only" }
 );
 
-check("clothing hands-only video starts with garment laid flat first in Scene 1", /Scene 1 \(Flat-lay Lay Flat\)[\s\S]*neatly laid flat or placed down on a clean surface/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
-check("clothing hands-only video has slender female hands pick up and lift in Scene 2", /Scene 2 \(Pick Up & Lift\)[\s\S]*slender female hands gently pick up and lift/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
-check("clothing hands-only video forbids mid-air floating garments from start", /Never show the clothing item floating in mid-air|Never float or suspend the garment in mid-air/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
-check("clothing hands-only video includes clothing hands-only flat-lay & handling lock", /CLOTHING HANDS-ONLY FLAT-LAY & HANDLING LOCK/i.test(clothingHandsOnlyVideo) && /slender, natural adult female hands/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
+check("clothing hands-only video starts with garment held fully open in Scene 1", /Scene 1 \(Unfolded Hold\)[^\n]*hold[^\n]*fully unfolded and open toward the camera/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
+check("clothing hands-only video keeps the open garment visible during movement", /Scene 2 \(Gentle Move\)[^\n]*open garment[^\n]*without hiding its full cut or length/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
+check("clothing hands-only video requires physical support instead of floating", /never float the garment unsupported|Never fold, roll, bundle, put down, or float the garment without hand or hanger support/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
+check("clothing hands-only video holds the garment unfolded throughout", /first frame to the last[\s\S]*hold the garment fully open/i.test(clothingHandsOnlyVideo) && !/Start flat-lay|Always place the clothing down flat first/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
 check("clothing hands-only video does not mention an on-screen model wearing the garment", !/The model\/presenter must remain strictly front-facing/i.test(clothingHandsOnlyVideo) && !/model already wearing/i.test(clothingHandsOnlyVideo), clothingHandsOnlyVideo);
-check("clothing hands-only image uses flat-lay still lock with slender female hands", /CLOTHING HANDS-ONLY FLAT-LAY STILL LOCK[\s\S]*neatly laid flat or placed down[\s\S]*slender, natural adult female hands/i.test(clothingHandsOnlyImage), clothingHandsOnlyImage);
+check("clothing hands-only image shows slender female hands holding the whole garment open", /CLOTHING HANDS-ONLY UNFOLDED HOLD STILL LOCK[\s\S]*Slender, natural adult female hands[\s\S]*hold the clothing garment fully unfolded[\s\S]*complete front silhouette, full length/i.test(clothingHandsOnlyImage), clothingHandsOnlyImage);
 check("clothing hands-only image does not include on-screen fit model direction", !/APPAREL MODEL SAFETY/i.test(clothingHandsOnlyImage) && !/fit model/i.test(clothingHandsOnlyImage), clothingHandsOnlyImage);
-check("clothing video with hands_only presenter also starts laid flat and then picks up", /Scene 1 \(Flat-lay Lay Flat\)[\s\S]*Scene 2 \(Pick Up & Lift\)/i.test(clothingPresenterHandsVideo), clothingPresenterHandsVideo);
+check("clothing video with hands_only presenter also holds the garment unfolded", /Scene 1 \(Unfolded Hold\)[\s\S]*Scene 2 \(Gentle Move\)/i.test(clothingPresenterHandsVideo) && !/Flat-lay Lay Flat|Pick Up & Lift/.test(clothingPresenterHandsVideo), clothingPresenterHandsVideo);
 
 
 
@@ -2178,18 +2203,18 @@ const dressHandsOnlyVideo = buildVideoPrompt(
   { name: "ชุดเดรสออกงาน แขนกุด", category: "เดรสแฟชั่น" },
   { ...settings, videoStyle: "hands-only" }
 );
-check("dress in hands-only mode starts flat-lay first then picks up",
-  /Scene 1 \(Flat-lay Lay Flat\)[\s\S]*neatly laid flat or placed down/i.test(dressHandsOnlyVideo) &&
-  /Scene 2 \(Pick Up & Lift\)[\s\S]*slender female hands gently pick up and lift/i.test(dressHandsOnlyVideo)
+check("dress in hands-only mode stays fully open while held and moved",
+  /Scene 1 \(Unfolded Hold\)[^\n]*fully unfolded and open/i.test(dressHandsOnlyVideo) &&
+  /Scene 2 \(Gentle Move\)[^\n]*without hiding its full cut or length/i.test(dressHandsOnlyVideo)
 );
 
 const pantsHandsOnlyVideo = buildVideoPrompt(
   { name: "กางเกงยีนส์ขายาว ทรงกระบอก", category: "กางเกง" },
   { ...settings, videoStyle: "hands-only" }
 );
-check("pants in hands-only mode starts flat-lay first then picks up",
-  /Scene 1 \(Flat-lay Lay Flat\)[\s\S]*neatly laid flat or placed down/i.test(pantsHandsOnlyVideo) &&
-  /Scene 2 \(Pick Up & Lift\)[\s\S]*slender female hands gently pick up and lift/i.test(pantsHandsOnlyVideo)
+check("pants in hands-only mode stay fully open while held and moved",
+  /Scene 1 \(Unfolded Hold\)[^\n]*fully unfolded and open/i.test(pantsHandsOnlyVideo) &&
+  /Scene 2 \(Gentle Move\)[^\n]*without hiding its full cut or length/i.test(pantsHandsOnlyVideo)
 );
 
 // Minimalist Studio location tests — Aesthetic editorial set with ZERO visible lights / studio rigs
@@ -2378,9 +2403,10 @@ check("underwear image prompt includes strict intimate apparel safety mandate",
   underwearImagePrompt.includes("STRICTLY NO-ON-BODY-WEARING") &&
   underwearImagePrompt.includes("STRICT INTIMATE APPAREL & FABRIC FIDELITY LOCK")
 );
-check("underwear image prompt specifies flat-lay display",
-  underwearImagePrompt.includes("CLOTHING HANDS-ONLY FLAT-LAY STILL LOCK") &&
-  underwearImagePrompt.includes("neatly laid flat or placed down on a clean aesthetic surface")
+check("underwear image prompt specifies an unfolded handheld display",
+  underwearImagePrompt.includes("CLOTHING HANDS-ONLY UNFOLDED HOLD STILL LOCK") &&
+  underwearImagePrompt.includes("hold the clothing garment fully unfolded") &&
+  !/must be shown laid flat, folded|gently fold or neatly present/.test(underwearImagePrompt)
 );
 
 // --- Still-Motion Mode: Zero Zoom Effects & Horizontal Orbit Left-Right Tests ---

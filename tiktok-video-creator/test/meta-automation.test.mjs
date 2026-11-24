@@ -13,6 +13,7 @@ function load(name, next, dependencies = {}) {
 const failure = load('generationFailure', '\n  async function waitFor');
 const prepareMetaVideoPrompt = load('prepareMetaVideoPrompt', '\n  async function generate');
 const metaLocationDirection = load('metaLocationDirection', '\n  async function generate');
+const multipartVideoDirection = load('multipartVideoDirection', '\n  async function selectThinkingMode');
 
 test('Meta uploads each reference separately and waits for every attachment', async () => {
   const attachments = [];
@@ -151,7 +152,33 @@ test('generation retries once in a new chat with the same prompt and references'
     pause: async () => {}, newChat: async () => events.push('new-chat'),
   });
   assert.equal(await retry('video','prompt',references), 'video-result');
-  assert.deepEqual(events, [['video','prompt',references], 'retrying-video', 'new-chat', ['video','prompt',references]]);
+  assert.deepEqual(events, [['video','prompt',references,1], 'retrying-video', 'new-chat', ['video','prompt',references,1]]);
+});
+
+test('Meta requests three parts and waits for the joined video instead of returning a 10s preview', async () => {
+  const preview = { element: { readyState: 4, duration: 10 }, url: 'blob:preview' };
+  // This is how the live export appeared when Chrome could not play its codec.
+  const joined = { element: { readyState: 0, duration: NaN }, url: 'https://cdn.fbsbx.com/test.mp4' };
+  const response = { innerText: 'Rendering your video' };
+  let submitted = '';
+  let polls = 0;
+  const requested = [];
+  const generate = load('generate', '\n  async function newChat', {
+    report: async () => {}, upload: async () => {},
+    responseMedia: () => submitted ? (polls++ === 0 ? [preview] : [preview, joined]) : [],
+    prepareMetaVideoPrompt, metaLocationDirection, multipartVideoDirection, selectThinkingMode: async () => {},
+    document: { querySelectorAll: selector => submitted && selector.includes('Meta AI response') ? [response] : [] },
+    enterPrompt: async text => { submitted = text; },
+    waitFor: async find => await find() || await find() || assert.fail('expected the joined video'),
+    generationFailure: failure,
+    check: () => {},
+    chrome: { runtime: { sendMessage: async message => { requested.push(message); return { ok: true, videoUrl: 'joined-video' }; } } },
+  });
+  assert.equal(await generate('video', 'Product video', [], 3), 'joined-video');
+  assert.deepEqual(requested, [{ type: 'META_FETCH_JOINED_VIDEO', payload: { url: joined.url, duration: 30 } }]);
+  assert.match(submitted, /exactly 3 distinct consecutive 10-second parts/);
+  assert.match(submitted, /Part 3: 20–30s/);
+  assert.match(submitted, /ONE downloadable 30-second vertical 9:16 MP4/);
 });
 
 test('retry stops after two failures and does not retry quota or cancellation', async () => {
@@ -400,3 +427,25 @@ test('Meta video casts plus-size model when clothing is for plus-size/curvy wear
   assert.match(submitted, /PLUS-SIZE BODY: Model must have a realistic plus-size \/ curvy body proportion/);
 });
 
+
+test('Meta hands-only prompts never call for an on-screen presenter', async () => {
+  let submitted;
+  const halt = new Error('captured prompt');
+  const generate = load('generate', '\n  async function newChat', {
+    report: async () => {}, upload: async () => {}, responseMedia: () => [],
+    document: { querySelectorAll: () => [] },
+    prepareMetaVideoPrompt, metaLocationDirection,
+    enterPrompt: async prompt => { submitted = prompt; throw halt; },
+  });
+  for (const metaMultiScene of [true, false]) {
+    const prompt = buildVideoPrompt(
+      { name: 'Clear phone case', category: 'Phone accessories' },
+      { ...getDefaultSettings(), videoStyle: 'hands-only', generationProvider: 'meta-ai', videoDuration: 10, metaMultiScene }
+    );
+    await assert.rejects(generate('video', prompt, []), halt);
+    assert.match(submitted, /HANDS-ONLY MANDATE/);
+    assert.match(submitted, /META PHONE CASE ZERO APPLE LOGO MANDATE/);
+    assert.match(submitted, metaMultiScene ? /0–3s WIDE/ : /one continuous/);
+    assert.doesNotMatch(submitted, /META PRESENTER AGE|PRESENTER DELIVERY:|with the presenter|presenter movement|newly generated presenter/);
+  }
+});

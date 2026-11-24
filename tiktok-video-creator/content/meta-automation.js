@@ -163,6 +163,19 @@
       !/^\s*(?:MANDATORY VIDEO FORMAT:|MANDATORY TWO-SCENE EDIT:|OMNI 10-SECOND MULTI-SHOT OVERRIDE:|META 10-SECOND (?:THREE-SCENE|SINGLE-SCENE) PLAN:|This video must consist of|[-*]\s*Scene\s*\d+\s*\(|Subtle Slow Zoom In;)/i.test(line)
     ).join('\n').replace(/, including 2\.5s, 5s and 7\.5s when present/g, '');
   }
+  function multipartVideoDirection(parts) {
+    const duration = parts * 10;
+    const timeline = Array.from({length: parts}, (_, i) => `Part ${i + 1}: ${i * 10}–${(i + 1) * 10}s`).join('; ');
+    return `HIGHEST PRIORITY — COMPLETE ${duration}-SECOND VIDEO: Generate exactly ${parts} distinct consecutive 10-second parts, then join them in order and attach ONE downloadable ${duration}-second vertical 9:16 MP4 in this chat. Use H.264 for browser playback if available. Timeline: ${timeline}. Use the requested story beats in order; when no timeline is supplied, start with the product introduction, use the middle for its natural demonstration, and finish with a clear product view. Use the same exact product, fictional presenter (if requested), outfit, location, lighting and audio style across the entire video. Match the action and framing across joins. Never repeat the opening or reuse footage to fill time. Preserve the selected audio mode and make any narration progress without repeated lines. The 10-second references below describe individual parts; the final video must be ${duration} seconds. Return the actual joined file.`;
+  }
+  async function selectThinkingMode() {
+    const mode = document.querySelector('button[data-testid="composer-mode-dropdown-button"]');
+    if (!mode || /thinking/i.test(label(mode))) return;
+    await click(mode);
+    const thinking = await waitFor(() => document.querySelector('[data-testid="composer-mode-option-think_hard"]'), 'Thinking mode');
+    await click(thinking);
+    await waitFor(() => /thinking/i.test(label(document.querySelector('button[data-testid="composer-mode-dropdown-button"]') || mode)), 'Thinking mode selection');
+  }
   function metaLocationDirection(prompt, kind = 'video') {
     const source = String(prompt || '');
     const selected = source.match(/(?:SELECTED BACKGROUND LOCATION LOCK|SHOE WORN-ON-FEET SELECTED LOCATION LOCK): Use exactly the user's selected ([^\n.]+?)(?: background|\.|$)/i);
@@ -178,7 +191,10 @@
     if (/FASHION SELFIE MODE/i.test(source)) return `META SELFIE LOCATION PRIORITY: Place the new model in a clearly recognizable ${location} setting that is visibly different from the reference photo's room, background, furniture, and composition. Keep this new setting stable throughout the video. Preserve the selected selfie framing and phone-over-face pose in every scene; do not cut to product-only shots.`;
     return `META SCENE LOCATION PRIORITY: Every scene and every camera framing must remain in the same clearly recognizable ${location} setting. Show enough room context in the wide shot to identify this location. Keep its furniture, architecture, and lighting consistent in medium and close shots. Do not move to a studio, shop, cafe, or another room. Use the uploaded image ONLY to preserve the product itself; completely discard and replace its original background, room, and location from the reference photo.`;
   }
-  async function generate(kind, prompt, references) {
+  async function generate(kind, prompt, references, parts = 1) {
+    const duration = kind === 'video' ? parts * 10 : 0;
+    const multipart = kind === 'video' && parts > 1 ? multipartVideoDirection(parts) : '';
+    if (multipart) await selectThinkingMode();
     await report(`uploading-${kind}-reference`);
     await upload(references);
     const existing = new Set(responseMedia(kind).map(item=>item.url));
@@ -194,20 +210,22 @@
     const phoneCaseLogoLock = isPhoneCase
       ? ' META PHONE CASE ZERO APPLE LOGO MANDATE (HIGHEST PRIORITY IN ALL CASES): Absolutely NEVER generate, render, display, or include the Apple logo (apple silhouette, bitten apple icon, or Apple text), Samsung logo, or any smartphone brand logo anywhere in the output (not on the phone case, not on the phone body, not inside the camera cutout, not in the magnetic ring, not on the screen). FOR CLEAR/TRANSPARENT CASES (เคสใส/โปร่งแสง เห็นตัวเครื่องเงาๆ ห้ามมีโลโก้เด็ดขาด): When the case is transparent or clear and the glossy glass/metal phone body is visible underneath, that glossy phone back MUST be completely 100% BLANK, SMOOTH, AND UNBRANDED with ABSOLUTELY NO APPLE LOGO. Keep the phone body and case completely generic and 100% unbranded in all shots. If an Apple logo is visible in the reference image or through a clear case/cutout, completely REMOVE and ERASE it, rendering that area as clean, plain unbranded material.'
       : '';
+    const isHandsOnly = /META FIRST-PERSON POV HANDS-ONLY OVERRIDE/i.test(prompt);
     const direction = kind === 'image'
       ? `${isFashionSelfie ? `FASHION SELFIE IMAGE PRIORITY: Create one new fictional adult ${selfieModel} wearing the exact reference garment and holding a phone over the face. Give the model a clearly different ${selfieIdentity} from any person in the reference. ${selfieHair} Use a visibly different room and background; copy only the garment, not the source person or setting. ` : ''}Generate an actual image using the uploaded product reference. Output a vertical 9:16 image, not a written description. CRITICAL COLOR FIDELITY LOCK: Strictly match the exact color, shade, hue, and saturation of the product from the uploaded reference image pixel-for-pixel. Do NOT alter, shift, tint, or recolor the product under any scene lighting.${phoneCaseLogoLock}`
       : phoneFilmInstallation
         ? 'Generate the actual phone film installation VIDEO described below. Show the physical application and reserve the final two seconds for a steady view of the fully installed film. No presenter, package showcase, or spoken review.'
       : isFashionSelfie
         ? `Generate an actual VIDEO from the uploaded product image. Mandatory: vertical portrait 9:16, exactly 10 seconds. Output the video file, not a description or GIF. FASHION SELFIE HIGHEST PRIORITY: Show one NEW fictional adult ${selfieModel} WEARING the exact reference garment and standing in a natural outfit selfie pose throughout the video. The model must have a clearly different ${selfieIdentity} from every person in the reference image. ${selfieHair} The model holds a smartphone over the face in every frame; keep the phone, model, and worn garment visible. Never show the model holding folded clothing, presenting the garment by hand, or speaking to the camera. ${multiScene ? 'Use three clean cuts while preserving the same new model, phone-over-face pose, outfit, and selected framing in all three scenes.' : 'Use one continuous shot with the same new model, phone-over-face pose, outfit, and selected framing.'} Create a visibly different room and background from the reference; keep that new setting stable throughout. The uploaded image supplies ONLY the garment design: preserve its exact type, silhouette, fabric, cut, colors, pattern, print, and visible details. Do not copy the reference person, pose, hair, face, or location. Any narration is off-screen only; music-only mode has no speech.`
-        : `Generate an actual VIDEO from the uploaded product image. Mandatory: vertical portrait 9:16, exactly 10 seconds. Output the video file, not a description or GIF. CRITICAL COLOR FIDELITY LOCK: Strictly preserve the exact product color, fabric/material hue, shade, and printed artwork from the uploaded reference image pixel-for-pixel; do not tint, desaturate, or shift product colors under any lighting.${phoneCaseLogoLock} ${multiScene ? 'META SALES SHOT PRIORITY: Use three sequential full-frame front-facing scenes with clean cuts: 0–3s WIDE establishing shot showing the product with the presenter or selling environment; 3–6s MEDIUM shot emphasizing the product and natural demonstration; 6–10s CLOSE product shot showing the front label and material clearly, finishing on a steady sales hero hold with the presenter calmly completing the spoken review before the final silent hold. Keep the camera level and front-facing in all three scenes. No oblique or three-quarter angles, orbit, side views, or product rotation. Change framing by moving the camera closer, never by enlarging the product.' : 'META SINGLE-SCENE PRIORITY: Use one continuous front-facing shot for the full 10 seconds with no cuts or scene changes. Start with a clear product view, show one natural product action through gentle camera or presenter movement, and finish on a steady hero hold with the presenter calmly completing the spoken review before the final silent hold.'} Keep the entire product visible with comfortable margins; no extreme macro or cropped packaging. Preserve product shape, printed artwork, physical size, and contents. Maintain consistency for the newly generated presenter and newly generated setting across scenes, but NEVER copy or match the face, person, background, room, or location from the reference photo. Keep true scale against hands and body. Do not reveal an unseen back or invent hidden details. No collage or split screen. Continue one narration smoothly without restarting. META PRESENTER AGE: When the prompt shows an adult woman or man and specifies no different age, cast a newly generated fictional Thai adult aged 20–25 with a visibly youthful face. Do not copy the age, face, or identity of any person visible in a product reference image; that image is for the product only. Keep the same young presenter in every scene. META THAI SPEECH: Compose the spoken line in natural Thai script first. Use a fluent native Thai voice with correct tones, vowels and final consonants, complete word endings, and brief natural pauses at phrase boundaries. Speak evenly at a comfortable conversational pace; keep every word intelligible and the voice clearly above music. No slurring, swallowed or rushed syllables, echo, or English-accented Thai. When a visible adult presenter is selected, that presenter speaks the Thai review on camera in their own voice; never use a detached background narrator for that presenter. Keep voiceover only for product-only, hands-only, covered-face, or explicitly selected voiceover modes. Music-only mode has no speech. This selected scene plan overrides conflicting shot-count and camera directions; retain the selected product action and audio mode.`;
+        : isHandsOnly
+          ? `Generate an actual VIDEO from the uploaded product image. Mandatory: vertical portrait 9:16, exactly 10 seconds. Output the video file. FIRST-PERSON POV HANDS-ONLY MANDATE: In every shot, show only the product and natural hands with partial forearms entering from the frame edges. No faces, bodies, other people, silhouettes, or human reflections. Use the reference only for the product. Preserve its exact color, material, size, shape, and printed artwork.${phoneCaseLogoLock} ${multiScene ? 'Use three level, front-facing POV shots with clean cuts: 0–3s WIDE establishing the product and setting; 3–6s MEDIUM showing the selected hand action; 6–10s CLOSE showing product details and ending on a steady hold.' : 'Use one continuous level, front-facing POV shot for all 10 seconds. Show the selected hand action and end on a steady hold.'} Keep the full product visible with comfortable margins and the same setting throughout. No rotation or invented hidden details. Follow the selected audio mode: any Thai narration is continuous off-screen voiceover; music-only has no speech.`
+        : `Generate an actual VIDEO from the uploaded product image. Mandatory: vertical portrait 9:16, exactly 10 seconds. Output the video file, not a description or GIF. CRITICAL PRODUCT MATCH LOCK (สินค้าในคลิปต้องเหมือนรูปต้นฉบับ 100% ทุกเฟรม ทุกซีน): The uploaded image is the exact item to show, as if the same physical product were filmed on camera. In every frame and after every cut, keep its shape, proportions, parts, colors, fabric/material, print/pattern, logo, label text, and visible count identical to the reference. Never redesign, recolor, simplify, add or remove parts, invent text, or swap in a similar-looking product; do not tint, desaturate, or shift product colors under any lighting. Only the setting, presenter, and camera may change.${phoneCaseLogoLock} ${multiScene ? 'META SALES SHOT PRIORITY: Use three sequential full-frame front-facing scenes with clean cuts: 0–3s WIDE establishing shot showing the product with the presenter or selling environment; 3–6s MEDIUM shot emphasizing the product and natural demonstration; 6–10s CLOSE product shot showing the front label and material clearly, finishing on a steady sales hero hold with the presenter calmly completing the spoken review before the final silent hold. Keep the camera level and front-facing in all three scenes. No oblique or three-quarter angles, orbit, side views, or product rotation. Change framing by moving the camera closer, never by enlarging the product.' : 'META SINGLE-SCENE PRIORITY: Use one continuous front-facing shot for the full 10 seconds with no cuts or scene changes. Start with a clear product view, show one natural product action through gentle camera or presenter movement, and finish on a steady hero hold with the presenter calmly completing the spoken review before the final silent hold.'} Keep the entire product visible with comfortable margins; no extreme macro or cropped packaging. Preserve product shape, printed artwork, physical size, and contents. Maintain consistency for the newly generated presenter and newly generated setting across scenes, but NEVER copy or match the face, person, background, room, or location from the reference photo. Keep true scale against hands and body. Do not reveal an unseen back or invent hidden details. No collage or split screen. Continue one narration smoothly without restarting. META PRESENTER AGE: When the prompt shows an adult woman or man and specifies no different age, cast a newly generated fictional Thai adult aged 20–25 with a visibly youthful face. Do not copy the age, face, or identity of any person visible in a product reference image; that image is for the product only. Keep the same young presenter in every scene. META THAI SPEECH: Compose the spoken line in natural Thai script first. Use a fluent native Thai voice with correct tones, vowels and final consonants, complete word endings, and brief natural pauses at phrase boundaries. Speak evenly at a comfortable conversational pace; keep every word intelligible and the voice clearly above music. No slurring, swallowed or rushed syllables, echo, or English-accented Thai. When a visible adult presenter is selected, that presenter speaks the Thai review on camera in their own voice; never use a detached background narrator for that presenter. Keep voiceover only for product-only, hands-only, covered-face, or explicitly selected voiceover modes. Music-only mode has no speech. This selected scene plan overrides conflicting shot-count and camera directions; retain the selected product action and audio mode.`;
     const content = kind === 'video' ? prepareMetaVideoPrompt(prompt) : prompt;
-    const isHandsOnly = /META FIRST-PERSON POV HANDS-ONLY OVERRIDE/i.test(prompt);
     const isProductOnly = /META PRODUCT-ONLY OVERRIDE/i.test(prompt);
     const presenterDelivery = phoneFilmInstallation ? '' : isFashionSelfie
       ? `FASHION SELFIE PRESENTER: Keep the same NEW adult model wearing the exact reference garment and holding the phone over the face in every frame. The model's hair, underlying face, and appearance must not match anyone in the source image. The new location must not resemble the source background. The model never holds the garment in hand and never speaks on camera; narration, if enabled, is off-screen.`
       : isHandsOnly
-      ? 'FIRST-PERSON POV HANDS-ONLY MANDATE (HIGHEST PRIORITY): Strictly first-person POV only. Show only natural hands and forearms holding, touching, or demonstrating the product. Absolutely DO NOT generate, show, or include any face, head, eyes, nose, mouth, body, or on-screen presenter. The Thai review is delivered entirely as an off-screen voiceover; never show any person or face on camera.'
+      ? 'FIRST-PERSON POV HANDS-ONLY MANDATE (HIGHEST PRIORITY): Strictly first-person POV only. Show only natural hands and forearms holding, touching, or demonstrating the product. Absolutely DO NOT generate, show, or include any face, head, eyes, nose, mouth, body, or on-screen presenter. If speech is enabled, use off-screen Thai voiceover only.'
       : isProductOnly
         ? 'PRODUCT-ONLY MANDATE (HIGHEST PRIORITY): Show only the product resting or showcased with camera movement. Absolutely DO NOT generate, show, or include any face, head, body, hands, or presenter. The Thai review is delivered entirely as an off-screen voiceover.'
         : kind === 'image'
@@ -217,10 +235,13 @@
       ? 'PLUS-SIZE CASTING (HIGHEST PRIORITY): If this shot calls for a model, cast a visibly large, full-bodied plus-size Thai adult. For a female presenter, cast a beautiful Thai woman with naturally Thai facial features and soft, polished makeup. Keep her face original and respect any selected face-covering or crop. Match the fullness of a plus-size reference model from the neck down, including a rounded abdomen, broad waist, full hips and thighs, and thick upper arms where visible. The garment must fit this larger body at its original scale. Do not slim the body, give it a narrow waist, or put oversized clothing on a slim model. Preserve this build in every shot. Body proportions can match the reference; the face, hair, and identity must be new. Follow the selected framing.'
       : '';
     const opening = kind === 'video' ? [direction, plusSizeBody] : [plusSizeBody, direction];
-    await enterPrompt([...opening, metaLocationDirection(prompt, kind), presenterDelivery, content].filter(Boolean).join('\n').trim());
+    const exportReminder = multipart ? `FINAL DELIVERY: Attach the actual joined ${duration}-second MP4 as one file.` : '';
+    await enterPrompt([multipart, ...opening, metaLocationDirection(prompt, kind), presenterDelivery, content, exportReminder].filter(Boolean).join('\n').trim());
     await report(`generating-${kind}`);
     let redoAttempts = 0;
     let lastFailedResponse = null;
+    const rejectedVideos = new Map();
+    let completedAt;
     const output = await waitFor(async ()=>{
       const response = [...document.querySelectorAll('[aria-label="Meta AI response"]')].filter(item=>!oldResponses.has(item)).at(-1);
       const text = [
@@ -239,11 +260,36 @@
       }
 
       const failure = generationFailure(text);
-      if (failure) throw failure;
+      if (failure && (!multipart || failure.code !== 'META_UNAVAILABLE')) throw failure;
       if (!response) return null;
-      return responseMedia(kind).find(item=>!existing.has(item.url));
-    },`generated ${kind}`,10*60*1000);
+      const media = responseMedia(kind).filter(item=>!existing.has(item.url));
+      if (!multipart) return media[0];
+      for (const { element, url } of media.toReversed()) {
+        if (rejectedVideos.has(url)) continue;
+        if (element.readyState >= 1 && Math.abs(element.duration - duration) > .3) {
+          rejectedVideos.set(url, `Meta AI returned ${element.duration.toFixed(2)}s; required ${duration}s`);
+          continue;
+        }
+        if (url.startsWith('https:')) {
+          const result = await chrome.runtime.sendMessage({ type: 'META_FETCH_JOINED_VIDEO', payload: { url, duration } });
+          check();
+          if (result?.ok && result.videoUrl) return { videoUrl: result.videoUrl };
+          rejectedVideos.set(url, result?.error || 'Could not retrieve Meta AI video');
+        } else if (element.readyState >= 1) {
+          return { element, url };
+        }
+      }
+      if (response.querySelector?.('[aria-label="Like this response"]')) {
+        completedAt ??= Date.now();
+        if (Date.now() - completedAt > 5000) {
+          const error = [...rejectedVideos.values()].at(-1) || `Meta AI finished without attaching one joined ${duration}-second MP4`;
+          throw failure || Object.assign(new Error(error), { code: 'META_JOINED_VIDEO_MISSING', retryable: false });
+        }
+      }
+      return null;
+    }, multipart ? `one joined ${duration}-second video` : `generated ${kind}`, Math.max(1, parts)*10*60*1000);
     await report(`retrieving-${kind}`);
+    if (output.videoUrl) return output.videoUrl;
     const fetched = await fetch(output.url);
     if (!fetched.ok) throw new Error(`Meta AI media download failed (${fetched.status})`);
     const blob = await fetched.blob();
@@ -251,8 +297,8 @@
     if (kind === 'video') {
       const video = output.element;
       await waitFor(()=>video.readyState>=1,'video metadata',30000);
-      if (Math.abs(video.duration-10)>.3 || Math.abs(video.videoWidth/video.videoHeight-9/16)>.03) {
-        throw new Error(`Meta AI returned ${video.videoWidth}x${video.videoHeight}, ${video.duration.toFixed(2)}s; required vertical 9:16, 10s`);
+      if (!Number.isFinite(video.duration) || Math.abs(video.duration-duration)>.3 || Math.abs(video.videoWidth/video.videoHeight-9/16)>.03) {
+        throw new Error(`Meta AI returned ${video.videoWidth}x${video.videoHeight}, ${video.duration.toFixed(2)}s; required vertical 9:16, ${duration}s`);
       }
     }
     return blobData(blob);
@@ -285,10 +331,10 @@
       if (location.pathname !== '/') location.href = 'https://www.meta.ai/';
     });
   }
-  async function generateWithRetry(kind, prompt, references) {
+  async function generateWithRetry(kind, prompt, references, parts = 1) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        return await generate(kind,prompt,references);
+        return await generate(kind,prompt,references,parts);
       } catch (error) {
         check();
         if (!error.retryable || attempt === 1) throw error;
@@ -306,7 +352,8 @@
       const prompts = typeof payload.prompt === 'string' ? {imagePrompt:payload.prompt,videoPrompt:payload.prompt} : payload.prompt;
       if (payload.phase !== 'video') imgUrl = await generateWithRetry('image',prompts.imagePrompt,payload.references || []);
       const videoReferences = imgUrl ? [imgUrl] : (payload.references || []);
-      const resultUrl = payload.phase === 'image' ? imgUrl : await generateWithRetry('video',prompts.videoPrompt,videoReferences);
+      const parts = [2, 3, 4].includes(payload.options?.metaVideoParts) ? payload.options.metaVideoParts : 1;
+      const resultUrl = payload.phase === 'image' ? imgUrl : await generateWithRetry('video',prompts.videoPrompt,videoReferences,parts);
       await chrome.storage.local.set({[`metaJob:${payload.jobId}`]:{result:{ok:true,resultUrl,imgUrl,provider:'meta-ai'}}});
     } catch (error) {
       await chrome.storage.local.set({[`metaJob:${payload.jobId}`]:{result:{ok:false,error:error.message,code:error.code,retryable:error.retryable,imgUrl,pageUrl:location.href}}});
@@ -316,6 +363,9 @@
     }
   }
   chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+    if (message.type === 'META_READY') {
+      reply({ready: document.readyState === 'complete' && Boolean(composer())});
+    }
     if (message.type === 'META_STOP') {stopped=true;reply({stopped:true});}
     if (message.type === 'META_RUN') {
       if (running) {reply({accepted:false,error:'Meta AI is already generating'});return;}

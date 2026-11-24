@@ -1,4 +1,5 @@
 import { bindGenerationProvider } from "../modules/generation-provider.js";
+import { flowStoryPartCount, resolveFlowClipLength, syncFlowLengthControls } from "../modules/flow-video-settings.js";
 import {
   getSelectableVideoStyles,
   HIDDEN_VIDEO_STYLE_IDS,
@@ -51,7 +52,7 @@ export async function initVideoTab(injectedHelpers) {
     imageCount: savedOptions.flow?.imageCount || 1,
     videoCount: savedOptions.flow?.videoCount || 1,
     postAction: savedOptions.postDefaults?.afterCreateAction || "post",
-    videoRefMode: "ingredients",
+    videoRefMode: "frames",
     ...(savedOptions.mediaSettings || {})
   };
 
@@ -75,7 +76,7 @@ export async function initVideoTab(injectedHelpers) {
   bindGlobalEvents();
   fillGlobalFormFromState();
   bindGenerationProvider("video-generation-provider", savedOptions.generationProvider,
-    ["image-model", "video-model", "video-ref-mode", "image-count", "video-count"],
+    ["image-model", "video-model", "video-ref-mode", "image-count", "video-count", "video-duration", "flow-story-parts"],
     (error) => helpers.showStatus(error.message, "error"));
   renderQueue();
 
@@ -102,9 +103,9 @@ function bindGlobalEvents() {
   [
     "video-style", "presenter", "custom-presenter", "audio-mode", "voice-tone", "location", "custom-location", "product-activity",
     "text-enabled", "clip-text", "promotion-text", "text-position", "camera-movement", "camera-framing", "transition",
-    "image-count", "video-count", "video-duration", "aspect-ratio", "post-action", "post-no-link",
+    "image-count", "video-count", "video-duration", "flow-story-parts", "aspect-ratio", "post-action", "post-no-link",
     "post-schedule-date", "post-schedule-time", "post-schedule-interval", "post-delay-min", "post-delay-max", "image-model", "video-model", "video-ref-mode", "flow-gen-mode",
-    "first-scene-no-people", "meta-multi-scene", "video-generation-provider"
+    "first-scene-no-people", "meta-multi-scene", "meta-video-parts", "video-generation-provider"
   ].forEach((id) => {
     const el = document.querySelector(`#${id}`);
     if (!el) return;
@@ -153,12 +154,14 @@ function fillGlobalFormFromState() {
   setValue("image-model", settings.imageModel);
   setValue("video-model", settings.videoModel);
   setValue("meta-multi-scene", settings.metaMultiScene);
+  setValue("meta-video-parts", settings.metaVideoParts);
   setValue("image-count", settings.imageCount);
   setValue("video-count", settings.videoCount);
-  setValue("video-duration", settings.videoDuration);
   setValue("aspect-ratio", settings.aspectRatio);
   setValue("video-ref-mode", settings.videoRefMode);
   setValue("flow-gen-mode", settings.flowGenMode);
+  setValue("flow-story-parts", settings.flowStoryParts);
+  refreshFlowLength(settings.videoDuration);
   setValue("post-action", settings.postAction);
   setValue("post-no-link", settings.postNoLink);
   setValue("post-random-caption-hook", settings.postRandomCaptionHook);
@@ -178,7 +181,12 @@ function fillGlobalFormFromState() {
   renderModelRefPreview();
 }
 
+function refreshFlowLength(requested) {
+  syncFlowLengthControls({ model: "video-model", duration: "video-duration", parts: "flow-story-parts", total: "flow-story-length" }, requested);
+}
+
 function syncSettingsForm() {
+  refreshFlowLength();
   const dateVal = getValue("post-schedule-date");
   const timeVal = getValue("post-schedule-time") || "00:00";
   const combinedTime = (dateVal && timeVal) ? `${dateVal}T${timeVal}` : "";
@@ -209,6 +217,8 @@ function syncSettingsForm() {
     videoModel: getValue("video-model"),
     generationProvider: getValue("video-generation-provider") || settings.generationProvider || "google-flow",
     metaMultiScene: getValue("meta-multi-scene"),
+    metaVideoParts: getValue("meta-video-parts"),
+    flowStoryParts: getValue("flow-story-parts"),
     imageCount: parseInt(getValue("image-count"), 10) || 1,
     videoCount: parseInt(getValue("video-count"), 10) || 1,
     videoDuration: parseInt(getValue("video-duration"), 10) || 8,
@@ -322,9 +332,11 @@ function normalizeSettings(value) {
     videoModel: value.videoModel || "veo-3.1-lite-low-priority",
     generationProvider: value.generationProvider === "meta-ai" ? "meta-ai" : (value.generationProvider || "google-flow"),
     metaMultiScene: value.metaMultiScene !== false && value.metaMultiScene !== "false",
+    metaVideoParts: value.metaVideoParts || "1",
     imageCount: value.imageCount || 1,
     videoCount: value.videoCount || 1,
-    videoDuration: 8,
+    videoDuration: Number(value.videoDuration) || 8,
+    flowStoryParts: flowStoryPartCount(value.flowStoryParts),
     aspectRatio: "9:16",
     videoRefMode: value.videoRefMode === "ingredients" ? "ingredients" : "frames",
     flowGenMode: ["video", "image"].includes(value.flowGenMode) ? value.flowGenMode : "combined",
@@ -872,12 +884,14 @@ async function processQueue() {
   let finalLevel = "success";
   let scheduledCount = 0;
   const failedIndexes = new Set();
+  const incompleteStories = new Set();
 
   try {
     for (let queueAttempt = 1; queueAttempt <= QUEUE_MAX_ATTEMPTS; queueAttempt += 1) {
     for (let i = 0; i < productQueue.length; i += 1) {
     if (stopRequested) break;
     if (queueAttempt > 1 && !failedIndexes.has(i)) continue;
+    if (incompleteStories.has(i)) continue;
     const product = productQueue[i];
     if (product.status === "done" && (settings.flowGenMode === "image" || product.videoUrl)) {
       helpers.logActivity?.(`สินค้า ${i + 1} (${product.name || "ไม่มีชื่อ"}): ข้ามการทำรายการเนื่องจากสถานะเป็น done แล้ว`, "info");
@@ -1054,6 +1068,7 @@ async function processQueue() {
         break;
       }
       failedIndexes.add(i);
+      if (err.code === "FLOW_STORY_INCOMPLETE") incompleteStories.add(i);
       // กู้ภาพที่เจนเสร็จก่อนวิดีโอล้มเหลว เพื่อให้กดต่อวิดีโอได้โดยไม่ต้องเจนภาพใหม่
       if (err?.imgUrl) {
         product.approvedImage = err.imgUrl;
@@ -1065,7 +1080,7 @@ async function processQueue() {
       renderQueue();
       helpers.showStatus(`สินค้า ${i + 1} Error: ${err.message}`, "error");
       if (err.retryable === false) stopRequested = true;
-      const willRetry = !stopRequested && queueAttempt < QUEUE_MAX_ATTEMPTS;
+      const willRetry = !stopRequested && err.code !== "FLOW_STORY_INCOMPLETE" && queueAttempt < QUEUE_MAX_ATTEMPTS;
       helpers.logActivity?.(
         willRetry
           ? `สินค้า ${i + 1} ล้มเหลวรอบแรก: ${err.message} — เก็บไว้ลองใหม่ในรอบ Retry`
@@ -1075,7 +1090,7 @@ async function processQueue() {
     }
     }
 
-    if (stopRequested || failedIndexes.size === 0) break;
+    if (stopRequested || failedIndexes.size === incompleteStories.size) break;
     if (queueAttempt < QUEUE_MAX_ATTEMPTS) {
       helpers.showStatus(`พบรายการ Failed ${failedIndexes.size} รายการ — เริ่ม Retry อีกรอบ...`, "warning");
       helpers.logActivity?.(`เริ่มรอบ Retry สำหรับสินค้า Failed ${failedIndexes.size} รายการ`, "warning");
@@ -1130,7 +1145,7 @@ async function openGoogleFlowWithLoginResume(phase, prompt, imageUrl, options, p
     try {
       return await runInterruptibly(() => openGoogleFlow(phase, prompt, imageUrl, options));
     } catch (error) {
-      if (isFlowTimeoutError(error)) {
+      if (error.code !== "FLOW_STORY_INCOMPLETE" && isFlowTimeoutError(error)) {
         // A combined job can time out only while Phase 2 is being detected,
         // after Flow has already produced a valid Phase 1 still. Never wipe
         // that still and restart the whole combined job; surface it so the
@@ -1294,19 +1309,24 @@ function getImagePromptSettings() {
 
 function getVideoPromptSettings() {
   const generationProvider = getValue("video-generation-provider") || "google-flow";
-  return { ...settings, generationProvider, metaMultiScene: getValue("meta-multi-scene"), videoDuration: generationProvider === "meta-ai" ? 10 : 8 };
+  const videoModel = getValue("video-model") || settings.videoModel;
+  const videoDuration = generationProvider === "meta-ai" ? 10 : resolveFlowClipLength(videoModel, getValue("video-duration"));
+  return { ...settings, generationProvider, videoModel, metaMultiScene: getValue("meta-multi-scene"), videoDuration };
 }
 
 function buildFlowOptions(product = null) {
   const opts = {
     generationProvider: getValue("video-generation-provider") || "google-flow",
+    metaVideoParts: getValue("meta-video-parts"),
+    flowStoryParts: getValue("flow-story-parts"),
+    onStoryProgress: message => helpers.showStatus(message, "info"),
     imageModel: settings.imageModel,
-    videoModel: settings.videoModel,
+    videoModel: getValue("video-model") || settings.videoModel,
     imageCount: settings.imageCount,
     videoCount: settings.videoCount,
     videoDuration: getVideoPromptSettings().videoDuration,
     aspectRatio: settings.aspectRatio,
-    videoRefMode: settings.videoRefMode || "frames",
+    videoRefMode: getValue("video-ref-mode") || "frames",
     videoResolution: "720p",
     modelRefImage: product?.modelRefImage || settings.modelRefImage || ""
   };

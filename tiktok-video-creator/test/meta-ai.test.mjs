@@ -57,6 +57,13 @@ test('closing the Meta tab rejects promptly and removes both listeners', async (
   assert.equal(mock.removed.size, 0);
   assert.deepEqual(mock.data, {});
 });
+test('Meta video and combined jobs pass the selected duration as a part count', async () => {
+  for (const [phase, parts, expected] of [['video', '3', 3], ['combined', 4, 4], ['image', 3, 1], ['video', 5, 1]]) {
+    const mock = mockChrome('meta-ai', {ok:true});
+    await openGoogleFlow(phase, 'prompt', '', {metaVideoParts: parts});
+    assert.equal(mock.calls[0].payload.options.metaVideoParts, expected);
+  }
+});
 test('Meta AI stop and account refusal reject and clean up', async () => {
   for (const outcome of ['stop', {ok:false,error:'Video generation unavailable'}]) {
     const mock = mockChrome('meta-ai', outcome);

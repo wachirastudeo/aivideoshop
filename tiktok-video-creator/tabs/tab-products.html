@@ -38,6 +38,16 @@
     <h2>ดึงสินค้า Shopee Affiliate</h2>
   </div>
   <div class="section__body">
+    <form id="shopee-link-form" class="section__body" aria-labelledby="shopee-link-label" method="post">
+      <div class="field">
+        <label id="shopee-link-label" class="field__label" for="shopee-product-url">ลิงก์สินค้า Shopee</label>
+        <input id="shopee-product-url" name="productUrl" class="input" type="url" placeholder="https://shopee.co.th/product/…" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="shopee-link-status" required>
+      </div>
+      <button class="button button--primary button--full" type="submit">ดึงสินค้าจากลิงก์</button>
+      <div id="shopee-link-status" class="hint" role="status"></div>
+    </form>
+
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0;">
     <p class="hint">ค้นหาสินค้าจาก affiliate.shopee.co.th แล้วติ๊ก N ชิ้นแรก กด Export ของเว็บเพื่อดาวน์โหลดไฟล์ CSV (ต้องล็อกอิน Shopee Affiliate ใน Chrome ก่อน)</p>
     <div class="field">
       <label class="field__label" for="shopee-keyword">คำค้นหา</label>

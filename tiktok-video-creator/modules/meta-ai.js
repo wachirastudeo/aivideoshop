@@ -1,6 +1,10 @@
 // Uses the same background/content-script job lifecycle as Google Flow.
 export async function openMetaAI(phase, prompt, imageUrl = "", options = {}) {
   if (!["image", "video", "combined"].includes(phase)) throw new Error("Unsupported Meta AI generation phase");
+  const requestedParts = Number(options.metaVideoParts);
+  const metaVideoParts = phase !== "image" && [2, 3, 4].includes(requestedParts) ? requestedParts : 1;
+  const timeoutMinutes = metaVideoParts === 1 ? 15 : 10 * metaVideoParts + 5;
+  options = { ...options, metaVideoParts };
   const jobId = crypto.randomUUID();
   const key = `metaJob:${jobId}`;
   let timer;
@@ -21,7 +25,7 @@ export async function openMetaAI(phase, prompt, imageUrl = "", options = {}) {
       if (result) result.ok ? resolve(result) : reject(Object.assign(new Error(result.error), {imgUrl:result.imgUrl || "",code:result.code,retryable:result.retryable,pageUrl:result.pageUrl}));
     };
     chrome.storage.onChanged.addListener(changed);
-    timer = setTimeout(() => reject(new Error("Meta AI generation timed out after 15 minutes")), 15 * 60 * 1000);
+    timer = setTimeout(() => reject(new Error(`Meta AI generation timed out after ${timeoutMinutes} minutes`)), timeoutMinutes * 60 * 1000);
   });
   // Observe early completion/failure while the background opens the tab.
   done.catch(() => {});

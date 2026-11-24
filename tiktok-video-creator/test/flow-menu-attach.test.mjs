@@ -3,6 +3,33 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+test("Flow's Start picker selects the exact upload inside its asset list", async () => {
+  const source = await readFile(new URL("../background.js", import.meta.url), "utf8");
+  const body = source.slice(source.indexOf("function findFlowFrameAsset("), source.indexOf("\nasync function attachFlowStartFrame("));
+  const find = new Function("axText", `${body}; return findFlowFrameAsset;`)(node => node.name.value);
+  const node = (id, value, role, children = []) => ({ nodeId: id, backendDOMNodeId: id, name: { value }, role: { value: role }, childIds: children });
+  const uploaded = node(4, "tvc-start-ab123456.png", "option");
+  const nodes = [
+    node(1, "tvc-start-ab123456.png", "button"),
+    node(2, "Asset list", "listbox", [3, 4]),
+    node(3, "another-tvc-start-ab123456.png", "option"),
+    uploaded,
+  ];
+  assert.equal(find(nodes, uploaded.name.value), uploaded);
+  assert.equal(find(nodes.filter(item => item !== uploaded), uploaded.name.value), null);
+});
+
+test("Flow's Start picker follows the current project after same-document navigation", async () => {
+  const source = await readFile(new URL("../background.js", import.meta.url), "utf8");
+  const body = source.match(/async function attachFlowStartFrame\([\s\S]*?\n}\n/)[0];
+  const isProject = source.match(/function isFlowProjectUrl\([\s\S]*?\n}\n/)[0];
+  const chrome = { tabs: { get: async () => ({ url: "https://flow.google.com/u/4/project/current" }) } };
+  const getFlowAXTree = async () => { throw new Error("reached current project accessibility tree"); };
+  const attach = new Function("chrome", "getFlowAXTree", `const flowStopVersion = 1; ${isProject} ${body} return attachFlowStartFrame;`)(chrome, getFlowAXTree);
+  await assert.rejects(attach({ fileName: "tvc-start-ab123456.jpg" }, { tab: { id: 1 }, url: "https://flow.google.com/u/4/" }),
+    /reached current project accessibility tree/);
+});
+
 class MockElement {
   constructor(tagName, textContent = "", attrs = {}) {
     this.tagName = tagName.toUpperCase();

@@ -33,6 +33,7 @@
     "https://generativelanguage.googleapis.com/*",
     "https://api.openai.com/*",
     "https://www.meta.ai/*",
+    "https://cdn.fbsbx.com/*",
     "https://*.fbcdn.net/*"
   ],
   "content_scripts": [
@@ -114,6 +115,6 @@
     "128": "assets/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' blob: data: https://shop.tiktok.com https://open.tiktokapis.com https://generativelanguage.googleapis.com https://api.openai.com https://*.ibyteimg.com https://*.susercontent.com https://deo.shopeemobile.com https://flow.google.com https://flow-content.google https://*.flow-content.google https://www.meta.ai https://*.fbcdn.net;"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' blob: data: https://shop.tiktok.com https://open.tiktokapis.com https://generativelanguage.googleapis.com https://api.openai.com https://*.ibyteimg.com https://*.susercontent.com https://deo.shopeemobile.com https://flow.google.com https://flow-content.google https://*.flow-content.google https://www.meta.ai https://*.fbcdn.net https://cdn.fbsbx.com;"
   }
 }

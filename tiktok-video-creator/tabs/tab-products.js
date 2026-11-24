@@ -1,7 +1,9 @@
 
 import { formatPrice, resolveProductUrl } from "../modules/prompt-builder.js";
 
-let products = [];
+let tiktokProducts = [];
+let shopeeProducts = [];
+let activeSource = "tiktok";
 let nextPageToken = "";
 let helpers = {};
 let selectedIds = new Set();
@@ -20,29 +22,18 @@ export async function initProductsTab(injectedHelpers) {
   bindProductEvents();
 
   const stored = await chrome.storage.local.get(["pullSource", "tiktokProductsCache"]);
-  let activeSource = stored.pullSource;
-  if (activeSource !== "shopee" && activeSource !== "manual" && activeSource !== "tiktok") {
-    activeSource = "tiktok";
-  }
-  applySource(activeSource);
-
   // Keep the last successful TikTok pull so switching tabs does not blank the catalog.
-  if (activeSource === "tiktok" && products.length === 0) {
-    const cache = stored.tiktokProductsCache;
-    if (Array.isArray(cache?.products) && cache.products.length > 0) {
-      products = cache.products;
-      nextPageToken = cache.nextPageToken || "";
-      renderProducts();
-    }
+  const cache = stored.tiktokProductsCache;
+  if (tiktokProducts.length === 0 && Array.isArray(cache?.products)) {
+    tiktokProducts = cache.products.filter((product) => product.source !== "shopee");
+    nextPageToken = cache.nextPageToken || "";
   }
-
-  if (products.length > 0) {
-    renderProducts();
-    const loadMore = document.querySelector("#load-more-products");
-    const loadAll = document.querySelector("#load-all-products");
-    if (loadMore) loadMore.hidden = !nextPageToken;
-    if (loadAll) loadAll.hidden = !nextPageToken;
-  } else if (activeSource === "tiktok") {
+  applySource(["shopee", "manual"].includes(stored.pullSource) ? stored.pullSource : "tiktok");
+  const loadMore = document.querySelector("#load-more-products");
+  const loadAll = document.querySelector("#load-all-products");
+  if (loadMore) loadMore.hidden = !nextPageToken;
+  if (loadAll) loadAll.hidden = !nextPageToken;
+  if (activeSource === "tiktok" && tiktokProducts.length === 0) {
     await loadProducts({ reset: true, silent: true });
   }
 }
@@ -60,6 +51,11 @@ function bindSourceSwitch() {
 }
 
 function applySource(source) {
+  if (source !== activeSource) {
+    selectedIds.clear();
+    currentPage = 1;
+  }
+  activeSource = source;
   document.querySelectorAll(".source-switch__button").forEach((btn) => {
     btn.classList.toggle("source-switch__button--active", btn.dataset.source === source);
   });
@@ -69,12 +65,26 @@ function applySource(source) {
   if (tiktokPanel) tiktokPanel.hidden = source !== "tiktok";
   if (shopeePanel) shopeePanel.hidden = source !== "shopee";
   if (manualPanel) manualPanel.hidden = source !== "manual";
+  const refresh = document.querySelector("#refresh-products");
+  if (refresh) refresh.hidden = source !== "tiktok";
+  renderProducts();
+}
+
+function getSourceProducts() {
+  if (activeSource === "shopee") return shopeeProducts;
+  if (activeSource === "tiktok") return tiktokProducts;
+  return [];
 }
 
 /**
  * @description ผูก event ฝั่ง Shopee: ปุ่ม "ดึงเข้าแอป" (collect) และ "Export CSV" (export)
  */
 function bindShopeeEvents() {
+  const linkForm = document.querySelector("#shopee-link-form");
+  linkForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    importShopeeLink(linkForm);
+  });
   document.querySelector("#shopee-pull")?.addEventListener("click", () => runShopeePull());
 
   const csvBtn = document.querySelector("#shopee-csv-btn");
@@ -85,6 +95,54 @@ function bindShopeeEvents() {
     e.target.value = ""; // reset เพื่อเลือกไฟล์เดิมซ้ำได้
     if (file) await importShopeeCsv(file);
   });
+}
+
+async function importShopeeLink(form) {
+  const input = form.elements.namedItem("productUrl");
+  const button = form.querySelector("button[type=submit]");
+  const status = form.querySelector("#shopee-link-status");
+  if (button.disabled) return;
+
+  const productUrl = input.value.trim();
+  button.disabled = true;
+  input.readOnly = true;
+  status.textContent = "กำลังดึงข้อมูลสินค้า Shopee…";
+
+  try {
+    const retryTabId = form.dataset.retryUrl === productUrl ? Number(form.dataset.retryTabId) : undefined;
+    delete form.dataset.retryUrl;
+    delete form.dataset.retryTabId;
+    const response = await chrome.runtime.sendMessage({
+      type: "SHOPEE_IMPORT_PRODUCT",
+      payload: { productUrl, retryTabId }
+    });
+    if (!response?.ok) throw new Error(response?.error || "ดึงสินค้า Shopee ไม่สำเร็จ");
+
+    if (response.blocked) {
+      form.dataset.retryUrl = productUrl;
+      form.dataset.retryTabId = response.retryTabId;
+      status.textContent = "ยืนยันตัวตนในแท็บ Shopee ที่เปิดอยู่ แล้วกดดึงสินค้าจากลิงก์อีกครั้ง";
+      return;
+    }
+
+    const product = response.product;
+    const previous = shopeeProducts.find((item) => item.productId === product.productId);
+    shopeeProducts = [{ ...previous, ...product }, ...shopeeProducts.filter((item) => item !== previous)];
+    if (activeSource === "shopee") {
+      currentPage = 1;
+      document.querySelector("#product-search").value = "";
+      document.querySelector("#product-sort").value = "newest";
+      renderProducts();
+      document.querySelector("#product-list-section")?.scrollIntoView({ block: "start" });
+    }
+    form.reset();
+    status.textContent = `เพิ่มสินค้าแล้ว: ${product.name}`;
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    input.readOnly = false;
+    button.disabled = false;
+  }
 }
 
 /**
@@ -157,10 +215,7 @@ async function importShopeeCsv(file) {
     await chrome.runtime.sendMessage({ type: "SHOPEE_CLOSE_SCRAPE_TAB" });
 
     // แสดงเป็นรายการ (เหมือน TikTok) — เลือกรูป/เลือกสินค้า แล้วกดสร้างวิดีโอเอง
-    products = built;
-    selectedIds.clear();
-    currentPage = 1;
-    renderProducts();
+    replaceShopeeProducts(built);
     const blockNote = blocked ? ` (${blocked} ชิ้นโดน Shopee กัน captcha ดึงรูปไม่ได้)` : "";
     setProg(`ทำรายการ ${built.length} ชิ้นแล้ว — เลือกรูป/สินค้าแล้วกดสร้างวิดีโอ${blockNote}`, "success");
     helpers.logActivity?.(`CSV → รายการ ${built.length} ชิ้น${blockNote}`, "success");
@@ -312,10 +367,7 @@ async function runShopeePull() {
 
     await chrome.runtime.sendMessage({ type: "SHOPEE_CLOSE_SCRAPE_TAB" });
 
-    products = built;
-    selectedIds.clear();
-    currentPage = 1;
-    renderProducts();
+    replaceShopeeProducts(built);
 
     const blockNote = blocked ? ` (${blocked} ชิ้นโดน captcha ดึงรูปไม่ได้)` : "";
     setShopeeStatus(`ดึงสินค้า ${built.length} ชิ้นเข้ามาในรายการแล้ว — เลือกรูป/สินค้าแล้วกดสร้างวิดีโอ${blockNote}${capNote}`, "success");
@@ -327,6 +379,14 @@ async function runShopeePull() {
     if (pullBtn) pullBtn.disabled = false;
     hideLoadingOverlay();
   }
+}
+
+function replaceShopeeProducts(items) {
+  shopeeProducts = items;
+  if (activeSource !== "shopee") return;
+  selectedIds.clear();
+  currentPage = 1;
+  renderProducts();
 }
 
 function showLoadingOverlay(text) {
@@ -417,7 +477,7 @@ function bindProductEvents() {
     const isChecked = e.target.checked;
     const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
     const sortBy = document.querySelector("#product-sort")?.value || "newest";
-    const filtered = products
+    const filtered = getSourceProducts()
       .filter((p) => p.name.toLowerCase().includes(query))
       .sort((a, b) => sortProducts(a, b, sortBy));
     
@@ -435,7 +495,7 @@ function bindProductEvents() {
   document.querySelector("#select-all-products")?.addEventListener("change", (e) => {
     const isChecked = e.target.checked;
     const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
-    const visibleProducts = products.filter((p) => p.name.toLowerCase().includes(query));
+    const visibleProducts = getSourceProducts().filter((p) => p.name.toLowerCase().includes(query));
     
     if (isChecked) {
       visibleProducts.forEach(p => selectedIds.add(p.productId));
@@ -456,7 +516,7 @@ function bindProductEvents() {
 
   document.querySelector("#download-batch-images")?.addEventListener("click", async () => {
     if (selectedIds.size === 0) return;
-    const selectedProducts = products.filter(p => selectedIds.has(p.productId));
+    const selectedProducts = getSourceProducts().filter(p => selectedIds.has(p.productId));
     
     helpers.showStatus(`เริ่มดาวน์โหลดรูปภาพสำหรับ ${selectedProducts.length} สินค้า...`, "success");
     helpers.logActivity?.(`เริ่มดาวน์โหลดรูปภาพสำหรับ ${selectedProducts.length} สินค้า`, "info");
@@ -507,7 +567,7 @@ function bindProductEvents() {
 
   document.querySelector("#create-batch-videos")?.addEventListener("click", async () => {
     if (selectedIds.size === 0) return;
-    const selectedArray = products
+    const selectedArray = getSourceProducts()
       .filter(p => selectedIds.has(p.productId))
       .map(buildSelectedProductPayload);
     const stored = await chrome.storage.local.get("creatorState");
@@ -529,14 +589,17 @@ function bindProductEvents() {
  * @param {object} options - reset/silent
  */
 async function loadProducts({ reset = false, silent = false } = {}) {
+  if (activeSource !== "tiktok") return;
   const list = document.querySelector("#product-list");
   const loadMore = document.querySelector("#load-more-products");
   const loadAll = document.querySelector("#load-all-products");
 
   if (reset) {
-    products = [];
+    tiktokProducts = [];
     nextPageToken = "";
     currentPage = 1;
+    selectedIds.clear();
+    updateBatchUI();
   }
 
   if (list) list.innerHTML = skeletonMarkup();
@@ -553,10 +616,10 @@ async function loadProducts({ reset = false, silent = false } = {}) {
     });
     if (!response?.ok) throw new Error(response?.error || "ไม่สามารถดึงสินค้าได้");
     const result = response;
-    products = reset ? result.products : [...products, ...result.products];
+    tiktokProducts = reset ? result.products : [...tiktokProducts, ...result.products];
     nextPageToken = result.nextPageToken;
     await persistTikTokProductsCache();
-    renderProducts();
+    if (activeSource === "tiktok") renderProducts();
     if (loadMore) loadMore.hidden = !nextPageToken;
     if (loadAll) loadAll.hidden = !nextPageToken;
 
@@ -565,17 +628,17 @@ async function loadProducts({ reset = false, silent = false } = {}) {
       helpers.showStatus("ได้ 0 รายการ", "error");
       helpers.logActivity?.("Raw Data: " + rawStr, "error");
     } else {
-      helpers.logActivity?.(`ดึงสินค้าได้ ${result.products.length} รายการ รวมทั้งหมด ${products.length} รายการ`, "success");
+      helpers.logActivity?.(`ดึงสินค้าได้ ${result.products.length} รายการ รวมทั้งหมด ${tiktokProducts.length} รายการ`, "success");
     }
   } catch (error) {
     if (!silent) helpers.showStatus(error.message, "error");
     helpers.logActivity?.(`ดึงสินค้าไม่สำเร็จ: ${error.message}`, "error");
-    if (list) list.innerHTML = `<div class="empty-state">ยังไม่มีสินค้าให้แสดง<br>เชื่อมต่อ TikTok หรือเพิ่ม Access Token ใน Options</div>`;
+    if (list && activeSource === "tiktok") list.innerHTML = `<div class="empty-state">ยังไม่มีสินค้าให้แสดง<br>เชื่อมต่อ TikTok หรือเพิ่ม Access Token ใน Options</div>`;
   }
 }
 
 async function loadAllProducts() {
-  const list = document.querySelector("#product-list");
+  if (activeSource !== "tiktok") return;
   const loadMore = document.querySelector("#load-more-products");
   const loadAll = document.querySelector("#load-all-products");
 
@@ -588,19 +651,19 @@ async function loadAllProducts() {
   try {
     while (nextPageToken) {
       pageCount++;
-      helpers.showStatus(`กำลังดึงสินค้า TikTok หน้าที่ ${pageCount}... (ได้แล้ว ${products.length} ชิ้น)`, "info");
+      helpers.showStatus(`กำลังดึงสินค้า TikTok หน้าที่ ${pageCount}... (ได้แล้ว ${tiktokProducts.length} ชิ้น)`, "info");
       const response = await chrome.runtime.sendMessage({
         type: "FETCH_PRODUCTS",
         payload: { pageToken: nextPageToken, pageSize: 100 }
       });
       if (!response?.ok) throw new Error(response?.error || "ไม่สามารถดึงสินค้าได้");
-      products = [...products, ...response.products];
+      tiktokProducts = [...tiktokProducts, ...response.products];
       nextPageToken = response.nextPageToken;
       await persistTikTokProductsCache();
-      renderProducts();
+      if (activeSource === "tiktok") renderProducts();
     }
-    helpers.showStatus(`ดึงสินค้าเสร็จสิ้นทั้งหมด ${products.length} ชิ้น!`, "success");
-    helpers.logActivity?.(`ดึงสินค้าทั้งหมดเรียบร้อยแล้ว: รวม ${products.length} รายการ`, "success");
+    helpers.showStatus(`ดึงสินค้าเสร็จสิ้นทั้งหมด ${tiktokProducts.length} ชิ้น!`, "success");
+    helpers.logActivity?.(`ดึงสินค้าทั้งหมดเรียบร้อยแล้ว: รวม ${tiktokProducts.length} รายการ`, "success");
   } catch (error) {
     helpers.showStatus(error.message, "error");
     helpers.logActivity?.(`ดึงสินค้าทั้งหมดไม่สำเร็จระหว่างทาง: ${error.message}`, "error");
@@ -613,7 +676,7 @@ async function loadAllProducts() {
 async function persistTikTokProductsCache() {
   await chrome.storage.local.set({
     tiktokProductsCache: {
-      products,
+      products: tiktokProducts,
       nextPageToken,
       savedAt: Date.now()
     }
@@ -630,7 +693,7 @@ function renderProducts() {
   const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
   const sortBy = document.querySelector("#product-sort")?.value || "newest";
 
-  const filtered = products
+  const filtered = getSourceProducts()
     .filter((product) => product.name.toLowerCase().includes(query))
     .sort((a, b) => sortProducts(a, b, sortBy));
 
@@ -642,6 +705,7 @@ function renderProducts() {
 
   if (!paginated.length) {
     list.innerHTML = `<div class="empty-state">ไม่พบสินค้า</div>`;
+    updateBatchUI();
     renderPagination(0);
     return;
   }
@@ -662,7 +726,7 @@ function renderProducts() {
   list.querySelectorAll("[data-pick-images]").forEach((img) => {
     img.addEventListener("click", (e) => {
       e.stopPropagation();
-      const product = products.find((item) => item.productId === img.dataset.pickImages);
+      const product = paginated.find((item) => item.productId === img.dataset.pickImages);
       if (product) openImagePicker(product);
     });
   });
@@ -670,7 +734,7 @@ function renderProducts() {
   list.querySelectorAll("[data-download-images]").forEach((button) => {
     button.addEventListener("click", async (e) => {
       e.stopPropagation();
-      const product = products.find((item) => item.productId === button.dataset.downloadImages);
+      const product = paginated.find((item) => item.productId === button.dataset.downloadImages);
       if (product) {
         await downloadProductImages(product);
       }
@@ -679,7 +743,7 @@ function renderProducts() {
 
   list.querySelectorAll("[data-create-video]").forEach((button) => {
     button.addEventListener("click", async () => {
-      const product = products.find((item) => item.productId === button.dataset.createVideo);
+      const product = paginated.find((item) => item.productId === button.dataset.createVideo);
       await selectProduct(product);
     });
   });
@@ -687,7 +751,7 @@ function renderProducts() {
   list.querySelectorAll("[data-go-post]").forEach((button) => {
     button.addEventListener("click", async (e) => {
       e.stopPropagation();
-      const product = products.find((item) => item.productId === button.dataset.goPost);
+      const product = paginated.find((item) => item.productId === button.dataset.goPost);
       if (product) {
         await sendProductToPostTab(product);
       }
@@ -758,7 +822,7 @@ function renderPagination(totalPages) {
 function updateBatchUI() {
   const query = document.querySelector("#product-search")?.value.trim().toLowerCase() || "";
   const sortBy = document.querySelector("#product-sort")?.value || "newest";
-  const filtered = products
+  const filtered = getSourceProducts()
     .filter((p) => p.name.toLowerCase().includes(query))
     .sort((a, b) => sortProducts(a, b, sortBy));
 
@@ -933,7 +997,7 @@ function productMarkup(product) {
   }
 
   const stockCount = Number(product.stockCount || 0);
-  const stockBadge = stockCount <= 0 
+  const stockBadge = product.stockCount !== null && stockCount <= 0
     ? `<span class="meta-badge meta-badge--danger">หมดสต๊อก</span>`
     : '';
 
@@ -956,7 +1020,7 @@ function productMarkup(product) {
     <article class="product-card ${isSelected ? "product-card--selected" : ""}" style="position:relative;">
       <input type="checkbox" class="product-checkbox" data-id="${escapeHtml(product.productId)}" ${isSelected ? 'checked' : ''}>
       ${imgBadge}
-      <img class="product-card__image" src="${imageUrl}" alt="" data-pick-images="${escapeHtml(product.productId)}" title="คลิกเพื่อเลือกหลายรูป" style="cursor:pointer;">
+      <img class="product-card__image" src="${escapeHtml(imageUrl)}" alt="" data-pick-images="${escapeHtml(product.productId)}" title="คลิกเพื่อเลือกหลายรูป" style="cursor:pointer;">
       <div class="product-card__content">
         <h3 class="product-card__name" title="${escapeHtml(product.name)}">${escapeHtml(product.name)}</h3>
         <div class="product-card__id" data-copy-id="${escapeHtml(product.productId)}" style="font-size:10px;color:var(--muted);margin-top:4px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--panel-2);padding:2px 6px;border:1px dashed var(--line);border-radius:4px;" title="คลิกเพื่อคัดลอก ID">

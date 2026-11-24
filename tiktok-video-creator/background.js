@@ -1,5 +1,6 @@
 import { fetchShowcaseProducts } from "./modules/tiktok-api.js";
 import { resolveProductUrl } from "./modules/prompt-builder.js";
+import { readMp4VideoMetadata } from "./modules/meta-video.js";
 const lastWindowFocusTime = {};
 
 async function focusTabAndWindowIfNeeded(tabId, windowId) {
@@ -102,9 +103,11 @@ async function routeMessage(message, sender) {
     case "FETCH_PRODUCTS":          return fetchShowcaseProducts(message.payload);
     case "PULL_SHOPEE_PRODUCTS":     return pullShopeeProducts(message.payload);
     case "SHOPEE_CLICK_POINT":       return clickPointWithDebugger(message.payload, sender, { detachAfter: true });
-    case "SHOPEE_FETCH_IMAGES":      return fetchShopeeImages(message.payload);
+    case "SHOPEE_FETCH_IMAGES":      return readShopeeProductPage(message.payload);
+    case "SHOPEE_IMPORT_PRODUCT":    return readShopeeProductPage(message.payload, true);
     case "SHOPEE_CLOSE_SCRAPE_TAB":  return closeShopeeScrapeTab();
     case "OPEN_META_AI":             return openMetaAI(message.payload);
+    case "META_FETCH_JOINED_VIDEO":  return fetchMetaJoinedVideo(message.payload, sender);
     case "META_INSERT_TEXT":         return insertTextWithDebugger(message.payload, sender);
     case "META_PRESS_ENTER":         return pressEnterWithDebugger(sender);
     case "META_CLICK":               return clickPointWithDebugger(message.payload, sender, { detachAfter: false });
@@ -117,10 +120,11 @@ async function routeMessage(message, sender) {
     case "OPEN_GOOGLE_FLOW":         return openGoogleFlow(message.payload);
     case "FLOW_FRAME_SLOTS": {
       const nodes = await getFlowAXTree(sender?.tab?.id);
-      return { emptyEnd: nodes.some(node => String(node?.role?.value || "").toLowerCase() === "button"
-        && /^(?:end(?: frame)?|สิ้นสุด)$/i.test(axText(node).trim())) };
+      const hasButton = label => nodes.some(node => String(node?.role?.value || "").toLowerCase() === "button" && label.test(axText(node).trim()));
+      return { emptyEnd: hasButton(/^(?:end(?: frame)?|สิ้นสุด)$/i), emptyStart: hasButton(/^(?:start(?: frame)?|เริ่ม)$/i) };
     }
     case "DOWNLOAD_VIDEO":           return downloadVideo(message.payload);
+    case "FLOW_FETCH_STORY_CLIP":    return fetchFlowStoryClip(message.payload, sender);
     case "DOWNLOAD_FILE":            return downloadFile(message.payload);
     case "FETCH_IMAGE_DATA":         return fetchImageData(message.payload);
     case "POST_TO_TIKTOK":           return postToTikTok(message.payload);
@@ -129,6 +133,7 @@ async function routeMessage(message, sender) {
     case "FLOW_HOVER_POINT":         return clickPointWithDebugger(message.payload, sender, { hoverOnly: true });
     case "FLOW_CLICK_POINT":         return clickPointWithDebugger(message.payload, sender, { detachAfter: false });
     case "FLOW_ATTACH_MEDIA_BY_NAME": return attachFlowMediaByAccessibleName(message.payload, sender);
+    case "FLOW_ATTACH_START_FRAME": return attachFlowStartFrame(message.payload, sender);
     case "FLOW_CLICK_ADD_TO_PROMPT": return clickFlowAddToPrompt(message.payload, sender);
     case "FLOW_FIND_GENERATED_MEDIA": return findFlowGeneratedMedia(message.payload, sender);
     case "FLOW_DEBUGGER_ATTACH":     return ensureDebuggerAttached(sender?.tab?.id).then(() => ({ ok: true }));
@@ -356,6 +361,65 @@ async function clickFlowAddToPrompt(payload, sender) {
     return { ok: true, clicked: true };
   }
   return { ok: false, error: "Add to prompt not found in Flow AX tree" };
+}
+
+function findFlowFrameAsset(nodes, fileName) {
+  const list = nodes.find(node => /^(?:asset list|รายการสื่อ)$/i.test(axText(node)));
+  if (!list) return null;
+  const byId = new Map(nodes.map(node => [node.nodeId, node]));
+  const pending = [...(list.childIds || [])];
+  const matches = [];
+  while (pending.length) {
+    const node = byId.get(pending.pop());
+    if (!node) continue;
+    if (node.backendDOMNodeId && axText(node).toLowerCase() === fileName.toLowerCase()) matches.push(node);
+    pending.push(...(node.childIds || []));
+  }
+  return matches.find(node => node.role?.value === "option") || matches.at(-1) || null;
+}
+
+async function attachFlowStartFrame({ fileName } = {}, sender) {
+  const tabId = sender?.tab?.id;
+  if (!tabId || !/^tvc-start-[\da-f]{8}\.[a-z0-9]+$/i.test(fileName || "")) {
+    throw new Error("Missing the exact uploaded image for Flow’s Start frame");
+  }
+  // Flow switches from its home page to a project within the same document.
+  // A content-script sender can still report the document's original URL.
+  if (!isFlowProjectUrl((await chrome.tabs.get(tabId)).url || "")) {
+    throw new Error("The Flow tab is not on a project for Start-frame selection");
+  }
+  const version = flowStopVersion;
+  const isButton = (node, name) => node.backendDOMNodeId && node.role?.value === "button" && name.test(axText(node));
+  const nodes = await getFlowAXTree(tabId);
+  const start = nodes.find(node => isButton(node, /^(?:start(?: frame)?|เริ่ม)$/i));
+  if (!start) throw new Error("Flow’s Start frame slot is unavailable");
+  await clickAXNode(tabId, start);
+
+  const waitForNode = async (find, duration, error) => {
+    const end = Date.now() + duration;
+    while (Date.now() < end) {
+      assertRunNotStopped(version, flowStopVersion);
+      const node = find(await getFlowAXTree(tabId));
+      if (node) return node;
+      await delay(350);
+    }
+    throw new Error(error);
+  };
+  const matchesPreview = nodes => nodes.some(node => axText(node).toLowerCase() === `preview of ${fileName.toLowerCase()}`);
+  const isSelected = asset => asset?.properties?.some(property => property.name === "selected" && property.value?.value === true);
+  const asset = await waitForNode(items => findFlowFrameAsset(items, fileName), 35000, "The uploaded image did not appear in Flow’s Start-frame picker");
+  const currentPicker = await getFlowAXTree(tabId);
+  if (!matchesPreview(currentPicker) && !isSelected(findFlowFrameAsset(currentPicker, fileName))) await clickAXNode(tabId, asset);
+  const add = await waitForNode(items => {
+    if (!matchesPreview(items) && !isSelected(findFlowFrameAsset(items, fileName))) return null;
+    return items.find(node => isButton(node, /^(?:add to prompt|เพิ่มไปยังพรอมต์)$/i)
+      && !node.properties?.some(property => property.name === "disabled" && property.value?.value === true));
+  }, 20000, "Flow’s Start-frame picker did not offer Add to prompt for the selected upload");
+  await clickAXNode(tabId, add);
+  await waitForNode(items => items.find(node => isButton(node, /^(?:end(?: frame)?|สิ้นสุด)$/i)
+    && !items.some(candidate => isButton(candidate, /^(?:start(?: frame)?|เริ่ม)$/i))),
+  6000, "Flow did not put the uploaded image in the Start slot");
+  return { attached: true };
 }
 
 // Flow v2 keeps generated thumbnails inside the same encapsulated grid as
@@ -691,13 +755,10 @@ async function openMetaAI(payload = {}) {
   } else {
     tab = await chrome.tabs.create({ url: "https://www.meta.ai/", active: true });
   }
-  await waitForTabComplete(tab.id);
   assertRunNotStopped(version, flowStopVersion);
-  await chrome.scripting.executeScript({target:{tabId:tab.id},files:["content/meta-automation.js"]});
   await chrome.storage.local.set({activeMetaTabId:tab.id});
-  let response;
   try {
-    response = await chrome.tabs.sendMessage(tab.id, {type:"META_RUN",payload:{...payload,references}});
+    const response = await startMetaJob(tab.id, {...payload, references}, version);
     if (!response?.accepted) throw new Error(response?.error || "Meta AI automation did not accept the job");
   } catch (error) {
     await chrome.storage.local.remove("activeMetaTabId");
@@ -709,6 +770,58 @@ async function openMetaAI(payload = {}) {
     throw createBackgroundStopError();
   }
   return {started:true,tabId:tab.id,jobId:payload.jobId};
+}
+
+async function fetchMetaJoinedVideo({ url, duration } = {}, sender) {
+  const { activeMetaTabId } = await chrome.storage.local.get("activeMetaTabId");
+  if (!sender?.url?.startsWith("https://www.meta.ai/") || sender.tab?.id !== activeMetaTabId) {
+    throw new Error("No active Meta AI video job");
+  }
+  if (![20, 30, 40].includes(duration)) throw new Error("Unsupported Meta AI video duration");
+  const source = new URL(url);
+  const allowedHost = ["cdn.fbsbx.com", "www.meta.ai"].includes(source.hostname) || source.hostname.endsWith(".fbcdn.net");
+  if (source.protocol !== "https:" || !allowedHost) {
+    throw new Error("Unsupported Meta AI video download host");
+  }
+  const response = await fetch(source, { credentials: "omit", redirect: "error", signal: AbortSignal.timeout(60_000) });
+  if (!response.ok) throw new Error(`Meta AI media download failed (${response.status})`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const video = readMp4VideoMetadata(bytes);
+  if (!Number.isFinite(video.duration) || Math.abs(video.duration - duration) > .3 || Math.abs(video.width / video.height - 9/16) > .03 || !video.height) {
+    throw new Error(`Meta AI returned ${video.width}x${video.height}, ${video.duration.toFixed(2)}s; required vertical 9:16, ${duration}s`);
+  }
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return { videoUrl: `data:video/mp4;base64,${btoa(binary)}` };
+}
+
+async function startMetaJob(tabId, payload, version) {
+  const deadline = Date.now() + 25000;
+  while (Date.now() < deadline) {
+    assertRunNotStopped(version, flowStopVersion);
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.status === "complete" && !tab.pendingUrl && tab.url?.startsWith("https://www.meta.ai/")) {
+      const [injection] = await chrome.scripting.executeScript({
+        target: {tabId},
+        files: ["content/meta-automation.js"]
+      }).catch(() => []);
+      if (injection?.documentId) {
+        const target = {documentId: injection.documentId};
+        const ready = await chrome.tabs.sendMessage(tabId, {type: "META_READY"}, target).catch(() => null);
+        if (ready?.ready) {
+          assertRunNotStopped(version, flowStopVersion);
+          try {
+            return await chrome.tabs.sendMessage(tabId, {type: "META_RUN", payload}, target);
+          } catch (error) {
+            // A document can disappear between the readiness check and dispatch.
+            if (!/Receiving end does not exist|No document with id/i.test(error.message)) throw error;
+          }
+        }
+      }
+    }
+    await delay(350);
+  }
+  throw new Error("Meta AI: timed out waiting for the page and composer to be ready");
 }
 
 async function openGoogleFlow(payload) {
@@ -1016,6 +1129,21 @@ async function ensureFlowContentScript(tabId) {
 }
 
 const SHOPEE_OFFER_URL = "https://affiliate.shopee.co.th/offer/product_offer";
+const SHOPEE_PRODUCT_HOSTS = new Set(["shopee.co.th", "www.shopee.co.th", "m.shopee.co.th"]);
+const SHOPEE_SHORT_HOSTS = new Set(["s.shopee.co.th", "th.shp.ee"]);
+
+function parseShopeeUrl(value) {
+  if (typeof value !== "string" || !URL.canParse(value)) return null;
+  const url = new URL(value);
+  return url.protocol === "https:" && !url.port && !url.username && !url.password ? url : null;
+}
+
+function shopeeProductId(url) {
+  if (!url || !SHOPEE_PRODUCT_HOSTS.has(url.hostname)) return "";
+  return url.pathname.match(/^\/product\/\d+\/(\d+)\/?$/i)?.[1]
+    || url.pathname.match(/-i\.\d+\.(\d+)\/?$/i)?.[1]
+    || "";
+}
 
 // แท็บที่ใช้เปิดหน้าสินค้าจริงทีละลิงก์เพื่อดึง gallery (reuse ตัวเดียว)
 let shopeeScrapeTabId = null;
@@ -1030,20 +1158,26 @@ async function closeShopeeScrapeTab() {
 
 // เปิดลิงก์สินค้าจริง 1 ลิงก์ แล้วดึงรูปทั้งหมด (gallery)
 // ถ้า Shopee เด้งหน้า anti-bot/verify → คืน blocked:true (ไม่ข้าม)
-async function fetchShopeeImages({ productUrl } = {}) {
+async function readShopeeProductPage({ productUrl, retryTabId } = {}, includeProduct = false) {
   const log = (msg, lvl = "info") => {
     chrome.runtime.sendMessage({ type: "PIPELINE_LOG", payload: { level: lvl, message: `[ดึงรูป] ${msg}` } }).catch(() => {});
   };
 
-  log(`เตรียมดึงสินค้า: ${productUrl}`);
-
-  if (!/^https:\/\/(?:[\w-]+\.)?shopee\.co\.th\//.test(productUrl || "")) {
-    log(`ลิงก์ไม่ถูกต้อง: ${productUrl}`, "error");
+  const inputUrl = parseShopeeUrl(productUrl);
+  const inputProductId = shopeeProductId(inputUrl);
+  const isOffer = inputUrl?.origin === "https://affiliate.shopee.co.th"
+    && /^\/offer\/product_offer\/\d+\/?$/.test(inputUrl.pathname);
+  const isShort = SHOPEE_SHORT_HOSTS.has(inputUrl?.hostname) && inputUrl.pathname.length > 1;
+  if (includeProduct) {
+    if (!inputProductId && !isOffer && !isShort) {
+      throw new Error("ใส่ลิงก์หน้าสินค้าหรือลิงก์สั้นของ Shopee Thailand");
+    }
+  } else if (!inputUrl || !/^(?:[\w-]+\.)?shopee\.co\.th$/.test(inputUrl.hostname)) {
     return { images: [], error: "ลิงก์สินค้าไม่ถูกต้อง" };
   }
 
   // ปิดแท็บสินค้าเดิมก่อนเสมอ (ถ้ามีเปิดอยู่) - ทำแบบไม่บล็อก (ไม่มี await) ป้องกันเบราว์เซอร์ค้าง
-  if (shopeeScrapeTabId != null) {
+  if (!includeProduct && shopeeScrapeTabId != null) {
     const oldTabId = shopeeScrapeTabId;
     shopeeScrapeTabId = null;
     chrome.tabs.remove(oldTabId).catch(() => {});
@@ -1053,19 +1187,26 @@ async function fetchShopeeImages({ productUrl } = {}) {
   // สร้างแท็บใหม่สำหรับสินค้ารายการนี้เสมอ
   log(`กำลังสร้างแท็บใหม่...`);
   let tab;
+  const isRetry = includeProduct && Number.isInteger(retryTabId) && retryTabId > 0;
   try {
-    const { settings = {} } = await chrome.storage.sync.get("settings");
-    const focusTabs = settings.focusTabs === true;
-    tab = await chrome.tabs.create({ url: productUrl, active: focusTabs });
-    shopeeScrapeTabId = tab.id;
+    if (isRetry) {
+      tab = await chrome.tabs.get(retryTabId);
+    } else {
+      const { settings = {} } = await chrome.storage.sync.get("settings");
+      tab = await chrome.tabs.create({ url: inputUrl.href, active: settings.focusTabs === true });
+      if (!includeProduct) shopeeScrapeTabId = tab.id;
+    }
     log(`สร้างแท็บสำเร็จ ID: ${tab.id}`);
   } catch (e) {
     log(`สร้างแท็บล้มเหลว: ${e.message}`, "error");
-    return { images: [], error: "ไม่สามารถสร้างแท็บได้: " + e.message };
+    if (isRetry) throw new Error("แท็บ Shopee ถูกปิดแล้ว กดดึงสินค้าจากลิงก์เพื่อเปิดใหม่");
+    const error = "ไม่สามารถสร้างแท็บได้: " + e.message;
+    if (includeProduct) throw new Error(error);
+    return { images: [], error };
   }
 
   try {
-    if (tab.windowId) {
+    if (tab.windowId && !isRetry) {
       focusTabAndWindowIfNeeded(tab.id, tab.windowId).catch(() => {});
     }
   } catch (e) {
@@ -1074,30 +1215,38 @@ async function fetchShopeeImages({ productUrl } = {}) {
 
   const startTime = Date.now();
   let images = [];
+  let product;
   let blocked = false;
   let resolvedConsumerUrl = productUrl;
-  let isAffiliate = productUrl.includes("affiliate.shopee.co.th/offer/product_offer/");
+  let isAffiliate = isOffer;
 
   log(`เริ่มวนลูปตรวจสอบรูปภาพ (สูงสุด 9 วินาที)...`);
   // วนลูปโพลหาสินค้าและรูปภาพจนกว่าจะพบ หรือหมดเวลารอ (Timeout 9 วินาที)
   while (Date.now() - startTime < 9000) {
     await delay(500);
     try {
-      const currentTab = await chrome.tabs.get(shopeeScrapeTabId);
+      const currentTab = await chrome.tabs.get(tab.id);
+      const currentUrl = parseShopeeUrl(currentTab.url);
+      if (includeProduct && SHOPEE_PRODUCT_HOSTS.has(currentUrl?.hostname)
+          && /^\/(?:verify\/|anti_bot|captcha)/i.test(currentUrl.pathname)) {
+        blocked = true;
+        break;
+      }
       
       // กรณีลิงก์ Affiliate: ค้นหาลิงก์ปลายทางเพื่อนำทางไปต่อ
-      if (isAffiliate && currentTab.url && currentTab.url.includes("affiliate.shopee.co.th/offer/product_offer/")) {
+      if (isAffiliate && !isRetry && currentUrl?.origin === "https://affiliate.shopee.co.th"
+          && currentUrl.pathname.startsWith("/offer/product_offer/")) {
         log(`ตรวจพบลิงก์ Affiliate กำลังแกะลิงก์ตรง...`);
         let extractedUrlResult;
         try {
           [{ result: extractedUrlResult }] = await chrome.scripting.executeScript({
-            target: { tabId: shopeeScrapeTabId },
+            target: { tabId: tab.id },
             injectImmediately: true,
             func: () => {
               const anchors = Array.from(document.querySelectorAll("a"));
               let link = anchors.find(a => {
                 const href = a.href || "";
-                return href.includes("shopee.co.th") && !href.includes("affiliate.shopee.co.th") && (href.includes("/product/") || /-i\.\d+\.\d+/i.test(href));
+                return /^https:\/\/(?:(?:www|m)\.)?shopee\.co\.th\/(?:product\/\d+\/\d+|[^?#]+-i\.\d+\.\d+)(?=[/?#]|$)/i.test(href);
               });
               if (link) return link.href;
               return null;
@@ -1107,22 +1256,25 @@ async function fetchShopeeImages({ productUrl } = {}) {
           log(`แกะลิงก์ตรงล้มเหลว: ${err.message}`, "warn");
         }
 
-        if (extractedUrlResult) {
-          log(`แกะลิงก์ตรงสำเร็จ: ${extractedUrlResult}`);
+        if (shopeeProductId(parseShopeeUrl(extractedUrlResult))) {
           resolvedConsumerUrl = extractedUrlResult;
           isAffiliate = false;
-          await chrome.tabs.update(shopeeScrapeTabId, { url: extractedUrlResult });
+          await chrome.tabs.update(tab.id, { url: extractedUrlResult });
         }
         continue;
       }
+
+      const productId = shopeeProductId(currentUrl);
+      if (includeProduct && (!productId || (inputProductId && inputProductId !== productId))) continue;
 
       // ดึงข้อมูลรูปภาพจากแกลเลอรี
       let scrapeRes;
       try {
         [{ result: scrapeRes }] = await chrome.scripting.executeScript({
-          target: { tabId: shopeeScrapeTabId },
+          target: { tabId: tab.id },
           injectImmediately: true,
-          func: scrapeShopeeGallery
+          func: scrapeShopeeGallery,
+          args: [includeProduct]
         });
       } catch (err) {
         continue; // หน้าเว็บอาจยังไม่พร้อม ค่อยลองรอบถัดไป
@@ -1134,11 +1286,15 @@ async function fetchShopeeImages({ productUrl } = {}) {
           blocked = true;
           break; // ติดหน้า Captcha ให้เบรกออกทันที
         }
-        if (scrapeRes.images && scrapeRes.images.length > 0) {
+        if (scrapeRes.images?.length && (!includeProduct || scrapeRes.product?.name)) {
           images = scrapeRes.images;
+          if (includeProduct) {
+            resolvedConsumerUrl = currentUrl.href;
+            product = { ...scrapeRes.product, productId };
+          }
           const elapsed = Date.now() - startTime;
           // รออย่างน้อย 2 วินาทีเพื่อให้โหลดรูปแกลเลอรีครบ (หรือหยุดทันทีถ้าได้รูปเยอะแล้ว เช่น >= 5 รูป)
-          if (images.length >= 5 || elapsed >= 2000) {
+          if ((!includeProduct || product.price != null) && (images.length >= 5 || elapsed >= 2000)) {
             log(`ดึงรูปแกลเลอรีสำเร็จ: ${images.length} รูป`);
             break;
           } else {
@@ -1151,6 +1307,26 @@ async function fetchShopeeImages({ productUrl } = {}) {
     }
   }
 
+  if (includeProduct) {
+    if (blocked) {
+      await chrome.tabs.update(tab.id, { active: true }).catch(() => {});
+      return { blocked: true, retryTabId: tab.id };
+    }
+    if (!isRetry) await chrome.tabs.remove(tab.id).catch(() => {});
+    if (!product) throw new Error("ไม่พบข้อมูลสินค้า กรุณาตรวจสอบว่าลิงก์เปิดหน้าสินค้า Shopee ได้");
+    return {
+      product: {
+        ...product,
+        currency: "THB",
+        displayImageUrl: images[0],
+        imageUrls: images,
+        productUrl: isOffer ? resolvedConsumerUrl : inputUrl.href,
+        stockCount: null,
+        source: "shopee"
+      }
+    };
+  }
+
   if (images.length === 0 && !blocked) {
     log(`หมดเวลาดึงรูปภาพของสินค้านี้ (ได้ 0 รูป)`);
   }
@@ -1159,10 +1335,12 @@ async function fetchShopeeImages({ productUrl } = {}) {
 }
 
 // รันในหน้าสินค้า shopee.co.th — เก็บ URL รูปทั้งหมดจาก gallery
-function scrapeShopeeGallery() {
+function scrapeShopeeGallery(includeProduct = false) {
   if (/verify\/traffic|anti_bot|\/captcha/i.test(location.href)) {
     return { images: [], blocked: true };
   }
+  if (includeProduct && !/^(?:(?:www|m)\.)?shopee\.co\.th$/.test(location.hostname)) return null;
+
   const set = new Set();
   const norm = (s) => {
     if (!s) return "";
@@ -1186,7 +1364,44 @@ function scrapeShopeeGallery() {
     if (m) set.add(norm(m[1]));
   });
   const images = [...set].filter((u) => u && u.length > 30).slice(0, 9);
-  return { images, blocked: false };
+  if (!includeProduct) return { images, blocked: false };
+
+  const meta = (property) => document.querySelector('meta[property="' + property + '"]')?.content;
+  const structured = [...document.querySelectorAll('script[type="application/ld+json"]')]
+    .flatMap((script) => {
+      try {
+        const data = JSON.parse(script.textContent);
+        return Array.isArray(data) ? data : data?.["@graph"] || [data];
+      } catch {
+        return [];
+      }
+    })
+    .find((entry) => [].concat(entry?.["@type"]).includes("Product"));
+
+  const name = [structured?.name, document.querySelector("h1")?.textContent, meta("og:title")]
+    .find((value) => typeof value === "string" && value.trim() && !/^Shopee Thailand\b/i.test(value.trim()))
+    ?.trim().replace(/\s*\|\s*Shopee Thailand\s*$/i, "");
+  const offer = Array.isArray(structured?.offers) ? structured.offers[0] : structured?.offers;
+  const visiblePrice = document.querySelector('[data-testid="product-price"], [itemprop="price"]');
+  const priceText = offer?.price ?? offer?.lowPrice ?? meta("product:price:amount")
+    ?? visiblePrice?.getAttribute("content") ?? visiblePrice?.textContent ?? "";
+  const amount = String(priceText).match(/\d[\d,]*(?:\.\d+)?/)?.[0];
+  const price = amount ? Number(amount.replace(/,/g, "")) : null;
+  const safeImage = (value) => {
+    if (typeof value !== "string" || !value || !URL.canParse(value, location.href)) return "";
+    const url = new URL(value, location.href);
+    if (url.protocol !== "https:" || url.port || url.username || url.password
+        || !/(?:^|\.)susercontent\.com$/.test(url.hostname)) return "";
+    return norm(url.href);
+  };
+  const productImages = [].concat(structured?.image || [])
+    .map((entry) => safeImage(entry?.contentUrl || entry?.url || entry)).filter(Boolean);
+  const gallery = [...new Set([
+    ...productImages,
+    safeImage(meta("og:image")),
+    ...images.map(safeImage)
+  ].filter(Boolean))].slice(0, 9);
+  return { images: gallery, product: { name, price: Number.isFinite(price) ? price : null } };
 }
 
 async function pullShopeeProducts({ keyword, count, mode, minCommission, minSales, sortBy } = {}) {
@@ -1702,15 +1917,137 @@ function assertTikTokPostMetadata({ caption = "", hashtags = [], productUrl = ""
   }
 }
 
-async function fetchVideoBase64FromFlowTab(videoUrl, previousError = "") {
-  const flowTabs = await queryFlowTabs();
-  if (!flowTabs.length) {
+async function fetchFlowStoryClip({ url, tabId, label } = {}, sender) {
+  if (!sender.url?.startsWith(chrome.runtime.getURL("")) || !Number.isInteger(tabId)) throw new Error("Missing the Flow story clip's original tab");
+  const tab = await chrome.tabs.get(tabId);
+  if (!isFlowProjectUrl(tab.url || "")) throw new Error("The Flow clip's project is no longer open");
+  if (url) {
+    const source = new URL(url);
+    const host = source.hostname;
+    const playbackBlob = source.protocol === "blob:" && source.origin === new URL(tab.url).origin;
+    const allowedHost = host === "flow.google.com" || host === "flow-content.google" || host.endsWith(".flow-content.google")
+      || host.endsWith(".googleusercontent.com") || host.endsWith(".googlevideo.com") || host === "storage.googleapis.com";
+    if (playbackBlob || (source.protocol === "https:" && allowedHost)) {
+      const file = await fetchVideoBase64FromFlowTab(url, "", tabId).catch(() => null);
+      if (file?.mimeType?.startsWith("video/")) return file;
+    }
+  }
+  // Flow's player URL can support video playback without being fetchable.
+  // Use the official Original size action and read the exact file it creates.
+  return captureFlowOriginalDownload(tabId, label);
+}
+
+function matchFlowVideoThumbnail(nodes, label = "") {
+  const thumbs = nodes.filter(node => node.backendDOMNodeId && /^generated video(?: thumbnail)?$/i.test(axText(node)));
+  if (thumbs.length === 1) return thumbs[0];
+  const expected = String(label).trim().toLowerCase();
+  if (!expected || thumbs.length === 0) return null;
+  const byId = new Map(nodes.map(node => [node.nodeId, node]));
+  const thumbIds = new Set(thumbs.map(node => node.nodeId));
+  const match = thumbs.filter(thumb => {
+    let ancestor = byId.get(thumb.parentId);
+    for (let depth = 0; ancestor && depth < 5; depth++, ancestor = byId.get(ancestor.parentId)) {
+      const tree = [ancestor];
+      for (const node of tree) {
+        for (const childId of node.childIds || []) {
+          const child = byId.get(childId);
+          if (child) tree.push(child);
+        }
+      }
+      if (tree.filter(node => thumbIds.has(node.nodeId)).length !== 1) break;
+      if (tree.some(node => axText(node).toLowerCase() === expected)) return true;
+    }
+    return false;
+  });
+  return match.length === 1 ? match[0] : null;
+}
+
+async function captureFlowOriginalDownload(tabId, label) {
+  const token = `__tvcVideoDownload_${crypto.randomUUID()}`;
+  const runInPage = (func, args) => chrome.scripting.executeScript({ target: { tabId }, world: "MAIN", func, args });
+  const waitForAction = async (pattern, description) => {
+    const limit = Date.now() + 6000;
+    while (Date.now() < limit) {
+      const node = (await getFlowAXTree(tabId)).find(item => item.backendDOMNodeId && pattern.test(axText(item))
+        && !item.properties?.some(property => property.name === "disabled" && property.value?.value === true));
+      if (node) return node;
+      await delay(200);
+    }
+    throw new Error(`Could not find ${description} for the generated Flow clip`);
+  };
+  try {
+    const thumb = matchFlowVideoThumbnail(await getFlowAXTree(tabId), label);
+    if (!thumb) throw new Error("Could not identify the exact Flow clip to download");
+    await clickAXNode(tabId, thumb);
+    await clickAXNode(tabId, await waitForAction(/^download media$|^ดาวน์โหลดสื่อ$/i, "the Download media button"));
+    const original = await waitForAction(/^720p\b.*(?:original size|ขนาดเดิม)/i, "the 720p original download");
+    await runInPage((key) => {
+      const create = URL.createObjectURL;
+      const click = HTMLAnchorElement.prototype.click;
+      let finish;
+      const promise = new Promise(resolve => { finish = resolve; });
+      const entry = { promise, close };
+      const timeout = setTimeout(() => close(null), 25000);
+      function close(blob) {
+        clearTimeout(timeout);
+        if (URL.createObjectURL === capture) URL.createObjectURL = create;
+        if (HTMLAnchorElement.prototype.click === captureAnchor) HTMLAnchorElement.prototype.click = click;
+        finish(blob);
+      }
+      function inspect(blob) {
+        if (blob instanceof Blob && blob.size >= 12) {
+          blob.slice(4, 8).text().then(tag => { if (tag === "ftyp") close(blob); }).catch(() => {});
+        }
+      }
+      function capture(value) {
+        const objectUrl = Reflect.apply(create, this, [value]);
+        inspect(value);
+        return objectUrl;
+      }
+      function captureAnchor() {
+        if (this.href.startsWith(`blob:${location.origin}/`) && /\.mp4$/i.test(this.download)) {
+          fetch(this.href).then(response => response.blob()).then(inspect).catch(() => {});
+        }
+        return Reflect.apply(click, this, []);
+      }
+      URL.createObjectURL = capture;
+      HTMLAnchorElement.prototype.click = captureAnchor;
+      window[key] = entry;
+    }, [token]);
+    // Activate the exact menu item. Mouse movement can dismiss the original
+    // size submenu before a coordinate click reaches its option.
+    const target = { tabId };
+    const resolved = await chrome.debugger.sendCommand(target, "DOM.resolveNode", { backendNodeId: original.backendDOMNodeId });
+    if (!resolved?.object?.objectId) throw new Error("Flow's original download action is no longer open");
+    const click = await chrome.debugger.sendCommand(target, "Runtime.callFunctionOn", {
+      objectId: resolved.object.objectId,
+      functionDeclaration: 'function () { (this.closest?.("button, [role=menuitem]") || this).click(); }',
+      userGesture: true,
+    });
+    if (click?.exceptionDetails) throw new Error("Could not activate Flow's 720p original download action");
+    const [download] = await runInPage(async (key) => {
+      const blob = await window[key]?.promise;
+      return blob ? new Uint8Array(await blob.arrayBuffer()).toBase64() : "";
+    }, [token]);
+    if (!download?.result) throw new Error("Flow did not provide its original MP4 after downloading");
+    return { base64: download.result, mimeType: "video/mp4" };
+  } finally {
+    await runInPage((key) => {
+      window[key]?.close(null);
+      delete window[key];
+    }, [token]).catch(() => {});
+    await detachDebuggerTab(tabId);
+  }
+}
+
+async function fetchVideoBase64FromFlowTab(videoUrl, previousError = "", fetchFromTabId) {
+  const flowTabId = fetchFromTabId ?? (await queryFlowTabs())[0]?.id;
+  if (!Number.isInteger(flowTabId)) {
     throw new Error(previousError
       ? `ดาวน์โหลดวิดีโอล้มเหลว: ${previousError}`
       : "ตรวจพบ blob URL แต่ไม่พบหน้าเว็บ Google Flow ที่เปิดอยู่เพื่อดึงไฟล์");
   }
 
-  const flowTabId = flowTabs[0].id;
   
   // รัน script ใน MAIN world เพื่อให้สามารถดึงข้อมูล blob URL ที่สร้างในเพจจริงได้ตรงๆ
   try {
