@@ -181,6 +181,7 @@ const PRESENTERS = {
 };
 
 const THAI_PERSON_DIRECTION = "Natural fictional adult Thai reviewer standing in a full-length shot, modestly dressed in a complete outfit (proper top AND long pants/skirt). The product must remain rigid and static; reviewer stands next to it gently.";
+const SOURCE_FACE_EXCLUSION = "SOURCE FACE EXCLUSION: Never keep the face or hair of any person in the reference; use a new face (หน้าไม่เหมือนต้นฉบับ).";
 const THAI_HUMAN_CAST_DIRECTION = "THAI PRESENTER CAST: Use the selected fictional Thai commercial presenter. In Auto mode, include exactly one well-groomed, realistic, age-appropriate fictional adult Thai presenter.";
 const EXPLICIT_PRESENTER_GENDER_DIRECTIONS = {
   woman: "HIGHEST PRIORITY EXPLICIT PRESENTER GENDER LOCK: The user selected a woman presenter. Show exactly one fictional adult Thai woman as the on-screen presenter in every presenter scene. Never substitute a man, male model, boy, or mixed-gender cast. Do not let the product category or reference image change this selection.",
@@ -474,7 +475,7 @@ const FASHION_SELFIE_BODY_CONTINUITY_LOCK = "FASHION SELFIE COMPLETE BODY LOCK: 
 const LOWER_BODY_GARMENT_CONTINUITY_LOCK = "LOWER-BODY GARMENT FRAME LOCK: Render only the natural lower body from the waist to the feet so the exact pants or skirt remains the hero. Keep the waistband, hips, full garment length, legs, and footwear anatomically connected and visible. Do not include a smartphone, mirror, selfie pose, hands, face, head, or upper torso.";
 export const FASHION_SELFIE_ON_BODY_WEAR_LOCK = "FASHION SELFIE ON-BODY WEAR LOCK: The model is WEARING the exact reference outfit/clothing directly on-body as apparel. Strictly FORBID holding the garment in hands, displaying it laid flat or folded on the floor/table, or presenting/reviewing the product by hand. The model's hands are used ONLY to hold the smartphone vertically in front of the face for the selfie. Product review holding poses are strictly prohibited (product-holding reviews are reserved for UGC mode only).";
 export const FASHION_SELFIE_NATURAL_PHONE_HOLD_LOCK = "NATURAL SMARTPHONE HOLDING REALISM & ERGONOMIC POSE LOCK: The model holds a modern sleek smartphone naturally in ONE hand (left or right hand) at chin / lower-face height in an authentic, effortless OOTD mirror-selfie pose. The hand uses a relaxed, anatomically correct human grip: slender fingers naturally wrapped around the side/back edge of the phone, thumb resting along the side, wrist straight and relaxed with the forearm, and the elbow resting naturally downward close to the torso (strictly NEVER raised high, NEVER stick elbow outward like a wing, NEVER rigid robotic pose). The other arm hangs relaxed and naturally at the side. The smartphone is held vertically at true smartphone scale (standard 6.1–6.7 inches) with the sleek back of the phone and camera lenses facing outward toward the viewer/mirror, naturally obscuring the model's facial features without covering the neck or chest. STRICT ANATOMICAL HAND RULES: Exactly 5 slender, natural fingers on each hand with organic human skin texture, realistic knuckles, and clean natural fingernails. ABSOLUTELY FORBIDDEN: deformed fingers, extra fingers, 6 fingers, claw-like grip, backward twisted wrist, severed/floating hands, giant/oversized phone, or the phone floating in mid-air.";
-export const VIDEO_MODEL_DIFFERENTIATION_MANDATE = "MODEL LOOK DIFFERENTIATION (ทรงผม สีผม และหน้าตา ต้องไม่เหมือนภาพสินค้าเด็ดขาด ยิ่งต่างยิ่งดี): The model must have a brand-new fictional face, a completely different hairstyle, and a completely different hair color from the product image. (1) Hairstyle must not match the product image (ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด): mandate a sleek high ponytail (มัดรวบหางม้าสูง), neat straight bob cut (ผมบ๊อบสั้นตรง), or neat hair bun (เกล้าผมมวย); strictly FORBID wavy curls matching the reference; strictly NO sunglasses on head. (2) Hair color must not match (สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี): mandate natural deep jet-black hair (ผมสีดำสนิทธรรมชาติ) contrasting reference brown tones. (3) Facial appearance must be completely distinct and not similar (หน้าตาต่างไปไม่คล้ายเลยยิ่งดี).";
+export const VIDEO_MODEL_DIFFERENTIATION_MANDATE = "MODEL LOOK DIFFERENTIATION (ทรงผม สีผม และหน้าตา ต้องไม่เหมือนภาพสินค้าเด็ดขาด ยิ่งต่างยิ่งดี): The model must have a brand-new fictional face, a completely different hairstyle, and a completely different hair color from the product image. (1) Hairstyle must not match the product image (ทรงผมต้องไม่เหมือนภาพในสินค้าเด็ดขาด): mandate a sleek high ponytail (มัดรวบหางม้าสูง), neat straight bob cut (ผมบ๊อบสั้นตรง), or neat hair bun (เกล้าผมมวย); strictly FORBID wavy curls matching the reference; strictly NO sunglasses on head. (2) Hair color must not match (สีผมก็ต้องไม่เหมือนเด็ดขาด ให้ต่างไปเลยยิ่งดี): mandate natural deep jet-black hair (ผมสีดำสนิทธรรมชาติ) contrasting reference brown tones. (3) Facial appearance must be completely distinct and not similar (หน้าตาต่างไปไม่คล้ายเลยยิ่งดี): use a different face shape (e.g. oval vs round vs heart), different eye shape and eyelids, different eyebrows, different nose bridge and tip, different lip shape, and a different jawline and cheekbones from the reference person. Do not reuse, blend, retouch, face-swap, or animate the reference face even partially; a viewer comparing both images must not think it is the same person.";
 export const MODEL_DIFFERENTIATION_MANDATE = VIDEO_MODEL_DIFFERENTIATION_MANDATE;
 
 function resolveFashionHangerModelDirection(isPlusSize = false) {
@@ -487,6 +488,7 @@ const FASHION_HANGER_MODEL_DIRECTION = resolveFashionHangerModelDirection(false)
 const FASHION_HANGER_PRODUCT_ONLY_STYLE_LOCK = "FASHION HANGER PRODUCT-ONLY STYLE LOCK: Copy only the exact garment that is the product being sold. If the product is a shirt, copy only that shirt; use newly generated fashionable, simple, modest, opaque non-denim bottoms and newly generated styling. If the product is a skirt or pants, copy only that exact skirt or pants; use a newly generated fashionable, simple, modest, opaque non-denim top and newly generated styling. NO UNREQUESTED JEANS LOCK: Do not dress the model in jeans, denim pants, denim skirts, or a denim jacket when denim is not the sold product; choose tailored trousers, wide-leg trousers, a pleated midi skirt, or another polished non-denim option instead. If the sold product itself is denim, preserve only that exact product garment. Do not copy any non-product clothing, outfit combination, shoes, accessories, jewelry, hairstyle, hair color, makeup, pose, background, or overall styling from the reference image or model image. Only the hanger garment matches the sold product; the presenter wears a different plain modest outfit. Everything else must be an original fictional choice.";
 const FASHION_HANGER_SINGLE_GARMENT_DIRECTION = "EXACT SINGLE HANGER GARMENT LOCK: Show exactly ONE instance of the exact reference garment on ONE real clothes hanger held beside the presenter. Match reference cut, proportions, fabric, colors, print, logo, seams, and visible details. The presenter wears a different plain modest outfit, never a second copy of the sold garment. No extra garments, stacked hangers, duplicate copies, or pair/couple display, even if the title mentions Unisex or matching couples.";
 const FASHION_HANGER_BODY_CONTINUITY_LOCK = "FASHION HANGER BODY CONTINUITY: Keep one anatomically complete adult model with one connected visible face, head, neck, torso, two arms, two hands, hips, two legs, and two feet. Keep the model standing, grounded, and fully inside the frame with comfortable space around the body. The single hanger garment must remain separate from the presenter’s different outfit and must not cover the model's face.";
+const FASHION_HANGER_HOLD_MANDATE = "HIGHEST PRIORITY — HANGER HOLD MANDATE (ต้องถือไม้แขวนเสื้อโชว์เสมอ): The presenter MUST hold the sold garment on ONE clearly visible real clothes hanger, gripping the hanger hook or neck with one hand and lifting it beside or in front of her body toward the camera. The hanger hook, hanger shoulders, and the full front of the hanging garment must be visible. The garment is NOT worn by the presenter, NOT laid flat, NOT held by bare fabric, and NOT on a rack or mannequin. This hanger rule overrides any instruction to keep the reference pose, framing, worn state, or flat-lay state; copy only the garment's design details onto the hanging garment.";
 const FASHION_HANGER_SHOT_PLAN = "MANDATORY FASHION HANGER SHOT PLAN: Scene 1 shows the front-facing presenter holding ONE exact reference garment on ONE hanger. Scene 2 gently lifts the same hanger closer while keeping the face, hook, and garment visible. Scene 3 holds the same single garment steady. No additional garment, outfit change, turning away, walking, dancing, or extra people.";
 const APPAREL_REFERENCE_USE_DIRECTION = "APPAREL REFERENCE USE: Treat the attached image as the authoritative reference for the garment itself. Reproduce that exact garment as the featured clothing item, preserving its cut, fit, length, neckline, sleeves, fabric, seams, pockets, fasteners, colors, print, logo, and every visible design detail. When a presenter is selected, the presenter is already wearing the exact reference garment naturally. When no presenter is selected, display the full-size garment naturally on a hanger, mannequin, or clean flat lay.";
 const APPAREL_SCALE_DIRECTION = "APPAREL SCALE: Show the garment at realistic full-size human clothing scale, naturally fitted on the selected presenter or displayed at its true wearable size. Preserve the reference garment's exact proportions and fit.";
@@ -1621,6 +1623,7 @@ function buildImagePromptFromMetadata(productInfo, settings = {}) {
     isFootwear && !shoeWearableCrop ? SHOE_STILL_PLACEMENT_DIRECTION : "",
     footwearStillCount === "pair" ? SHOE_PAIR_STILL_DIRECTION : "",
     auto.presenter && auto.presenter !== "none" && !handsOnly && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
+    auto.presenter && auto.presenter !== "none" && !handsOnly && !wearableCrop && (isClothing || isWearableProduct(productText)) ? SOURCE_FACE_EXCLUSION : "",
     autoPresenterProfile,
     intro,
     hasEngravedPattern ? ENGRAVED_EMBOSSED_FIDELITY_DIRECTION : "",
@@ -1974,6 +1977,12 @@ function buildSpeechProductContext(productInfo = {}, productName = "the attached
     "]. Use this as flexible context, not a fixed script. Choose a natural problem, use case, detail, or benefit only when it genuinely fits this product. Do not force every fact, invent claims, or describe another product category.";
 }
 
+function productMotionAudioDirection(settings = {}, productInfo = {}, productName = "the attached product") {
+  return isMusicOnlyMode(settings?.audioMode)
+    ? resolveMusicAudioDirection(settings?.audioMode)
+    : buildSpeechProductContext(productInfo, productName) + "\nOFF-SCREEN THAI REVIEW VOICEOVER: Add a clear, friendly off-screen Thai voiceover that briefly reviews this exact product using only the verified facts above. No on-screen presenter, lips, or hands; the visuals stay a camera-only product shot. Keep soft background music clearly below the voice. Spoken narration is audio-only; no subtitles or captions.";
+}
+
 function buildStillMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale, settings = {}, auto = {}) {
   const overlayDirection = textEnabled && overlayText.length
     ? `Optional single Thai text overlay only: "${overlayText[0]}". Keep it in empty background space and never place it on the product label or surface.`
@@ -1986,7 +1995,7 @@ function buildStillMotionVideoPrompt(productInfo, productName, locationStr, dura
 
   return [
     `สร้างวิดีโอแนวตั้ง 9:16 ความยาว ${durationSeconds} วินาทีจากภาพสินค้า ${productName}`,
-    "STILL-IMAGE MOTION MODE: Use the attached/generated still image as the source frame. The product stays completely still, rigid, and unchanged throughout the entire video. This is a simple product-shot animation, not a review or sales presentation.",
+    "STILL-IMAGE MOTION MODE: Use the attached/generated still image as the source frame. The product stays completely still, rigid, and unchanged throughout the entire video. This is a camera-only product-shot animation with an off-screen Thai review voiceover.",
     buildProductIdentityLock(productInfo),
     REFERENCE_PIXEL_ARTWORK_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
@@ -1999,13 +2008,14 @@ function buildStillMotionVideoPrompt(productInfo, productName, locationStr, dura
     transitionDirection,
     cameraMotionDirection,
     STILL_MOTION_TOP_VIEW_DIRECTION,
-    "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product itself. Do not let the product slide, drift, or slip out of the frame borders during camera movement. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, or busy scene action. Absolutely NO side bottles, NO wine glasses, NO ice buckets, NO cups, NO ribbons, and NO secondary decorative props. Strictly NO zoom in, NO zoom out, NO push in, NO pull back, and NO zoom effects.",
+    "STRICTLY FORBIDDEN: Do not rotate, slide, bounce, float, bend, resize, morph, open, close, deform, or otherwise animate the product itself. Do not let the product slide, drift, or slip out of the frame borders during camera movement. Do not add hands, fingers, arms, people, presenters, on-screen dialogue or lip movement, feature demonstration, extra product, duplicate object, or busy scene action. Absolutely NO side bottles, NO wine glasses, NO ice buckets, NO cups, NO ribbons, and NO secondary decorative props. Strictly NO zoom in, NO zoom out, NO push in, NO pull back, and NO zoom effects.",
     overlayDirection,
-    "PREMIUM PRODUCT PHOTOGRAPHY & SMOOTH HORIZONTAL ORBIT: Preserve the source lighting and setting with soft directional light, controlled highlights, realistic contact shadows, and a gently blurred background. Keep the entire product and its artwork sharp; no focus hunting, flicker, exposure pumping, artificial light sweeps, or invented product surfaces. Camera movement is purely a smooth horizontal curved orbit pan left-to-right revolving around the centered hero product (เคลื่อนกล้อง orbit ซ้ายขวาอย่างนุ่มนวลเทคเดียวจบ ไม่ซูม). Strictly NO zoom effects, NO zoom in, NO zoom out, NO push-in, NO pull-back, NO foreground objects, NO blurry wipes, NO occlusions cutting across the lens, NO whip pan, NO shake, NO collage, NO transition effects, and NO scene replacement. AUDIO SOUNDTRACK: Use upbeat, cheerful, and fun commercial instrumental background music (เพลงสนุกๆ จังหวะสดใส สนุกสนาน) with a catchy rhythm and bouncy tempo that syncs with the smooth horizontal orbit movement. No spoken narration or dialogue."
+    "PREMIUM PRODUCT PHOTOGRAPHY & SMOOTH HORIZONTAL ORBIT: Preserve the source lighting and setting with soft directional light, controlled highlights, realistic contact shadows, and a gently blurred background. Keep the entire product and its artwork sharp; no focus hunting, flicker, exposure pumping, artificial light sweeps, or invented product surfaces. Camera movement is purely a smooth horizontal curved orbit pan left-to-right revolving around the centered hero product (เคลื่อนกล้อง orbit ซ้ายขวาอย่างนุ่มนวลเทคเดียวจบ ไม่ซูม). Strictly NO zoom effects, NO zoom in, NO zoom out, NO push-in, NO pull-back, NO foreground objects, NO blurry wipes, NO occlusions cutting across the lens, NO whip pan, NO shake, NO collage, NO transition effects, and NO scene replacement. AUDIO SOUNDTRACK: Use upbeat, cheerful, and fun commercial instrumental background music (เพลงสนุกๆ จังหวะสดใส สนุกสนาน) with a catchy rhythm and bouncy tempo that syncs with the smooth horizontal orbit movement. No spoken narration or dialogue.",
+    productMotionAudioDirection(settings, productInfo, productName)
   ].filter(Boolean).join("\n");
 }
 
-function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale) {
+function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale, settings = {}) {
   const overlayDirection = textEnabled && overlayText.length
     ? `Optional single Thai text overlay only: "${overlayText[0]}". Keep it in empty background space and never place it on the product, printed label, or box. `
     : TEXT_FREE_DIRECTION;
@@ -2013,7 +2023,7 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
 
   return [
     `สร้างวิดีโอแนวตั้ง 9:16 ความยาว ${durationSeconds} วินาทีจากภาพสินค้า ${productName}`,
-    "BOXED PRODUCT MOTION MODE: The exact product is already placed inside an open presentation box in the source still. Keep both the product and box stable and unchanged throughout the entire video. This is a simple product-shot animation, not an unboxing, review, or sales presentation.",
+    "BOXED PRODUCT MOTION MODE: The exact product is already placed inside an open presentation box in the source still. Keep both the product and box stable and unchanged throughout the entire video. This is a camera-only product-shot animation (not an unboxing) with an off-screen Thai review voiceover.",
     buildProductIdentityLock(productInfo),
     REFERENCE_PIXEL_ARTWORK_LOCK,
     PRODUCT_FIDELITY_DIRECTION,
@@ -2023,9 +2033,10 @@ function buildBoxedMotionVideoPrompt(productInfo, productName, locationStr, dura
     `Keep the fitted open box and product at true scale in a realistic ${locationStr || "category-appropriate"} setting.${isMinimalistStudioLocation(locationStr) ? `\n${MINIMALIST_STUDIO_AESTHETIC_SET_DIRECTION}` : ""} Keep only limited table context and almost no floor visible. Strictly NO surrounding props or decorative clutter.`,
     CAMERA_ONLY_NO_HANDS_DIRECTION,
     PRODUCT_ONLY_DYNAMIC_CAMERA_DIRECTION,
-    "STRICTLY FORBIDDEN: Do not move, rotate, slide, bounce, float, resize, morph, open, close, deform, or otherwise animate the product or box. Do not add hands, fingers, arms, people, presenters, dialogue, voiceover, product review, feature demonstration, extra product, duplicate object, busy props, fast cuts, macro zoom, 360-degree orbit, or scene changes. Absolutely NO side bottles, NO glasses, NO ice buckets, NO decorative prop clutter.",
+    "STRICTLY FORBIDDEN: Do not move, rotate, slide, bounce, float, resize, morph, open, close, deform, or otherwise animate the product or box. Do not add hands, fingers, arms, people, presenters, on-screen dialogue or lip movement, feature demonstration, extra product, duplicate object, busy props, fast cuts, macro zoom, 360-degree orbit, or scene changes. Absolutely NO side bottles, NO glasses, NO ice buckets, NO decorative prop clutter.",
     overlayDirection,
-    "Use energetic but controlled angle transitions: front hero → low left three-quarter → high right three-quarter → detail pull-back. Use upbeat but clean instrumental ambience or no audio."
+    "Use energetic but controlled angle transitions: front hero → low left three-quarter → high right three-quarter → detail pull-back. Use upbeat but clean instrumental ambience under the voiceover.",
+    productMotionAudioDirection(settings, productInfo, productName)
   ].filter(Boolean).join("\n");
 }
 
@@ -2259,7 +2270,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
   }
 
   if (auto.videoStyle === "boxed-motion") {
-    return buildBoxedMotionVideoPrompt(productInfo, productName, resolveBoxedPresentationLocation(productText, locationStr, !isAuto(settings.location)), durationSeconds, textEnabled, overlayText, specificScale);
+    return buildBoxedMotionVideoPrompt(productInfo, productName, resolveBoxedPresentationLocation(productText, locationStr, !isAuto(settings.location)), durationSeconds, textEnabled, overlayText, specificScale, settings);
   }
   if (auto.videoStyle === "still-motion") {
     return buildStillMotionVideoPrompt(productInfo, productName, locationStr, durationSeconds, textEnabled, overlayText, specificScale, settings, auto);
@@ -2370,6 +2381,7 @@ function buildVideoPromptForStyle(productInfo, settings = {}) {
     REFERENCE_BRAND_ONLY_LOCK,
     FICTIONAL_CAST_DIRECTION,
     auto.presenter && auto.presenter !== "none" && !handsOnly && !wearableCrop ? THAI_HUMAN_CAST_DIRECTION : "",
+    auto.presenter && auto.presenter !== "none" && !handsOnly && !wearableCrop && (isClothing || isWearable) ? SOURCE_FACE_EXCLUSION : "",
     autoPresenterProfile,
     isClothing && !wearableCrop && !isChildPresenter && !handsOnly ? (isPlusSizeApparelProduct(productInfo) || isPlusSizeApparelProduct(productText) ? APPAREL_PLUS_SIZE_MODEL_DIRECTION : APPAREL_FICTIONAL_MODEL_DIRECTION) : "",
     (isPlusSizeApparelProduct(productInfo) || isPlusSizeApparelProduct(productText)) && auto.presenter && auto.presenter !== "none" && !handsOnly && !wearableCrop ? PLUS_SIZE_MODEL_MANDATE : "",
@@ -2878,7 +2890,7 @@ function buildFashionSelfieVideoPrompt(productInfo, productName, locationStr, du
       ? `The model must remain standing in place; no phone or selfie pose is needed. Allow only subtle natural leg posture movement and minimal camera motion. ${framing.cropRule}`
       : `The model must remain standing in place; only subtle breathing, natural phone steadiness, and minimal camera motion are allowed. ${framing.cropRule}`,
     textRule,
-    autoAudioDirection(settings)
+    autoAudioDirection(settings, productInfo, productName)
   ].filter(Boolean).join("\n");
 }
 
@@ -2889,10 +2901,10 @@ function resolveFashionHangerPresenter(productText, settings, autoPresenter, pro
   return "woman";
 }
 
-function fashionHangerAudioDirection(settings = {}) {
+function fashionHangerAudioDirection(settings = {}, productInfo = {}, productName = "the attached product") {
   return isMusicOnlyMode(settings?.audioMode)
     ? resolveMusicAudioDirection(settings?.audioMode)
-    : "DIRECT-TO-CAMERA AUDIO: Use a natural, concise Thai product presentation delivered by the on-screen model while looking into the camera. Keep speech clear, relaxed, and synchronized with natural lip movement. STRICT AUDIO-ONLY: Spoken Thai narration is audio-only. Do not add subtitles, captions, transcriptions, burnt-in dialogue text, or any invented product claims.";
+    : buildSpeechProductContext(productInfo, productName) + "\nDIRECT-TO-CAMERA AUDIO: Use a natural, concise Thai product presentation delivered by the on-screen model while looking into the camera. Keep speech clear, relaxed, and synchronized with natural lip movement. STRICT AUDIO-ONLY: Spoken Thai narration is audio-only. Do not add subtitles, captions, transcriptions, burnt-in dialogue text, or any invented product claims.";
 }
 
 function buildFashionHangerImagePrompt(productInfo, productName, settings = {}, presenter = "woman") {
@@ -2908,6 +2920,7 @@ function buildFashionHangerImagePrompt(productInfo, productName, settings = {}, 
   const location = resolveFashionSelfieLocation(productInfo, settings);
   return [
     `Create one photorealistic vertical 9:16 direct-to-camera fashion product presentation image featuring ${garmentName}.`,
+    FASHION_HANGER_HOLD_MANDATE,
     resolveFashionHangerModelDirection(isPlusSize),
     VIDEO_MODEL_DIFFERENTIATION_MANDATE,
     isPlusSize ? PLUS_SIZE_MODEL_MANDATE : "",
@@ -2923,7 +2936,8 @@ function buildFashionHangerImagePrompt(productInfo, productName, settings = {}, 
     PRODUCT_FIDELITY_DIRECTION,
     COLOR_AND_PATTERN_FIDELITY_DIRECTION,
     TEXT_FREE_DIRECTION,
-    "The model faces the camera and presents only ONE garment on ONE hanger, sharp and unobstructed."
+    "The model faces the camera and presents only ONE garment on ONE hanger, sharp and unobstructed.",
+    FASHION_HANGER_HOLD_MANDATE
   ].filter(Boolean).join("\n");
 }
 
@@ -2940,6 +2954,7 @@ function buildFashionHangerVideoPrompt(productInfo, productName, locationStr, du
   const location = locationStr ? ` in a beautiful, realistic ${compactPromptText(locationStr, 180)}` : " in a beautiful, realistic fashion setting";
   return [
     `Create a ${durationSeconds}-second photorealistic vertical 9:16 direct-to-camera fashion product presentation video featuring ${garmentName}${location}.`,
+    FASHION_HANGER_HOLD_MANDATE,
     resolveFashionHangerModelDirection(isPlusSize),
     VIDEO_MODEL_DIFFERENTIATION_MANDATE,
     isPlusSize ? PLUS_SIZE_MODEL_MANDATE : "",
@@ -2959,7 +2974,7 @@ function buildFashionHangerVideoPrompt(productInfo, productName, locationStr, du
     TEXT_FREE_DIRECTION,
     VIDEO_ZERO_SUBTITLES_AND_TEXT_LOCK,
     "Use only subtle natural posture and hand movement. Keep the model's face visible, looking into the camera, and consistently fictional throughout the entire clip; keep the hanger stable and never let it obscure the face or hanging garment.",
-    fashionHangerAudioDirection(settings)
+    fashionHangerAudioDirection(settings, productInfo, productName)
   ].filter(Boolean).join("\n");
 }
 
@@ -2985,10 +3000,10 @@ function buildFashionSelfieTextDirection(productInfo, settings = {}, isVideo = f
   return `TEXT OVERLAY ENABLED: Create ONE short natural Thai phrase of 1–5 words ${placement} at ${position}. Render the Thai spelling perfectly, style the text as ${textStyle}, and include 1–2 small doodles nearby (${doodles}). Keep it in empty background space, away from the model's phone, face area, and garment details. Do not add product name, price, CTA, logo, watermark, English, romanized Thai, or gibberish.${isVideo ? " The text must sit over active video footage, not a frozen title card." : ""}`;
 }
 
-function autoAudioDirection(settings = {}) {
+function autoAudioDirection(settings = {}, productInfo = {}, productName = "the attached product") {
   return isMusicOnlyMode(settings?.audioMode)
     ? resolveMusicAudioDirection(settings?.audioMode)
-    : "Use only a calm off-screen Thai voiceover if narration is needed; the on-screen model must never speak or move her mouth behind the phone. STRICT AUDIO-ONLY: Spoken narration is audio-only; do not add subtitles, captions, transcriptions, or on-screen text.";
+    : buildSpeechProductContext(productInfo, productName) + "\nUse only a calm off-screen Thai voiceover if narration is needed; the on-screen model must never speak or move her mouth behind the phone. STRICT AUDIO-ONLY: Spoken narration is audio-only; do not add subtitles, captions, transcriptions, or on-screen text.";
 }
 
 function getMultiSceneDescription(videoStyle, productName, locationStr, mood, productText = "", handsOnlyMode = false) {
